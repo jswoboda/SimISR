@@ -254,8 +254,8 @@ def TempProfile(z):
     
 def MakeTestIonoclass():
 
-    xvec = sp.arange(-100,100,4)
-    yvec = sp.arange(-100,100,4)
+    xvec = sp.arange(-250,250,4)
+    yvec = sp.arange(-250,250,4)
     zvec = sp.arange(200,500,2)
  
     xx,yy,zz = sp.meshgrid(xvec,yvec,zvec)

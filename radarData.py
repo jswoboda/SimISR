@@ -78,6 +78,7 @@ class RadarData(object):
         self.fittedarray = np.zeros((N_times,N_angles,N_range,N_params))
         self.fittederror = np.zeros((N_times,N_angles,N_range,N_params,N_params))
         firstcode = True
+        print('Data Now being created.\n\n')
         for icode in np.arange(N_angles):
             outdata = self.__makeData__(icode)
             if firstcode:
@@ -85,6 +86,7 @@ class RadarData(object):
                 self.datadict = np.zeros((N_angles,Nr,Np),dtype=np.complex128)
                 
             self.datadict[icode]=outdata
+            print('Data for Beam {0:d} created.'.format(icode))
             #[fitted,error] = self.fitdata()
             #self.fitteddict[beamangles[icode]]
             
@@ -96,7 +98,9 @@ class RadarData(object):
             beamcode - This is simply an integer to select which beam will have
                 data created for it.
         Outputs:
-            Outdata - This will be the raw I\Q data
+            Outdata - This will be the raw I\Q data.  It will be a numpy array 
+                of size NbxNrxNpu, Nb is number of beams, Nr is number of range
+                gates and Npu is number of pulses.
             """
         range_gates = self.simparams['Rangegates']
         centangles = self.simparams['angles'][beamcode]
@@ -107,7 +111,7 @@ class RadarData(object):
         # This is the time vector the data is changing its parameters under.        
         data_time_vec = self.Ionocont.Time_Vector
         self.paramdict[centangles] = params_dict
-        # This is the IPP for each position, this will determine howmany pulses will be avalible for that position
+        # This is the IPP for each position, this will determine how many pulses will be avalible for that position
         PIPP = len(self.simparams['angles'])*self.simparams['IPP']
         
         pulse_add = beamcode*self.simparams['IPP']
@@ -130,7 +134,6 @@ class RadarData(object):
         N_rg = len(range_gates)# take the size 
         N_samps = N_rg +lp_pnts-1
         Np = N_pulses.sum()
-#        out_data = sp.zeros((N_samps,Np))+1j*sp.zeros((N_samps,Np))   
         out_data = sp.zeros((N_samps,Np),dtype=sp.complex128)
         # go through the spectrums at each range gate
         for isamp in np.arange(len(range_gates)):
@@ -175,7 +178,13 @@ class RadarData(object):
         return(out_data)               
             
     def fitdata(self,icode):
-        """ """
+        """This function will fit data for a single radar beam and output a numpy
+        array.  The instance self will be adjusted.
+        Inputs:
+            self - An instance of the RadarData class.
+            icode - This is simply an integer to select which beam will have
+                data created for it.
+        """
         angles = self.simparams['angles']
         n_beams = len(angles)
         rawIQ = self.datadict[icode]
@@ -229,16 +238,25 @@ class RadarData(object):
                     pdb.set_trace()
                 
     def fitalldata(self):
-        """ """
+        """This method will fun the fitdata method on all of the beams."""
+        print('Data Now being fit.\n\n')
         for ibeam in np.arange(len(self.simparams['angles'])):
+        
             self.fitdata(ibeam)
+            print('Data from beam {0:d} fitted'.format(ibeam))
             
     def reconstructdata(self):       
         """ """
 def MakePulseData(pulse_shape, filt_freq, delay=16):
     """ This function will create a pulse width of data shaped by the filter that who's frequency
         response is passed as the parameter filt_freq.  The pulse shape is delayed by the parameter
-        delay into the data
+        delay into the data.
+        Inputs:
+            pulse_shape: A numpy array that holds the shape of the single pulse.
+            filt_freq - a numpy array that holds the complex frequency response of the filter
+            that will be used to shape the noise data.
+            delay - The number of samples that the pulse will be delayed into the 
+            array of noise data to avoid any problems with filter overlap.
     """
     npts = len(filt_freq)
     #noise_vec = np.random.randn(npts)+1j*np.random.randn(npts);# make a noise vector
@@ -249,7 +267,17 @@ def MakePulseData(pulse_shape, filt_freq, delay=16):
     return data_out
 
 def CenteredLagProduct(rawbeams,N =14):
-    
+    """ This function will create a centered lag product for each range using the
+    raw IQ given to it.  It will form each lag for each pulse and then integrate 
+    all of the pulses.
+    Inputs: 
+        rawbeams - This is a NsxNpu complex numpy array where Ns is number of 
+        samples per pulse and Npu is number of pulses
+        N - The number of lags that will be created, default is 14
+    Output:
+        acf_cent - This is a NrxNl complex numpy array where Nr is number of 
+        range gate and Nl is number of lags.
+    """
     # It will be assumed the data will be range vs pulses    
     (Nr,Np) = rawbeams.shape    
     
@@ -277,7 +305,7 @@ def Init_vales():
     return np.array([1000.0,1000.0,10**11])
     
 def fit_fun(x,y_acf,amb_func,rm1,rm2,p2,sensdict,range,npts,Npulses):
-    
+    """ This is a fit function used by the least squares command."""
     ti = x[0]
     te = x[1]
     Ne = x[2]    
