@@ -7,30 +7,54 @@ Created on Thu Dec 12 12:40:46 2013
 
 import numpy as np
 import scipy as sp
+import scipy.io as sio
+
 from ISSpectrum import ISSpectrum
 import pdb
 
 from physConstants import *
 from sensorConstants import *
+import matplotlib.pylab as plt
 class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will 
     make the spectrums for each point."""
-    def __init__(self,coordlist,paramlist,times = np.arange(1),sensor_loc = [0,0,0]):
+    def __init__(self,coordlist,paramlist,times = np.arange(1),sensor_loc = [0,0,0],ver =0):
         """ """
+        r2d = 180.0/np.pi
+        d2r = np.pi/180.0
+        if ver==0:
         
-        X_vec = coordlist[:,0]
-        Y_vec = coordlist[:,1]
-        Z_vec = coordlist[:,2]
+            X_vec = coordlist[:,0]
+            Y_vec = coordlist[:,1]
+            Z_vec = coordlist[:,2]
         
-        R_vec = sp.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
-        Az_vec = sp.arctan2(Y_vec,X_vec)*180/pi     
-        El_vec = sp.arcsin(Z_vec/R_vec)*180/pi
+            R_vec = sp.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
+            Az_vec = sp.arctan2(Y_vec,X_vec)*r2d     
+            El_vec = sp.arcsin(Z_vec/R_vec)*r2d
         
         
-        self.Cart_Coords = coordlist        
-        self.Sphere_Coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
-        self.Param_List = paramlist
-        self.Time_Vector = times
+            self.Cart_Coords = coordlist        
+            self.Sphere_Coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
+            self.Param_List = paramlist
+            self.Time_Vector = times
+        elif ver==1:
+            R_vec = coordlist[:,0]
+            Az_vec = coordlist[:,1]
+            El_vec = coordlist[:,2]
+            
+            X_vec = R_vec*np.cos(Az_vec*d2r)*np.cos(El_vec*d2r)
+            Y_vec = R_vec*np.sin(Az_vec*d2r)*np.cos(El_vec*d2r)
+            Z_vec = R_vec*np.sin(El_vec*d2r)
+            
+            self.Cart_Coords = sp.array([X_vec,Y_vec,Z_vec]).transpose()        
+            self.Sphere_Coords = coordlist
+            self.Param_List = paramlist
+            self.Time_Vector = times
+    def savemat(self,filename):
+        """ """
+        outdict = {'Cart_Coords':self.Cart_Coords,'Sphere_Coords':self.Sphere_Coords,\
+            'Param_List':self.Param_List,'Time_Vector':self.Time_Vector}
+        sio.savemat(filename,mdict=outdict)
     def makespectrums(self,range_gates,centangles,beamwidths,sensdict):
         """ Creates a spectrum for each range gate, it will be assumed that the 
         spectrums for each range will be averaged at the spectrum level"""
@@ -229,7 +253,9 @@ class IonoContainer(object):
         if 'omeg' not in locals():
             pdb.set_trace()
         return (omeg,spec_ar,params_ar)
-        
+
+            
+            
 def Chapmanfunc(z,H_0,Z_0,N_0):
     """This function will return the Chapman function for a given altitude 
     vector z.  All of the height values are assumed km.
@@ -245,20 +271,23 @@ def Chapmanfunc(z,H_0,Z_0,N_0):
     
 def TempProfile(z):
     """This function creates a tempreture profile that is pretty much made up"""
-    Ti_val = 1000.0
-    Ti = Ti_val*sp.ones(z.shape)
-    Te = 2*Ti_val*sp.ones(z.shape)
-    Te_sep = sp.where(z>300)
-    Te[Te_sep] =1.4*Ti_val
+#    Ti_val = 1000.0
+#    Ti = Ti_val*sp.ones(z.shape)
+#    Te = 2*Ti_val*sp.ones(z.shape)
+#    Te_sep = sp.where(z>300)
+#    Te[Te_sep] =1.4*Ti_val
+    
+    Te = ((45.0/500.0)*(z-200.0))**2+1000.0
+    Ti = ((20.0/500.0)*(z-200.0))**2+1000.0
     return (Te,Ti)
     
 def MakeTestIonoclass():
 
-    xvec = sp.arange(-250,250,4)
-    yvec = sp.arange(-250,250,4)
-    zvec = sp.arange(200,500,2)
+    xvec = sp.arange(-250.0,250.0,6.0)
+    yvec = sp.arange(-250.0,250.0,6.0)
+    zvec = sp.arange(200.0,500.0,3.0)
  
-    xx,yy,zz = sp.meshgrid(xvec,yvec,zvec)
+    xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)
     H_0 = 40 #km
     z_0 = 300 #km
     N_0 = 10**11
@@ -288,3 +317,4 @@ if __name__== '__main__':
     centangles = [5,85]
     beamwidths = [2,2]
     (omeg,mydict,myparams) = Icont1.makespectrums(range_gates,centangles,beamwidths,AMISR)
+    Icont1.savemat('test.mat')
