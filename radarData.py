@@ -185,7 +185,7 @@ class RadarData(object):
                             cur_pulse_data = (cur_mag/np.sqrt(cur_var))*cur_pulse_data
                             
                             # This needs to be changed to weighting from the beam pattern
-                            cur_pulse_data = cur_pulse_data/Nloc
+                            cur_pulse_data = cur_pulse_data/np.sqrt(Nloc)
                             out_data[cur_pnts,ipulse] = cur_pulse_data+out_data[cur_pnts,ipulse]
                         ipulse+=1
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['fs']
@@ -308,6 +308,8 @@ class RadarData(object):
         ang = angles[beamnum]
         params = self.paramdict[ang]
         if type(timenum)is int:
+            myfsize = 18
+            titfsize = 22
             rng_arr = np.zeros(0)
             Ne_true = np.zeros(0)
             Te_true = np.zeros(0)
@@ -339,8 +341,8 @@ class RadarData(object):
             plt.hold(True)
             plt.plot(Ne_true,altori,'go',label=r'Original')
             plt.xscale('log')
-            plt.xlabel(r'Log $N_e$')
-            plt.ylabel(r'Alt km')
+            plt.xlabel(r'Log $N_e$',fontsize=myfsize)
+            plt.ylabel(r'Alt km',fontsize=myfsize)
             plt.grid(True)
             plt.legend(loc='upper right')
 
@@ -349,7 +351,7 @@ class RadarData(object):
             plt.hold(True)
             plt.plot(Te_true,altori,'go',label=r'Original')
             plt.grid(True)
-            plt.xlabel(r'$T_e$ in K')
+            plt.xlabel(r'$T_e$ in K',fontsize=myfsize)
             plt.legend(loc='upper right')
             
             plt.subplot(1,3,3)
@@ -357,10 +359,10 @@ class RadarData(object):
             plt.hold(True)
             plt.plot(Ti_true,altori,'go',label=r'Original')
             plt.grid(True)
-            plt.xlabel(r'$T_e$ in K')
+            plt.xlabel(r'$T_i$ in K',fontsize=myfsize)
             plt.legend(loc='upper right')
             
-            plt.suptitle(r'Fit and Actual Parmeters for Beam Az {0:.2f} El {1:.2f}'.format(ang[0],ang[1]))
+            plt.suptitle(r'Fitted and Actual Parameters for Beam Az {0:.2f} El {1:.2f}'.format(ang[0],ang[1]),fontsize=titfsize)
             figname = 'Beam{0:d}.png'.format(beamnum)
             if figsdir==None:
                 plt.savefig(figname)
