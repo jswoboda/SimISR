@@ -13,8 +13,8 @@ import time
 
 from IonoContainer import IonoContainer, MakeTestIonoclass
 from ISSpectrum import ISSpectrum
-from physConstants import *
-from sensorConstants import *
+from const.physConstants import *
+import const.sensorConstants as sensconst
 from matplotlib import rc, rcParams
 import matplotlib.pylab as plt
 import os
@@ -91,15 +91,13 @@ class RadarData(object):
             if firstcode:
                 (Nr,Np) = outdata.shape
                 (NNr,NNP) = noisedata.shape
-                self.datadict = np.zeros((N_angles,Nr,Np),dtype=np.complex128)
-                self.noisedata = np.zeros((N_angles,NNr,NNP),dtype=np.complex128)
+                self.rawdata = np.zeros((N_angles,Nr,Np),dtype=np.complex128)
+                self.rawnoise = np.zeros((N_angles,NNr,NNP),dtype=np.complex128)
                 firstcode = False
-                
-            self.datadict[icode]=outdata
-            self.noisedata[icode] = noisedata
+            self.rawdata[icode]=outdata
+            self.rawnoise[icode] = noisedata
             print('Data for Beam {0:d} created.'.format(icode))
-            #[fitted,error] = self.fitdata()
-            #self.fitteddict[beamangles[icode]]
+            
             
     def __makeData__(self,beamcode):
         """This is an internal method that is used by the constructor function to
@@ -127,11 +125,16 @@ class RadarData(object):
         
         pulse_add = beamcode*self.simparams['IPP']
         time_lim = self.simparams['TimeLim']
-                
+        # check for last pulse of all data and truncate number of pulses for sim
+        # to this maximum.
+        pulse_add_last = (nang-1)*self.simparams['IPP']
+        maxpall = np.floor((time_lim-pulse_add_last)/PIPP)+1
+        
         NNs = self.simparams['Noisesamples']
         NNp = self.simparams['Noisepulses']
         # determine the number of pulses per time period that will be running
         pulse_times = np.arange(pulse_add,time_lim,PIPP)
+        pulse_times = pulse_times[:maxpall]
         N_pulses = sp.zeros(data_time_vec.shape)
         time_lim_vec = np.append(data_time_vec,time_lim)
         time_lim_vec = time_lim_vec[1:]
@@ -140,7 +143,6 @@ class RadarData(object):
             N_pulses[itime] = pulse_log.sum()
             pulse_times = pulse_times[~pulse_log]
             
-        
         lp_pnts = len(pulse)
         samp_num = np.arange(lp_pnts)
         isamp = 0
@@ -159,7 +161,6 @@ class RadarData(object):
                 (Nloc,Ndtime,speclen) = spect_ar.shape
                 ipulse = 0
                 for itimed in np.arange(Ndtime):
-                   # pdb.set_trace()
                     for i_curtime in np.arange(N_pulses[itimed]): 
                         for iloc in np.arange(Nloc):
                             cur_spec = spect_ar[iloc,itimed]
@@ -174,12 +175,17 @@ class RadarData(object):
                             #calculated the power at each point
                             
                             debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
-                            pow_num = sensdict['Pt']*sensdict['G']*v_C_0*sensdict['lamb']**2
-                            pow_den = 2*16*np.pi**2*range_m**2
-                            rcs = v_electron_rcs*N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))
+                            #pow_num = sensdict['Pt']*sensdict['G']*v_C_0*sensdict['lamb']**2
+                            pow_num = sensdict['Pt']*sensdict['Ksys'][beamcode] # based off new way of calculating
+                            #pow_den = 2*16*np.pi**2*range_m**2
+                            pow_den = range_m**2
+                            #rcs = v_electron_rcs*N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))
+                            rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
                             pow_all = pow_num*rcs/pow_den
                             cur_mag = np.sqrt(pow_all)
                             cur_pulse_data = MakePulseData(pulse,cur_filt)
+                            
+
                             # find the varience of the complex data
                             cur_var = np.sum(np.abs(cur_pulse_data)**2)/len(cur_pulse_data)
                             cur_pulse_data = (cur_mag/np.sqrt(cur_var))*cur_pulse_data
@@ -188,12 +194,72 @@ class RadarData(object):
                             cur_pulse_data = cur_pulse_data/np.sqrt(Nloc)
                             out_data[cur_pnts,ipulse] = cur_pulse_data+out_data[cur_pnts,ipulse]
                         ipulse+=1
-        Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['fs']
-        Noise = np.sqrt(Noisepwr)*np.random.randn(N_samps,Np).astype(complex)
-        
-        noisesamples = np.sqrt(Noisepwr)*np.random.randn(NNs,NNp).astype(complex)
+        Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
+        Noise = np.sqrt(Noisepwr/2)*(np.random.randn(N_samps,Np).astype(complex)+1j*np.random.randn(N_samps,Np).astype(complex))
+        noisesamples = np.sqrt(Noisepwr/2)*(np.random.randn(NNs,NNp).astype(complex) + 1j*np.random.randn(NNs,NNp).astype(complex))
         return(out_data +Noise,noisesamples)               
-            
+    
+    def processdata(self,timevec,inttime):
+        # get the basic parameters together
+        #angles and number of angles        
+        (nbeams,Ns,Np) = self.rawdata.shape
+        IPP = self.simparams['IPP']
+        PIPP = nbeams*IPP
+        rng = sensdict['RG']
+        pulse = self.simparams['Pulse']
+        plen = len(pulse)
+        npperint = np.ceil(inttime/PIPP)
+        
+        # find the start periods for the pulses        
+        startvec = np.floor(timevec/PIPP)
+        endvec = startvec+npperint
+        
+        startvec = startvec[endvec<=Np]
+        endvec = endvec[endvec<=Np]
+        for inum, istart in enumerate(startvec):
+            iend = endvec[inum]
+#    def processdata(self,npts):
+#        """ This function will process the IQ and create final spectrums that can be fitted"""
+#        
+#        # get the basic parameters together
+#        #angles and number of angles        
+#        angles = self.simparams['angles']
+#        nbeams = len(angles)
+#        IPP = self.simparams['IPP']
+#        timelim = self.simparams['TimeLim']
+#        PIPP = n_beams*IPP
+#        beg_time = icode*IPP
+#        Pulse_shape =  self.simparams['Pulse']
+#        plen = len(Pulse_shape)
+#        sensdict = self.sensdict
+#        
+#        
+#        # loop to figure out all of the pulses in a time period
+#        pulse_times = np.arange(beg_time,timelim,PIPP)
+#        
+#        int_timesbeg = self.simparams['Timevec']
+#        ntimes = length
+#        int_times = np.append(int_timesbeg,timelim)
+#        int_timesend = int_times[1:]
+#        numpast = 0
+#        Pulselims = np.zeros((len(int_timesbeg),2))
+#        N_pulses = np.zeros_like(int_timesbeg)        
+#        
+#        for ibeam in np.arange(nbeams):
+#            rawIQ = self.datadict[icode]
+#            
+#       
+#        #make noise lags
+#        noisedata = self.noisedata[icode]
+#        noiselags = CenteredLagProduct(noisedata,plen)
+#        NNp = self.simparams['Noisepulses']
+#        NNs = noiselags.shape[0]
+#        final_noise_lags = noiselags.sum(0)
+#        
+        
+        
+        
+        
     def fitdata(self,icode):
         """This function will fit data for a single radar beam and output a numpy
         array.  The instance self will be adjusted.
@@ -234,7 +300,7 @@ class RadarData(object):
         NNs = noiselags.shape[0]
         final_noise_lags = noiselags.sum(0)
         
-        # loop to determine what pulses are kep for each period         
+        # loop to determine what pulses are kept for each period         
         for itime in np.arange(len(int_timesbeg)):
             self.noiselag[itime,icode] = final_noise_lags
             Pulselims[itime,0] = numpast
@@ -255,7 +321,6 @@ class RadarData(object):
                 normedlag = curlag-noise_denom
                 d_func = (normedlag, Pulse_shape,rm1,rm2,p2,sensdict,rangem,npnts,N_pulses[itime]) 
                 x_0 = Init_vales()
-                #pdb.set_trace()
                 try:                
                     (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fit_fun,x0=x_0,args=d_func,full_output=True)
                                 
@@ -466,16 +531,16 @@ if __name__== '__main__':
     t1 = time.time()
     IPP = .0087
     angles = [(90,85),(90,84),(90,83),(90,82),(90,81)]
-        
+    ang_data = np.array([[iout[0],iout[1]] for iout in angles])
     t_int = 8.7*len(angles)
     pulse = np.ones(14)
     rng_lims = [250,500]
     ioncont = MakeTestIonoclass()
     time_lim = t_int
-    
+    sensdict = sensconst.getConst('risr',)
     radardata = RadarData(ioncont,AMISR,angles,IPP,t_int,time_lim,pulse,rng_lims)
-    radardata.fitalldata()
-    outcont = radardata.makeionocontainer()
-    outcont.savemat('radardatatest.mat')
+#    radardata.fitalldata()
+#    outcont = radardata.makeionocontainer()
+#    outcont.savemat('radardatatest.mat')
     t2 = time.time()
     print(t2-t1)

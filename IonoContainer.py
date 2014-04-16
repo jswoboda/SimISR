@@ -12,16 +12,37 @@ import scipy.io as sio
 from ISSpectrum import ISSpectrum
 import pdb
 
-from physConstants import *
-from sensorConstants import *
+from const.physConstants import *
+from const.sensorConstants import *
 import matplotlib.pylab as plt
 class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will 
     make the spectrums for each point."""
-    def __init__(self,coordlist,paramlist,times = np.arange(1),sensor_loc = [0,0,0],ver =0):
-        """ """
+    def __init__(self,coordlist,paramlist,times = None,sensor_loc = [0,0,0],ver =0,coordvecs = None):
+        """ This constructor function will use create an instance of the IonoContainer class
+        using either cartisian or spherical coordinates depending on which ever the user prefers.
+        Inputs:
+        coordlist - Nx3 Numpy array where N is the number of coordinates.
+        paramlist - NxTxP Numpy array where T is the number of times and P is the number of parameters
+                    alternatively it could be NxP if there is only one time instance.
+        times - A T length numpy array where T is the number of times.  This is
+                optional input, if not given then its just a numpy array of 0-T
+        sensor_loc = A numpy array of length 3 that gives the sensor location.
+                    The default value is [0,0,0] in cartisian space.
+                    
+        
+        """
         r2d = 180.0/np.pi
         d2r = np.pi/180.0
+        # Set up the size for the time vector if its not given.
+        Ndims = paramlist.ndim
+        psizetup = paramlist.shape
+        if times==None:
+            if Ndims==3:
+                times = np.arange(psizetup[1])
+            else:
+                times = np.arange(1)
+        # Assume that the 
         if ver==0:
         
             X_vec = coordlist[:,0]
@@ -31,12 +52,14 @@ class IonoContainer(object):
             R_vec = sp.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
             Az_vec = sp.arctan2(Y_vec,X_vec)*r2d     
             El_vec = sp.arcsin(Z_vec/R_vec)*r2d
-        
+            
         
             self.Cart_Coords = coordlist        
             self.Sphere_Coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
-            self.Param_List = paramlist
-            self.Time_Vector = times
+            if coordvecs!= None:
+                if set(coordvecs.keys())!={'x','y','z'}:
+                    raise NameError("Keys for coordvecs need to be 'x','y','z' ")
+            
         elif ver==1:
             R_vec = coordlist[:,0]
             Az_vec = coordlist[:,1]
@@ -48,12 +71,25 @@ class IonoContainer(object):
             
             self.Cart_Coords = sp.array([X_vec,Y_vec,Z_vec]).transpose()        
             self.Sphere_Coords = coordlist
-            self.Param_List = paramlist
-            self.Time_Vector = times
+            if coordvec!= None:
+                if set(coordvecs.keys())!={'r','theta','phi'}:
+                    raise NameError("Keys for coordvecs need to be 'r','theta','phi' ")
+            
+        self.Param_List = paramlist
+        self.Time_Vector = times
+        self.Coord_Vecs = coordvecs
     def savemat(self,filename):
-        """ """
+        """ This method will write out a structured mat file and save information
+        from the class.
+        inputs
+        filename - A string for the file name.
+        """
         outdict = {'Cart_Coords':self.Cart_Coords,'Sphere_Coords':self.Sphere_Coords,\
             'Param_List':self.Param_List,'Time_Vector':self.Time_Vector}
+        if self.Coord_Vecs!=None:    
+            #fancy way of combining dictionaries
+            outdict = dict(outdict.items()+self.Coord_Vecs.items())
+            
         sio.savemat(filename,mdict=outdict)
     def makespectrums(self,range_gates,centangles,beamwidths,sensdict):
         """ Creates a spectrum for each range gate, it will be assumed that the 
@@ -286,7 +322,7 @@ def MakeTestIonoclass():
     xvec = sp.arange(-250.0,250.0,6.0)
     yvec = sp.arange(-250.0,250.0,6.0)
     zvec = sp.arange(200.0,500.0,3.0)
- 
+    # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
     xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)
     H_0 = 40 #km
     z_0 = 300 #km
