@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 """
-Created on Thu Dec 12 12:40:46 2013
-
-@author: Bodangles
+Holds the IonoContainer class that contains the ionospheric parameters.
+@author: John Swoboda
 """
 
 import numpy as np
 import scipy as sp
 import scipy.io as sio
-
+# From my 
 from ISSpectrum import ISSpectrum
-import pdb
 
 from const.physConstants import *
 from const.sensorConstants import *
@@ -27,10 +25,12 @@ class IonoContainer(object):
                     alternatively it could be NxP if there is only one time instance.
         times - A T length numpy array where T is the number of times.  This is
                 optional input, if not given then its just a numpy array of 0-T
-        sensor_loc = A numpy array of length 3 that gives the sensor location.
+        sensor_loc - A numpy array of length 3 that gives the sensor location.
                     The default value is [0,0,0] in cartisian space.
-                    
-        
+        ver - (Optional) If 0 the coordlist is in Cartisian coordinates if 1 then 
+        coordlist is a spherical coordinates.
+        coordvecs - (Optional) A dictionary that holds the individual coordinate vectors.
+        if sphereical coordinates keys are 'r','theta','phi' if cartisian 'x','y','z'.
         """
         r2d = 180.0/np.pi
         d2r = np.pi/180.0
@@ -53,7 +53,6 @@ class IonoContainer(object):
             Az_vec = sp.arctan2(Y_vec,X_vec)*r2d     
             El_vec = sp.arcsin(Z_vec/R_vec)*r2d
             
-        
             self.Cart_Coords = coordlist        
             self.Sphere_Coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
             if coordvecs!= None:
@@ -71,7 +70,7 @@ class IonoContainer(object):
             
             self.Cart_Coords = sp.array([X_vec,Y_vec,Z_vec]).transpose()        
             self.Sphere_Coords = coordlist
-            if coordvec!= None:
+            if coordvecs!= None:
                 if set(coordvecs.keys())!={'r','theta','phi'}:
                     raise NameError("Keys for coordvecs need to be 'r','theta','phi' ")
             
@@ -93,7 +92,16 @@ class IonoContainer(object):
         sio.savemat(filename,mdict=outdict)
     def makespectrums(self,range_gates,centangles,beamwidths,sensdict):
         """ Creates a spectrum for each range gate, it will be assumed that the 
-        spectrums for each range will be averaged at the spectrum level"""
+        spectrums for each range will be averaged by adding the noisy signals
+        Inputs:
+        range_gates: Numpy array for each range sample.
+        centangles: The center angle of each beam in a 2xNb numpy array.
+        beamwidths: The beam width of the beams az and el.
+        sensdict: The dictionary that holds the sensor parameters.
+        Outputs:
+        omeg: A numpy array of frequency samples.
+        rng_dict: A dictionary which the keys are the range gate values in km which hold the spectrums
+        params: A dictionary with keys of the range gate values in km that hold the parameters"""
         
         az_limits = [centangles[0]-beamwidths[0]/2.0,centangles[0]+beamwidths[0]/2]
         el_limits = [centangles[1]-beamwidths[1]/2.0,centangles[1]+beamwidths[1]/2]
@@ -205,8 +213,18 @@ class IonoContainer(object):
         
     def __getspectrums2__(self,conditions,sensdict,weights=None):
         """ This will get a spectrum for a specific point in range and angle space.
-        It will take all of the spectrums and put them into a dictionary.  The 
-        dictionary will be a set where each number is   """        
+        It will take all of the spectrums and put them into a dictionary.  
+        inputs:
+        conditions: An array the same size as the param array that is full of bools which 
+        determine what parameters are used.
+        sensdict: The dictionary of sensor parameters
+        weights: Weighting to the different spectrums that will be taken.
+        Outputs: 
+        omeg: A numpy array of frequency samples.
+        spec_ar: A numpy array that holds all of the spectrums that are in the 
+        present time and space point selected.
+        params_ar: A numpy array that holds all of the parameters in the present 
+        time and space."""        
         params_red = self.Param_List[conditions]
         num_true = conditions.sum()
         
@@ -330,6 +348,8 @@ def MakeTestIonoclass():
  
     Ne_profile = Chapmanfunc(zz,H_0,z_0,N_0)
     (Te,Ti)= TempProfile(zz)
+    Te = np.ones_like(zz)*1000.0
+    Ti = np.ones_like(zz)*1000.0
  
     coords = sp.zeros((xx.size,3))
     coords[:,0] = xx.flatten()

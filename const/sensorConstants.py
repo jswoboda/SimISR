@@ -40,7 +40,7 @@ def getConst(typestr,angles):
     
     
     points = sp.vstack((xin,yin)).transpose()
-    ksysout = griddata(points, ksys, (xvec, yvec), method='linear')
+    ksysout = griddata(points, ksys, (xvec, yvec), method='nearest')
 
     sensdict = {'Name':typestr,'Pt':pow,'k':9.4,'G':10**4.3,'lamb':0.6677,'fc':freq,'fs':50e3,\
     'taurg':14,'Tsys':120,'BeamWidth':(2,2),'Ksys':ksysout,'BandWidth':22970}

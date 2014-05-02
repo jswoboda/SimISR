@@ -21,7 +21,7 @@ H_0 = 40 #km
 z_0 = 300 #km
 N_0 = 10**11
 
-zvec = sp.arange(200.0,500.0,2.0)
+zvec =  sp.arange(100.0,600.0,10.0)
 
 Ne_profile = Chapmanfunc(zvec,H_0,z_0,N_0)
 (Te,Ti)= TempProfile(zvec)
