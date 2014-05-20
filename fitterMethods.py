@@ -210,7 +210,7 @@ class FitterBasic(object):
                 plt.savefig(figname)
             else:
                 plt.savefig(os.path.join(figsdir,figname))
-    
+# utility functions
 def make_amb(Fsorg,m_up,plen,nlags):
     """ Make the ambiguity function dictionary that holds the lag ambiguity and 
     range ambiguity. Uses a sinc function weighted by a blackman window. Currently

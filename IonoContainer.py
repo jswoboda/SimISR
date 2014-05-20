@@ -7,6 +7,7 @@ Holds the IonoContainer class that contains the ionospheric parameters.
 import numpy as np
 import scipy as sp
 import scipy.io as sio
+import pdb
 # From my 
 from ISSpectrum import ISSpectrum
 
@@ -162,8 +163,17 @@ class IonoContainer(object):
                 for i_pos in np.arange(datashape[0]):
                     
                     cur_params = params_red[i_pos,i_time,:]
+                    
+                     # get the plasma parameters
+                    Ti = cur_params[0]
+                    Tr = cur_params[1]
+                    Te = Ti*Tr
+                    N_e = 10**cur_params[2]
+                    debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
+                    rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
                     (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                         cur_params[3], cur_params[4], cur_params[5])
+                    cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
                     cur_spec = cur_spec*weights[i_pos]
                     
                     if first_thing ==True:
@@ -246,10 +256,18 @@ class IonoContainer(object):
                 for i_pos in np.arange(datashape[0]):
                     
                     cur_params = params_red[i_pos,i_time,:]
+                    
+                    # get the plasma parameters
+                    Ti = cur_params[0]
+                    Tr = cur_params[1]
+                    Te = Ti*Tr
+                    N_e = 10**cur_params[2]
+                    debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
+                    rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
                     (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                         cur_params[3], cur_params[4], cur_params[5])
                     
-                    
+                    cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
                     spec_ar[i_pos,i_time] =cur_spec
                     params_ar[i_pos,i_time] = cur_params
                 
@@ -264,10 +282,18 @@ class IonoContainer(object):
             for i_time in np.arange(num_times):
                     
                 cur_params = params_red[i_time,:]
-                (omeg,spec_out) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
+                # get the plasma parameters
+                Ti = cur_params[0]
+                Tr = cur_params[1]
+                Te = Ti*Tr
+                N_e = 10**cur_params[2]
+                debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
+                rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
+                (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                     cur_params[3], cur_params[4], cur_params[5])
                 
-                spec_ar[0,i_time] =spec_out
+                cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
+                spec_ar[0,i_time] =cur_spec
                 params_ar[0,i_time] = cur_params
                 
         #case 3 have a space but no time
@@ -281,9 +307,17 @@ class IonoContainer(object):
             for i_pos in np.arange(num_locs):
                 
                 cur_params = params_red[i_pos,:]
+                # get the plasma parameters
+                Ti = cur_params[0]
+                Tr = cur_params[1]
+                Te = Ti*Tr
+                N_e = 10**cur_params[2]
+                debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
+                rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
                 (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                     cur_params[3], cur_params[4], cur_params[5])
-                               
+                
+                cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
                 spec_ar[i_pos,0] =cur_spec 
                 params_ar[i_pos,0] =cur_params
         # case 4
@@ -298,9 +332,17 @@ class IonoContainer(object):
             params_ar = sp.zeros((num_locs,num_times,6))
             
             cur_params = params_red
+            # get the plasma parameters
+            Ti = cur_params[0]
+            Tr = cur_params[1]
+            Te = Ti*Tr
+            N_e = 10**cur_params[2]
+            debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
+            rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
             (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                 cur_params[3], cur_params[4], cur_params[5])
                 
+            cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()    
             spec_ar[0,0] = cur_spec
             params_ar[0,0] = cur_params
         
@@ -308,7 +350,7 @@ class IonoContainer(object):
             pdb.set_trace()
         return (omeg,spec_ar,params_ar)
 
-            
+# utility functions
             
 def Chapmanfunc(z,H_0,Z_0,N_0):
     """This function will return the Chapman function for a given altitude 
@@ -322,7 +364,7 @@ def Chapmanfunc(z,H_0,Z_0,N_0):
     z1 = (z-Z_0)/H_0
     Ne = N_0*sp.exp(0.5*(1-z1-sp.exp(-z1)))
     return Ne
-    
+# Test functions    
 def TempProfile(z):
     """This function creates a tempreture profile that is pretty much made up"""
 #    Ti_val = 1000.0
@@ -336,7 +378,8 @@ def TempProfile(z):
     return (Te,Ti)
     
 def MakeTestIonoclass():
-
+    """ This function will create a test ionoclass with an electron density that
+    follows a chapman function"""
     xvec = sp.arange(-250.0,250.0,6.0)
     yvec = sp.arange(-250.0,250.0,6.0)
     zvec = sp.arange(200.0,500.0,3.0)

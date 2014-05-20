@@ -9,7 +9,7 @@ This file holds the RadarData class that hold the radar data and processes it.
 import numpy as np
 import scipy as sp
 import time
-
+import pdb
 from IonoContainer import IonoContainer, MakeTestIonoclass
 from const.physConstants import *
 import const.sensorConstants as sensconst
@@ -143,7 +143,6 @@ class RadarData(object):
             range = range_gates[isamp]
             cur_pnts = samp_num+isamp
             spect_ar = specs_dict[range]
-            params_ar = params_dict[range]
             range_m = range*1e3
             if spect_ar.ndim ==3:
                 (Nloc,Ndtime,speclen) = spect_ar.shape
@@ -152,29 +151,16 @@ class RadarData(object):
                     for i_curtime in np.arange(N_pulses[itimed]): 
                         for iloc in np.arange(Nloc):
                             cur_spec = spect_ar[iloc,itimed]
-                            cur_filt = np.sqrt(np.fft.ifftshift(cur_spec))
-                            cur_params = params_ar[iloc,itimed]
-                            
-                            # get the plasma parameters
-                            Ti = cur_params[0]
-                            Tr = cur_params[1]
-                            Te = Ti*Tr
-                            N_e = 10**cur_params[2]                        
-                            #calculated the power at each point
-                            
-                            debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
+                            cur_filt = np.sqrt(np.fft.ifftshift(cur_spec))                          
+                       
+                            #calculated the power at each point                            
                             pow_num = sensdict['Pt']*sensdict['Ksys'][beamcode]*sensdict['t_s'] # based off new way of calculating
                             pow_den = range_m**2
-                            rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
-                            pow_all = pow_num*rcs/pow_den
-                            cur_mag = np.sqrt(pow_all)
+                            # create data
                             cur_pulse_data = MakePulseData(pulse,cur_filt)
                             
-                            
                             # find the varience of the complex data
-                            cur_var = np.sum(np.abs(cur_pulse_data)**2)/len(cur_pulse_data)
-                            cur_pulse_data = (cur_mag/np.sqrt(cur_var))*cur_pulse_data
-                            
+                            cur_pulse_data = cur_pulse_data*np.sqrt(pow_num/pow_den)
                             # This needs to be changed to weighting from the beam pattern
                             cur_pulse_data = cur_pulse_data/np.sqrt(Nloc)
                             out_data[ipulse,cur_pnts] = cur_pulse_data+out_data[ipulse,cur_pnts]
@@ -237,35 +223,16 @@ class RadarData(object):
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat}  
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}     
         return(DataLags,NoiseLags)
-
-            
-    def makeionocontainer(self):       
-        """ """
-        range_gates = self.simparams['Rangegates']
-        angles = self.simparams['angles']
-        times  = self.simparams['Timevec']
-        npnts = len(range_gates)*len(angles)
-        params = self.fittedarray
-        nparams = params.shape[-1]        
         
-        coordlist = np.zeros((npnts,3))
-        paramslist = np.zeros((npnts,len(times),nparams))
         
-        ipnt = 0
-        for irng, rng in enumerate(range_gates):
-            for iang, ang in enumerate(angles):
-                
-                coordlist[ipnt] = np.array([rng,ang[0],ang[1]])
-                for itime in np.arange(len(times)):
-                    paramslist[ipnt,itime] = params[itime,iang,irng]
-                ipnt+=1
-        outcont = IonoContainer(coordlist,paramslist,times,ver=1)
-        return outcont
-     
+# Utility functions
+        
 def MakePulseData(pulse_shape, filt_freq, delay=16):
     """ This function will create a pulse width of data shaped by the filter that who's frequency
         response is passed as the parameter filt_freq.  The pulse shape is delayed by the parameter
-        delay into the data.
+        delay into the data. The noise vector that will be multiplied by the filter's frequency
+        response will be zero mean complex white Gaussian noise with a power of 1. The user
+        then will need to scale their filter to get the desired power out.
         Inputs:
             pulse_shape: A numpy array that holds the shape of the single pulse.
             filt_freq - a numpy array that holds the complex frequency response of the filter
@@ -274,8 +241,8 @@ def MakePulseData(pulse_shape, filt_freq, delay=16):
             array of noise data to avoid any problems with filter overlap.
     """
     npts = len(filt_freq)
-    #noise_vec = np.random.randn(npts)+1j*np.random.randn(npts);# make a noise vector
-    noise_vec = np.random.randn(npts).astype(complex)
+    
+    noise_vec = (np.random.randn(npts)+1j*np.random.randn(npts))/np.sqrt(2.0)# make a noise vector
     mult_freq = filt_freq*noise_vec
     data = np.fft.ifft(mult_freq)
     data_out = pulse_shape*data[delay:(delay+len(pulse_shape))]
@@ -319,7 +286,7 @@ def CenteredLagProduct(rawbeams,N =14):
 def Init_vales():
     return np.array([1000.0,1500.0,10**11])
     
-
+# Main function test
     
 if __name__== '__main__':
     """ Test function for the RadarData class."""
