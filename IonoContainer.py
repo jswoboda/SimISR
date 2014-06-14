@@ -7,12 +7,12 @@ Holds the IonoContainer class that contains the ionospheric parameters.
 import numpy as np
 import scipy as sp
 import scipy.io as sio
+import scipy.interpolate
 import pdb
 # From my 
 from ISSpectrum import ISSpectrum
-
 from const.physConstants import *
-from const.sensorConstants import *
+import const.sensorConstants as sensconst
 import matplotlib.pylab as plt
 class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will 
@@ -78,6 +78,7 @@ class IonoContainer(object):
         self.Param_List = paramlist
         self.Time_Vector = times
         self.Coord_Vecs = coordvecs
+        
     def savemat(self,filename):
         """ This method will write out a structured mat file and save information
         from the class.
@@ -175,6 +176,12 @@ class IonoContainer(object):
                         cur_params[3], cur_params[4], cur_params[5])
                     cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
                     cur_spec = cur_spec*weights[i_pos]
+                    # Ion velocity                    
+                    if len(cur_params)>6:
+                        Vi = cur_params[-1]
+                        Fd = -2.0*Vi/sensdict['lamb']
+                        omegnew = omeg-Fd
+                        cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
                     
                     if first_thing ==True:
                         spec_out = cur_spec*weights[i_pos]
@@ -192,7 +199,12 @@ class IonoContainer(object):
                 cur_params = params_red[i_time,:]
                 (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                     cur_params[3], cur_params[4], cur_params[5])
-                
+                # Ion velocity                    
+                if len(cur_params)>6:
+                    Vi = cur_params[-1]
+                    Fd = -2.0*Vi/sensdict['lamb']
+                    omegnew = omeg-Fd
+                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
                 spec_dict[i_time] =cur_spec
         #case 3 have a space but no time
         elif num_true !=1 and params_red.ndim==2:
@@ -206,6 +218,12 @@ class IonoContainer(object):
                 (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                     cur_params[3], cur_params[4], cur_params[5])
                 cur_spec = cur_spec*weights[i_pos]
+                # Ion velocity                    
+                if len(cur_params)>6:
+                    Vi = cur_params[-1]
+                    Fd = -2.0*Vi/sensdict['lamb']
+                    omegnew = omeg-Fd
+                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
                 if first_thing:
                     spec_out = cur_spec
                     first_thing= False
@@ -217,13 +235,21 @@ class IonoContainer(object):
             cur_params = params_red
             (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                 cur_params[3], cur_params[4], cur_params[5])
-                
+            # Ion velocity                    
+            if len(cur_params)>6:
+                Vi = cur_params[-1]
+                Fd = -2.0*Vi/sensdict['lamb']
+                omegnew = omeg-Fd
+                cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
             spec_dict[0] = cur_spec
         return (omeg,spec_dict)
         
     def __getspectrums2__(self,conditions,sensdict,weights=None):
         """ This will get a spectrum for a specific point in range and angle space.
-        It will take all of the spectrums and put them into a dictionary.  
+        It will take all of the spectrums and put them into a dictionary. The spectrums
+        will be scaled so that power based off of the parameters will be included. 
+        Specifically the sum of the spectrum will equal N^2*a where N is the length
+        of the spectrum and a is the power derived from the parameters of 
         inputs:
         conditions: An array the same size as the param array that is full of bools which 
         determine what parameters are used.
@@ -243,7 +269,7 @@ class IonoContainer(object):
         myspec = ISSpectrum(nspec = npts-1,sampfreq=sensdict['fs'])
         
         datashape = params_red.shape
-        
+        nparams = datashape[-1]
         # case 1 have both a time and space dimension
         if params_red.ndim==3:
             # get the number of times
@@ -251,7 +277,7 @@ class IonoContainer(object):
             num_locs = datashape[0]
             spec_ar = sp.zeros((num_locs,num_times,npts-1))
             # need to change this if moving to a new spectrum
-            params_ar = sp.zeros((num_locs,num_times,6))
+            params_ar = sp.zeros((num_locs,num_times,nparams))
             for i_time in np.arange(num_times):
                 for i_pos in np.arange(datashape[0]):
                     
@@ -262,12 +288,21 @@ class IonoContainer(object):
                     Tr = cur_params[1]
                     Te = Ti*Tr
                     N_e = 10**cur_params[2]
+                    # Make the the scaling for the power
                     debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
                     rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
+                    # Make the spectrum
                     (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                         cur_params[3], cur_params[4], cur_params[5])
                     
                     cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
+                    # Ion velocity                    
+                    if len(cur_params)>6:
+                        Vi = cur_params[-1]
+                        Fd = -2.0*Vi/sensdict['lamb']
+                        omegnew = omeg-Fd
+                        cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew)                    
+                        
                     spec_ar[i_pos,i_time] =cur_spec
                     params_ar[i_pos,i_time] = cur_params
                 
@@ -278,7 +313,7 @@ class IonoContainer(object):
             num_locs = 1
             spec_ar = sp.zeros((num_locs,num_times,npts-1))
             # need to change this if moving to a new spectrum
-            params_ar = sp.zeros((num_locs,num_times,6))
+            params_ar = sp.zeros((num_locs,num_times,nparams))
             for i_time in np.arange(num_times):
                     
                 cur_params = params_red[i_time,:]
@@ -286,13 +321,23 @@ class IonoContainer(object):
                 Ti = cur_params[0]
                 Tr = cur_params[1]
                 Te = Ti*Tr
+
                 N_e = 10**cur_params[2]
+                # Make the the scaling for the power
                 debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
                 rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
+                # Make the spectrum
                 (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                     cur_params[3], cur_params[4], cur_params[5])
                 
                 cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
+                # Ion velocity    
+#                pdb.set_trace()                
+                if len(cur_params)>6:
+                    Vi = cur_params[-1]
+                    Fd = -2.0*Vi/sensdict['lamb']
+                    omegnew = omeg-Fd
+                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
                 spec_ar[0,i_time] =cur_spec
                 params_ar[0,i_time] = cur_params
                 
@@ -303,7 +348,7 @@ class IonoContainer(object):
             num_locs = datashape[0]
             spec_ar = sp.zeros((num_locs,num_times,npts-1))
             # need to change this if moving to a new spectrum
-            params_ar = sp.zeros((num_locs,num_times,6))
+            params_ar = sp.zeros((num_locs,num_times,nparams))
             for i_pos in np.arange(num_locs):
                 
                 cur_params = params_red[i_pos,:]
@@ -312,12 +357,21 @@ class IonoContainer(object):
                 Tr = cur_params[1]
                 Te = Ti*Tr
                 N_e = 10**cur_params[2]
+                
+                # Make the the scaling for the power
                 debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
                 rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
+                # Make the spectrum
                 (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                     cur_params[3], cur_params[4], cur_params[5])
                 
                 cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
+                # Ion velocity                    
+                if len(cur_params)>6:
+                    Vi = cur_params[-1]
+                    Fd = -2.0*Vi/sensdict['lamb']
+                    omegnew = omeg-Fd
+                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
                 spec_ar[i_pos,0] =cur_spec 
                 params_ar[i_pos,0] =cur_params
         # case 4
@@ -329,7 +383,7 @@ class IonoContainer(object):
             num_locs = datashape[0]
             spec_ar = sp.zeros((num_locs,num_times,npts-1))
             # need to change this if moving to a new spectrum
-            params_ar = sp.zeros((num_locs,num_times,6))
+            params_ar = sp.zeros((num_locs,num_times,nparams))
             
             cur_params = params_red
             # get the plasma parameters
@@ -337,12 +391,21 @@ class IonoContainer(object):
             Tr = cur_params[1]
             Te = Ti*Tr
             N_e = 10**cur_params[2]
+            
+            # Make the the scaling for the power
             debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
             rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
+            # Make the spectrum
             (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                 cur_params[3], cur_params[4], cur_params[5])
                 
             cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()    
+            # Ion velocity                    
+            if len(cur_params)>6:
+                Vi = cur_params[-1]
+                Fd = -2.0*Vi/sensdict['lamb']
+                omegnew = omeg-Fd
+                cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
             spec_ar[0,0] = cur_spec
             params_ar[0,0] = cur_params
         
@@ -366,12 +429,7 @@ def Chapmanfunc(z,H_0,Z_0,N_0):
     return Ne
 # Test functions    
 def TempProfile(z):
-    """This function creates a tempreture profile that is pretty much made up"""
-#    Ti_val = 1000.0
-#    Ti = Ti_val*sp.ones(z.shape)
-#    Te = 2*Ti_val*sp.ones(z.shape)
-#    Te_sep = sp.where(z>300)
-#    Te[Te_sep] =1.4*Ti_val
+    """This function creates a tempreture profile for test purposes."""
     
     Te = ((45.0/500.0)*(z-200.0))**2+1000.0
     Ti = ((20.0/500.0)*(z-200.0))**2+1000.0
@@ -399,21 +457,29 @@ def MakeTestIonoclass():
     coords[:,1] = yy.flatten()
     coords[:,2] = zz.flatten()
     
-    params = sp.zeros((Ne_profile.size,6))
+    vel = sp.zeros(coords.shape)
+#    pdb.set_trace()
+    denom = np.tile(np.sqrt(np.sum(coords**2,1))[:,np.newaxis],(1,3))
+    unit_coords = coords/denom
+    Vi = (vel*unit_coords).sum(1)
+    params = sp.zeros((Ne_profile.size,7))
     params[:,0] = Ti.flatten()
     params[:,1] = Te.flatten()/Ti.flatten()
     params[:,2] = sp.log10(Ne_profile.flatten())
     params[:,3] = 16 # ion weight 
     params[:,4] = 1 # ion weight
     params[:,5] = 0
+    params[:,6] = Vi
     
     Icont1 = IonoContainer(coordlist=coords,paramlist=params)
     return Icont1
 if __name__== '__main__':
     
     Icont1 = MakeTestIonoclass()
-    range_gates = np.arange(250.0,500.0,AMISR['t_s']*v_C_0/1000)
-    centangles = [5,85]
-    beamwidths = [2,2]
-    (omeg,mydict,myparams) = Icont1.makespectrums(range_gates,centangles,beamwidths,AMISR)
+    angles = [(90,85)]
+    ang_data = np.array([[iout[0],iout[1]] for iout in angles])
+    sensdict = sensconst.getConst('risr',ang_data)
+
+    range_gates = np.arange(250.0,500.0,sensdict['t_s']*v_C_0/1000)
+    (omeg,mydict,myparams) = Icont1.makespectrums(range_gates,angles[0],sensdict['BeamWidth'],sensdict)
     Icont1.savemat('test.mat')

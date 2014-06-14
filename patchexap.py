@@ -100,5 +100,5 @@ if __name__== '__main__':
     coordvecsr = {'r':range_vec,'theta':ang_data[:,0],'phi':ang_data[:,1]}
     
     Icont2 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=Nemat,times=timearr,coordvecs=coordvecsr,ver=1)
-    Icont1.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexv4.mat')
-    Icont2.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexNEv4.mat')
+    Icont1.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexv5.mat')
+    Icont2.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexNEv5.mat')
