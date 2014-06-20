@@ -78,27 +78,41 @@ if __name__== '__main__':
 
     timearr = sp.linspace(0.0,time_lim,num=220)
     curint_time = t_int
+    curint_time2 = 10.0*IPP*len(angles)
     (DataLags,NoiseLags) = radardata.processdata(timearr,curint_time)
+    (DataLags2,NoiseLags2) = radardata.processdata(timearr,curint_time2)
     
     simparams = radardata.simparams.copy()
     
     simparams['SUMRULE'] = np.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9],[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])
     simparams['amb_dict'] = make_amb(sensdict['fs'],30,sensdict['t_s']*len(pulse),len(pulse))
+    
     curfitter =  FitterBasic(DataLags,NoiseLags,radardata.sensdict,simparams)   
     Ne = curfitter.fitNE()
+    curfitter2 = FitterBasic(DataLags2,NoiseLags2,radardata.sensdict,simparams)   
+    Ne2 = curfitter2.fitNE()
+    
     range_vec = sensdict['RG']
     ang_rep =  np.tile(ang_data,(len(range_vec),1))
     rangemat = np.repeat(range_vec[:,np.newaxis],ang_data.shape[0],axis=1)
     rangevecall = rangemat.flatten()
+    
     Ne_trans = Ne.transpose()
+    Ne2_trans = Ne2.transpose()
+    timearrall = timearr
     timearr= timearr[:Ne_trans.shape[2]]
+    timearr2 = timearrall[:Ne2_trans.shape[2]]
     Nemat =np.zeros((len(rangevecall),len(timearr)))
+    Nemat2 = np.zeros((len(rangevecall),len(timearr2)))
     
     for irng in range(len(range_vec)):
         for iang in range(ang_data.shape[0]):
             Nemat[irng*ang_data.shape[0]+iang] =Ne_trans[irng,iang]
+            Nemat2[irng*ang_data.shape[0]+iang] =Ne2_trans[irng,iang]
     coordvecsr = {'r':range_vec,'theta':ang_data[:,0],'phi':ang_data[:,1]}
     
     Icont2 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=Nemat,times=timearr,coordvecs=coordvecsr,ver=1)
+    Icont3 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=Nemat2,times=timearr,coordvecs=coordvecsr,ver=1)
     Icont1.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexv5.mat')
     Icont2.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexNEv5.mat')
+    Icont3.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexNE2pv5.mat')
