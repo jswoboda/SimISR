@@ -72,7 +72,7 @@ class RadarData(object):
         self.fittedarray = np.zeros((N_times,N_angles,N_range,N_params))
         self.fittederror = np.zeros((N_times,N_angles,N_range,N_params,N_params))
         firstcode = True
-        print('Data Now being created.\n')
+        print('\nData Now being created.')
         for icode in np.arange(N_angles):
             (outdata,noisedata) = self.__makeData__(icode)
             if firstcode:
@@ -83,7 +83,7 @@ class RadarData(object):
                 firstcode = False
             self.rawdata[icode]=outdata
             self.rawnoise[icode] = noisedata
-            print('Data for Beam {0:d} created.'.format(icode))
+            print('\tData for Beam {0:d} of {1:d} created.'.format(icode,N_angles))
             
             
     def __makeData__(self,beamcode):

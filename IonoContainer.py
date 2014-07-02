@@ -244,7 +244,7 @@ class IonoContainer(object):
             spec_dict[0] = cur_spec
         return (omeg,spec_dict)
         
-    def __getspectrums2__(self,conditions,sensdict,weights=None):
+    def __getspectrums2__(self,conditions,sensdict,weights=None,npts=128):
         """ This will get a spectrum for a specific point in range and angle space.
         It will take all of the spectrums and put them into a dictionary. The spectrums
         will be scaled so that power based off of the parameters will be included. 
@@ -264,12 +264,12 @@ class IonoContainer(object):
         params_red = self.Param_List[conditions]
         num_true = conditions.sum()
         
-        npts = 128
-        #npts = 64
         myspec = ISSpectrum(nspec = npts-1,sampfreq=sensdict['fs'])
         
         datashape = params_red.shape
         nparams = datashape[-1]
+#        pdb.set_trace()
+
         # case 1 have both a time and space dimension
         if params_red.ndim==3:
             # get the number of times
@@ -301,7 +301,9 @@ class IonoContainer(object):
                         Vi = cur_params[-1]
                         Fd = -2.0*Vi/sensdict['lamb']
                         omegnew = omeg-Fd
-                        cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew)                    
+                        fillspot = np.argmax(omeg)
+                        fillval = cur_spec[fillspot]
+                        cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew)                 
                         
                     spec_ar[i_pos,i_time] =cur_spec
                     params_ar[i_pos,i_time] = cur_params
@@ -337,7 +339,9 @@ class IonoContainer(object):
                     Vi = cur_params[-1]
                     Fd = -2.0*Vi/sensdict['lamb']
                     omegnew = omeg-Fd
-                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
+                    fillspot = np.argmax(omeg)
+                    fillval = cur_spec[fillspot]
+                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew) 
                 spec_ar[0,i_time] =cur_spec
                 params_ar[0,i_time] = cur_params
                 
@@ -371,7 +375,9 @@ class IonoContainer(object):
                     Vi = cur_params[-1]
                     Fd = -2.0*Vi/sensdict['lamb']
                     omegnew = omeg-Fd
-                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
+                    fillspot = np.argmax(omeg)
+                    fillval = cur_spec[fillspot]
+                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew) 
                 spec_ar[i_pos,0] =cur_spec 
                 params_ar[i_pos,0] =cur_params
         # case 4
@@ -405,7 +411,9 @@ class IonoContainer(object):
                 Vi = cur_params[-1]
                 Fd = -2.0*Vi/sensdict['lamb']
                 omegnew = omeg-Fd
-                cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
+                fillspot = np.argmax(omeg)
+                fillval = cur_spec[fillspot]
+                cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew) 
             spec_ar[0,0] = cur_spec
             params_ar[0,0] = cur_params
         
@@ -435,7 +443,7 @@ def TempProfile(z):
     Ti = ((20.0/500.0)*(z-200.0))**2+1000.0
     return (Te,Ti)
     
-def MakeTestIonoclass():
+def MakeTestIonoclass(testv=False,testtemp=False):
     """ This function will create a test ionoclass with an electron density that
     follows a chapman function"""
     xvec = sp.arange(-250.0,250.0,6.0)
@@ -443,25 +451,33 @@ def MakeTestIonoclass():
     zvec = sp.arange(200.0,500.0,3.0)
     # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
     xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)
-    H_0 = 40 #km
-    z_0 = 300 #km
-    N_0 = 10**11
- 
-    Ne_profile = Chapmanfunc(zz,H_0,z_0,N_0)
-    (Te,Ti)= TempProfile(zz)
-    Te = np.ones_like(zz)*1000.0
-    Ti = np.ones_like(zz)*1000.0
- 
     coords = sp.zeros((xx.size,3))
     coords[:,0] = xx.flatten()
     coords[:,1] = yy.flatten()
-    coords[:,2] = zz.flatten()
+    coords[:,2] = zz.flatten()    
     
+    H_0 = 40 #km scale height
+    z_0 = 300 #km
+    N_0 = 10**11
+    
+    # Make electron density
+    Ne_profile = Chapmanfunc(zz,H_0,z_0,N_0)
+    # Make temperture background
+    if testtemp:
+        (Te,Ti)= TempProfile(zz)
+    else:
+        Te = np.ones_like(zz)*1000.0
+        Ti = np.ones_like(zz)*1000.0
+        
+    # set up the velocity
     vel = sp.zeros(coords.shape)
-#    pdb.set_trace()
+    if testv:
+        vel[:,2] = zz.flatten()/5.0
+    
     denom = np.tile(np.sqrt(np.sum(coords**2,1))[:,np.newaxis],(1,3))
     unit_coords = coords/denom
     Vi = (vel*unit_coords).sum(1)
+    # put the parameters in order    
     params = sp.zeros((Ne_profile.size,7))
     params[:,0] = Ti.flatten()
     params[:,1] = Te.flatten()/Ti.flatten()

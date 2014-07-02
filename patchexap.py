@@ -7,7 +7,6 @@ a simple Chapman function and Ti=Te=1000k.
 
 @author: John Swoboda
 """
-
 import numpy as np
 import scipy as sp
 from beamtools.bcotools import getangles

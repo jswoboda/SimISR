@@ -5,6 +5,7 @@ fitterMethods.py
 @author: John Swoboda
 Holds class that applies the fitter.
 """
+import pdb
 # Imported modules
 import numpy as np
 import scipy.optimize,scipy.interpolate,time,os
@@ -59,7 +60,7 @@ class FitterBasic(object):
         Ne = power*rng3d*rng3d/(pulsewidth*txpower*ksys3d)*2.0
         return Ne
     
-    def fitdata(self):
+    def fitdata(self,nparams=4):
         """ This function will fit the electron density Ti and Te for the ISR data.
         Currenly set up to use the Haystack spectrum model.
         Outputs:
@@ -103,18 +104,19 @@ class FitterBasic(object):
         ksys3d = np.tile(Ksysvec[np.newaxis,:,np.newaxis,np.newaxis],(Nt,1,Nrng,Nlags))        
         lagsData = lagsData*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
         Pulse_shape = self.simparams['Pulse']
-        fittedarray = np.zeros((Nt,Nbeams,Nrng2,3))
-        fittederror = np.zeros((Nt,Nbeams,Nrng2,3,3))
+        fittedarray = np.zeros((Nt,Nbeams,Nrng2,nparams))
+        fittederror = np.zeros((Nt,Nbeams,Nrng2,nparams,nparams))
         self.simparams['Rangegatesfinal'] = np.zeros(Nrng2)
         curlag = np.zeros(Nlags)
+        print('\nData Now being fit.')
         for itime in np.arange(Nt):
+            print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for ibeam in np.arange(Nbeams):
                 for irngnew,irng in enumerate(np.arange(minrg,maxrg)):
                     self.simparams['Rangegatesfinal'][irngnew] = np.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
                     curlag = np.array([np.mean(lagsData[itime,ibeam,irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag]) for ilag in np.arange(Nlags)])#/sumreg
-#                    pdb.set_trace()
-                    d_func = (curlag, Pulse_shape,self.simparams['amb_dict'],rm1,rm2,p2,npnts)
-                    x_0 = np.array([1000,1000,Ne_start[itime,ibeam,irng]])
+                    d_func = (curlag, Pulse_shape,self.simparams['amb_dict'],self.sensdict,rm1,rm2,p2,npnts)
+                    x_0 = np.array([1000,1000,Ne_start[itime,ibeam,irng],0.0])
                     try:                
                         (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=default_fit_func,x0=x_0,args=d_func,full_output=True)
                                     
@@ -125,6 +127,8 @@ class FitterBasic(object):
                             fittederror[itime,ibeam,irngnew] = cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))
                     except TypeError:
                         pdb.set_trace()      
+                        
+                print('\t\tData for Beam {0:d} of {1:d} fitted.'.format(ibeam,Nbeams))
         return(fittedarray,fittederror)
     
     def plotbeams(self,beamnum,radardata,fittedarray,fittederror,timenum = 0,figsdir = None):
@@ -153,6 +157,7 @@ class FitterBasic(object):
             Ne_true = np.zeros(0)
             Te_true = np.zeros(0)
             Ti_true = np.zeros(0)
+            Vi_true = np.zeros(0)
             # get all of the original data into range bins
             for irng,rng in enumerate(Range_gates):
                 cur_params = params[rng][:,timenum,:]
@@ -160,23 +165,26 @@ class FitterBasic(object):
                 Ne_true = np.append(Ne_true,10.0**cur_params[:,2])
                 Te_true = np.append(Te_true,cur_params[:,0]*cur_params[:,1])
                 Ti_true = np.append(Ti_true,cur_params[:,0])
+                Vi_true = np.append(Vi_true,cur_params[:,3])
                 rng_arr = np.append(rng_arr,np.ones(cur_rgates)*rng)
             cur_fit = fittedarray[timenum,beamnum]
             cur_cov = fittederror[timenum,beamnum]
             
             Ne_fit = cur_fit[:,2]
-            Ti_fit = cur_fit[:,0]
             Te_fit = cur_fit[:,1]
+            Ti_fit = cur_fit[:,0]
+            Vi_fit = cur_fit[:,3]
             
             Ne_error = np.sqrt(cur_cov[:,2,2])
             Te_error = np.sqrt(cur_cov[:,1,1])
             Ti_error = np.sqrt(cur_cov[:,0,0])
+            Vi_error = np.sqrt(cur_cov[:,3,3])
             
             altfit = Range_gates2*np.sin(ang[1]*d2r)
             altori = rng_arr*np.sin(ang[1]*d2r)
             fig = plt.figure(figsize=(15.5,8))
             #Ne plot
-            plt.subplot(1,3,1)
+            plt.subplot(1,4,1)
             plt.errorbar(Ne_fit,altfit,xerr=Ne_error,fmt='bo',label=r'Fitted')
             plt.hold(True)
             plt.plot(Ne_true,altori,'go',label=r'Original')
@@ -186,7 +194,7 @@ class FitterBasic(object):
             plt.grid(True)
             plt.legend(loc='upper right')
             # Te plot
-            plt.subplot(1,3,2)
+            plt.subplot(1,4,2)
             plt.errorbar(Te_fit,altfit,xerr=Te_error,fmt='bo',label=r'Fitted')
             plt.hold(True)
             plt.plot(Te_true,altori,'go',label=r'Original')
@@ -195,14 +203,24 @@ class FitterBasic(object):
             plt.legend(loc='upper right')
             plt.xlim(0,4000)
             # Ti plot
-            plt.subplot(1,3,3)
-            plt.errorbar(Ti_fit,altfit,xerr=Ti_error,fmt='bo',label=r'Fitted')
+            plt.subplot(1,4,3)
+            plt.errorbar(Ti_fit,altfit,xerr=Vi_error,fmt='bo',label=r'Fitted')
             plt.hold(True)
             plt.plot(Ti_true,altori,'go',label=r'Original')
             plt.grid(True)
             plt.xlabel(r'$T_i$ in K',fontsize=myfsize)
             plt.xlim(0,4000)
             plt.legend(loc='upper right')
+            # Vi plot
+            plt.subplot(1,4,4)
+            plt.errorbar(Vi_fit,altfit,xerr=Ti_error,fmt='bo',label=r'Fitted')
+            plt.hold(True)
+            plt.plot(Vi_true,altori,'go',label=r'Original')
+            plt.grid(True)
+            plt.xlabel(r'$V_i$ in K',fontsize=myfsize)
+            plt.xlim(-5e2,5e2)
+            plt.legend(loc='upper right')            
+            
             
             plt.suptitle(r'Fitted and Actual Parameters for Beam Az {0:.2f} El {1:.2f}'.format(ang[0],ang[1]),fontsize=titfsize)
             figname = 'Beam{0:d}.png'.format(beamnum)
@@ -285,13 +303,19 @@ def spect2acf(omeg,spec):
     
 def Init_vales():
     return np.array([1000.0,1500.0,10**11])    
-def default_fit_func(x,y_acf,amb_func,amb_dict, rm1,rm2,p2,npts):
+def default_fit_func(x,y_acf,amb_func,amb_dict,sensdict, rm1,rm2,p2,npts):
     """Fitter function that takes the difference between the given data 
     and the spectrum given the current paramters. Used with scipy.optimize.leastsq."""
     
     ti = x[0]
     te = x[1]
     Ne = x[2]    
+    
+    if len(x)>3:
+        Vi = x[3]
+    else:
+        Vi = 0.0
+        
     if te<0:
         te=-te
     if ti <0:
@@ -303,8 +327,18 @@ def default_fit_func(x,y_acf,amb_func,amb_dict, rm1,rm2,p2,npts):
     myspec = ISSpectrum(nspec = npts-1,sampfreq=sensdict['fs'])
     (omeg,cur_spec) = myspec.getSpectrum(ti, tr, po, rm1, rm2, p2)  
     
+    # Add Doppler
+    Fd = -2.0*Vi/sensdict['lamb']
+    omegnew = omeg-Fd
+    omegnew = omeg-Fd
+    fillspot = np.argmax(omeg)
+    fillval = cur_spec[fillspot]
+    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew) 
     # Create spectrum guess
     (tau,acf) = spect2acf(omeg,cur_spec)
+    
+    #pdb.set_trace()
+
     # apply ambiguity function
     tauint = amb_dict['Delay']
     acfinterp = np.zeros(len(tauint),dtype=np.complex128)
@@ -336,7 +370,7 @@ if __name__== '__main__':
     t_int = 8.7*len(angles)
     pulse = np.ones(14)
     rng_lims = [200,550]
-    ioncont = MakeTestIonoclass()
+    ioncont = MakeTestIonoclass(testv=True,testtemp=True)
     time_lim = t_int
     sensdict = sensconst.getConst('risr',ang_data)
     sensdict['Tsys']=0.1#reduce noise
