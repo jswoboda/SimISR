@@ -116,7 +116,8 @@ class FitterBasic(object):
                     self.simparams['Rangegatesfinal'][irngnew] = np.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
                     curlag = np.array([np.mean(lagsData[itime,ibeam,irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag]) for ilag in np.arange(Nlags)])#/sumreg
                     d_func = (curlag, Pulse_shape,self.simparams['amb_dict'],self.sensdict,rm1,rm2,p2,npnts)
-                    x_0 = np.array([1000,1000,Ne_start[itime,ibeam,irng],0.0])
+                    x_0 = np.array([1000,1000,Ne_start[itime,ibeam,irng],0.0])[:nparams]
+                    
                     try:                
                         (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=default_fit_func,x0=x_0,args=d_func,full_output=True)
                                     

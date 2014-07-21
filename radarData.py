@@ -37,6 +37,7 @@ class RadarData(object):
     rawnoise: This is a NbxNpxNr numpy array that holds the raw noise IQ data. 
        
     """
+    
     def __init__(self,ionocont,sensdict,angles,IPP,Tint,time_lim, pulse,rng_lims,noisesamples =28,noisepulses=100):
         """This function will create an instance of the RadarData class.  It will
         take in the values and create the class and make raw IQ data.
