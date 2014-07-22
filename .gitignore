@@ -54,3 +54,9 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+
+# MAT files from data
+*.mat
+# Picture files
+*.png
+*.jpg

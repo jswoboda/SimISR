@@ -11,9 +11,10 @@ import scipy.interpolate
 import pdb
 # From my 
 from ISSpectrum import ISSpectrum
-from const.physConstants import *
+from const.physConstants import v_C_0, v_Boltz, v_epsilon0
 import const.sensorConstants as sensconst
 import matplotlib.pylab as plt
+from utilFunctions import Chapmanfunc, TempProfile
 class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will 
     make the spectrums for each point."""
@@ -423,25 +424,6 @@ class IonoContainer(object):
 
 # utility functions
             
-def Chapmanfunc(z,H_0,Z_0,N_0):
-    """This function will return the Chapman function for a given altitude 
-    vector z.  All of the height values are assumed km.
-    Inputs 
-    z: An array of z values in km.
-    H_0: A single float of the height in km.
-    Z_0: The peak density location.
-    N_0: The peak electron density.
-    """    
-    z1 = (z-Z_0)/H_0
-    Ne = N_0*sp.exp(0.5*(1-z1-sp.exp(-z1)))
-    return Ne
-# Test functions    
-def TempProfile(z):
-    """This function creates a tempreture profile for test purposes."""
-    
-    Te = ((45.0/500.0)*(z-200.0))**2+1000.0
-    Ti = ((20.0/500.0)*(z-200.0))**2+1000.0
-    return (Te,Ti)
     
 def MakeTestIonoclass(testv=False,testtemp=False):
     """ This function will create a test ionoclass with an electron density that

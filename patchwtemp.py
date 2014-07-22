@@ -9,12 +9,16 @@ a simple Chapman function and Ti=Te=1000k.
 """
 import numpy as np
 import scipy as sp
+
+# Import Main classes
+from IonoContainer import IonoContainer
+from radarData import RadarData
+from fitterMethods import FitterBasic
+# import utilities and constants
+import const.sensorConstants as sensconst
+from utilFunctions import make_amb, Chapmanfunc, TempProfile
 from beamtools.bcotools import getangles
 
-from IonoContainer import IonoContainer, Chapmanfunc, TempProfile
-import const.sensorConstants as sensconst
-from radarData import RadarData
-from fitterMethods import FitterBasic, make_amb
 if __name__== '__main__':
     
     #%% setup the ionosphere container.
@@ -115,6 +119,6 @@ if __name__== '__main__':
     
     Icont2 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=fittedmat,times=timearr,coordvecs=coordvecsr,ver=1)
     #Icont3 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=Nemat2,times=timearr,coordvecs=coordvecsr,ver=1)
-    Icont1.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchewtemp.mat')
-    Icont2.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchwtempfit.mat')
+    Icont1.savemat('patchewtemp.mat')
+    Icont2.savemat('patchwtempfit.mat')
     #Icont3.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexNE2pv5.mat')

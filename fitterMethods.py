@@ -17,7 +17,7 @@ from radarData import RadarData
 from ISSpectrum import ISSpectrum
 from const.physConstants import *
 import const.sensorConstants as sensconst
-
+from utilFunctions import make_amb, spect2acf
 
 class FitterBasic(object):
     """ This is a basic fitter to take data created by the RadarData Class and 
@@ -60,7 +60,7 @@ class FitterBasic(object):
         Ne = power*rng3d*rng3d/(pulsewidth*txpower*ksys3d)*2.0
         return Ne
     
-    def fitdata(self,nparams=4):
+    def fitdata(self,nparams=4,npnts = 64,numtype=np.complex128):
         """ This function will fit the electron density Ti and Te for the ISR data.
         Currenly set up to use the Haystack spectrum model.
         Outputs:
@@ -72,7 +72,7 @@ class FitterBasic(object):
         rm1 = 16# atomic weight of species 1
         rm2 = 1# atomic weight os species 2
         p2 =0 #
-        npnts = 64
+        
         # get intial guess for NE
         Ne_start =self.fitNE()
         
@@ -115,7 +115,7 @@ class FitterBasic(object):
                 for irngnew,irng in enumerate(np.arange(minrg,maxrg)):
                     self.simparams['Rangegatesfinal'][irngnew] = np.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
                     curlag = np.array([np.mean(lagsData[itime,ibeam,irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag]) for ilag in np.arange(Nlags)])#/sumreg
-                    d_func = (curlag, Pulse_shape,self.simparams['amb_dict'],self.sensdict,rm1,rm2,p2,npnts)
+                    d_func = (curlag, Pulse_shape,self.simparams['amb_dict'],self.sensdict,rm1,rm2,p2,npnts,numtype)
                     x_0 = np.array([1000,1000,Ne_start[itime,ibeam,irng],0.0])[:nparams]
                     
                     try:                
@@ -229,82 +229,9 @@ class FitterBasic(object):
                 plt.savefig(figname)
             else:
                 plt.savefig(os.path.join(figsdir,figname))
-# utility functions
-def make_amb(Fsorg,m_up,plen,nlags):
-    """ Make the ambiguity function dictionary that holds the lag ambiguity and 
-    range ambiguity. Uses a sinc function weighted by a blackman window. Currently
-    only set up for an uncoded pulse.
-    Inputs:
-    Fsorg: A scalar, the original sampling frequency in Hertz.
-    m_up: The upsampled ratio between the original sampling rate and the rate of 
-    the ambiguity function up sampling.
-    plen: The length of the pulse in samples at the original sampling frequency.
-    nlags: The number of lags used.
-    Outputs:
-    Wttdict: A dictionary with the keys 'WttAll' which is the full ambiguity function
-    for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the 
-    ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity 
-    for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array 
-    for the range sampling.
-    """
-    
-    # make the sinc
-    nsamps = np.floor(8.5*m_up)
-    nsamps = nsamps-(1-np.mod(nsamps,2))
-    
-    nvec = np.arange(-np.floor(nsamps/2.0),np.floor(nsamps/2.0)+1)
-    outsinc = np.blackman(nsamps)*np.sinc(nvec/m_up)
-    outsinc = outsinc/np.sum(outsinc)
-    dt = 1/(Fsorg*m_up)
-    Delay = np.arange(-(len(nvec)-1),m_up*(nlags+5))*dt
-    t_rng = np.arange(0,1.5*plen,dt)
-    numdiff = len(Delay)-len(outsinc)
-    outsincpad  = np.pad(outsinc,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
-    (srng,d2d)=np.meshgrid(t_rng,Delay)
-    # envelop function    
-    envfunc = np.zeros(d2d.shape)
-    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
-    #pdb.set_trace()
-    envfunc = envfunc/np.sqrt(envfunc.sum(axis=0).max())
-    #create the ambiguity function for everything
-    Wtt = np.zeros((nlags,d2d.shape[0],d2d.shape[1]))
-    cursincrep = np.tile(outsincpad[:,np.newaxis],(1,d2d.shape[1]))
-    Wt0 = Wta = cursincrep*envfunc
-    Wt0fft = np.fft.fft(Wt0,axis=0)
-    for ilag in np.arange(nlags):
-        cursinc = np.roll(outsincpad,ilag*m_up)
-        cursincrep = np.tile(cursinc[:,np.newaxis],(1,d2d.shape[1]))
-        Wta = cursincrep*envfunc
-        #do fft based convolution, probably best method given sizes
-        Wtafft = np.fft.fft(Wta,axis=0)
-        if ilag==0:
-            nmove = len(nvec)-1
-        else:
-            nmove = len(nvec)
-        Wtt[ilag] = np.roll(np.fft.ifft(Wtafft*np.conj(Wt0fft),axis=0).real,nmove,axis=0)
-    Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),'Delay':Delay,'Range':v_C_0*t_rng/2.0}
-    return Wttdict
-    
-def spect2acf(omeg,spec):
-    """ Creates acf and time array associated with the given frequency vector and spectrum
-    Inputs:
-    omeg: The frequency sampling vector
-    spec: The spectrum array.
-    Output:
-    tau: The time sampling array.
-    acf: The acf from the original spectrum.""" 
-    padnum = np.floor(len(spec)/2)
-    df = omeg[1]-omeg[0]
-    
-    specpadd = np.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
-    acf = np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(specpadd)))
-    dt = 1/(df*len(specpadd))
-    tau = np.arange(-np.floor(len(acf)/2),np.floor(len(acf)/2+1))*dt
-    return tau, acf
-    
-def Init_vales():
-    return np.array([1000.0,1500.0,10**11])    
-def default_fit_func(x,y_acf,amb_func,amb_dict,sensdict, rm1,rm2,p2,npts):
+
+
+def default_fit_func(x,y_acf,amb_func,amb_dict,sensdict, rm1,rm2,p2,npts,numtype):
     """Fitter function that takes the difference between the given data 
     and the spectrum given the current paramters. Used with scipy.optimize.leastsq."""
     
@@ -342,7 +269,7 @@ def default_fit_func(x,y_acf,amb_func,amb_dict,sensdict, rm1,rm2,p2,npts):
 
     # apply ambiguity function
     tauint = amb_dict['Delay']
-    acfinterp = np.zeros(len(tauint),dtype=np.complex128)
+    acfinterp = np.zeros(len(tauint),dtype=numtype)
     acfinterp.real =scipy.interpolate.interp1d(tau,acf.real,bounds_error=0)(tauint)
     acfinterp.imag =scipy.interpolate.interp1d(tau,acf.imag,bounds_error=0)(tauint)
     # Apply the lag ambiguity function to the data

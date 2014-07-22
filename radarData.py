@@ -11,9 +11,9 @@ import scipy as sp
 import time
 import pdb
 from IonoContainer import IonoContainer, MakeTestIonoclass
-from const.physConstants import *
+from const.physConstants import v_C_0, v_Boltz
 import const.sensorConstants as sensconst
-
+from utilFunctions import CenteredLagProduct, MakePulseData
 class RadarData(object):
     """ This class will will take the ionosphere class and create radar data both
     at the IQ and fitted level.  
@@ -225,68 +225,7 @@ class RadarData(object):
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}     
         return(DataLags,NoiseLags)
         
-        
-# Utility functions
-        
-def MakePulseData(pulse_shape, filt_freq, delay=16):
-    """ This function will create a pulse width of data shaped by the filter that who's frequency
-        response is passed as the parameter filt_freq.  The pulse shape is delayed by the parameter
-        delay into the data. The noise vector that will be multiplied by the filter's frequency
-        response will be zero mean complex white Gaussian noise with a power of 1. The user
-        then will need to scale their filter to get the desired power out.
-        Inputs:
-            pulse_shape: A numpy array that holds the shape of the single pulse.
-            filt_freq - a numpy array that holds the complex frequency response of the filter
-            that will be used to shape the noise data.
-            delay - The number of samples that the pulse will be delayed into the 
-            array of noise data to avoid any problems with filter overlap.
-    """
-    npts = len(filt_freq)
-    
-    noise_vec = (np.random.randn(npts)+1j*np.random.randn(npts))/np.sqrt(2.0)# make a noise vector
-    mult_freq = filt_freq*noise_vec
-    data = np.fft.ifft(mult_freq)
-    data_out = pulse_shape*data[delay:(delay+len(pulse_shape))]
-    return data_out
-
-def CenteredLagProduct(rawbeams,N =14):
-    """ This function will create a centered lag product for each range using the
-    raw IQ given to it.  It will form each lag for each pulse and then integrate 
-    all of the pulses.
-    Inputs: 
-        rawbeams - This is a NsxNpu complex numpy array where Ns is number of 
-        samples per pulse and Npu is number of pulses
-        N - The number of lags that will be created, default is 14
-    Output:
-        acf_cent - This is a NrxNl complex numpy array where Nr is number of 
-        range gate and Nl is number of lags.
-    """
-    # It will be assumed the data will be range vs pulses    
-    (Nr,Np) = rawbeams.shape    
-    
-    # Make masks for each piece of data
-    arex = np.arange(0,N/2.0,0.5);
-    arback = np.array([-np.int(np.floor(k)) for k in arex]);
-    arfor = np.array([np.int(np.ceil(k)) for k in arex]) ;
-    
-    # figure out how much range space will be kept
-    sp = np.max(abs(arback));
-    ep = Nr- np.max(arfor);
-    rng_ar_all = np.arange(sp,ep);
-    #acf_cent = np.zeros((ep-sp,N))*(1+1j)
-    acf_cent = np.zeros((ep-sp,N),dtype=np.complex128)
-    for irng in  np.arange(len(rng_ar_all)):
-        rng_ar1 =np.int(rng_ar_all[irng]) + arback
-        rng_ar2 = np.int(rng_ar_all[irng]) + arfor
-        # get all of the acfs across pulses # sum along the pulses
-        acf_tmp = np.conj(rawbeams[rng_ar1,:])*rawbeams[rng_ar2,:]
-        acf_ave = np.sum(acf_tmp,1)
-        acf_cent[irng,:] = acf_ave# might need to transpose this
-    return acf_cent    
-    
-def Init_vales():
-    return np.array([1000.0,1500.0,10**11])
-    
+           
 # Main function test
     
 if __name__== '__main__':
