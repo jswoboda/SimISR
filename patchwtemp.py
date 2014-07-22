@@ -96,7 +96,7 @@ if __name__== '__main__':
     (fittedarray,fittederror) = curfitter.fitdata(nparams=nparams)
     
     #%% Array maniputlation for fitting  
-    range_vec = sensdict['RG']
+    range_vec = simparams['Rangegatesfinal']
     ang_rep =  np.tile(ang_data,(len(range_vec),1))
     rangemat = np.repeat(range_vec[:,np.newaxis],ang_data.shape[0],axis=1)
     rangevecall = rangemat.flatten()
