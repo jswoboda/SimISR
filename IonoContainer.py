@@ -13,8 +13,8 @@ import pdb
 from ISSpectrum import ISSpectrum
 from const.physConstants import v_C_0, v_Boltz, v_epsilon0
 import const.sensorConstants as sensconst
-import matplotlib.pylab as plt
 from utilFunctions import Chapmanfunc, TempProfile
+
 class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will 
     make the spectrums for each point."""
