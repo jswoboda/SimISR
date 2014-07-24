@@ -9,10 +9,9 @@ This file holds the RadarData class that hold the radar data and processes it.
 import numpy as np
 import scipy as sp
 import time
-import pdb
 from IonoContainer import IonoContainer, MakeTestIonoclass
-from const.physConstants import v_C_0, v_Boltz
-import const.sensorConstants as sensconst
+from physConstants import v_C_0, v_Boltz
+import sensorConstants as sensconst
 from utilFunctions import CenteredLagProduct, MakePulseData
 class RadarData(object):
     """ This class will will take the ionosphere class and create radar data both

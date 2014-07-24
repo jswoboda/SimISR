@@ -60,3 +60,4 @@ docs/_build/
 # Picture files
 *.png
 *.jpg
+.DS_Store

@@ -7,7 +7,7 @@ Created on Tue Jul 22 16:18:21 2014
 
 import numpy as np
 import scipy as sp
-from const.physConstants import v_C_0
+from physConstants import v_C_0
 
 # utility functions
 def make_amb(Fsorg,m_up,plen,nlags):

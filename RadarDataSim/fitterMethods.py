@@ -15,8 +15,7 @@ import matplotlib.pylab as plt
 from IonoContainer import MakeTestIonoclass
 from radarData import RadarData
 from ISSpectrum import ISSpectrum
-from const.physConstants import *
-import const.sensorConstants as sensconst
+import sensorConstants as sensconst
 from utilFunctions import make_amb, spect2acf
 
 class FitterBasic(object):
