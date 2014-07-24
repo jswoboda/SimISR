@@ -11,8 +11,8 @@ import scipy.interpolate
 import pdb
 # From my 
 from ISSpectrum import ISSpectrum
-from physConstants import v_C_0, v_Boltz, v_epsilon0
-import sensorConstants as sensconst
+from const.physConstants import v_C_0, v_Boltz, v_epsilon0
+import const.sensorConstants as sensconst
 from utilFunctions import Chapmanfunc, TempProfile
 
 class IonoContainer(object):

@@ -7,7 +7,7 @@ Created on Tue Jul 22 16:18:21 2014
 
 import numpy as np
 import scipy as sp
-from physConstants import v_C_0
+from const.physConstants import v_C_0
 
 # utility functions
 def make_amb(Fsorg,m_up,plen,nlags):
@@ -109,7 +109,7 @@ def CenteredLagProduct(rawbeams,N =14,numtype=np.complex128):
     raw IQ given to it.  It will form each lag for each pulse and then integrate 
     all of the pulses.
     Inputs: 
-        rawbeams - This is a NsxNpu complex numpy array where Ns is number of 
+        rawbeams - This is a NpxNs complex numpy array where Ns is number of 
         samples per pulse and Npu is number of pulses
         N - The number of lags that will be created, default is 14.
         numtype - The type of numbers used to create the data. Default is np.complex128
@@ -117,7 +117,8 @@ def CenteredLagProduct(rawbeams,N =14,numtype=np.complex128):
         acf_cent - This is a NrxNl complex numpy array where Nr is number of 
         range gate and Nl is number of lags.
     """
-    # It will be assumed the data will be range vs pulses    
+    # It will be assumed the data will be pulses vs rangne
+    rawbeams = rawbeams.transpose()    
     (Nr,Np) = rawbeams.shape    
     
     # Make masks for each piece of data

@@ -11,12 +11,12 @@ import numpy as np
 import scipy as sp
 
 # Import Main classes
-from IonoContainer import IonoContainer
-from radarData import RadarData
-from fitterMethods import FitterBasic
+from RadarDataSim.IonoContainer import IonoContainer
+from RadarDataSim.radarData import RadarData
+from RadarDataSim.fitterMethods import FitterBasic
 # import utilities and constants
-import const.sensorConstants as sensconst
-from utilFunctions import make_amb, Chapmanfunc
+import RadarDataSim.const.sensorConstants as sensconst
+from RadarDataSim.utilFunctions import make_amb, Chapmanfunc
 from beamtools.bcotools import getangles
 
 if __name__== '__main__':

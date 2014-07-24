@@ -10,8 +10,8 @@ import numpy as np
 import scipy as sp
 import time
 from IonoContainer import IonoContainer, MakeTestIonoclass
-from physConstants import v_C_0, v_Boltz
-import sensorConstants as sensconst
+from const.physConstants import v_C_0, v_Boltz
+import const.sensorConstants as sensconst
 from utilFunctions import CenteredLagProduct, MakePulseData
 class RadarData(object):
     """ This class will will take the ionosphere class and create radar data both
@@ -171,12 +171,13 @@ class RadarData(object):
 
         return(out_data +Noise,noisesamples)               
     
-    def processdata(self,timevec,inttime):
+    def processdata(self,timevec,inttime,lagfunc=CenteredLagProduct):
         """ This will perform the the data processing and create the ACF estimates 
         for both the data and noise.
         Inputs:
         timevec - A numpy array of times in seconds where the integration will begin.
         inttime - The integration time in seconds.
+        lagfunc - A function that will make the desired lag products.
         Outputs:
         DataLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
         the numpy arrays of the data.
@@ -218,8 +219,8 @@ class RadarData(object):
                 curnoisedata = self.rawnoise[ibeam,istart:iend]
                 pulses[inum,ibeam] = iend-istart;
                 pulsesN[inum,ibeam] = iend-istart;
-                outdata[inum,ibeam] = CenteredLagProduct(curdata.transpose(),Nlag)
-                outnoise[inum,ibeam] = CenteredLagProduct(curnoisedata.transpose(),Nlag)
+                outdata[inum,ibeam] = lagfunc(curdata,Nlag)
+                outnoise[inum,ibeam] = lagfunc(curnoisedata,Nlag)
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat}  
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}     
         return(DataLags,NoiseLags)

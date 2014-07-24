@@ -9,12 +9,13 @@ a simple Chapman function and Ti=Te=1000k.
 """
 import numpy as np
 import scipy as sp
-from beamtools.bcotools import getangles
 
-from IonoContainer import IonoContainer, Chapmanfunc
-import const.sensorConstants as sensconst
-from radarData import RadarData
-from fitterMethods import FitterBasic, make_amb
+# My inputs
+from beamtools.bcotools import getangles
+from RadarDataSim.IonoContainer import IonoContainer, Chapmanfunc
+import RadarDataSim.const.sensorConstants as sensconst
+from RadarDataSim.radarData import RadarData
+from RadarDataSim.fitterMethods import FitterBasic, make_amb
 if __name__== '__main__':
     
     # setup the ionosphere container.
