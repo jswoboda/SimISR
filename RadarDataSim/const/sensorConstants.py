@@ -20,7 +20,7 @@ from physConstants import v_C_0
 #AMISR['t_s'] = 1/AMISR['fs'] 
 
 
-def getConst(typestr,angles):
+def getConst(typestr,angles = None):
     dirname, filename = os.path.split(os.path.abspath(__file__))
     if typestr.lower() =='risr':
         h5filename = os.path.join(dirname,'RISR_PARAMS.h5')
@@ -29,25 +29,26 @@ def getConst(typestr,angles):
     h5file = tables.open_file(h5filename)
     kmat = h5file.root.Params.Kmat.read()
     freq = float(h5file.root.Params.Frequency.read())
-    pow = float(h5file.root.Params.Power.read())
+    P_r = float(h5file.root.Params.Power.read())
     h5file.close()
-    
     
     az = kmat[:,1]
     el = kmat[:,2]
     ksys = kmat[:,3]
     
     (xin,yin) = angles2xy(az,el)
-    (xvec,yvec) = angles2xy(angles[:,0],angles[:,1])
-    
-    
     points = sp.vstack((xin,yin)).transpose()
-    ksysout = griddata(points, ksys, (xvec, yvec), method='nearest')
+    if angles !=None:
+        (xvec,yvec) = angles2xy(angles[:,0],angles[:,1])
+        ksysout = griddata(points, ksys, (xvec, yvec), method='nearest')
+    else:
+        ksysout = None
 
-    sensdict = {'Name':typestr,'Pt':pow,'k':9.4,'G':10**4.3,'lamb':0.6677,'fc':freq,'fs':50e3,\
+    sensdict = {'Name':typestr,'Pt':P_r,'k':9.4,'G':10**4.3,'lamb':0.6677,'fc':freq,'fs':50e3,\
     'taurg':14,'Tsys':120,'BeamWidth':(2,2),'Ksys':ksysout,'BandWidth':22970}
     sensdict['t_s'] = 1.0/sensdict['fs']
     return sensdict
+    
 def angles2xy(az,el):
     """ """
     
@@ -120,7 +121,6 @@ def AMISR_Pattern(AZ,EL,Az0,El0):
     phix = k0*dx*(np.sin(EL)*np.cos(AZ)-np.sin(El0)*np.cos(Az0))
     # relative phase between the y elements
     phiy = k0*dy*(np.sin(EL)*np.sin(AZ)-np.sin(El0)*np.sin(Az0))
-
     
     AF = (1/2)*(1.0+np.exp(1j*((1/2)*phiy+phix)))*diric(2.0*phix,mtot/2.0)*diric(phiy,ntot);
     arrayfac = abs(AF)**2;
