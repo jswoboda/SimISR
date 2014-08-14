@@ -130,7 +130,11 @@ class FitterBasic(object):
                         
                 print('\t\tData for Beam {0:d} of {1:d} fitted.'.format(ibeam,Nbeams))
         return(fittedarray,fittederror)
-    
+        
+#    def fitdataiono(self,nparams=4,filename=None,npnts = 64,numtype=np.complex128):
+#        
+#    def fitNEiono(self, filename=None,Tratio = 1):
+        
     def plotbeams(self,beamnum,radardata,fittedarray,fittederror,timenum = 0,figsdir = None):
         """ This function will plot the fitted data along with error bars and the input
         vs altitude which will be the y axis.
