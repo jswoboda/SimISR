@@ -132,7 +132,7 @@ class FitterBasic(object):
         return(fittedarray,fittederror)
         
 #    def fitdataiono(self,nparams=4,filename=None,npnts = 64,numtype=np.complex128):
-#        
+#        '''This function will output an ionocontainer class after the fitting is done. '''
 #    def fitNEiono(self, filename=None,Tratio = 1):
         
     def plotbeams(self,beamnum,radardata,fittedarray,fittederror,timenum = 0,figsdir = None):

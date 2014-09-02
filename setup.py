@@ -5,6 +5,7 @@ This is the setup file for the RadarDataSim python package
 
 @author: John Swoboda
 """
+import os, inspect
 try:
     from setuptools import setup
 except ImportError:
@@ -23,4 +24,9 @@ config = {
     'name': 'RadarDataSim'
 }
 
+curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+testpath = os.path.join(curpath,'Test')
+if not os.path.exists(testpath):
+    os.mkdir(testpath)
+    print "Making a path for testing at "+testpath
 setup(**config)

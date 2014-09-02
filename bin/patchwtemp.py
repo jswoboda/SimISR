@@ -7,6 +7,7 @@ a simple Chapman function and Ti=Te=1000k.
 
 @author: John Swoboda
 """
+import os, inspect
 import numpy as np
 import scipy as sp
 
@@ -88,7 +89,6 @@ if __name__== '__main__':
     curint_time = t_int
     curint_time2 = 10.0*IPP*len(angles)
     (DataLags,NoiseLags) = radardata.processdata(timearr,curint_time)
-    #(DataLags2,NoiseLags2) = radardata.processdata(timearr,curint_time2)
     
     simparams = radardata.simparams.copy()
     
@@ -117,8 +117,8 @@ if __name__== '__main__':
            # Nemat2[irng*ang_data.shape[0]+iang] =Ne2_trans[irng,iang]
     coordvecsr = {'r':range_vec,'theta':ang_data[:,0],'phi':ang_data[:,1]}
     
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    testpath = os.path.join(os.path.split(curpath)[0],'Test')
     Icont2 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=fittedmat,times=timearr,coordvecs=coordvecsr,ver=1)
-    #Icont3 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=Nemat2,times=timearr,coordvecs=coordvecsr,ver=1)
-    Icont1.savemat('patchewtemp.mat')
-    Icont2.savemat('patchwtempfit.mat')
-    #Icont3.savemat('/Users/Bodangles/Documents/MATLAB/ec717image/project/testcases/patchexNE2pv5.mat')
+    Icont1.savemat(os.path.join(testpath,'patchewtemp.mat'))
+    Icont2.savemat(os.path.join(testpath,'patchwtempfit.mat'))
