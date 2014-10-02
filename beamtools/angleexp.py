@@ -27,5 +27,4 @@ bcolines = f.readlines()
 f.close()
 
 bcolist = [int(float(x.rstrip())) for x in bcolines]
-
 angles = [bco_dict[x] for x in bcolist]
