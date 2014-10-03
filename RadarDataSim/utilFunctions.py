@@ -162,3 +162,22 @@ def TempProfile(z):
     Te[z<=200.0]=1000.0 
     Ti[z<=200.0]=1000.0 
     return (Te,Ti)
+    
+def fitsurface(errfunc,paramlists,inputs):
+    
+    paramsizlist = np.array([len(i) for i in paramlists])
+    outsize = np.where(paramsizlist!=1)[0]
+    fit_surface = np.zeros(paramsizlist[outsize])
+    fit_surface = fit_surface.flatten()
+    curparams = np.zeros_like(paramsizlist)
+    for nparam,iparam in enumerate(paramlists):
+        if outsize[nparam]==1:
+            continue
+        for ivec in range(len(iparam)):
+            curnum = (curparams[:-1])*(paramsizlist[0:]-1)+curparams[-1]
+            cur_x = np.array([jp for num_p ,ip in enumerate(paramlists) for jp in ip[curparams[num_p]] ])
+            diffthing = errfunc(cur_x,inputs)
+            curparams[ivec] = curparams[ivec]+1
+            fit_surface[curnum]=np.abs(diffthing)**2
+        
+    return fit_surface.reshape(paramsizlist[outsize]).copy()
