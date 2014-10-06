@@ -8,7 +8,8 @@ Created on Tue Jul 22 16:18:21 2014
 import numpy as np
 import scipy as sp
 from const.physConstants import v_C_0
-
+from ISSpectrum import ISSpectrum
+import pdb
 # utility functions
 def make_amb(Fsorg,m_up,plen,nlags):
     """ Make the ambiguity function dictionary that holds the lag ambiguity and 
@@ -164,20 +165,69 @@ def TempProfile(z):
     return (Te,Ti)
     
 def fitsurface(errfunc,paramlists,inputs):
-    
+    """This function will create a fit surface using an error function given by the user
+    and an N length list of parameter value lists. The output will be a N-dimensional array 
+    where each dimension is the size of the array given for each of the parameters. Arrays of
+    one element are not represented in the returned fit surface array.
+    Inputs:
+    errfunc - The function used to determine the error between the given data and
+    the theoretical function
+    paramlists - An N length list of arrays for each of the parameters.
+    inputs - A tuple of the rest of the inputs for error function."""
     paramsizlist = np.array([len(i) for i in paramlists])
     outsize = np.where(paramsizlist!=1)[0]
+    #  make the fit surface and flatten it  
     fit_surface = np.zeros(paramsizlist[outsize])
     fit_surface = fit_surface.flatten()
-    curparams = np.zeros_like(paramsizlist)
-    for nparam,iparam in enumerate(paramlists):
-        if outsize[nparam]==1:
-            continue
-        for ivec in range(len(iparam)):
-            curnum = (curparams[:-1])*(paramsizlist[0:]-1)+curparams[-1]
-            cur_x = np.array([jp for num_p ,ip in enumerate(paramlists) for jp in ip[curparams[num_p]] ])
-            diffthing = errfunc(cur_x,inputs)
-            curparams[ivec] = curparams[ivec]+1
-            fit_surface[curnum]=np.abs(diffthing)**2
         
+    for inum in range(np.prod(paramsizlist)):
+        numcopy = inum
+        curnum = np.zeros_like(paramsizlist)
+        # TODO: Replace with np.unravel_index        
+        # determine current parameters
+        for i, iparam in enumerate(reversed(paramsizlist)):
+            curnum[i] = np.mod(numcopy,iparam)
+            numcopy = np.floor(numcopy/iparam)
+        curnum = curnum[::-1]
+        cur_x = np.array([ip[curnum[num_p]] for num_p ,ip in enumerate(paramlists)])
+        diffthing = errfunc(cur_x,*inputs)
+        fit_surface[inum]=(np.abs(diffthing)**2).sum()
+        # return the fitsurace after its been de flattened
     return fit_surface.reshape(paramsizlist[outsize]).copy()
+    
+def makexample(npts,sensdict,cur_params,pulse,npulses):
+    """This will create a set centered lag products as if it were collected from ISR 
+    data with the parameter values in cur_params. The lag products will have the 
+    the number of pulses found in npulses using evelope found in pulse.
+    Inputs
+    npts - The length of the spectrum, this will be reduced by 1 if its an even number.
+    sensdict - This is a sensor dictionary that can be created from one of the functions in
+    the sensorconst file.
+    cur_params - The parameters in the order seen for the spectrum method being used.
+    pulse - This is an array that hold the pulse shape from the envelope.
+    npulses - The number of pulses that will be integrated."""
+    
+    
+    Nrg = 3*len(pulse)
+    N_samps = Nrg +len(pulse)-1
+    #TODO: Make this able to handle any spectrum input.
+    myspec = ISSpectrum(nspec = npts,sampfreq=sensdict['fs'])
+    (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
+                    cur_params[3], cur_params[4], cur_params[5])
+    Ne = 10**cur_params[2]
+    tr =  cur_params[1]
+    # Set the power for the spectrum
+    cur_spec =  len(cur_spec)**2*Ne/(1+tr)*cur_spec/np.sum(cur_spec)
+    # Change the spectrum filter kernal for the fft based filtering
+    cur_filt = np.sqrt(np.fft.ifftshift(cur_spec))        
+    outdata = np.zeros((npulses,N_samps),dtype=np.complex128)
+    samp_num = np.arange(len(pulse))
+    for ipulse in range(npulses):
+        for isamp in range(Nrg):
+            curpnts =  samp_num+isamp
+            curpulse = MakePulseData(pulse,cur_filt,delay=len(pulse))
+            outdata[ipulse,curpnts] = curpulse +outdata[ipulse,curpnts]
+    # Perform a centered lag product.            
+    lags = CenteredLagProduct(outdata,N =len(pulse))
+    return lags
+        
