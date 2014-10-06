@@ -268,7 +268,6 @@ def default_fit_func(x,y_acf,amb_func,amb_dict,sensdict, rm1,rm2,p2,npts,numtype
     # Create spectrum guess
     (tau,acf) = spect2acf(omeg,cur_spec)
     
-    #pdb.set_trace()
 
     # apply ambiguity function
     tauint = amb_dict['Delay']
@@ -280,6 +279,9 @@ def default_fit_func(x,y_acf,amb_func,amb_dict,sensdict, rm1,rm2,p2,npts,numtype
     for i in range(amb_dict['Wlag'].shape[0]):
         guess_acf[i] = np.sum(acfinterp*amb_dict['Wlag'][i])
     # scale the guess acf
+#    if (te==1e3)and (ti==1e3):
+#        pdb.set_trace()
+
     guess_acf = guess_acf*Ne/((1+tr))/guess_acf[0].real
     # fit to spectrums
     spec_interm = np.fft.fft(guess_acf,n=len(cur_spec))
