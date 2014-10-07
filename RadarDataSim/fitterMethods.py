@@ -106,13 +106,14 @@ class FitterBasic(object):
         fittedarray = np.zeros((Nt,Nbeams,Nrng2,nparams))
         fittederror = np.zeros((Nt,Nbeams,Nrng2,nparams,nparams))
         self.simparams['Rangegatesfinal'] = np.zeros(Nrng2)
-        curlag = np.zeros(Nlags)
+        self.simparams['Rangegatesfinal'] = np.array([ np.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in np.arange(minrg,maxrg)])
         print('\nData Now being fit.')
         for itime in np.arange(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for ibeam in np.arange(Nbeams):
                 for irngnew,irng in enumerate(np.arange(minrg,maxrg)):
-                    self.simparams['Rangegatesfinal'][irngnew] = np.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
+                    
+                   # self.simparams['Rangegatesfinal'][irngnew] = np.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
                     curlag = np.array([np.mean(lagsData[itime,ibeam,irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag]) for ilag in np.arange(Nlags)])#/sumreg
                     d_func = (curlag, Pulse_shape,self.simparams['amb_dict'],self.sensdict,rm1,rm2,p2,npnts,numtype)
                     x_0 = np.array([1000,1000,Ne_start[itime,ibeam,irng],0.0])[:nparams]
