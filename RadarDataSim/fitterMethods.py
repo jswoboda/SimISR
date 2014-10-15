@@ -5,6 +5,8 @@ fitterMethods.py
 @author: John Swoboda
 Holds class that applies the fitter.
 """
+
+import os, inspect
 import pdb
 # Imported modules
 import numpy as np
@@ -238,7 +240,6 @@ class FitterBasic(object):
 def default_fit_func(x,y_acf,amb_func,amb_dict,sensdict, rm1,rm2,p2,npts,numtype):
     """Fitter function that takes the difference between the given data 
     and the spectrum given the current paramters. Used with scipy.optimize.leastsq."""
-    
     ti = x[0]
     te = x[1]
     Ne = x[2]    
@@ -296,6 +297,8 @@ def default_fit_func(x,y_acf,amb_func,amb_dict,sensdict, rm1,rm2,p2,npts,numtype
 
 if __name__== '__main__':
     """ This is a test for the fitter class"""
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    testpath = os.path.join(os.path.split(curpath)[0],'Test')
     t1 = time.time()
     IPP = .0087
 #    angles = [(90,85),(90,84),(90,83),(90,82),(90,81)]
@@ -319,6 +322,6 @@ if __name__== '__main__':
     curfitter =  FitterBasic(DataLags,NoiseLags,radardata.sensdict,simparams)   
     Ne = curfitter.fitNE()
     (fittedarray,fittederror) = curfitter.fitdata()
-    curfitter.plotbeams(0,radardata,fittedarray,fittederror)
+    curfitter.plotbeams(0,radardata,fittedarray,fittederror,figsdir =testpath )
     t2 = time.time()
     print(t2-t1)
