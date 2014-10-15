@@ -79,6 +79,22 @@ class IonoContainer(object):
         self.Param_List = paramlist
         self.Time_Vector = times
         self.Coord_Vecs = coordvecs
+    def getclosest(self,coords):
+        """"""
+        X_vec = self.Cart_Coords[:,0]
+        Y_vec = self.Cart_Coords[:,1]
+        Z_vec = self.Cart_Coords[:,2]
+        
+        xdiff = X_vec -coords[0]
+        ydiff = Y_vec -coords[1]
+        zdiff = Z_vec -coords[2]
+        distall = xdiff**2+ydiff**2+zdiff**2
+        minidx = np.argmin(distall)
+        paramout = self.Param_List[minidx]
+        sphereout = self.Sphere_Coords[minidx]
+        cartout = self.Cart_Coords[minidx]
+        return (paramout,sphereout,cartout,np.sqrt(distall[minidx]))
+        
         
     def savemat(self,filename):
         """ This method will write out a structured mat file and save information
@@ -93,6 +109,14 @@ class IonoContainer(object):
             outdict = dict(outdict.items()+self.Coord_Vecs.items())
             
         sio.savemat(filename,mdict=outdict)
+    @staticmethod
+    def readmat(filename):
+         indata = sio.loadmat(filename)
+         if "sensor_loc" in indata.keys():
+             return IonoContainer(indata['Cart_Coords'],indata['Param_List'],indata['Time_Vector'],indata['Param_List'])
+         else:
+             return IonoContainer(indata['Cart_Coords'],indata['Param_List'],indata['Time_Vector'])
+        
     def makespectrums(self,range_gates,centangles,beamwidths,sensdict):
         """ Creates a spectrum for each range gate, it will be assumed that the 
         spectrums for each range will be averaged by adding the noisy signals
