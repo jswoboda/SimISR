@@ -105,7 +105,7 @@ class FitterBasic(object):
         Pulse_shape = self.simparams['Pulse']
         fittedarray = np.zeros((Nt,Nbeams,Nrng2,nparams))
         fittederror = np.zeros((Nt,Nbeams,Nrng2,nparams,nparams))
-        self.simparams['Rangegatesfinal'] = np.zeros(Nrng2)
+        #self.simparams['Rangegatesfinal'] = np.zeros(Nrng2)
         self.simparams['Rangegatesfinal'] = np.array([ np.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in np.arange(minrg,maxrg)])
         print('\nData Now being fit.')
         for itime in np.arange(Nt):
