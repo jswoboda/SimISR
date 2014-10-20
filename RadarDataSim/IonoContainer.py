@@ -136,23 +136,24 @@ class IonoContainer(object):
         az_cond = (self.Sphere_Coords[:,1]>az_limits[0]) & (self.Sphere_Coords[:,1]<az_limits[1])
         el_cond = (self.Sphere_Coords[:,2]>el_limits[0]) & (self.Sphere_Coords[:,2]<el_limits[1])
         
-       
+        d2r = np.pi/180.0
         rng_len = sensdict['t_s']*v_C_0/1000.0
         # Reduce range dimesion and parameters to a single beam
         rho = self.Sphere_Coords[:,0]
         # Go through each range gate until 
         rng_dict = dict()
         param_dict = dict()
-        #pdb.set_trace()        
+        #pdb.set_trace()      
+        centanglesr = [iang*d2r for iang in centangles]
         for rng in range_gates:
             rnglims = [rng-rng_len/2.0,rng+rng_len/2.0]
             rng_cond = (rho>rnglims[0]) & (rho<rnglims[1])
             cur_cond  = rng_cond & az_cond & el_cond
             if cur_cond.sum()==0:                
                 #pdb.set_trace()
-                x = rng*np.cos(centangles[1]*np.pi/180)*np.cos(centangles[0]*np.pi/180)
-                y = rng*np.cos(centangles[1]*np.pi/180)*np.sin(centangles[0]*np.pi/180)
-                z = rng*np.sin(centangles[1]*np.pi/180)
+                x = rng*np.cos(centanglesr[1])*np.cos(centanglesr[0])
+                y = rng*np.cos(centanglesr[1])*np.sin(centanglesr[0])
+                z = rng*np.sin(centanglesr[1])
                 checkmat = np.tile(np.array([x,y,z]),(len(cur_cond),1))
                 error = checkmat-self.Cart_Coords
                 argmin_dist = ((error**2).sum(1)).argmin()
@@ -161,14 +162,13 @@ class IonoContainer(object):
             rng_dict[rng] = specs
             param_dict[rng] = params
         return (omeg,rng_dict,param_dict)
-    def __getspectrums__(self,conditions,sensdict,weights=None):
+    def __getspectrums__(self,conditions,sensdict,weights=None,npts=128):
         """ This will get a spectrum for a specific point in range and angle space.
         It will take all of the spectrums in an area and average them all together
         to get a single spectrum.  """        
         params_red = self.Param_List[conditions]
         num_true = conditions.sum()
         
-        npts = 128
         myspec = ISSpectrum(nspec = npts-1,sampfreq=sensdict['fs'])
         
         

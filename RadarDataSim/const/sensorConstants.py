@@ -59,16 +59,17 @@ def angles2xy(az,el):
     return (xout,yout)
     
 def diric(x,M):
-    """ This calculates the dirichete sinc function """
-    if M % 1 != 0 or M <= 0:
-        raise RuntimeError('n must be a strictly positive integer')
-        
+    """ This calculates the dirichlet sinc function """
+    assert M % 1 == 0, "M must be an integer"
+    assert M >0, "M must be strictly possitive"
+    
     y=np.sin(0.5*x)
     ilog = np.abs(y) < 1e-12
     nilog = np.logical_not(ilog)
     y[nilog]=np.sin((M/2)*x[nilog])/(M*y[nilog])
     y[ilog]=np.sign(np.cos(x[ilog]*((M+1.0)/2.0)))
     return y
+    
 def phys2array(az,el):
     """ This takes the physical angles of azimuth and elevation in degrees
     and brings them to the array space."""
