@@ -21,6 +21,8 @@ from physConstants import v_C_0
 
 
 def getConst(typestr,angles = None):
+    """Get the constants associated with a specific radar system. This will fill
+    out a dictionary with all of the parameters."""
     dirname, filename = os.path.split(os.path.abspath(__file__))
     if typestr.lower() =='risr':
         h5filename = os.path.join(dirname,'RISR_PARAMS.h5')
@@ -30,6 +32,7 @@ def getConst(typestr,angles = None):
     kmat = h5file.root.Params.Kmat.read()
     freq = float(h5file.root.Params.Frequency.read())
     P_r = float(h5file.root.Params.Power.read())
+    Ang_off = h5file.root.Params.Angleoffset.read()
     h5file.close()
     
     az = kmat[:,1]
@@ -45,7 +48,8 @@ def getConst(typestr,angles = None):
         ksysout = None
 
     sensdict = {'Name':typestr,'Pt':P_r,'k':9.4,'G':10**4.3,'lamb':0.6677,'fc':freq,'fs':50e3,\
-    'taurg':14,'Tsys':120,'BeamWidth':(2,2),'Ksys':ksysout,'BandWidth':22970}
+    'taurg':14,'Tsys':120,'BeamWidth':(2,2),'Ksys':ksysout,'BandWidth':22970,\
+    'Angleoffset':Ang_off,'ArrayFunc':AMISR_Pattern}
     sensdict['t_s'] = 1.0/sensdict['fs']
     return sensdict
     

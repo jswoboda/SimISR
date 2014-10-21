@@ -116,7 +116,52 @@ class IonoContainer(object):
              return IonoContainer(indata['Cart_Coords'],indata['Param_List'],indata['Time_Vector'],indata['Param_List'])
          else:
              return IonoContainer(indata['Cart_Coords'],indata['Param_List'],indata['Time_Vector'])
+             
+    def makeallspectrums(self,sensdict,npts):
         
+        specobj = ISSpectrum(nspec = npts,sampfreq=sensdict['fs'])
+        #npts is going to be lowered by one because of this.        
+        if np.mod(npts,2)==0:
+            npts = npts-1
+        paramshape = self.Param_List.shape
+        if len(paramshape)==3:
+            outspecs = np.zeros((paramshape[0],paramshape[1],npts))
+            full_grid = True
+        elif len(paramshape)==2:
+            outspecs = np.zeros((paramshape[0],1,npts))
+            full_grid == False
+        (N_x,N_t) = outspecs.shape[:2]
+        
+        first_spec = True
+        for i_x in np.arange(N_x):
+            for i_t in np.arange(N_t):
+                if full_grid:
+                    cur_params = self.Param_List[i_x,i_t]
+                else:
+                    cur_params = self.Param_List[i_x]
+                Ti = cur_params[0]
+                Tr = cur_params[1]
+                Te = Ti*Tr
+                N_e = 10**cur_params[2]
+                debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
+                rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
+                if first_spec:
+                    (omeg,cur_spec) = specobj.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
+                        cur_params[3], cur_params[4], cur_params[5])
+                else:
+                    cur_spec = specobj.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
+                        cur_params[3], cur_params[4], cur_params[5])[0]
+                cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
+                # Ion velocity                    
+                if len(cur_params)>6:
+                    Vi = cur_params[-1]
+                    Fd = -2.0*Vi/sensdict['lamb']
+                    omegnew = omeg-Fd
+                    cur_spec_weighted =scipy.interpolate.interp1d(omeg,cur_spec_weighted,bounds_error=0)(omegnew) 
+        
+                outspecs[i_x,i_t] = cur_spec_weighted
+                
+            return (omeg,outspecs,npts)
     def makespectrums(self,range_gates,centangles,beamwidths,sensdict):
         """ Creates a spectrum for each range gate, it will be assumed that the 
         spectrums for each range will be averaged by adding the noisy signals
