@@ -167,12 +167,13 @@ class FitterBasic(object):
             Vi_true = np.zeros(0)
             # get all of the original data into range bins
             for irng,rng in enumerate(Range_gates):
-                cur_params = params[rng][:,timenum,:]
-                cur_rgates = len(cur_params[:,2])
-                Ne_true = np.append(Ne_true,10.0**cur_params[:,2])
-                Te_true = np.append(Te_true,cur_params[:,0]*cur_params[:,1])
-                Ti_true = np.append(Ti_true,cur_params[:,0])
-                Vi_true = np.append(Vi_true,cur_params[:,3])
+                #pdb.set_trace()
+                cur_params = params[rng][timenum,:]
+                cur_rgates = 1
+                Ne_true = np.append(Ne_true,10.0**cur_params[2])
+                Te_true = np.append(Te_true,cur_params[0]*cur_params[1])
+                Ti_true = np.append(Ti_true,cur_params[0])
+                Vi_true = np.append(Vi_true,cur_params[3])
                 rng_arr = np.append(rng_arr,np.ones(cur_rgates)*rng)
             cur_fit = fittedarray[timenum,beamnum]
             cur_cov = fittederror[timenum,beamnum]
@@ -323,5 +324,6 @@ if __name__== '__main__':
     Ne = curfitter.fitNE()
     (fittedarray,fittederror) = curfitter.fitdata()
     curfitter.plotbeams(0,radardata,fittedarray,fittederror,figsdir =testpath )
+    plt.show(False)
     t2 = time.time()
     print(t2-t1)

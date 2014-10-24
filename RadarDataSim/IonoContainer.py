@@ -44,6 +44,9 @@ class IonoContainer(object):
                 times = np.arange(psizetup[1])
             else:
                 times = np.arange(1)
+        if Ndims==2:
+            paramlist = paramlist[:,np.newaxis,:]
+            
         # Assume that the 
         if ver==0:
         
@@ -79,6 +82,14 @@ class IonoContainer(object):
         self.Param_List = paramlist
         self.Time_Vector = times
         self.Coord_Vecs = coordvecs
+    def getclosestsphere(self,coords):
+        d2r = np.pi/180.0
+        (R,Az,El) = coords
+        x_coord = R*np.cos(Az*d2r)*np.cos(El*d2r)
+        y_coord = R*np.sin(Az*d2r)*np.cos(El*d2r)
+        z_coord= R*np.sin(El*d2r)
+        cartcoord = np.array([x_coord,y_coord,z_coord])
+        return self.getclosest(cartcoord)
     def getclosest(self,coords):
         """"""
         X_vec = self.Cart_Coords[:,0]
@@ -119,19 +130,20 @@ class IonoContainer(object):
              
     def makeallspectrums(self,sensdict,npts):
         
-        specobj = ISSpectrum(nspec = npts,sampfreq=sensdict['fs'])
         #npts is going to be lowered by one because of this.        
         if np.mod(npts,2)==0:
             npts = npts-1
+        specobj = ISSpectrum(nspec = npts,sampfreq=sensdict['fs'])
+        
         paramshape = self.Param_List.shape
         if len(paramshape)==3:
             outspecs = np.zeros((paramshape[0],paramshape[1],npts))
             full_grid = True
         elif len(paramshape)==2:
             outspecs = np.zeros((paramshape[0],1,npts))
-            full_grid == False
+            full_grid = False
         (N_x,N_t) = outspecs.shape[:2]
-        
+        #pdb.set_trace()
         first_spec = True
         for i_x in np.arange(N_x):
             for i_t in np.arange(N_t):
@@ -148,6 +160,7 @@ class IonoContainer(object):
                 if first_spec:
                     (omeg,cur_spec) = specobj.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                         cur_params[3], cur_params[4], cur_params[5])
+                    fillspot = np.argmax(omeg)
                 else:
                     cur_spec = specobj.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
                         cur_params[3], cur_params[4], cur_params[5])[0]
@@ -157,11 +170,12 @@ class IonoContainer(object):
                     Vi = cur_params[-1]
                     Fd = -2.0*Vi/sensdict['lamb']
                     omegnew = omeg-Fd
-                    cur_spec_weighted =scipy.interpolate.interp1d(omeg,cur_spec_weighted,bounds_error=0)(omegnew) 
+                    fillval = cur_spec_weighted[fillspot]
+                    cur_spec_weighted =scipy.interpolate.interp1d(omeg,cur_spec_weighted,bounds_error=0,fill_value=fillval)(omegnew) 
         
                 outspecs[i_x,i_t] = cur_spec_weighted
                 
-            return (omeg,outspecs,npts)
+        return (omeg,outspecs,npts)
     def makespectrums(self,range_gates,centangles,beamwidths,sensdict):
         """ Creates a spectrum for each range gate, it will be assumed that the 
         spectrums for each range will be averaged by adding the noisy signals
@@ -497,8 +511,8 @@ class IonoContainer(object):
 def MakeTestIonoclass(testv=False,testtemp=False):
     """ This function will create a test ionoclass with an electron density that
     follows a chapman function"""
-    xvec = sp.arange(-250.0,250.0,6.0)
-    yvec = sp.arange(-250.0,250.0,6.0)
+    xvec = sp.arange(-250.0,250.0,20.0)
+    yvec = sp.arange(-250.0,250.0,20.0)
     zvec = sp.arange(200.0,500.0,3.0)
     # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
     xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)

@@ -49,7 +49,7 @@ def getConst(typestr,angles = None):
 
     sensdict = {'Name':typestr,'Pt':P_r,'k':9.4,'G':10**4.3,'lamb':0.6677,'fc':freq,'fs':50e3,\
     'taurg':14,'Tsys':120,'BeamWidth':(2,2),'Ksys':ksysout,'BandWidth':22970,\
-    'Angleoffset':Ang_off,'ArrayFunc':AMISR_Pattern}
+    'Angleoffset':Ang_off,'ArrayFunc':AMISR_Patternadj}
     sensdict['t_s'] = 1.0/sensdict['fs']
     return sensdict
     
@@ -83,7 +83,32 @@ def phys2array(az,el):
     xout = elt*np.sin(azt)
     yout = elt*np.cos(azt)
     return (xout,yout)
+    
+def AMISR_Patternadj(Az,El,Az0,El0,Angleoffset):
+    d2r= np.pi/180.0    
+    Azs = np.mod(Az-Angleoffset[0],360.0)
+    Az0s = np.mod(Az-Angleoffset[0],360.0)
+    
+    Els = El+Angleoffset[1]
+    elg90 = El>90.0
+    Els[elg90] = 180.0-Els[elg90]
+    Azs[elg90] = np.mod(Azs[elg90]+180.0,360.0)
+    
+    El0s = El0+Angleoffset[1]
+    if El0s>90.0:
+        El0s= 180.0-El0s
+        Az0s = np.mod(Az0s+180.0,360.0)
+    
+    
+    Elr = (90.0-Els)*d2r
+    El0r = (90-El0s)*d2r
+    Azr = Azs*d2r
+    Az0r = Az0s*d2r
+    
+    return AMISR_Pattern(Azr,Elr,Az0r,El0r)
 
+    
+    
 def AMISR_Pattern(AZ,EL,Az0,El0):
     """     
     AMISR_Pattern 
@@ -115,8 +140,8 @@ def AMISR_Pattern(AZ,EL,Az0,El0):
     dx=0.4343 # x spacing[m]
     dy=0.4958 # y spacing[m]
     # element pattern from an ideal cross dipole array.
-    elementpower=(1/2)*(1+(np.cos(EL))**2)
-    
+    elementpower=(1.0/2.0)*(1.0+(np.cos(EL))**2)
+#    pdb.set_trace()
     m=8.0;# number of pannels in the x direction
     mtot = 8.0*m;# number of elements times panels in x direction
     
@@ -127,7 +152,7 @@ def AMISR_Pattern(AZ,EL,Az0,El0):
     # relative phase between the y elements
     phiy = k0*dy*(np.sin(EL)*np.sin(AZ)-np.sin(El0)*np.sin(Az0))
     
-    AF = (1/2)*(1.0+np.exp(1j*((1/2)*phiy+phix)))*diric(2.0*phix,mtot/2.0)*diric(phiy,ntot);
+    AF = (1.0/2.0)*(1.0+np.exp(1j*((1/2)*phiy+phix)))*diric(2.0*phix,mtot/2.0)*diric(phiy,ntot);
     arrayfac = abs(AF)**2;
     Patout = elementpower*arrayfac
     return Patout

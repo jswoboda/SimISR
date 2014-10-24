@@ -9,6 +9,7 @@ This file holds the RadarData class that hold the radar data and processes it.
 import numpy as np
 import scipy as sp
 import time
+import pdb
 from IonoContainer import IonoContainer, MakeTestIonoclass
 from const.physConstants import v_C_0, v_Boltz
 import const.sensorConstants as sensconst
@@ -37,7 +38,7 @@ class RadarData(object):
        
     """
     
-    def __init__(self,ionocont,sensdict,angles,IPP,Tint,time_lim, pulse,rng_lims,noisesamples =28,noisepulses=100):
+    def __init__(self,ionocont,sensdict,angles,IPP,Tint,time_lim, pulse,rng_lims,noisesamples =28,noisepulses=100,npts = 128):
         """This function will create an instance of the RadarData class.  It will
         take in the values and create the class and make raw IQ data.
         Inputs:
@@ -71,10 +72,13 @@ class RadarData(object):
         self.noiselag = np.zeros((N_times,N_angles,len(pulse)),dtype=np.complex128)
         self.fittedarray = np.zeros((N_times,N_angles,N_range,N_params))
         self.fittederror = np.zeros((N_times,N_angles,N_range,N_params,N_params))
+        print "All spectrums being created"
+        (omeg,self.allspecs,npts) = self.Ionocont.makeallspectrums(sensdict,npts)
+         
         firstcode = True
         print('\nData Now being created.')
         for icode in np.arange(N_angles):
-            (outdata,noisedata) = self.__makeData__(icode)
+            (outdata,noisedata) = self.__makeBeam__(icode,omeg,npts)
             if firstcode:
                 (Np,Nr) = outdata.shape
                 (NNP,NNr) = noisedata.shape
@@ -85,7 +89,99 @@ class RadarData(object):
             self.rawnoise[icode] = noisedata
             print('\tData for Beam {0:d} of {1:d} created.'.format(icode,N_angles))
             
+    def __makeBeam__(self,beamcode,omeg,npts):
+
+        range_gates = self.simparams['Rangegates']
+        centangles = self.simparams['angles'][beamcode]
+        #beamwidths = self.sensdict['BeamWidth']
+        pulse = self.simparams['Pulse']
+        sensdict = self.sensdict
+        # This is the time vector the data is changing its parameters under.        
+        data_time_vec = self.Ionocont.Time_Vector
+        # This is the IPP for each position, this will determine how many pulses will be avalible for that position
+        PIPP = len(self.simparams['angles'])*self.simparams['IPP']
+        
+        pulse_add = beamcode*self.simparams['IPP']
+        time_lim = self.simparams['TimeLim']
+        # check for last pulse of all data and truncate number of pulses for sim
+        # to this maximum.
+        Nangle = len(self.simparams['angles'])
+        pulse_add_last = (Nangle-1)*self.simparams['IPP']
+        maxpall = np.floor((time_lim-pulse_add_last)/PIPP)
+        
+        NNs = self.simparams['Noisesamples']
+        NNp = self.simparams['Noisepulses']
+        # determine the number of pulses per time period that will be running
+        pulse_times = np.arange(pulse_add,time_lim,PIPP)
+        pulse_times = pulse_times[:maxpall]
+        N_pulses = sp.zeros(data_time_vec.shape)
+        time_lim_vec = np.append(data_time_vec,time_lim)
+        time_lim_vec = time_lim_vec[1:]
+        for itime in np.arange(len(N_pulses)):
+            pulse_log = pulse_times<time_lim_vec[itime]
+            N_pulses[itime] = pulse_log.sum()
+            pulse_times = pulse_times[~pulse_log]
             
+        lp_pnts = len(pulse)
+        samp_num = np.arange(lp_pnts)
+        isamp = 0
+        N_rg = len(range_gates)# take the size 
+        N_samps = N_rg +lp_pnts-1
+        Np = N_pulses.sum()
+        out_data = sp.zeros((Np,N_samps),dtype=sp.complex128)
+        rho = self.Ionocont.Sphere_Coords[:,0]
+        Az = self.Ionocont.Sphere_Coords[:,1]
+        El = self.Ionocont.Sphere_Coords[:,2]
+        rng_len=self.sensdict['t_s']*v_C_0/1000.0
+        (Nloc,Ndtime,speclen) = self.allspecs.shape
+        weight = self.sensdict['ArrayFunc'](Az,El,centangles[0],centangles[1],sensdict['Angleoffset'])
+        params_dict = {}
+        # go through the spectrums at each range gate
+        for isamp in np.arange(len(range_gates)):
+            range = range_gates[isamp]
+            
+            range_m = range*1e3
+            rnglims = [range-rng_len/2.0,range+rng_len/2.0]
+            rangelog = (rho>=rnglims[0])&(rho<rnglims[1])
+            cur_pnts = samp_num+isamp
+                        
+            if np.sum(rangelog)==0:
+                pdb.set_trace()
+            #create the weights and weight location based on the beams pattern.
+            weight_cur =weight[rangelog]
+           # pdb.set_trace()
+            weight_cur = weight_cur/weight_cur.sum()
+            
+            specsinrng = self.allspecs[rangelog]
+            specsinrng = specsinrng*np.tile(weight_cur[:,np.newaxis,np.newaxis],(1,Ndtime,speclen))            
+            specsinrng = specsinrng.sum(0)
+            ipulse = 0
+            #pdb.set_trace()
+            for itimed in np.arange(Ndtime):       
+                for i_curtime in np.arange(N_pulses[itimed]):
+                    cur_spec = specsinrng[itimed]
+                    
+                    cur_filt = np.sqrt(np.fft.ifftshift(cur_spec))                          
+                    
+                    #calculated the power at each point                            
+                    pow_num = sensdict['Pt']*sensdict['Ksys'][beamcode]*sensdict['t_s'] # based off new way of calculating
+                    pow_den = range_m**2
+                    # create data
+                    cur_pulse_data = MakePulseData(pulse,cur_filt)
+                    
+                    # find the varience of the complex data
+                    cur_pulse_data = cur_pulse_data*np.sqrt(pow_num/pow_den)
+                    cur_pulse_data = cur_pulse_data
+                    out_data[ipulse,cur_pnts] = cur_pulse_data+out_data[ipulse,cur_pnts]
+                    ipulse+=1
+            params_dict[range] = self.Ionocont.getclosestsphere(np.array([range,centangles[0],centangles[1]]))[0]
+        # Noise spectrums
+        Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
+        Noise = np.sqrt(Noisepwr/2)*(np.random.randn(Np,N_samps).astype(complex)+1j*np.random.randn(Np,N_samps).astype(complex))
+        noisesamples = np.sqrt(Noisepwr/2)*(np.random.randn(NNp,NNs).astype(complex) + 1j*np.random.randn(NNp,NNs).astype(complex))
+        self.paramdict[centangles] = params_dict
+        return(out_data +Noise,noisesamples)   
+        
     def __makeData__(self,beamcode):
         """This is an internal method that is used by the constructor function to
         create I\Q data for each beam.
