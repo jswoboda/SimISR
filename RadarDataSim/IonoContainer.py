@@ -3,12 +3,16 @@
 Holds the IonoContainer class that contains the ionospheric parameters.
 @author: John Swoboda
 """
+import os
+import inspect
+import pdb
+import posixpath
 
 import numpy as np
 import scipy as sp
 import scipy.io as sio
 import scipy.interpolate
-import pdb
+import tables
 # From my 
 from ISSpectrum import ISSpectrum
 from const.physConstants import v_C_0, v_Boltz, v_epsilon0
@@ -18,7 +22,7 @@ from utilFunctions import Chapmanfunc, TempProfile
 class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will 
     make the spectrums for each point."""
-    def __init__(self,coordlist,paramlist,times = None,sensor_loc = [0,0,0],ver =0,coordvecs = None):
+    def __init__(self,coordlist,paramlist,times = None,sensor_loc = [0,0,0],ver =0,coordvecs = None,paramnames=None):
         """ This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
         Inputs:
@@ -33,13 +37,14 @@ class IonoContainer(object):
         coordlist is a spherical coordinates.
         coordvecs - (Optional) A dictionary that holds the individual coordinate vectors.
         if sphereical coordinates keys are 'r','theta','phi' if cartisian 'x','y','z'.
+        paramnames - This is a list or number numpy array of numbers for each parameter in the 
         """
         r2d = 180.0/np.pi
         d2r = np.pi/180.0
         # Set up the size for the time vector if its not given.
         Ndims = paramlist.ndim
         psizetup = paramlist.shape
-        if times==None:
+        if times is None:
             if Ndims==3:
                 times = np.arange(psizetup[1])
             else:
@@ -60,9 +65,11 @@ class IonoContainer(object):
             
             self.Cart_Coords = coordlist        
             self.Sphere_Coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
-            if coordvecs!= None:
-                if set(coordvecs.keys())!={'x','y','z'}:
+            if coordvecs is not None:
+                if set(coordvecs)!={'x','y','z'}:
                     raise NameError("Keys for coordvecs need to be 'x','y','z' ")
+            else:
+                coordvecs = ['x','y','z']
             
         elif ver==1:
             R_vec = coordlist[:,0]
@@ -75,13 +82,23 @@ class IonoContainer(object):
             
             self.Cart_Coords = sp.array([X_vec,Y_vec,Z_vec]).transpose()        
             self.Sphere_Coords = coordlist
-            if coordvecs!= None:
-                if set(coordvecs.keys())!={'r','theta','phi'}:
+            if coordvecs is not None:
+                if set(coordvecs)!={'r','theta','phi'}:
                     raise NameError("Keys for coordvecs need to be 'r','theta','phi' ")
+            else:
+                 coordvecs = ['r','theta','phi']
+        # used to deal with the change in the files
+        if type(coordvecs)==np.ndarray:
+            coordvecs = [str(ic) for ic in coordvecs]
             
         self.Param_List = paramlist
         self.Time_Vector = times
         self.Coord_Vecs = coordvecs
+        self.Sensor_loc = sensor_loc
+        if paramnames is None:
+            self.Param_Names = np.arange(paramlist.shape[-1])
+        else:
+            self.Param_Names = paramnames
     def getclosestsphere(self,coords):
         d2r = np.pi/180.0
         (R,Az,El) = coords
@@ -91,7 +108,15 @@ class IonoContainer(object):
         cartcoord = np.array([x_coord,y_coord,z_coord])
         return self.getclosest(cartcoord)
     def getclosest(self,coords):
-        """"""
+        """This method will get the closest set of parameters in the coordinate space. It will return
+        the parameters from all times.
+        Input
+        coords - A list of x,y and z coordinates.
+        Output
+        paramout - A NtxNp array from the closes output params
+        sphereout - A Nc length array The sphereical coordinates of the closest point.
+        cartout -  Cartisian coordinates of the closes point.
+        """
         X_vec = self.Cart_Coords[:,0]
         Y_vec = self.Cart_Coords[:,1]
         Z_vec = self.Cart_Coords[:,2]
@@ -113,21 +138,106 @@ class IonoContainer(object):
         inputs
         filename - A string for the file name.
         """
-        outdict = {'Cart_Coords':self.Cart_Coords,'Sphere_Coords':self.Sphere_Coords,\
-            'Param_List':self.Param_List,'Time_Vector':self.Time_Vector}
-        if self.Coord_Vecs!=None:    
-            #fancy way of combining dictionaries
-            outdict = dict(outdict.items()+self.Coord_Vecs.items())
-            
+        #outdict = {'Cart_Coords':self.Cart_Coords,'Sphere_Coords':self.Sphere_Coords,\
+        #    'Param_List':self.Param_List,'Time_Vector':self.Time_Vector}
+#        if self.Coord_Vecs!=None:    
+#            #fancy way of combining dictionaries
+#            outdict = dict(outdict.items()+self.Coord_Vecs.items())
+        outdict = vars(self)
         sio.savemat(filename,mdict=outdict)
+    def saveh5(self,filename):
+        
+        h5file = tables.openFile(filename, mode = "w", title = "IonoContainer out.")
+        vardict = vars(self)
+        try:
+            # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
+            # Make group for each dictionary
+            for cvar in vardict.keys():
+                #group = h5file.create_group(posixpath.sep, cvar,cvar +'dictionary')
+                if type(vardict[cvar]) ==dict: # Check if dictionary
+                    dictkeys = vardict[cvar].keys()
+                    group2 = h5file.create_group('/',cvar,cvar+' dictionary')
+                    for ikeys in dictkeys:
+                        h5file.createArray(group2,ikeys,vardict[cvar][ikeys],'Static array')
+                else:
+                    h5file.createArray('/',cvar,vardict[cvar],'Static array')
+            h5file.close()
+        except Exception as inst:
+            print type(inst)
+            print inst.args
+            print inst
+            h5file.close()
+            raise NameError('Failed to write to h5 file.')
+    
     @staticmethod
     def readmat(filename):
-         indata = sio.loadmat(filename)
-         if "sensor_loc" in indata.keys():
-             return IonoContainer(indata['Cart_Coords'],indata['Param_List'],indata['Time_Vector'],indata['Param_List'])
-         else:
-             return IonoContainer(indata['Cart_Coords'],indata['Param_List'],indata['Time_Vector'])
-             
+        indata = sio.loadmat(filename,chars_as_strings=True)
+        vardict = {'coordlist':'Cart_Coords','paramlist':'Param_List',\
+            'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
+            'paramnames':'Param_Names'}
+        outdict = {}
+        for ikey in vardict.keys():
+            if vardict[ikey] in indata.keys():
+                outdict[ikey] = indata[vardict[ikey]]
+        #pdb.set_trace()
+        return IonoContainer(**outdict)
+    @staticmethod
+    
+    def readh5(filename):
+        vardict = {'coordlist':'Cart_Coords','paramlist':'Param_List',\
+            'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
+            'paramnames':'Param_Names'}
+        vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
+        outdict = {} 
+        
+        h5file=tables.openFile(filename)
+        output={}
+        # Read in all of the info from the h5 file and put it in a dictionary.
+        for group in h5file.walkGroups(posixpath.sep):
+            output[group._v_pathname]={}
+            for array in h5file.listNodes(group, classname = 'Array'):
+                output[group._v_pathname][array.name]=array.read()
+        h5file.close()
+        outarr = [pathparts(ipath) for ipath in output.keys() if len(pathparts(ipath))>0]
+        outlist = []
+        basekeys  = output[posixpath.sep].keys()
+        # Determine assign the entries to each entry in the list of variables.
+        for ivar in vardict2.keys():
+            dictout = False
+            for npath,ipath in enumerate(outarr):
+                if ivar==ipath[0]:
+                    outlist.append(output[output.keys()[npath]])
+                    dictout=True
+                    break
+            if dictout:
+                continue
+           
+            if ivar in basekeys:
+                outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
+        
+        return IonoContainer(**outdict)
+    def __eq__(self,self2):
+        """This is the == operator """
+        vardict = vars(self)
+        vardict2 = vars(self2)
+
+        for ivar in vardict.keys():
+            if ivar not in vardict2.keys():
+                return False
+            if type(vardict[ivar])!=type(vardict2[ivar]):
+                return False
+            if type(vardict[ivar])==np.ndarray:
+                a = np.ma.array(vardict[ivar],mask=np.isnan(vardict[ivar]))
+                blah = np.ma.array(vardict2[ivar],mask=np.isnan(vardict2[ivar]))
+                if not np.ma.allequal(a,blah):
+                    return False
+            else:
+                if vardict[ivar]!=vardict2[ivar]:
+                    return False
+            return True
+    def __ne__(self,self2):
+        '''This is the != operator. '''
+        return not self.__eq__(self2)
     def makeallspectrums(self,sensdict,npts):
         
         #npts is going to be lowered by one because of this.        
@@ -176,6 +286,9 @@ class IonoContainer(object):
                 outspecs[i_x,i_t] = cur_spec_weighted
                 
         return (omeg,outspecs,npts)
+    def makespectruminstance(self,sensdict,npts):
+        (omeg,outspecs,npts) = self.makeallspectrums(sensdict,npts)
+        return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
     def makespectrums(self,range_gates,centangles,beamwidths,sensdict):
         """ Creates a spectrum for each range gate, it will be assumed that the 
         spectrums for each range will be averaged by adding the noisy signals
@@ -506,7 +619,15 @@ class IonoContainer(object):
         return (omeg,spec_ar,params_ar)
 
 # utility functions
-            
+def pathparts(path):
+    ''' '''
+    components = [] 
+    while True:
+        (path,tail) = posixpath.split(path)
+        if tail == "":
+            components.reverse()
+            return components
+        components.append(tail)       
     
 def MakeTestIonoclass(testv=False,testtemp=False):
     """ This function will create a test ionoclass with an electron density that
@@ -555,6 +676,8 @@ def MakeTestIonoclass(testv=False,testtemp=False):
     Icont1 = IonoContainer(coordlist=coords,paramlist=params)
     return Icont1
 if __name__== '__main__':
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    testpath = os.path.join(os.path.split(curpath)[0],'Test')
     
     Icont1 = MakeTestIonoclass()
     angles = [(90,85)]
@@ -563,4 +686,8 @@ if __name__== '__main__':
 
     range_gates = np.arange(250.0,500.0,sensdict['t_s']*v_C_0/1000)
     (omeg,mydict,myparams) = Icont1.makespectrums(range_gates,angles[0],sensdict['BeamWidth'],sensdict)
-    Icont1.savemat('test.mat')
+    Icont1.savemat(os.path.join(testpath,'testiono.mat'))
+    Icont1.saveh5(os.path.join(testpath,'testiono.h5'))
+    
+    Icont2 = IonoContainer.readmat(os.path.join(testpath,'testiono.mat'))
+    Icont3 = IonoContainer.readh5(os.path.join(testpath,'testiono.h5'))
