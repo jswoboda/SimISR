@@ -41,7 +41,7 @@ def getConst(typestr,angles = None):
     
     (xin,yin) = angles2xy(az,el)
     points = sp.vstack((xin,yin)).transpose()
-    if angles !=None:
+    if angles is not None:
         (xvec,yvec) = angles2xy(angles[:,0],angles[:,1])
         ksysout = griddata(points, ksys, (xvec, yvec), method='nearest')
     else:

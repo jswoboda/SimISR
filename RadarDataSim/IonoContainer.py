@@ -22,6 +22,7 @@ from utilFunctions import Chapmanfunc, TempProfile
 class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will 
     make the spectrums for each point."""
+    #%% Init function
     def __init__(self,coordlist,paramlist,times = None,sensor_loc = [0,0,0],ver =0,coordvecs = None,paramnames=None):
         """ This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
@@ -99,6 +100,8 @@ class IonoContainer(object):
             self.Param_Names = np.arange(paramlist.shape[-1])
         else:
             self.Param_Names = paramnames
+            
+    #%% Getting closest objects
     def getclosestsphere(self,coords):
         d2r = np.pi/180.0
         (R,Az,El) = coords
@@ -130,8 +133,46 @@ class IonoContainer(object):
         sphereout = self.Sphere_Coords[minidx]
         cartout = self.Cart_Coords[minidx]
         return (paramout,sphereout,cartout,np.sqrt(distall[minidx]))
+    #%% Interpolation methods
+    def interp(self,new_coords,ver=0,sensor_loc = None,method='linear',fill_value=np.nan):
+        """This method will take the parameters in the Param_List variable and spatially.
+        interpolate the points given the new coordinates. The method will be 
+        determined by the method input.
+        Input:
+        new_coords - A Nlocx3 numpy array. This will hold the new coordinates that
+        one wants to interpolate the data over.
+        sensor_loc - The location of the new sensor.
+        method - A string. The method of interpolation curently only accepts 'linear', 
+        'nearest' and 'cubic'
+        fill_value - The fill value for the interpolation.
+        Output:
+        iono1 - An instance of the ionocontainer class with the newly interpolated
+        parameters.
+        """
+        if sensor_loc is None:
+            sensor_loc=self.Sensor_loc 
         
+        curavalmethods = ['linear', 'nearest', 'cubic']
+        interpmethods = ['linear', 'nearest', 'cubic']
+        if method not in curavalmethods:
+            raise ValueError('Must be one of the following methods: '+ str(curavalmethods))
+        (Nloc,Nt,Nparams) = self.Param_List.shape
+        Mloc = new_coords.shape[0]
+        New_param = np.zeros((Mloc,Nt,Nparams),dtype=self.Param_List.dtype)
+        curcoords = self.Cart_Coords
+        for itime in np.arange(Nt):
+            for iparam in np.arange(Nparams):
+                curparam =self.Param_List[:,itime,iparam]       
+                
+                if method in interpmethods:
+                    intparam = scipy.interpolate.griddata(curcoords,curparam,new_coords,method,fill_value) 
+                    New_param[:,itime,iparam] = intparam
+                    
         
+        return IonoContainer(new_coords,New_param,self.Time_Vector,sensor_loc,ver,self.Coord_Vecs,self.Param_Names)
+                    
+        
+     #%% Read and Write Methods   
     def savemat(self,filename):
         """ This method will write out a structured mat file and save information
         from the class.
@@ -145,8 +186,11 @@ class IonoContainer(object):
 #            outdict = dict(outdict.items()+self.Coord_Vecs.items())
         outdict = vars(self)
         sio.savemat(filename,mdict=outdict)
-    def saveh5(self,filename):
         
+    def saveh5(self,filename):
+        """This method will save the instance of the class to a structured h5 file. 
+        Input:
+        filename - A string for the file name."""
         h5file = tables.openFile(filename, mode = "w", title = "IonoContainer out.")
         vardict = vars(self)
         try:
@@ -170,7 +214,11 @@ class IonoContainer(object):
             raise NameError('Failed to write to h5 file.')
     
     @staticmethod
+    
     def readmat(filename):
+        """This method will read an instance of the class from a mat file. 
+        Input:
+        filename - A string for the file name."""
         indata = sio.loadmat(filename,chars_as_strings=True)
         vardict = {'coordlist':'Cart_Coords','paramlist':'Param_List',\
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
@@ -184,6 +232,10 @@ class IonoContainer(object):
     @staticmethod
     
     def readh5(filename):
+        """This method will read an instance of the class from a structured h5 file. 
+        Input:
+        filename - A string for the file name."""
+        
         vardict = {'coordlist':'Cart_Coords','paramlist':'Param_List',\
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
             'paramnames':'Param_Names'}
@@ -216,6 +268,7 @@ class IonoContainer(object):
                 outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
         
         return IonoContainer(**outdict)
+    #%% Operator Methods
     def __eq__(self,self2):
         """This is the == operator """
         vardict = vars(self)
@@ -235,10 +288,25 @@ class IonoContainer(object):
                 if vardict[ivar]!=vardict2[ivar]:
                     return False
             return True
+            
     def __ne__(self,self2):
         '''This is the != operator. '''
         return not self.__eq__(self2)
+        
+    #%% Spectrum methods
     def makeallspectrums(self,sensdict,npts):
+        """This will create a numpy array of all of the spectrums for the data in 
+        the instance of the class.
+        inputs:
+        sensdict - The structured dictionary of for the sensor.
+        npts - The number of points the spectrum is to be evaluated at.
+        Output:
+        omeg - A npts length numpy array. The frequency points that the ISR spectrum 
+        is evaluated over in Hz
+        outspecs - A NlocxNtxnpts numpy array. The power spectrums for the plasma 
+        in the entire instance of the class. The spectrum will be the correct power
+        level for the plasma parameters
+        npts - The actual number of points that the spectrum is evaluated over."""
         
         #npts is going to be lowered by one because of this.        
         if np.mod(npts,2)==0:
@@ -287,340 +355,21 @@ class IonoContainer(object):
                 
         return (omeg,outspecs,npts)
     def makespectruminstance(self,sensdict,npts):
+        """This will create another instance of the Ionocont class 
+        inputs:
+        sensdict - The structured dictionary of for the sensor.
+        npts - The number of points the spectrum is to be evaluated at.
+        Output:
+        Iono1 - An instance of the IonoContainer class with the spectrums as the
+        param vectors and the param names will be the the frequency points """
         (omeg,outspecs,npts) = self.makeallspectrums(sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
-    def makespectrums(self,range_gates,centangles,beamwidths,sensdict):
-        """ Creates a spectrum for each range gate, it will be assumed that the 
-        spectrums for each range will be averaged by adding the noisy signals
-        Inputs:
-        range_gates: Numpy array for each range sample.
-        centangles: The center angle of each beam in a 2xNb numpy array.
-        beamwidths: The beam width of the beams az and el.
-        sensdict: The dictionary that holds the sensor parameters.
-        Outputs:
-        omeg: A numpy array of frequency samples.
-        rng_dict: A dictionary which the keys are the range gate values in km which hold the spectrums
-        params: A dictionary with keys of the range gate values in km that hold the parameters"""
-        
-        az_limits = [centangles[0]-beamwidths[0]/2.0,centangles[0]+beamwidths[0]/2]
-        el_limits = [centangles[1]-beamwidths[1]/2.0,centangles[1]+beamwidths[1]/2]
-        # filter in az and el
-        az_cond = (self.Sphere_Coords[:,1]>az_limits[0]) & (self.Sphere_Coords[:,1]<az_limits[1])
-        el_cond = (self.Sphere_Coords[:,2]>el_limits[0]) & (self.Sphere_Coords[:,2]<el_limits[1])
-        
-        d2r = np.pi/180.0
-        rng_len = sensdict['t_s']*v_C_0/1000.0
-        # Reduce range dimesion and parameters to a single beam
-        rho = self.Sphere_Coords[:,0]
-        # Go through each range gate until 
-        rng_dict = dict()
-        param_dict = dict()
-        #pdb.set_trace()      
-        centanglesr = [iang*d2r for iang in centangles]
-        for rng in range_gates:
-            rnglims = [rng-rng_len/2.0,rng+rng_len/2.0]
-            rng_cond = (rho>rnglims[0]) & (rho<rnglims[1])
-            cur_cond  = rng_cond & az_cond & el_cond
-            if cur_cond.sum()==0:                
-                #pdb.set_trace()
-                x = rng*np.cos(centanglesr[1])*np.cos(centanglesr[0])
-                y = rng*np.cos(centanglesr[1])*np.sin(centanglesr[0])
-                z = rng*np.sin(centanglesr[1])
-                checkmat = np.tile(np.array([x,y,z]),(len(cur_cond),1))
-                error = checkmat-self.Cart_Coords
-                argmin_dist = ((error**2).sum(1)).argmin()
-                cur_cond[argmin_dist] = True
-            (omeg,specs,params) = self.__getspectrums2__(cur_cond,sensdict)
-            rng_dict[rng] = specs
-            param_dict[rng] = params
-        return (omeg,rng_dict,param_dict)
-    def __getspectrums__(self,conditions,sensdict,weights=None,npts=128):
-        """ This will get a spectrum for a specific point in range and angle space.
-        It will take all of the spectrums in an area and average them all together
-        to get a single spectrum.  """        
-        params_red = self.Param_List[conditions]
-        num_true = conditions.sum()
-        
-        myspec = ISSpectrum(nspec = npts-1,sampfreq=sensdict['fs'])
-        
-        
-        datashape = params_red.shape
-        #pdb.set_trace()
-        if weights == None:
-            weights = sp.ones(datashape[0])
-        #normalize the weights
-        weights = weights/weights.sum()
-        spec_dict = dict()
-        
-        # case 1 have both a time and space dimension
-        if params_red.ndim==3:
-            # get the number of times
-            num_times = datashape[1]
-            for i_time in np.arange(num_times):
-                first_thing = True
-                for i_pos in np.arange(datashape[0]):
-                    
-                    cur_params = params_red[i_pos,i_time,:]
-                    
-                     # get the plasma parameters
-                    Ti = cur_params[0]
-                    Tr = cur_params[1]
-                    Te = Ti*Tr
-                    N_e = 10**cur_params[2]
-                    debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
-                    rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
-                    (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                        cur_params[3], cur_params[4], cur_params[5])
-                    cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
-                    cur_spec = cur_spec*weights[i_pos]
-                    # Ion velocity                    
-                    if len(cur_params)>6:
-                        Vi = cur_params[-1]
-                        Fd = -2.0*Vi/sensdict['lamb']
-                        omegnew = omeg-Fd
-                        cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
-                    
-                    if first_thing ==True:
-                        spec_out = cur_spec*weights[i_pos]
-                    else:
-                        spec_out = cur_spec*weights[i_pos]+spec_out
-                
-                spec_dict[i_time] =spec_out 
-                
-        #case2 have only  a time dimension, only one space elment
-        elif num_true ==1 and params_red.ndim==2:
-            # get the number of times
-            num_times = datashape[0]
-            for i_time in np.arange(num_times):
-                    
-                cur_params = params_red[i_time,:]
-                (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                    cur_params[3], cur_params[4], cur_params[5])
-                # Ion velocity                    
-                if len(cur_params)>6:
-                    Vi = cur_params[-1]
-                    Fd = -2.0*Vi/sensdict['lamb']
-                    omegnew = omeg-Fd
-                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
-                spec_dict[i_time] =cur_spec
-        #case 3 have a space but no time
-        elif num_true !=1 and params_red.ndim==2:
-            
-            
-            first_thing = True
-            
-            for i_pos in np.arange(datashape[0]):
-                
-                cur_params = params_red[i_pos,:]
-                (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                    cur_params[3], cur_params[4], cur_params[5])
-                cur_spec = cur_spec*weights[i_pos]
-                # Ion velocity                    
-                if len(cur_params)>6:
-                    Vi = cur_params[-1]
-                    Fd = -2.0*Vi/sensdict['lamb']
-                    omegnew = omeg-Fd
-                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
-                if first_thing:
-                    spec_out = cur_spec
-                    first_thing= False
-                else:
-                    spec_out = cur_spec+spec_out
-            spec_dict[0] =spec_out 
-        # case 4
-        else:
-            cur_params = params_red
-            (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                cur_params[3], cur_params[4], cur_params[5])
-            # Ion velocity                    
-            if len(cur_params)>6:
-                Vi = cur_params[-1]
-                Fd = -2.0*Vi/sensdict['lamb']
-                omegnew = omeg-Fd
-                cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0)(omegnew) 
-            spec_dict[0] = cur_spec
-        return (omeg,spec_dict)
-        
-    def __getspectrums2__(self,conditions,sensdict,weights=None,npts=128):
-        """ This will get a spectrum for a specific point in range and angle space.
-        It will take all of the spectrums and put them into a dictionary. The spectrums
-        will be scaled so that power based off of the parameters will be included. 
-        Specifically the sum of the spectrum will equal N^2*a where N is the length
-        of the spectrum and a is the power derived from the parameters of 
-        inputs:
-        conditions: An array the same size as the param array that is full of bools which 
-        determine what parameters are used.
-        sensdict: The dictionary of sensor parameters
-        weights: Weighting to the different spectrums that will be taken.
-        Outputs: 
-        omeg: A numpy array of frequency samples.
-        spec_ar: A numpy array that holds all of the spectrums that are in the 
-        present time and space point selected.
-        params_ar: A numpy array that holds all of the parameters in the present 
-        time and space."""        
-        params_red = self.Param_List[conditions]
-        num_true = conditions.sum()
-        
-        myspec = ISSpectrum(nspec = npts-1,sampfreq=sensdict['fs'])
-        
-        datashape = params_red.shape
-        nparams = datashape[-1]
-#        pdb.set_trace()
 
-        # case 1 have both a time and space dimension
-        if params_red.ndim==3:
-            # get the number of times
-            num_times = datashape[1]
-            num_locs = datashape[0]
-            spec_ar = sp.zeros((num_locs,num_times,npts-1))
-            # need to change this if moving to a new spectrum
-            params_ar = sp.zeros((num_locs,num_times,nparams))
-            for i_time in np.arange(num_times):
-                for i_pos in np.arange(datashape[0]):
-                    
-                    cur_params = params_red[i_pos,i_time,:]
-                    
-                    # get the plasma parameters
-                    Ti = cur_params[0]
-                    Tr = cur_params[1]
-                    Te = Ti*Tr
-                    N_e = 10**cur_params[2]
-                    # Make the the scaling for the power
-                    debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
-                    rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
-                    # Make the spectrum
-                    (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                        cur_params[3], cur_params[4], cur_params[5])
-                    
-                    cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
-                    # Ion velocity                    
-                    if len(cur_params)>6:
-                        Vi = cur_params[-1]
-                        Fd = -2.0*Vi/sensdict['lamb']
-                        omegnew = omeg-Fd
-                        fillspot = np.argmax(omeg)
-                        fillval = cur_spec[fillspot]
-                        cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew)                 
-                        
-                    spec_ar[i_pos,i_time] =cur_spec
-                    params_ar[i_pos,i_time] = cur_params
-                
-        #case2 have only  a time dimension, only one space elment
-        elif num_true ==1 and params_red.ndim==2:
-            # get the number of times
-            num_times = datashape[0]
-            num_locs = 1
-            spec_ar = sp.zeros((num_locs,num_times,npts-1))
-            # need to change this if moving to a new spectrum
-            params_ar = sp.zeros((num_locs,num_times,nparams))
-            for i_time in np.arange(num_times):
-                    
-                cur_params = params_red[i_time,:]
-                # get the plasma parameters
-                Ti = cur_params[0]
-                Tr = cur_params[1]
-                Te = Ti*Tr
-
-                N_e = 10**cur_params[2]
-                # Make the the scaling for the power
-                debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
-                rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
-                # Make the spectrum
-                (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                    cur_params[3], cur_params[4], cur_params[5])
-                
-                cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
-                # Ion velocity    
-#                pdb.set_trace()                
-                if len(cur_params)>6:
-                    Vi = cur_params[-1]
-                    Fd = -2.0*Vi/sensdict['lamb']
-                    omegnew = omeg-Fd
-                    fillspot = np.argmax(omeg)
-                    fillval = cur_spec[fillspot]
-                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew) 
-                spec_ar[0,i_time] =cur_spec
-                params_ar[0,i_time] = cur_params
-                
-        #case 3 have a space but no time
-        elif num_true !=1 and params_red.ndim==2:
-            # get the number of times
-            num_times = 1
-            num_locs = datashape[0]
-            spec_ar = sp.zeros((num_locs,num_times,npts-1))
-            # need to change this if moving to a new spectrum
-            params_ar = sp.zeros((num_locs,num_times,nparams))
-            for i_pos in np.arange(num_locs):
-                
-                cur_params = params_red[i_pos,:]
-                # get the plasma parameters
-                Ti = cur_params[0]
-                Tr = cur_params[1]
-                Te = Ti*Tr
-                N_e = 10**cur_params[2]
-                
-                # Make the the scaling for the power
-                debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
-                rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
-                # Make the spectrum
-                (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                    cur_params[3], cur_params[4], cur_params[5])
-                
-                cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
-                # Ion velocity                    
-                if len(cur_params)>6:
-                    Vi = cur_params[-1]
-                    Fd = -2.0*Vi/sensdict['lamb']
-                    omegnew = omeg-Fd
-                    fillspot = np.argmax(omeg)
-                    fillval = cur_spec[fillspot]
-                    cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew) 
-                spec_ar[i_pos,0] =cur_spec 
-                params_ar[i_pos,0] =cur_params
-        # case 4
-        else:
-            num_times = 1
-            num_locs =1
-            
-            num_times = datashape[1]
-            num_locs = datashape[0]
-            spec_ar = sp.zeros((num_locs,num_times,npts-1))
-            # need to change this if moving to a new spectrum
-            params_ar = sp.zeros((num_locs,num_times,nparams))
-            
-            cur_params = params_red
-            # get the plasma parameters
-            Ti = cur_params[0]
-            Tr = cur_params[1]
-            Te = Ti*Tr
-            N_e = 10**cur_params[2]
-            
-            # Make the the scaling for the power
-            debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
-            rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
-            # Make the spectrum
-            (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                cur_params[3], cur_params[4], cur_params[5])
-                
-            cur_spec = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()    
-            # Ion velocity                    
-            if len(cur_params)>6:
-                Vi = cur_params[-1]
-                Fd = -2.0*Vi/sensdict['lamb']
-                omegnew = omeg-Fd
-                fillspot = np.argmax(omeg)
-                fillval = cur_spec[fillspot]
-                cur_spec =scipy.interpolate.interp1d(omeg,cur_spec,bounds_error=0,fill_value=fillval)(omegnew) 
-            spec_ar[0,0] = cur_spec
-            params_ar[0,0] = cur_params
-        
-        if 'omeg' not in locals():
-            pdb.set_trace()
-        return (omeg,spec_ar,params_ar)
-
-# utility functions
+#%%    utility functions
 def pathparts(path):
-    ''' '''
+    '''This will break up a path name into componenets using recursion
+    Input - path a string seperated by a posix path seperator.
+    Output - A list of strings of the path parts.'''
     components = [] 
     while True:
         (path,tail) = posixpath.split(path)
@@ -675,7 +424,10 @@ def MakeTestIonoclass(testv=False,testtemp=False):
     
     Icont1 = IonoContainer(coordlist=coords,paramlist=params)
     return Icont1
+    #%% Main
 if __name__== '__main__':
+    
+
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     testpath = os.path.join(os.path.split(curpath)[0],'Test')
     
@@ -686,8 +438,17 @@ if __name__== '__main__':
 
     range_gates = np.arange(250.0,500.0,sensdict['t_s']*v_C_0/1000)
     (omeg,mydict,myparams) = Icont1.makespectrums(range_gates,angles[0],sensdict['BeamWidth'],sensdict)
+    
     Icont1.savemat(os.path.join(testpath,'testiono.mat'))
     Icont1.saveh5(os.path.join(testpath,'testiono.h5'))
-    
     Icont2 = IonoContainer.readmat(os.path.join(testpath,'testiono.mat'))
     Icont3 = IonoContainer.readh5(os.path.join(testpath,'testiono.h5'))
+    
+    if Icont1==Icont2:
+        print "Mat file saving and reading works"
+    else:
+        print "Something is wrong with the Mat file writing and reading"
+    if Icont1==Icont3:
+        print "h5 file saving and reading works"
+    else:
+        print "Something is wrong with the h5 file writing and reading"
