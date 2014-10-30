@@ -38,7 +38,7 @@ class RadarData(object):
        
     """
     
-    def __init__(self,ionocont,sensdict,angles,IPP,Tint,time_lim, pulse,rng_lims,noisesamples =28,noisepulses=100,npts = 128):
+    def __init__(self,ionocont,sensdict,angles,IPP,Tint,time_lim, pulse,rng_lims,noisesamples =28,noisepulses=100,npts = 128,type=0):
         """This function will create an instance of the RadarData class.  It will
         take in the values and create the class and make raw IQ data.
         Inputs:
@@ -72,9 +72,15 @@ class RadarData(object):
         self.noiselag = np.zeros((N_times,N_angles,len(pulse)),dtype=np.complex128)
         self.fittedarray = np.zeros((N_times,N_angles,N_range,N_params))
         self.fittederror = np.zeros((N_times,N_angles,N_range,N_params,N_params))
-        print "All spectrums being created"
-        (omeg,self.allspecs,npts) = self.Ionocont.makeallspectrums(sensdict,npts)
-         
+        if type ==0:
+            print "All spectrums being created"
+            (omeg,self.allspecs,npts) = self.Ionocont.makeallspectrums(sensdict,npts)
+        elif type ==1:
+            print "All spectrums created already"
+            omeg = self.Ionocont.Param_Names
+            self.allspecs = self.Ionocont.Param_List
+            npts = len(omeg)
+            
         firstcode = True
         print('\nData Now being created.')
         for icode in np.arange(N_angles):
@@ -181,7 +187,7 @@ class RadarData(object):
         noisesamples = np.sqrt(Noisepwr/2)*(np.random.randn(NNp,NNs).astype(complex) + 1j*np.random.randn(NNp,NNs).astype(complex))
         self.paramdict[centangles] = params_dict
         return(out_data +Noise,noisesamples)   
-        
+    #%% Trash this    
     def __makeData__(self,beamcode):
         """This is an internal method that is used by the constructor function to
         create I\Q data for each beam.
@@ -266,7 +272,7 @@ class RadarData(object):
         noisesamples = np.sqrt(Noisepwr/2)*(np.random.randn(NNp,NNs).astype(complex) + 1j*np.random.randn(NNp,NNs).astype(complex))
 
         return(out_data +Noise,noisesamples)               
-    
+   #%% Processing 
     def processdata(self,timevec,inttime,lagfunc=CenteredLagProduct):
         """ This will perform the the data processing and create the ACF estimates 
         for both the data and noise.
