@@ -116,6 +116,6 @@ if __name__== '__main__':
     
     Icont2 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=Nemat,times=timearr,coordvecs=coordvecsr,ver=1)
     Icont3 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=Nemat2,times=timearr,coordvecs=coordvecsr,ver=1)
-    Icont1.savemat('patchexv5.mat')
-    Icont2.savemat('patchexNEv5.mat')
-    Icont3.savemat('patchexNE2pv5.mat')
+    Icont1.savemat('patchex.mat')
+    Icont2.savemat('patchexNE.mat')
+    Icont3.savemat('patchexNE2.mat')
