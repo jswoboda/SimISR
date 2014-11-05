@@ -66,12 +66,12 @@ class RadarData(object):
         N_angles = len(angles)
         sensdict['RG'] = rng_gates
         self.sensdict = sensdict
-        #self.datadict = dict()
         self.paramdict = dict()
         self.lagarray = np.zeros((N_times,N_angles,N_range,len(pulse)),dtype=np.complex128)
         self.noiselag = np.zeros((N_times,N_angles,len(pulse)),dtype=np.complex128)
         self.fittedarray = np.zeros((N_times,N_angles,N_range,N_params))
         self.fittederror = np.zeros((N_times,N_angles,N_range,N_params,N_params))
+        # determine the type
         if type ==0:
             print "All spectrums being created"
             (omeg,self.allspecs,npts) = self.Ionocont.makeallspectrums(sensdict,npts)
