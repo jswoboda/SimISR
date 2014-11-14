@@ -10,6 +10,7 @@ a simple Chapman function and Ti=Te=1000k.
 import os, inspect
 import numpy as np
 import scipy as sp
+import scipy.io as sio
 
 # Import Main classes
 from RadarDataSim.IonoContainer import IonoContainer
@@ -122,3 +123,5 @@ if __name__== '__main__':
     Icont2 = IonoContainer(coordlist=np.column_stack((rangevecall,ang_rep)),paramlist=fittedmat,times=timearr,coordvecs=coordvecsr,ver=1)
     Icont1.savemat(os.path.join(testpath,'patchewtemp.mat'))
     Icont2.savemat(os.path.join(testpath,'patchwtempfit.mat'))
+    sio.savemat(os.path.join(testpath,'ACFdatastat.mat'),mdict=DataLags)
+    sio.savemat(os.path.join(testpath,'Noisedatastat.mat'),mdict=NoiseLags)
