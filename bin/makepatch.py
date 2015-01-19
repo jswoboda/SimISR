@@ -87,5 +87,5 @@ if __name__== '__main__':
     
     sensdict = sensconst.getConst('risr')   
     
-    Icont2 = Icont1.makespectruminstance(sensdict)
+    Icont2 = Icont1.makespectruminstance(sensdict,128)
     Icont2.savemat(os.path.join(testpath,'pathwtempdopplerspecs.mat'))
