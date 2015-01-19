@@ -1,0 +1,3 @@
+[submodule "RadarDataSim/const"]
+	path = RadarDataSim/const
+	url = https://github.com/jswoboda/PythonISRUtilities.git
