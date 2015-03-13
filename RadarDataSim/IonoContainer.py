@@ -24,7 +24,7 @@ class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will
     make the spectrums for each point."""
     #%% Init function
-    def __init__(self,coordlist,paramlist,times = None,sensor_loc = [0,0,0],ver =0,coordvecs = None,paramnames=None):
+    def __init__(self,coordlist,paramlist,times = None,sensor_loc = [0,0,0],ver =0,coordvecs = None,paramnames=None,species=None,velocity=None):
         """ This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
         Inputs:
@@ -97,6 +97,9 @@ class IonoContainer(object):
         self.Time_Vector = times
         self.Coord_Vecs = coordvecs
         self.Sensor_loc = sensor_loc
+        self.Species = species
+        if not(velocity) is None:
+            self.Velocity=velocity
         if paramnames is None:
             partparam = paramlist.shape[2:]
             paramnums = np.arange(np.product(partparam))
@@ -239,10 +242,13 @@ class IonoContainer(object):
         indata = sio.loadmat(filename,chars_as_strings=True)
         vardict = {'coordlist':'Cart_Coords','paramlist':'Param_List',\
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
-            'paramnames':'Param_Names'}
+            'paramnames':'Param_Names','species':'Species','velocity':'Velocity'}
         outdict = {}
         for ikey in vardict.keys():
             if vardict[ikey] in indata.keys():
+                if (ikey=='species') and (type(indata[vardict[ikey]]) ==sp.ndarray):
+                    indata[vardict[ikey]] = [str(''.join(letter)) for letter_array in indata[vardict[ikey]][0] for letter in letter_array]
+
                 outdict[ikey] = indata[vardict[ikey]]
         #pdb.set_trace()
         return IonoContainer(**outdict)
@@ -255,7 +261,7 @@ class IonoContainer(object):
 
         vardict = {'coordlist':'Cart_Coords','paramlist':'Param_List',\
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
-            'paramnames':'Param_Names'}
+            'paramnames':'Param_Names', 'species':'Species','velocity':'Velocity'}
         vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
         outdict = {}
 
@@ -415,6 +421,14 @@ class IonoContainer(object):
                 outspecs[i_x,i_t] = cur_spec_weighted
 
         return (omeg,outspecs,npts)
+    def combinetimes(self,self2):
+        assert self.Cart_Coords == self2.Cart_Coords, "Need to have same spatial coordinates"
+        assert self.Param_Names == self2.Param_Names, "Need to have same parameter names"
+        assert self.Species== self2.Species, "Need to have the same species"
+
+        self.Time_Vector = sp.concatenate((self.Time_Vector,self2.Time_Vector))
+        self.Velocity = sp.concatenate((self.Velocity,self2.Velocity),1)
+        self.Param_List = sp.concatenate((self.Param_List,self2.Param_List),1)
     def makespectruminstance(self,sensdict,npts):
         """This will create another instance of the Ionocont class
         inputs:
@@ -425,6 +439,13 @@ class IonoContainer(object):
         param vectors and the param names will be the the frequency points """
         (omeg,outspecs,npts) = self.makeallspectrums(sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
+    def getDoppler(self,sensorloc):
+
+        curcoords = self.Cart_Coords -sp.tile(sensorloc[:,sp.newaxis],(1,3))
+        denom = np.tile(sp.sqrt(sp.sum(curcoords**2,1))[:,sp.newaxis],(1,3))
+        unit_coords = curcoords/denom
+        Vi = (self.Velocity*unit_coords).sum(1)
+        return Vi
 
 #%%    utility functions
 def pathparts(path):
