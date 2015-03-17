@@ -421,6 +421,9 @@ class IonoContainer(object):
                 outspecs[i_x,i_t] = cur_spec_weighted
 
         return (omeg,outspecs,npts)
+    def makeallspectrumsopen(self,func,sensdict,npts):
+        return func(self,sensdict,npts)
+
     def combinetimes(self,self2):
         assert self.Cart_Coords == self2.Cart_Coords, "Need to have same spatial coordinates"
         assert self.Param_Names == self2.Param_Names, "Need to have same parameter names"
@@ -439,7 +442,7 @@ class IonoContainer(object):
         param vectors and the param names will be the the frequency points """
         (omeg,outspecs,npts) = self.makeallspectrums(sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
-    def getDoppler(self,sensorloc):
+    def getDoppler(self,sensorloc=sp.zeros(3)):
 
         curcoords = self.Cart_Coords -sp.tile(sensorloc[:,sp.newaxis],(1,3))
         denom = np.tile(sp.sqrt(sp.sum(curcoords**2,1))[:,sp.newaxis],(1,3))
