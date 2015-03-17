@@ -442,6 +442,17 @@ class IonoContainer(object):
         param vectors and the param names will be the the frequency points """
         (omeg,outspecs,npts) = self.makeallspectrums(sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
+    def makespectruminstanceopen(self,func,sensdict,npts):
+        """This will create another instance of the Ionocont class
+        inputs:
+        func - A function used to create the spectrums
+        sensdict - The structured dictionary of for the sensor.
+        npts - The number of points the spectrum is to be evaluated at.
+        Output:
+        Iono1 - An instance of the IonoContainer class with the spectrums as the
+        param vectors and the param names will be the the frequency points """
+        (omeg,outspecs,npts) = self.makeallspectrumsopen(func,sensdict,npts)
+        return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
     def getDoppler(self,sensorloc=sp.zeros(3)):
 
         curcoords = self.Cart_Coords -sp.tile(sensorloc[:,sp.newaxis],(1,3))
