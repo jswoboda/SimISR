@@ -98,8 +98,13 @@ class IonoContainer(object):
         self.Coord_Vecs = coordvecs
         self.Sensor_loc = sensor_loc
         self.Species = species
-        if not(velocity) is None:
+
+        #set up a Velocity measurement
+        if velocity is None:
+            self.Velocity=sp.zeros(self.Param_List.shape[:2])
+        else:
             self.Velocity=velocity
+        # set up a params name
         if paramnames is None:
             partparam = paramlist.shape[2:]
             paramnums = np.arange(np.product(partparam))
@@ -293,6 +298,51 @@ class IonoContainer(object):
                 outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
 
         return IonoContainer(**outdict)
+    #%% Reduce numbers
+    def coordreduce(self,coorddict):
+        assert type(coorddict)==dict, "Coorddict needs to be a dictionary"
+        ncoords = self.Cart_Coords.shape[0]
+        coordlist = ['x','y','z','r','theta','phi']
+
+        coordkeysorg = coorddict.keys()
+        coordkeys = [ic for ic in coordkeysorg if ic in coordlist]
+
+        ckeep = sp.ones(ncoords,dtype=bool)
+
+        for ic in coordkeys:
+            currlims = coorddict[ic]
+            if ic=='x':
+                tempcoords = self.Cart_Coords[:,0]
+            elif ic=='y':
+                tempcoords = self.Cart_Coords[:,1]
+            elif ic=='z':
+                tempcoords = self.Cart_Coords[:,2]
+            elif ic=='r':
+                tempcoords = self.Sphere_Coords[:,0]
+            elif ic=='theta':
+                tempcoords = self.Sphere_Coords[:,1]
+            elif ic=='phi':
+                tempcoords = self.Sphere_Coords[:,2]
+            keeptemp = sp.logical_and(tempcoords>=currlims[0],tempcoords<currlims[1])
+            ckeep = sp.logical_and(ckeep,keeptemp)
+        # prune the arrays
+        self.Cart_Coords[ckeep]
+        self.Sphere_Coords[ckeep]
+        self.Param_List[ckeep]
+        self.Velocity[ckeep]
+
+    def timereduce(self, timelims=None,timesselected=None):
+        assert (timelims is not None) and (timesselected is not None), "Need a set of limits or selected set of times"
+
+        if timelims is not None:
+            tkeep = sp.logical_and(self.Time_Vector>=timelims[0],self.Time_Vector<timelims[1])
+        if timesselected is not None:
+            tkeep = sp.in1d(self.Time_Vector,timesselected)
+        # prune the arrays
+        self.Time_Vector[:,tkeep]
+        self.Param_List[:,tkeep]
+        self.Velocity[:,tkeep]
+
     #%% Operator Methods
     def __eq__(self,self2):
         """This is the == operator """
