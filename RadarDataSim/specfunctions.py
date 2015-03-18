@@ -25,9 +25,10 @@ def ISRSspecmake(ionocont,sensdict,npts):
         for i_t in sp.arange(N_t):
             if full_grid:
                 cur_params = ionocont.Param_List[i_x,i_t]
+                cur_vel = Vi[i_x,i_t]
             else:
                 cur_params = ionocont.Param_List[i_x]
-            (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,ionocont.Species,Vi,rcsflag=True)
+            (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,ionocont.Species,cur_vel,rcsflag=True)
             cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
             outspecs[i_x,i_t] = cur_spec_weighted
 

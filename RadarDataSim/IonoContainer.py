@@ -454,11 +454,18 @@ class IonoContainer(object):
         (omeg,outspecs,npts) = self.makeallspectrumsopen(func,sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
     def getDoppler(self,sensorloc=sp.zeros(3)):
-
-        curcoords = self.Cart_Coords -sp.tile(sensorloc[:,sp.newaxis],(1,3))
+        ncoords = self.Cart_Coords.shape[0]
+        ntimes = len(self.Time_Vector)
+        if not sp.alltrue(sensorloc == sp.zeros(3)):
+            curcoords = self.Cart_Coords -sp.tile(sensorloc[sp.newaxis,:],(ncoords,1))
+        else:
+            curcoords = self.Cart_Coords
         denom = np.tile(sp.sqrt(sp.sum(curcoords**2,1))[:,sp.newaxis],(1,3))
         unit_coords = curcoords/denom
-        Vi = (self.Velocity*unit_coords).sum(1)
+#        pdb.set_trace()
+        Vi = sp.zeros((ncoords,ntimes))
+        for itime in range(ntimes):
+            Vi[:,itime] = (self.Velocity[:,itime]*unit_coords).sum(1)
         return Vi
 
 #%%    utility functions
