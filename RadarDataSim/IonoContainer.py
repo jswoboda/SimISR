@@ -204,7 +204,8 @@ class IonoContainer(object):
 #        if self.Coord_Vecs!=None:
 #            #fancy way of combining dictionaries
 #            outdict = dict(outdict.items()+self.Coord_Vecs.items())
-        outdict = vars(self)
+        outdict1 = vars(self)
+        outdict = {ik:outdict1[ik] for ik in outdict1.keys() if not(outdict1[ik] is None)}
         sio.savemat(filename,mdict=outdict)
 
     def saveh5(self,filename):
@@ -224,7 +225,8 @@ class IonoContainer(object):
                     for ikeys in dictkeys:
                         h5file.createArray(group2,ikeys,vardict[cvar][ikeys],'Static array')
                 else:
-                    h5file.createArray('/',cvar,vardict[cvar],'Static array')
+                    if not(vardict[cvar] is None):
+                        h5file.createArray('/',cvar,vardict[cvar],'Static array')
             h5file.close()
         except Exception as inst:
             print type(inst)
