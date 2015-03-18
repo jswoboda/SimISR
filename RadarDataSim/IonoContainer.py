@@ -307,7 +307,7 @@ class IonoContainer(object):
         coordkeysorg = coorddict.keys()
         coordkeys = [ic for ic in coordkeysorg if ic in coordlist]
 
-        ckeep = sp.ones(ncoords,dtype=bool)
+        ckeep = sp.zeros(ncoords,dtype=bool)
 
         for ic in coordkeys:
             currlims = coorddict[ic]
