@@ -328,8 +328,8 @@ class IonoContainer(object):
         # prune the arrays
         self.Cart_Coords=self.Cart_Coords[ckeep]
         self.Sphere_Coords=self.Sphere_Coords[ckeep]
-        self.Sphere_Coords=self.Param_List[ckeep]
-        self.Sphere_Coords=self.Velocity[ckeep]
+        self.Param_List=self.Param_List[ckeep]
+        self.Velocity=self.Velocity[ckeep]
 
     def timereduce(self, timelims=None,timesselected=None):
         assert (timelims is not None) and (timesselected is not None), "Need a set of limits or selected set of times"
