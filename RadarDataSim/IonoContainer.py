@@ -339,9 +339,9 @@ class IonoContainer(object):
         if timesselected is not None:
             tkeep = sp.in1d(self.Time_Vector,timesselected)
         # prune the arrays
-        self.Time_Vector[:,tkeep]
-        self.Param_List[:,tkeep]
-        self.Velocity[:,tkeep]
+        self.Time_Vector=self.Time_Vector[:,tkeep]
+        self.Param_List=self.Param_List[:,tkeep]
+        self.Velocity=self.Velocity[:,tkeep]
 
     #%% Operator Methods
     def __eq__(self,self2):
