@@ -73,7 +73,7 @@ class RadarData(object):
         lp_pnts = len(self.simparams['Pulse'])
         self.sensdict = sensdict
         Nr = N_rg +lp_pnts-1
-        Npall = sp.floor(time_lim/self.simparams['IPP'])
+        Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
         Npall = sp.floor(Npall/N_angles)*N_angles
         Np = Npall/N_angles
         NNP = noisepulses
