@@ -38,9 +38,9 @@ class RadarData(object):
     rawnoise: This is a NbxNpxNr numpy array that holds the raw noise IQ data.
 
     """
-    #    def __init__(self,ionocont,sensdict,angles,IPP,Tint,time_lim, pulse,rng_lims,noisesamples =28,noisepulses=100,npts = 128,type=0):
+    #    def __init__(self,ionocont,sensdict,angles,IPP,Tint,time_lim, pulse,rng_lims,noisesamples =28,noisepulses=100,npts = 128,in_type=0):
 
-    def __init__(self,Ionocont,sensdict,angles=None,IPP=None,Tint=None,time_lim=None, pulse=None,rng_lims=None,NNs =28,noisepulses=100,npts = 128,type=0,simparams=None):
+    def __init__(self,Ionocont,sensdict,angles=None,IPP=None,Tint=None,time_lim=None, pulse=None,rng_lims=None,NNs =28,noisepulses=100,npts = 128,in_type=0,simparams=None):
         """This function will create an instance of the RadarData class.  It will
         take in the values and create the class and make raw IQ data.
         Inputs:
@@ -80,14 +80,14 @@ class RadarData(object):
         self.rawdata = sp.zeros((N_angles,Np,Nr),dtype=sp.complex128)
 
         self.rawnoise = sp.zeros((N_angles,NNP,NNs),dtype=sp.complex128)
-
         if type(Ionocont)==dict:
             print "All spectrums created already"
             filetimes = Ionocont.keys()
+            filetimes.sort()
             ftimes = sp.array(filetimes)
 
             pulsetimes = sp.arange(Npall)*self.simparams['IPP']
-            pulsefile = [sp.where(itimes-ftimes>=0)[0][-1] for itimes in pulsetimes]
+            pulsefile = sp.array([sp.where(itimes-ftimes>=0)[0][-1] for itimes in pulsetimes])
             beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
 
             pulsen = sp.repeat(sp.arange(Np),N_angles)
@@ -100,7 +100,7 @@ class RadarData(object):
                 pnts = pulsefile==ifn
                 pt =pulsetimes[pnts]
                 pb = beams[pnts]
-                curdata = self.__makeTime__(self,pt,curcontainer.Time_Vector,curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
+                curdata = self.__makeTime__(pt,curcontainer.Time_Vector,curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
                 self.rawdata[beams[pnts],pulsen[pnts]] = curdata
 
             Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
@@ -111,11 +111,11 @@ class RadarData(object):
         else:
             # Initial params
 
-            # determine the type
-            if type ==0:
+            # determine the in_type
+            if in_type ==0:
                 print "All spectrums being created"
                 (omeg,self.allspecs,npts) = Ionocont.makeallspectrums(sensdict,npts)
-            elif type ==1:
+            elif in_type ==1:
                 print "All spectrums created already"
                 omeg = Ionocont.Param_Names
                 self.allspecs = Ionocont.Param_List
@@ -148,11 +148,10 @@ class RadarData(object):
         Az = Sphere_Coords[:,1]
         El = Sphere_Coords[:,2]
         rng_len=self.sensdict['t_s']*v_C_0/1000.0
-        (Nloc,Ndtime,speclen) = self.allspecs.shape
+        (Nloc,Ndtime,speclen) = allspecs.shape
 
         out_data = sp.zeros((Np,N_samps),dtype=sp.complex128)
         weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(self.simparams['angles'])}
-
         for itn, it in enumerate(pulsetimes):
             cur_t = pulse2spec[itn]
             weight = weights[beamcodes[itn]]
@@ -171,7 +170,7 @@ class RadarData(object):
                 weight_cur =weight[rangelog]
                 weight_cur = weight_cur/weight_cur.sum()
 
-                specsinrng = self.allspecs[rangelog][cur_t]
+                specsinrng = allspecs[rangelog][cur_t]
                 specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
                 cur_spec = specsinrng.sum(0)
 
