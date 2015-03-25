@@ -15,7 +15,7 @@ import pdb
 from IonoContainer import IonoContainer, MakeTestIonoclass
 from const.physConstants import v_C_0, v_Boltz
 import const.sensorConstants as sensconst
-from utilFunctions import CenteredLagProduct, MakePulseData, dict2h5
+from utilFunctions import CenteredLagProduct, MakePulseData,MakePulseDataRep, dict2h5
 
 class RadarDataFile(object):
     def __init__(self,Ionodict,sensdict,simparams,outdir,NNs =28,NNP=100,npts = 128):
@@ -76,7 +76,8 @@ class RadarDataFile(object):
         isamp = 0
         N_rg = len(range_gates)# take the size
         N_samps = N_rg +lp_pnts-1
-
+        angles = self.simparams['angles']
+        Nbeams = len(angles)
         rho = Sphere_Coords[:,0]
         Az = Sphere_Coords[:,1]
         El = Sphere_Coords[:,2]
@@ -84,43 +85,39 @@ class RadarDataFile(object):
         (Nloc,Ndtime,speclen) = allspecs.shape
         simdtype = self.simparams['dtype']
         out_data = sp.zeros((Np,N_samps),dtype=simdtype)
-        weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(self.simparams['angles'])}
-        for itn, it in enumerate(pulsetimes):
-            cur_t = pulse2spec[itn]
-            weight = weights[beamcodes[itn]]
-            # go through the spectrums at each range gate
-            for isamp in sp.arange(len(range_gates)):
-                range = range_gates[isamp]
-
-                range_m = range*1e3
-                rnglims = [range-rng_len/2.0,range+rng_len/2.0]
-                rangelog = (rho>=rnglims[0])&(rho<rnglims[1])
-                cur_pnts = samp_num+isamp
-
-                if sp.sum(rangelog)==0:
-                    pdb.set_trace()
-                #create the weights and weight location based on the beams pattern.
-                weight_cur =weight[rangelog]
-                weight_cur = weight_cur/weight_cur.sum()
-
-                specsinrng = allspecs[rangelog][cur_t]
-                specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
-                cur_spec = specsinrng.sum(0)
+        weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
 
 
-                # assume spectrum has been ifftshifted and take the square root
-                cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
+        specsused = sp.zeros((Ndtime,Nbeams,N_rg),dtype=allspecs.dtype)
+        for istn, ist in enumerate(spectime):
+            for ibn in range(Nbeams):
+                weight = weights[ibn]
+                for isamp in sp.arange(len(range_gates)):
+                    range = range_gates[isamp]
+                    range_m = range*1e3
+                    rnglims = [range-rng_len/2.0,range+rng_len/2.0]
+                    rangelog = (rho>=rnglims[0])&(rho<rnglims[1])
+                    cur_pnts = samp_num+isamp
 
-                #calculated the power at each point
-                pow_num = sensdict['Pt']*sensdict['Ksys'][beamcodes[itn]]*sensdict['t_s'] # based off new way of calculating
-                pow_den = range_m**2
-                # create data
-                cur_pulse_data = MakePulseData(pulse,cur_filt,dtype = simdtype)
+                    if sp.sum(rangelog)==0:
+                        pdb.set_trace()
+                    #create the weights and weight location based on the beams pattern.
+                    weight_cur =weight[rangelog]
+                    weight_cur = weight_cur/weight_cur.sum()
 
-                # find the varience of the complex data
-                cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
-                cur_pulse_data = cur_pulse_data
-                out_data[itn,cur_pnts] = cur_pulse_data+out_data[itn,cur_pnts]
+                    specsinrng = allspecs[rangelog][istn]
+                    specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
+                    cur_spec = specsinrng.sum(0)
+                    specsused[istn,ibn,isamp] = cur_spec
+                    cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
+                    pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*sensdict['t_s'] # based off new way of calculating
+                    pow_den = range_m**2
+                    curdataloc = sp.where((pulse2spec==istn)&(beamcodes==ibn))[0]
+                    # create data
+                    cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
+                    cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
+                    out_data[curdataloc,cur_pnts] = cur_pulse_data+out_data[curdataloc,cur_pnts]
+
         # Noise spectrums
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
         Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+1j*sp.random.randn(Np,N_samps).astype(complex))
