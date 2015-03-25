@@ -18,7 +18,7 @@ import const.sensorConstants as sensconst
 from utilFunctions import CenteredLagProduct, MakePulseData,MakePulseDataRep, dict2h5
 
 class RadarDataFile(object):
-    def __init__(self,Ionodict,sensdict,simparams,outdir,NNs =28,NNP=100,npts = 128):
+    def __init__(self,Ionodict,sensdict,simparams,outdir,outfilelist=None,NNs =28,NNP=100,npts = 128):
        """ """
        self.simparams = simparams
        N_angles = len(self.simparams['angles'])
@@ -40,27 +40,30 @@ class RadarDataFile(object):
        beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
 
        pulsen = sp.repeat(sp.arange(Np),N_angles)
-       print('\nData Now being created.')
-       NNpall = NNP*N_angles
-       Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
-       self.outfilelist = []
-       for ifn, ifilet in enumerate(filetimes):
-           outdict = {}
-           ifile = Ionodict[ifilet]
-           print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),os.path.split(ifile)[1]))
-           curcontainer = IonoContainer.readh5(ifile)
-           pnts = pulsefile==ifn
-           pt =pulsetimes[pnts]
-           pb = beams[pnts]
-           outdict['RawData']= self.__makeTime__(pt,curcontainer.Time_Vector,curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
-           outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,NNs).astype(simdtype)+1j*sp.random.randn(Np,NNs).astype(simdtype))
-           outdict['Pulses']=pulsen.astype(int)
-           outdict['Beams']=pb
-           outdict['Time'] = pt
-           newfn = os.path.join(outdir,'{0:d} RawData.h5'.format(ifn))
-           self.outfilelist.append(newfn)
-           dict2h5(newfn,outdict)
-
+      
+       if outfilelist is None:
+            print('\nData Now being created.')
+            NNpall = NNP*N_angles
+            Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
+            self.outfilelist = []
+            for ifn, ifilet in enumerate(filetimes):
+                outdict = {}
+                ifile = Ionodict[ifilet]
+                print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),os.path.split(ifile)[1]))
+                curcontainer = IonoContainer.readh5(ifile)
+                pnts = pulsefile==ifn
+                pt =pulsetimes[pnts]
+                pb = beams[pnts]
+                outdict['RawData']= self.__makeTime__(pt,curcontainer.Time_Vector,curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
+                outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,NNs).astype(simdtype)+1j*sp.random.randn(Np,NNs).astype(simdtype))
+                outdict['Pulses']=pulsen.astype(int)
+                outdict['Beams']=pb
+                outdict['Time'] = pt
+                newfn = os.path.join(outdir,'{0:d} RawData.h5'.format(ifn))
+                self.outfilelist.append(newfn)
+                dict2h5(newfn,outdict)
+       else:
+           self.outfilelist=outfilelist
 
 #%% Make functions
     def __makeTime__(self,pulsetimes,spectime,Sphere_Coords,allspecs,beamcodes):
@@ -69,7 +72,7 @@ class RadarDataFile(object):
         #beamwidths = self.sensdict['BeamWidth']
         pulse = self.simparams['Pulse']
         sensdict = self.sensdict
-        pulse2spec = [sp.where(itimes-spectime>=0)[0][-1] for itimes in pulsetimes]
+        pulse2spec = sp.array([sp.where(itimes-spectime>=0)[0][-1] for itimes in pulsetimes])
         Np = len(pulse2spec)
         lp_pnts = len(pulse)
         samp_num = sp.arange(lp_pnts)
@@ -88,14 +91,15 @@ class RadarDataFile(object):
         weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
 
 
-        specsused = sp.zeros((Ndtime,Nbeams,N_rg),dtype=allspecs.dtype)
+        specsused = sp.zeros((Ndtime,Nbeams,N_rg,speclen),dtype=allspecs.dtype)
         for istn, ist in enumerate(spectime):
             for ibn in range(Nbeams):
+                print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
                 weight = weights[ibn]
                 for isamp in sp.arange(len(range_gates)):
-                    range = range_gates[isamp]
-                    range_m = range*1e3
-                    rnglims = [range-rng_len/2.0,range+rng_len/2.0]
+                    range_g = range_gates[isamp]
+                    range_m = range_g*1e3
+                    rnglims = [range_g-rng_len/2.0,range_g+rng_len/2.0]
                     rangelog = (rho>=rnglims[0])&(rho<rnglims[1])
                     cur_pnts = samp_num+isamp
 
@@ -104,7 +108,7 @@ class RadarDataFile(object):
                     #create the weights and weight location based on the beams pattern.
                     weight_cur =weight[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
-
+                    
                     specsinrng = allspecs[rangelog][istn]
                     specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
                     cur_spec = specsinrng.sum(0)
@@ -116,7 +120,7 @@ class RadarDataFile(object):
                     # create data
                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
-                    out_data[curdataloc,cur_pnts] = cur_pulse_data+out_data[curdataloc,cur_pnts]
+                    out_data[curdataloc][:,cur_pnts] = cur_pulse_data+out_data[curdataloc][:,cur_pnts]
 
         # Noise spectrums
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
@@ -176,12 +180,14 @@ class RadarDataFile(object):
         file_loc = sp.ravel(file_loclist)
 
         # run the time loop
-
+        print("Forming ACF estimates")
         for itn,it in enumerate(timevec):
+            print("\tTime {0:d} of {0:d}".format(itn,Ntime))
             # do the book keeping to determine locations of data within the files
             cur_tlim = (it,it+inttime)
-            curcases = (ptimevec>=cur_tlim[0])&(ptimevec<cur_tlim[1])
-            pulseset = set(pulsen(curcases))
+            pdb.set_trace()
+            curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
+            pulseset = set(pulsen[curcases])
             poslist = [sp.where(pulsen==item)[0] for item in pulseset ]
             pos_all = sp.ravel(poslist)
             curfileloc = file_loc[pos_all]
@@ -202,6 +208,7 @@ class RadarDataFile(object):
                 curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)
             # After data is read in form lags for each beam
             for ibeam in range(Nbeams):
+                print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
                 beamlocs = sp.where(beamlocs==ibeam)[0]
                 pulses[itn,ibeam] = len(beamlocs)
                 pulsesN[itn,ibeam] = len(beamlocs)

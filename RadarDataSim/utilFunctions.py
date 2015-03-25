@@ -101,9 +101,9 @@ def MakePulseData(pulse_shape, filt_freq, delay=16,numtype = np.complex128):
     """
     npts = len(filt_freq)
 
-    noise_vec = (np.random.randn(npts,dtype = numtype)+1j*np.random.randn(npts,dtype = numtype))/np.sqrt(2.0)# make a noise vector
+    noise_vec = (np.random.randn(npts).astype(numtype)+1j*np.random.randn(npts).astype(numtype))/np.sqrt(2.0)# make a noise vector
     mult_freq = filt_freq.astype(numtype)*noise_vec
-    data = np.fft.ifft(mult_freq)
+    data = scfft.ifft(mult_freq)
     data_out = pulse_shape*data[delay:(delay+len(pulse_shape))]
     return data_out
 
@@ -123,9 +123,9 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = np.complex
     npts = len(filt_freq)
     filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
     shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
-    noise_vec = (np.random.randn((rep,npts),dtype=numtype)+1j*np.random.randn((rep,npts),dtype=numtype))/np.sqrt(2.0)# make a noise vector
+    noise_vec = (np.random.randn(rep,npts).astype(numtype)+1j*np.random.randn(rep,npts).astype(numtype))/np.sqrt(2.0)# make a noise vector
     mult_freq = filt_tile.astype(numtype)*noise_vec
-    data = scfft.ifft(mult_freq)
+    data = scfft.ifft(mult_freq,axis=-1)
     data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]
     return data_out
 
