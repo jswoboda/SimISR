@@ -7,6 +7,7 @@ Created on Tue Jul 22 16:18:21 2014
 
 import numpy as np
 import scipy as sp
+import scipy.fftpack as scfft
 from const.physConstants import v_C_0
 import tables
 from ISSpectrum import ISSpectrum
@@ -85,7 +86,7 @@ def spect2acf(omeg,spec):
     return tau, acf
 
 
-def MakePulseData(pulse_shape, filt_freq, delay=16):
+def MakePulseData(pulse_shape, filt_freq, delay=16,numtype = np.complex128):
     """ This function will create a pulse width of data shaped by the filter that who's frequency
         response is passed as the parameter filt_freq.  The pulse shape is delayed by the parameter
         delay into the data. The noise vector that will be multiplied by the filter's frequency
@@ -100,10 +101,32 @@ def MakePulseData(pulse_shape, filt_freq, delay=16):
     """
     npts = len(filt_freq)
 
-    noise_vec = (np.random.randn(npts)+1j*np.random.randn(npts))/np.sqrt(2.0)# make a noise vector
-    mult_freq = filt_freq*noise_vec
+    noise_vec = (np.random.randn(npts,dtype = numtype)+1j*np.random.randn(npts,dtype = numtype))/np.sqrt(2.0)# make a noise vector
+    mult_freq = filt_freq.astype(numtype)*noise_vec
     data = np.fft.ifft(mult_freq)
     data_out = pulse_shape*data[delay:(delay+len(pulse_shape))]
+    return data_out
+
+def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = np.complex128):
+    """ This function will create a pulse width of data shaped by the filter that who's frequency
+        response is passed as the parameter filt_freq.  The pulse shape is delayed by the parameter
+        delay into the data. The noise vector that will be multiplied by the filter's frequency
+        response will be zero mean complex white Gaussian noise with a power of 1. The user
+        then will need to scale their filter to get the desired power out.
+        Inputs:
+            pulse_shape: A numpy array that holds the shape of the single pulse.
+            filt_freq - a numpy array that holds the complex frequency response of the filter
+            that will be used to shape the noise data.
+            delay - The number of samples that the pulse will be delayed into the
+            array of noise data to avoid any problems with filter overlap.
+    """
+    npts = len(filt_freq)
+    filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
+    shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
+    noise_vec = (np.random.randn((rep,npts),dtype=numtype)+1j*np.random.randn((rep,npts),dtype=numtype))/np.sqrt(2.0)# make a noise vector
+    mult_freq = filt_tile.astype(numtype)*noise_vec
+    data = scfft.ifft(mult_freq)
+    data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]
     return data_out
 
 def CenteredLagProduct(rawbeams,N =14,numtype=np.complex128):

@@ -10,8 +10,8 @@ import scipy as sp
 import os
 import scipy.fftpack as scfft
 import time
-import pdb
 import tables
+import pdb
 from IonoContainer import IonoContainer, MakeTestIonoclass
 from const.physConstants import v_C_0, v_Boltz
 import const.sensorConstants as sensconst
@@ -23,24 +23,25 @@ class RadarDataFile(object):
        self.simparams = simparams
        N_angles = len(self.simparams['angles'])
        sensdict['RG'] = self.simparams['Rangegates']
-       N_rg = len(self.simparams['Rangegates'])
-       lp_pnts = len(self.simparams['Pulse'])
+
+       self.simparams['NNs'] = NNs
        self.sensdict = sensdict
        Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
        Npall = sp.floor(Npall/N_angles)*N_angles
        Np = Npall/N_angles
-       N_samps = N_rg +lp_pnts-1
+
        print "All spectrums created already"
        filetimes = Ionodict.keys()
        filetimes.sort()
        ftimes = sp.array(filetimes)
-
+       simdtype = self.simparams['dtype']
        pulsetimes = sp.arange(Npall)*self.simparams['IPP']
        pulsefile = sp.array([sp.where(itimes-ftimes>=0)[0][-1] for itimes in pulsetimes])
        beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
 
        pulsen = sp.repeat(sp.arange(Np),N_angles)
        print('\nData Now being created.')
+       NNpall = NNP*N_angles
        Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
        self.outfilelist = []
        for ifn, ifilet in enumerate(filetimes):
@@ -52,7 +53,7 @@ class RadarDataFile(object):
            pt =pulsetimes[pnts]
            pb = beams[pnts]
            outdict['RawData']= self.__makeTime__(pt,curcontainer.Time_Vector,curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
-           outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+1j*sp.random.randn(Np,N_samps).astype(complex))
+           outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,NNs).astype(simdtype)+1j*sp.random.randn(Np,NNs).astype(simdtype))
            outdict['Pulses']=pulsen.astype(int)
            outdict['Beams']=pb
            outdict['Time'] = pt
@@ -81,8 +82,8 @@ class RadarDataFile(object):
         El = Sphere_Coords[:,2]
         rng_len=self.sensdict['t_s']*v_C_0/1000.0
         (Nloc,Ndtime,speclen) = allspecs.shape
-
-        out_data = sp.zeros((Np,N_samps),dtype=sp.complex128)
+        simdtype = self.simparams['dtype']
+        out_data = sp.zeros((Np,N_samps),dtype=simdtype)
         weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(self.simparams['angles'])}
         for itn, it in enumerate(pulsetimes):
             cur_t = pulse2spec[itn]
@@ -114,7 +115,7 @@ class RadarDataFile(object):
                 pow_num = sensdict['Pt']*sensdict['Ksys'][beamcodes[itn]]*sensdict['t_s'] # based off new way of calculating
                 pow_den = range_m**2
                 # create data
-                cur_pulse_data = MakePulseData(pulse,cur_filt)
+                cur_pulse_data = MakePulseData(pulse,cur_filt,dtype = simdtype)
 
                 # find the varience of the complex data
                 cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
@@ -125,6 +126,94 @@ class RadarDataFile(object):
         Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+1j*sp.random.randn(Np,N_samps).astype(complex))
 
         return out_data +Noise
+        #%% Processing
+    def processdata(self,timevec,inttime,lagfunc=CenteredLagProduct):
+        """ This will perform the the data processing and create the ACF estimates
+        for both the data and noise.
+        Inputs:
+        timevec - A numpy array of times in seconds where the integration will begin.
+        inttime - The integration time in seconds.
+        lagfunc - A function that will make the desired lag products.
+        Outputs:
+        DataLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
+        the numpy arrays of the data.
+        NoiseLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
+        the numpy arrays of the data.
+        """
+        # Get array sizes
+        file_list = self.outfilelist
+        NNs = self.simparams['NNs']
+        range_gates = self.simparams['Rangegates']
+        N_rg = len(range_gates)# take the size
+        pulse = self.simparams['Pulse']
+        Nlag = len(pulse)
+        N_samps = N_rg +Nlag-1
+        simdtype = self.simparams['dtype']
+        Ntime=len(timevec)
+        Nbeams = len(self.simparams['angles'])
+
+        # initialize output arrays
+        outdata = sp.zeros((Ntime,Nbeams,N_rg,Nlag),dtype=simdtype)
+        outnoise = sp.zeros((Ntime,Nbeams,NNs-Nlag+1,Nlag),dtype=simdtype)
+        pulses = sp.zeros((Ntime,Nbeams))
+        pulsesN = sp.zeros((Ntime,Nbeams))
+        timemat = sp.zeros((Ntime,2))
+
+        # initalize lists for stuff
+        pulsen_list = []
+        beamn_list = []
+        time_list = []
+        file_loclist = []
+        # read in times
+        for ifn, ifile in enumerate(file_list):
+            h5file=tables.openFile(ifile)
+            pulsen_list.append(h5file.get_node('/Pulses').read())
+            beamn_list.append(h5file.get_node('/Beams').read())
+            time_list.append(h5file.get_node('/Time').read())
+            file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
+            h5file.close()
+
+        pulsen = sp.ravel(pulsen_list)
+        beamn = sp.ravel(beamn_list)
+        ptimevec = sp.ravel(time_list)
+        file_loc = sp.ravel(file_loclist)
+
+        # run the time loop
+
+        for itn,it in enumerate(timevec):
+            # do the book keeping to determine locations of data within the files
+            cur_tlim = (it,it+inttime)
+            curcases = (ptimevec>=cur_tlim[0])&(ptimevec<cur_tlim[1])
+            pulseset = set(pulsen(curcases))
+            poslist = [sp.where(pulsen==item)[0] for item in pulseset ]
+            pos_all = sp.ravel(poslist)
+            curfileloc = file_loc[pos_all]
+            curfiles = set(curfileloc)
+            beamlocs = beamn[pos_all]
+
+            timemat[itn,0] = ptimevec[pos_all].min()
+            timemat[itn,1]=ptimevec[pos_all].max()
+            curdata = sp.zeros((len(pos_all),N_samps),dtype = simdtype)
+            curnoise = sp.zeros((len(pos_all),NNs),dtype = simdtype)
+            # Open files and get required data
+            # XXX come up with way to get open up new files not have to reread in data that is already in memory
+            for ifn in curfiles:
+                ifile = file_list[ifn]
+                h5file=tables.openFile(ifile)
+                file_arlocs = sp.where(curfileloc==ifn)[0]
+                curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)
+                curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)
+            # After data is read in form lags for each beam
+            for ibeam in range(Nbeams):
+                beamlocs = sp.where(beamlocs==ibeam)[0]
+                pulses[itn,ibeam] = len(beamlocs)
+                pulsesN[itn,ibeam] = len(beamlocs)
+                outdata[itn,ibeam] = lagfunc(curdata[beamlocs],Nlag)
+                outnoise[itn,ibeam] = lagfunc(curnoise[beamlocs],Nlag)
+        # Create output dictionaries and output data
+        DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat}
+        NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
+        return(DataLags,NoiseLags)
 #%% Original object
 class RadarData(object):
     """ This class will will take the ionosphere class and create radar data both
