@@ -43,7 +43,8 @@ class RadarDataFile(object):
 
        if outfilelist is None:
             print('\nData Now being created.')
-            NNpall = NNP*N_angles
+            #NNpall = NNP*N_angles
+
             Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
             self.outfilelist = []
             for ifn, ifilet in enumerate(filetimes):
@@ -56,7 +57,7 @@ class RadarDataFile(object):
                 pb = beams[pnts]
                 pn = pulsen[pnts].astype(int)
                 outdict['RawData']= self.__makeTime__(pt,curcontainer.Time_Vector,curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
-                outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,NNs).astype(simdtype)+1j*sp.random.randn(Np,NNs).astype(simdtype))
+                outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn),NNs).astype(simdtype)+1j*sp.random.randn(len(pn),NNs).astype(simdtype))
                 outdict['Pulses']=pn
                 outdict['Beams']=pb
                 outdict['Time'] = pt
