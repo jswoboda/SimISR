@@ -175,10 +175,10 @@ class RadarDataFile(object):
             file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
             h5file.close()
 
-        pulsen = sp.hstack(pulsen_list)
-        beamn = sp.hstack(beamn_list)
-        ptimevec = sp.hstack(time_list)
-        file_loc = sp.hstack(file_loclist)
+        pulsen = sp.hstack(pulsen_list).astype(int)
+        beamn = sp.hstack(beamn_list).astype(int)
+        ptimevec = sp.hstack(time_list).astype(int)
+        file_loc = sp.hstack(file_loclist).astype(int)
 
         # run the time loop
         print("Forming ACF estimates")
