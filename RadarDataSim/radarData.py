@@ -175,10 +175,10 @@ class RadarDataFile(object):
             file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
             h5file.close()
 
-        pulsen = sp.ravel(pulsen_list)
-        beamn = sp.ravel(beamn_list)
-        ptimevec = sp.ravel(time_list)
-        file_loc = sp.ravel(file_loclist)
+        pulsen = sp.hstack(pulsen_list)
+        beamn = sp.hstack(beamn_list)
+        ptimevec = sp.hstack(time_list)
+        file_loc = sp.hstack(file_loclist)
 
         # run the time loop
         print("Forming ACF estimates")
@@ -186,7 +186,6 @@ class RadarDataFile(object):
             print("\tTime {0:d} of {0:d}".format(itn,Ntime))
             # do the book keeping to determine locations of data within the files
             cur_tlim = (it,it+inttime)
-            pdb.set_trace()
             curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
             pulseset = set(pulsen[curcases])
             poslist = [sp.where(pulsen==item)[0] for item in pulseset ]
