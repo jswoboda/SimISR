@@ -40,7 +40,7 @@ class RadarDataFile(object):
        beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
 
        pulsen = sp.repeat(sp.arange(Np),N_angles)
-      
+
        if outfilelist is None:
             print('\nData Now being created.')
             NNpall = NNP*N_angles
@@ -54,9 +54,10 @@ class RadarDataFile(object):
                 pnts = pulsefile==ifn
                 pt =pulsetimes[pnts]
                 pb = beams[pnts]
+                pn = pulsen[pnts].astype(int)
                 outdict['RawData']= self.__makeTime__(pt,curcontainer.Time_Vector,curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
                 outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,NNs).astype(simdtype)+1j*sp.random.randn(Np,NNs).astype(simdtype))
-                outdict['Pulses']=pulsen.astype(int)
+                outdict['Pulses']=pn
                 outdict['Beams']=pb
                 outdict['Time'] = pt
                 newfn = os.path.join(outdir,'{0:d} RawData.h5'.format(ifn))
@@ -108,7 +109,7 @@ class RadarDataFile(object):
                     #create the weights and weight location based on the beams pattern.
                     weight_cur =weight[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
-                    
+
                     specsinrng = allspecs[rangelog][istn]
                     specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
                     cur_spec = specsinrng.sum(0)
