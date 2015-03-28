@@ -188,10 +188,17 @@ class RadarDataFile(object):
             # do the book keeping to determine locations of data within the files
             cur_tlim = (it,it+inttime)
             curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
+            if  not sp.any(curcases):
+                print("\tNo pulses for time {0:d} of {0:d}".format(itn,Ntime))
+                continue
             pulseset = set(pulsen[curcases])
             poslist = [sp.where(pulsen==item)[0] for item in pulseset ]
-            pos_all = sp.ravel(poslist)
-            curfileloc = file_loc[pos_all]
+            pos_all = sp.hstack(poslist)
+            try:
+                pos_all = sp.hstack(poslist)
+                curfileloc = file_loc[pos_all]
+            except:
+                pdb.set_trace()
             curfiles = set(curfileloc)
             beamlocs = beamn[pos_all]
 
@@ -202,11 +209,14 @@ class RadarDataFile(object):
             # Open files and get required data
             # XXX come up with way to get open up new files not have to reread in data that is already in memory
             for ifn in curfiles:
+                curfileit =  [sp.where(pulsen_list[ifn]==item)[0] for item in pulseset ]
+                curfileitvec = sp.hstack(curfileit)
                 ifile = file_list[ifn]
                 h5file=tables.openFile(ifile)
                 file_arlocs = sp.where(curfileloc==ifn)[0]
-                curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)
-                curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)
+                curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)[curfileitvec]
+                curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)[curfileitvec]
+                h5file.close()
             # After data is read in form lags for each beam
             for ibeam in range(Nbeams):
                 print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
