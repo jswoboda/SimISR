@@ -34,4 +34,5 @@ def ISRSspecmake(ionocont,sensdict,npts):
 
     return (omeg,outspecs,npts)
 
-def ISRSfitfunction
+def ISRSfitfunction():
+    return ()
