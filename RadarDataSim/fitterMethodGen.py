@@ -16,7 +16,7 @@ import scipy.optimize,scipy.interpolate
 from matplotlib import rc
 import matplotlib.pylab as plt
 # My modules
-from IonoContainer import MakeTestIonoclass
+from IonoContainer import IonoContainer,MakeTestIonoclass
 from radarData import RadarData
 from ISSpectrum import ISSpectrum
 import const.sensorConstants as sensconst
@@ -122,3 +122,44 @@ class Fitterionoconainer(object):
 
                 print('\t\tData for Beam {0:d} of {1:d} fitted.'.format(ibeam,Nbeams))
         return(fittedarray,fittederror)
+#%% Make Lag dict to an iono container
+def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
+    #make coordinate vec
+    angles = simparams['angles']
+    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+    rng_vec = sensdict['RG']
+    angtile = sp.tile(ang_data,len(rng_vec),axis=0)
+    rng_rep = sp.repeat(rng_vec,ang_data.shape(0),axis =0)
+    coordlist = sp.hstack((rng_rep,angtile))
+    # pull in other data
+    pulsewidth = sensdict['taurg']*sensdict['t_s']
+    txpower = sensdict['Pt']
+    Ksysvec = sensdict['Ksys']
+    # set up the lags
+    lagsData= DataLags['ACF']
+    (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
+    pulses = sp.tile(DataLags['Pulses'][:,:,sp.newaxis,sp.newaxis],(1,1,Nrng,Nlags))
+    time_vec = time_vec[:Nt]
+
+    # average by the number of pulses
+    lagsData = lagsData/pulses
+    lagsNoise=NoiseLags['ACF']
+    lagsNoise = sp.mean(lagsNoise,axis=2)
+    pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
+    lagsNoise = lagsNoise/pulsesnoise
+    lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
+    # subtract out noise lags
+    lagsData = lagsData-lagsNoise
+
+    rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags)) *1e3
+    ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
+    lagsData = lagsData*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
+
+    Paramdata = sp.zeros((Nbeams*Nrng,Nt,Nlags))
+    lagsData = sp.transpose(lagsData,axis=(1,2,0,3))
+    curloc = 0
+    for irng in range(Nrng):
+        for ibeam in range(Nbeams):
+            Paramdata[curloc] = lagsData[ibeam,irng]
+
+    return IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=np.arange(Nlags)**sensdict['t_s'])
