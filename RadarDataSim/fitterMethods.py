@@ -51,10 +51,16 @@ class FitterBasic(object):
         pulsewidth = self.sensdict['taurg']*self.sensdict['t_s']
         txpower = self.sensdict['Pt']
         DataLags = self.DataDict
+        NoiseLags = self.NoiseDict
         (Nt,Nbeams,Nrng) = DataLags['Pow'].shape
         power = DataLags['Pow']
         pulses = sp.repeat(DataLags['Pulses'][:,:,sp.newaxis],Nrng,axis=-1)
         power = power/pulses
+        #noise power set up
+        noisepower = sp.mean(NoiseLags['Pow'],axis=2)
+        npulses = NoiseLags['Pulses']
+        noisepower = noisepower/npulses
+        power = power-sp.repeat(noisepower[:,:,sp.newaxis],Nrng,axis=-1)
         rng_vec = self.sensdict['RG']*1e3
         rng3d = sp.tile(rng_vec,(Nt,Nbeams,1))
         Ksysvec = self.sensdict['Ksys'] # Beam shape and physcial constants

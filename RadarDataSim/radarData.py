@@ -189,7 +189,9 @@ class RadarDataFile(object):
             cur_tlim = (it,it+inttime)
             curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
             if  not sp.any(curcases):
-                print("\tNo pulses for time {0:d} of {0:d}".format(itn,Ntime))
+                print("\tNo pulses for time {0:d} of {0:d}, lagdata adjusted accordinly".format(itn,Ntime))
+                outdata = outdata[:itn]
+                outnoise = outnoise[:itn]
                 continue
             pulseset = set(pulsen[curcases])
             poslist = [sp.where(pulsen==item)[0] for item in pulseset ]
@@ -564,7 +566,7 @@ class RadarData(object):
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
         return(DataLags,NoiseLags)
 
-#%%
+#%% Testing
 
 if __name__== '__main__':
     """ Test function for the RadarData class."""

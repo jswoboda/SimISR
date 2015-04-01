@@ -33,3 +33,5 @@ def ISRSspecmake(ionocont,sensdict,npts):
             outspecs[i_x,i_t] = cur_spec_weighted
 
     return (omeg,outspecs,npts)
+
+def ISRSfitfunction
