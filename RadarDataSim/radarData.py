@@ -130,6 +130,18 @@ class RadarDataFile(object):
 
         return out_data +Noise
         #%% Processing
+    def processdataiono(self,timevec,inttime,lagfunc=CenteredLagProduct):
+        """ This will perform the the data processing and create the ACF estimates
+        for both the data and noise but put it in an Ionocontainer.
+        Inputs:
+        timevec - A numpy array of times in seconds where the integration will begin.
+        inttime - The integration time in seconds.
+        lagfunc - A function that will make the desired lag products.
+        Outputs:
+        Ionocontainer- This is an instance of the ionocontainer class that will hold the acfs.
+        """
+        (DataLags,NoiseLags) = self.processdata(timevec,inttime,lagfunc)
+        return lagdict2ionocont(DataLags,NoiseLags,self.sensdict,self.simparams,timevec)
     def processdata(self,timevec,inttime,lagfunc=CenteredLagProduct):
         """ This will perform the the data processing and create the ACF estimates
         for both the data and noise.
@@ -255,8 +267,6 @@ class RadarData(object):
     rawnoise: This is a NbxNpxNr numpy array that holds the raw noise IQ data.
 
     """
-    #    def __init__(self,ionocont,sensdict,angles,IPP,Tint,time_lim, pulse,rng_lims,noisesamples =28,noisepulses=100,npts = 128,in_type=0):
-
     def __init__(self,Ionocont,sensdict,angles=None,IPP=None,Tint=None,time_lim=None, pulse=None,rng_lims=None,NNs =28,noisepulses=100,npts = 128,in_type=0,simparams=None):
         """This function will create an instance of the RadarData class.  It will
         take in the values and create the class and make raw IQ data.
@@ -512,6 +522,21 @@ class RadarData(object):
         return(out_data +Noise,noisesamples)
 
    #%% Processing
+    def processdataiono(self,timevec,inttime,lagfunc=CenteredLagProduct):
+        """ This will perform the the data processing and create the ACF estimates
+        for both the data and noise but put it in an Ionocontainer.
+        Inputs:
+        timevec - A numpy array of times in seconds where the integration will begin.
+        inttime - The integration time in seconds.
+        lagfunc - A function that will make the desired lag products.
+        Outputs:
+        DataLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
+        the numpy arrays of the data.
+        NoiseLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
+        the numpy arrays of the data.
+        """
+        (DataLags,NoiseLags) = self.processdata(timevec,inttime,lagfunc)
+        return lagdict2ionocont(DataLags,NoiseLags,self.sensdict,self.simparams,timevec)
     def processdata(self,timevec,inttime,lagfunc=CenteredLagProduct):
         """ This will perform the the data processing and create the ACF estimates
         for both the data and noise.
@@ -565,7 +590,69 @@ class RadarData(object):
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat}
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
         return(DataLags,NoiseLags)
+#%% Make Lag dict to an iono container
+def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
+    """This function will take the data and noise lags and create an instance of the
+    Ionocontanier class. This function will also apply the summation rule to the lags.
+    Inputs
+    DataLags - A dictionary """
+    # Pull in Location Data
+    angles = simparams['angles']
+    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+    rng_vec = sensdict['RG']
+    # pull in other data
+    pulsewidth = sensdict['taurg']*sensdict['t_s']
+    txpower = sensdict['Pt']
+    Ksysvec = sensdict['Ksys']
+    sumrule = simparams['SUMRULE']
+    minrg = -sp.min(sumrule[0])
+    maxrg = len(rng_vec)-sp.max(sumrule[1])
+    Nrng2 = maxrg-minrg;
+    rng_vec2 = sp.array([ sp.mean(rng_vec[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
+    # Set up Coorinate list
+    angtile = sp.tile(ang_data,Nrng2,axis=0)
+    rng_rep = sp.repeat(rng_vec2,ang_data.shape(0),axis =0)
+    coordlist = sp.hstack((rng_rep,angtile))
+    # set up the lags
+    lagsData= DataLags['ACF']
+    (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
+    pulses = sp.tile(DataLags['Pulses'][:,:,sp.newaxis,sp.newaxis],(1,1,Nrng,Nlags))
+    time_vec = time_vec[:Nt]
 
+    # average by the number of pulses
+    lagsData = lagsData/pulses
+    lagsNoise=NoiseLags['ACF']
+    lagsNoise = sp.mean(lagsNoise,axis=2)
+    pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
+    lagsNoise = lagsNoise/pulsesnoise
+    lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
+    # subtract out noise lags
+    lagsData = lagsData-lagsNoise
+
+    rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags)) *1e3
+    ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
+    lagsData = lagsData*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
+
+    # Apply summation rule
+    # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
+    lagsData = sp.transpose(lagsData,axes=(2,3,0,1))
+    lagsDatasum = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsData.dtype)
+
+    for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
+        for ilag in range(Nlags):
+            lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
+
+    # Put everything in a parameter list
+    Paramdata = sp.zeros((Nbeams*Nrng,Nt,Nlags))
+    # transpose from (range,lag,time,beams) to (beams,range,time,lag)
+    lagsDataSum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
+    curloc = 0
+    for irng in range(Nrng):
+        for ibeam in range(Nbeams):
+            Paramdata[curloc] = lagsDataSum[ibeam,irng]
+            curloc+=1
+
+    return IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
 #%% Testing
 
 if __name__== '__main__':

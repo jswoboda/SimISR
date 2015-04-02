@@ -40,7 +40,7 @@ class FitterBasic(object):
         self.NoiseDict = NoiseLags
         self.sensdict = sensdict
         self.simparams = simparams
-    def fitNE(self,Tratio = 1,0):
+    def fitNE(self,Tratio=1.0):
         """ This funtction will fit electron density assuming Te/Ti is constant
         thus only the zero lag will be needed.
         Inputs:
