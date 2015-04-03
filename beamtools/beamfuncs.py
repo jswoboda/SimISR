@@ -15,7 +15,13 @@ import pdb
 class BeamSelector(object):
     """This class will take in a numpy array with the first column being the beam numbers
     the second coloumn the az angle in degrees and the third column the el angle in degrees.
-    The forth column is ksys variable for each beam."""
+    The forth column is ksys variable for each beam.
+    Variables
+    beamnumdict - The dictionary with the beam number as the keys and angles as the values.
+    beamnumxydict - A dictionary with the beam number as the keys and x, y location the beams as the values.
+    angledict - beamnumdict with the key value pairs switched.
+    xydict - beamnumxydict with the key value pairs switched.
+    """
 
     def __init__(self,beammat,beamlist=None):
         """ This constructor function takes a list of beams and a beam mat from
@@ -148,7 +154,7 @@ class BeamSelector(object):
     def rotatebeams(self,azoff=0.0,eloff=0.0):
         (azall,elall) = self.azelvecs()
 
-    def plotbeams(self,beamlist,plotall=True,filename=None,title=None):
+    def plotbeams(self,beamlist,plotall=True,filename=None,title=None,closefig=True):
         """Plots the location of the beams in yellow and plots the original beams
         in blue"""
         fig = make_polax(self.zenith)
