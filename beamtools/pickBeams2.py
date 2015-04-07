@@ -99,7 +99,6 @@ class Gui():
             self.ovalx[ibeam] = c_coords[0]*div/10+off_x
             self.ovaly[ibeam] = c_coords[1]*div/10+off_y
             self.beamhandles.append(self.canv.create_oval(points, fill='blue',tags='beams'))
-            self.selected_list = []
 
     def Drawlines(self):
 
@@ -138,13 +137,15 @@ class Gui():
         linesit = np.argmin(dist)
         closest = self.lines[linesit]
         if closest[0] not in self.output:
-            textheader = 'Closest beam is # %s, Az: %s, El: %s' %(closest[0],closest[1],closest[2])
+            textheader = 'Closest beam is # %s, Az: %s, El: %s' %(int(closest[0]),closest[1],closest[2])
             self.canv.itemconfig(self.canv.find_withtag('header'),text=textheader)
             self.canv.itemconfig(self.beamhandles[linesit], fill='orange')
 
-            print 'Closest beam is # %s, Az: %s, El: %s' %(closest[0],closest[1],closest[2])
+            print '%s) Closest beam is # %s, Az: %s, El: %s' %(len(self.output)+1,int(closest[0]),closest[1],closest[2])
             self.output.append(closest[0])
             self.canv.update()
+        else:
+            print "Repeated beam"
     def buttonClick(self):
         print 'Finished'
         print self.output

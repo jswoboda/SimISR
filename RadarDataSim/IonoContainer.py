@@ -24,7 +24,7 @@ class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will
     make the spectrums for each point."""
     #%% Init function
-    def __init__(self,coordlist,paramlist,times = None,sensor_loc = [0,0,0],ver =0,coordvecs = None,paramnames=None,species=None,velocity=None):
+    def __init__(self,coordlist,paramlist,times = None,sensor_loc = sp.array(3),ver =0,coordvecs = None,paramnames=None,species=None,velocity=None):
         """ This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
         Inputs:
@@ -107,8 +107,14 @@ class IonoContainer(object):
         # set up a params name
         if paramnames is None:
             partparam = paramlist.shape[2:]
-            paramnums = np.arange(np.product(partparam))
-            self.Param_Names = np.reshape(paramnums,partparam)
+            if species is not None:
+                paramnames = [['Ni_'+isp,'Ti_'+isp] for isp in species[:-1]]
+                paramnames.append(['Ne','Te'])
+                self.Param_Names=sp.array(paramnames,dtype=str)
+            else:
+
+                paramnums = np.arange(np.product(partparam))
+                self.Param_Names = np.reshape(paramnums,partparam)
         else:
             self.Param_Names = paramnames
 
