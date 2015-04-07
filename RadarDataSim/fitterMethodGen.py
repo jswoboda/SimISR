@@ -11,11 +11,16 @@ import os, inspect, time
 import pdb
 # Imported scipy and matplotlib modules
 import scipy as sp
+import scipy.optimize
 from matplotlib import rc
 import matplotlib.pylab as plt
 # My modules
 from IonoContainer import IonoContainer
 
+
+def defaultparamsfunc(curlag, Pulse_shape,amb_dict,sensdict,numtype):
+    return(curlag, Pulse_shape,amb_dict,sensdict,numtype)
+    
 class Fitterionoconainer(object):
     def __init__(self,Ionocont,sensdict,simparams):
         """ The init function for the fitter take the inputs for the fitter programs.
@@ -42,7 +47,7 @@ class Fitterionoconainer(object):
 
         Ne = self.Iono.Param_List[:,:,0]*(1.0+Tratio)
         return Ne
-    def fitdata(self,fitfunc,startvalfunc,npts=64,numtype = sp.complex128,d_funcfunc = default_fit_func2):
+    def fitdata(self,fitfunc,startvalfunc,npts=64,numtype = sp.complex128, d_funcfunc=defaultparamsfunc):
         """ """
 
         # get intial guess for NE
@@ -84,5 +89,3 @@ class Fitterionoconainer(object):
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror)
 
-def d_funcfunc(curlag, Pulse_shape,amb_dict,sensdict,numtype):
-    return(curlag, Pulse_shape,amb_dict,sensdict,numtype)

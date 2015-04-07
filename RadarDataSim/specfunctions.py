@@ -6,7 +6,7 @@ Created on Mon Mar 16 19:36:27 2015
 """
 import scipy as sp
 import scipy.interpolate as spinterp
-import scipy.fft as scfft
+import scipy.fftpack as scfft
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 from utilFunctions import  spect2acf
 
