@@ -20,7 +20,7 @@ from IonoContainer import IonoContainer
 
 def defaultparamsfunc(curlag, Pulse_shape,amb_dict,sensdict,numtype):
     return(curlag, Pulse_shape,amb_dict,sensdict,numtype)
-    
+
 class Fitterionoconainer(object):
     def __init__(self,Ionocont,sensdict,simparams):
         """ The init function for the fitter take the inputs for the fitter programs.
@@ -47,7 +47,7 @@ class Fitterionoconainer(object):
 
         Ne = self.Iono.Param_List[:,:,0]*(1.0+Tratio)
         return Ne
-    def fitdata(self,fitfunc,startvalfunc,npts=64,numtype = sp.complex128, d_funcfunc=defaultparamsfunc):
+    def fitdata(self,fitfunc,startvalfunc,npts=64,numtype = sp.complex128, d_funcfunc=defaultparamsfunc,exinputs=[]):
         """ """
 
         # get intial guess for NE
@@ -62,6 +62,7 @@ class Fitterionoconainer(object):
 
         print('\nData Now being fit.')
         first_lag = True
+        x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector,exinputs)
         for itime in range(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
@@ -69,7 +70,7 @@ class Fitterionoconainer(object):
                # self.simparams['Rangegatesfinal'][irngnew] = sp.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
                 curlag = lagsData[iloc,itime]
                 d_func = d_funcfunc(curlag, Pulse_shape,self.simparams['amb_dict'],self.sensdict,numtype)
-                x_0 = startvalfunc(Ne_start[iloc,itime],self.Iono.Cart_Coords[iloc],self.Iono.Time_Vector)
+                x_0 = x_0all[iloc,itime]
                 if first_lag:
                     first_lag = False
                     nparams = len(x_0)

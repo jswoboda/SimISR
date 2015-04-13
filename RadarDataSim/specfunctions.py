@@ -43,8 +43,8 @@ def ISRSfitfunction(x,y_acf,amb_func,amb_dict,sensdict,npts,numtype):
     specs = sensdict['species']
     nspecs = len(specs)
     datablock = sp.zeros((nspecs,2),dtype=numtype)
-    datablock[:,0] = sp.arange(0,nspecs*2,2)
-    datablock[:,1] = sp.arange(1,nspecs*2,2)
+    datablock[:,0] = x[sp.arange(0,nspecs*2,2)]
+    datablock[:,1] = x[sp.arange(1,nspecs*2,2)]
     v_i = x[-1]
 
     specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
