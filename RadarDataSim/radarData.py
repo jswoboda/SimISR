@@ -204,6 +204,9 @@ class RadarDataFile(object):
                 print("\tNo pulses for time {0:d} of {0:d}, lagdata adjusted accordinly".format(itn,Ntime))
                 outdata = outdata[:itn]
                 outnoise = outnoise[:itn]
+                pulses=pulses[:itn]
+                pulsesN=pulsesN[:itn]
+                timemat=timemat[:itn]
                 continue
             pulseset = set(pulsen[curcases])
             poslist = [sp.where(pulsen==item)[0] for item in pulseset ]
@@ -622,7 +625,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     time_vec = time_vec[:Nt]
 
     # average by the number of pulses
-    lagsData = lagsData/pulses[:lagsData.shape[0]]
+    lagsData = lagsData/pulses
     lagsNoise=NoiseLags['ACF']
     lagsNoise = sp.mean(lagsNoise,axis=2)
     pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
@@ -645,11 +648,11 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
             lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
 
     # Put everything in a parameter list
-    Paramdata = sp.zeros((Nbeams*Nrng,Nt,Nlags))
+    Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags))
     # transpose from (range,lag,time,beams) to (beams,range,time,lag)
     lagsDataSum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
     curloc = 0
-    for irng in range(Nrng):
+    for irng in range(Nrng2):
         for ibeam in range(Nbeams):
             Paramdata[curloc] = lagsDataSum[ibeam,irng]
             curloc+=1
