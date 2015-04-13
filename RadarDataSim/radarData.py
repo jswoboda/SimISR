@@ -179,6 +179,7 @@ class RadarDataFile(object):
         beamn_list = []
         time_list = []
         file_loclist = []
+        
         # read in times
         for ifn, ifile in enumerate(file_list):
             h5file=tables.openFile(ifile)
@@ -192,7 +193,6 @@ class RadarDataFile(object):
         beamn = sp.hstack(beamn_list).astype(int)
         ptimevec = sp.hstack(time_list).astype(int)
         file_loc = sp.hstack(file_loclist).astype(int)
-
         # run the time loop
         print("Forming ACF estimates")
         for itn,it in enumerate(timevec):
@@ -234,11 +234,11 @@ class RadarDataFile(object):
             # After data is read in form lags for each beam
             for ibeam in range(Nbeams):
                 print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
-                beamlocs = sp.where(beamlocs==ibeam)[0]
-                pulses[itn,ibeam] = len(beamlocs)
-                pulsesN[itn,ibeam] = len(beamlocs)
-                outdata[itn,ibeam] = lagfunc(curdata[beamlocs],Nlag)
-                outnoise[itn,ibeam] = lagfunc(curnoise[beamlocs],Nlag)
+                beamlocstmp = sp.where(beamlocs==ibeam)[0]
+                pulses[itn,ibeam] = len(beamlocstmp)
+                pulsesN[itn,ibeam] = len(beamlocstmp)
+                outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp],Nlag)
+                outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp],Nlag)
         # Create output dictionaries and output data
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat}
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
@@ -605,14 +605,16 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     txpower = sensdict['Pt']
     Ksysvec = sensdict['Ksys']
     sumrule = simparams['SUMRULE']
-    minrg = -sp.min(sumrule[0])
-    maxrg = len(rng_vec)-sp.max(sumrule[1])
+    minrg = -sumrule[0].min()
+    maxrg = len(rng_vec)-sumrule[1].max()
     Nrng2 = maxrg-minrg;
     rng_vec2 = sp.array([ sp.mean(rng_vec[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
-    # Set up Coorinate list
-    angtile = sp.tile(ang_data,Nrng2,axis=0)
-    rng_rep = sp.repeat(rng_vec2,ang_data.shape(0),axis =0)
-    coordlist = sp.hstack((rng_rep,angtile))
+    # Set up Coordinate list
+    #pdb.set_trace()
+    angtile = sp.tile(ang_data,(Nrng2,1))
+    rng_rep = sp.repeat(rng_vec2,ang_data.shape[0],axis=0)
+    coordlist=sp.zeros((len(rng_rep),3))
+    [coordlist[:,0],coordlist[:,1:]] = [rng_rep,angtile]
     # set up the lags
     lagsData= DataLags['ACF']
     (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
@@ -620,7 +622,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     time_vec = time_vec[:Nt]
 
     # average by the number of pulses
-    lagsData = lagsData/pulses
+    lagsData = lagsData/pulses[:lagsData.shape[0]]
     lagsNoise=NoiseLags['ACF']
     lagsNoise = sp.mean(lagsNoise,axis=2)
     pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
