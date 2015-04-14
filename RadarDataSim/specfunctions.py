@@ -5,6 +5,7 @@ Created on Mon Mar 16 19:36:27 2015
 @author: John Swoboda
 """
 import scipy as sp
+import pdb
 import scipy.interpolate as spinterp
 import scipy.fftpack as scfft
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
@@ -38,11 +39,11 @@ def ISRSspecmake(ionocont,sensdict,npts):
 
     return (omeg,outspecs,npts)
 
-def ISRSfitfunction(x,y_acf,amb_func,amb_dict,sensdict,npts,numtype):
+def ISRSfitfunction(x,y_acf,amb_dict,sensdict,npts,numtype):
 
     specs = sensdict['species']
     nspecs = len(specs)
-    datablock = sp.zeros((nspecs,2),dtype=numtype)
+    datablock = sp.zeros((nspecs,2),dtype=x.dtype)
     datablock[:,0] = x[sp.arange(0,nspecs*2,2)]
     datablock[:,1] = x[sp.arange(1,nspecs*2,2)]
     v_i = x[-1]
@@ -55,6 +56,7 @@ def ISRSfitfunction(x,y_acf,amb_func,amb_dict,sensdict,npts,numtype):
     # apply ambiguity function
     tauint = amb_dict['Delay']
     acfinterp = sp.zeros(len(tauint),dtype=numtype)
+
     acfinterp.real =spinterp.interp1d(tau,acf.real,bounds_error=0)(tauint)
     acfinterp.imag =spinterp.interp1d(tau,acf.imag,bounds_error=0)(tauint)
     # Apply the lag ambiguity function to the data

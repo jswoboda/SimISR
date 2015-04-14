@@ -265,8 +265,9 @@ class IonoContainer(object):
 
                 outdict[ikey] = indata[vardict[ikey]]
         #pdb.set_trace()
-        if outdict['coordvecs'] == ['r','theta','phi']:
-            outdict['ver']=1
+        if 'coordvecs' in outdict.keys():
+            if outdict['coordvecs'] == ['r','theta','phi']:
+                outdict['ver']=1
         return IonoContainer(**outdict)
     @staticmethod
 
@@ -306,8 +307,9 @@ class IonoContainer(object):
             if ivar in basekeys:
                 outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
         # determine version of data
-        if outdict['coordvecs'] == ['r','theta','phi']:
-            outdict['ver']=1
+        if 'coordvecs' in outdict.keys():
+            if outdict['coordvecs'] == ['r','theta','phi']:
+                outdict['ver']=1
 
         return IonoContainer(**outdict)
     #%% Reduce numbers

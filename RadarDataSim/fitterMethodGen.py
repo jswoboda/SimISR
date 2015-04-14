@@ -18,8 +18,8 @@ import matplotlib.pylab as plt
 from IonoContainer import IonoContainer
 
 
-def defaultparamsfunc(curlag, Pulse_shape,amb_dict,sensdict,numtype):
-    return(curlag, Pulse_shape,amb_dict,sensdict,numtype)
+def defaultparamsfunc(curlag,amb_dict,sensdict,npts,numtype):
+    return(curlag,amb_dict,sensdict,npts,numtype)
 
 class Fitterionoconainer(object):
     def __init__(self,Ionocont,sensdict,simparams):
@@ -66,10 +66,10 @@ class Fitterionoconainer(object):
         for itime in range(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
-
+                print('\t\tData for Location {0:d} of {1:d} now being fit.'.format(iloc,Nloc))
                # self.simparams['Rangegatesfinal'][irngnew] = sp.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
                 curlag = lagsData[iloc,itime]
-                d_func = d_funcfunc(curlag, Pulse_shape,self.simparams['amb_dict'],self.sensdict,numtype)
+                d_func = d_funcfunc(curlag, self.simparams['amb_dict'],self.sensdict,npts,numtype)
                 x_0 = x_0all[iloc,itime]
                 if first_lag:
                     first_lag = False

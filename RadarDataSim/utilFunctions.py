@@ -82,7 +82,7 @@ def spect2acf(omeg,spec):
     specpadd = np.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
     acf = np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(specpadd)))
     dt = 1/(df*len(specpadd))
-    tau = np.arange(-np.floor(len(acf)/2),np.floor(len(acf)/2+1))*dt
+    tau = np.arange(-np.ceil((len(acf)-1.0)/2),np.floor((len(acf)-1.0)/2+1))*dt
     return tau, acf
 
 
