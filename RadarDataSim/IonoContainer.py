@@ -99,10 +99,10 @@ class IonoContainer(object):
         self.Coord_Vecs = coordvecs
         self.Sensor_loc = sensor_loc
         self.Species = species
-
+        (Nloc,Nt) = paramlist.shape[:2]
         #set up a Velocity measurement
         if velocity is None:
-            self.Velocity=sp.zeros(self.Param_List.shape[:2])
+            self.Velocity=sp.zeros((Nloc,Nt,3))
         else:
             self.Velocity=velocity
         # set up a params name
@@ -346,14 +346,14 @@ class IonoContainer(object):
         self.Velocity=self.Velocity[ckeep]
 
     def timereduce(self, timelims=None,timesselected=None):
-        assert (timelims is not None) and (timesselected is not None), "Need a set of limits or selected set of times"
+        assert (timelims is not None) or (timesselected is not None), "Need a set of limits or selected set of times"
 
         if timelims is not None:
             tkeep = sp.logical_and(self.Time_Vector>=timelims[0],self.Time_Vector<timelims[1])
         if timesselected is not None:
             tkeep = sp.in1d(self.Time_Vector,timesselected)
         # prune the arrays
-        self.Time_Vector=self.Time_Vector[:,tkeep]
+        self.Time_Vector=self.Time_Vector[tkeep]
         self.Param_List=self.Param_List[:,tkeep]
         self.Velocity=self.Velocity[:,tkeep]
 

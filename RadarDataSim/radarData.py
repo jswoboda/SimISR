@@ -122,6 +122,8 @@ class RadarDataFile(object):
                     # create data
                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
+                    # the double slicing is a clever way to get this to work. curdataloc takes
+                    # the points that are the same spectrum. Then slice for the range dimension with : operator
                     out_data[curdataloc][:,cur_pnts] = cur_pulse_data+out_data[curdataloc][:,cur_pnts]
 
         # Noise spectrums
@@ -179,7 +181,7 @@ class RadarDataFile(object):
         beamn_list = []
         time_list = []
         file_loclist = []
-        
+
         # read in times
         for ifn, ifile in enumerate(file_list):
             h5file=tables.openFile(ifile)
