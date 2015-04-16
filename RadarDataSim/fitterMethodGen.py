@@ -45,7 +45,7 @@ class Fitterionoconainer(object):
         Ne: A numpy array that is NtxNbxNrg, Nt is number of times, Nb is number
         of beams and Nrg is number of range gates."""
 
-        Ne = self.Iono.Param_List[:,:,0]*(1.0+Tratio)
+        Ne = sp.absolute(self.Iono.Param_List[:,:,0]*(1.0+Tratio))
         return Ne
     def fitdata(self,fitfunc,startvalfunc,npts=64,numtype = sp.complex128, d_funcfunc=defaultparamsfunc,exinputs=[]):
         """ """
@@ -66,7 +66,7 @@ class Fitterionoconainer(object):
         for itime in range(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
-                print('\t\tData for Location {0:d} of {1:d} now being fit.'.format(iloc,Nloc))
+                print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
                # self.simparams['Rangegatesfinal'][irngnew] = sp.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
                 curlag = lagsData[iloc,itime]
                 d_func = d_funcfunc(curlag, self.simparams['amb_dict'],self.sensdict,npts,numtype)

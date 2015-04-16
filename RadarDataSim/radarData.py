@@ -129,7 +129,6 @@ class RadarDataFile(object):
         # Noise spectrums
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
         Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+1j*sp.random.randn(Np,N_samps).astype(complex))
-
         return out_data +Noise
         #%% Processing
     def processdataiono(self,timevec,inttime,lagfunc=CenteredLagProduct):
@@ -495,14 +494,12 @@ class RadarData(object):
                 pdb.set_trace()
             #create the weights and weight location based on the beams pattern.
             weight_cur =weight[rangelog]
-           # pdb.set_trace()
             weight_cur = weight_cur/weight_cur.sum()
 
             specsinrng = self.allspecs[rangelog]
             specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis,sp.newaxis],(1,Ndtime,speclen))
             specsinrng = specsinrng.sum(0)
             ipulse = 0
-            #pdb.set_trace()
             for itimed in sp.arange(Ndtime):
                 for i_curtime in sp.arange(N_pulses[itimed]):
                     cur_spec = specsinrng[itimed]
@@ -615,7 +612,6 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     Nrng2 = maxrg-minrg;
     rng_vec2 = sp.array([ sp.mean(rng_vec[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
     # Set up Coordinate list
-    #pdb.set_trace()
     angtile = sp.tile(ang_data,(Nrng2,1))
     rng_rep = sp.repeat(rng_vec2,ang_data.shape[0],axis=0)
     coordlist=sp.zeros((len(rng_rep),3))
@@ -635,7 +631,6 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
     # subtract out noise lags
     lagsData = lagsData-lagsNoise
-
     rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags)) *1e3
     ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
     lagsData = lagsData*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
@@ -650,7 +645,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
             lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
 
     # Put everything in a parameter list
-    Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags))
+    Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=lagsData.dtype)
     # transpose from (range,lag,time,beams) to (beams,range,time,lag)
     lagsDataSum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
     curloc = 0

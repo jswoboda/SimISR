@@ -47,7 +47,6 @@ def make_amb(Fsorg,m_up,plen,nlags):
     # envelop function
     envfunc = np.zeros(d2d.shape)
     envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
-    #pdb.set_trace()
     envfunc = envfunc/np.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
     Wtt = np.zeros((nlags,d2d.shape[0],d2d.shape[1]))
