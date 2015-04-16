@@ -254,7 +254,7 @@ class IonoContainer(object):
         Input:
         filename - A string for the file name."""
         indata = sio.loadmat(filename,chars_as_strings=True)
-        vardict = {'coordlist':'Cart_Coords','paramlist':'Param_List',\
+        vardict = {'coordlist':'Cart_Coords','coordlist2':'Sphere_Coords','paramlist':'Param_List',\
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
             'paramnames':'Param_Names','species':'Species','velocity':'Velocity'}
         outdict = {}
@@ -268,6 +268,8 @@ class IonoContainer(object):
         if 'coordvecs' in outdict.keys():
             if outdict['coordvecs'] == ['r','theta','phi']:
                 outdict['ver']=1
+                outdict['coordlist']=outdict['coordlist2']
+        del outdict['coordlist2']
         return IonoContainer(**outdict)
     @staticmethod
 
@@ -276,7 +278,7 @@ class IonoContainer(object):
         Input:
         filename - A string for the file name."""
 
-        vardict = {'coordlist':'Cart_Coords','paramlist':'Param_List',\
+        vardict = {'coordlist':'Cart_Coords','coordlist2':'Sphere_Coords','paramlist':'Param_List',\
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
             'paramnames':'Param_Names', 'species':'Species','velocity':'Velocity'}
         vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
@@ -310,6 +312,8 @@ class IonoContainer(object):
         if 'coordvecs' in outdict.keys():
             if outdict['coordvecs'] == ['r','theta','phi']:
                 outdict['ver']=1
+                outdict['coordlist']=outdict['coordlist2']
+        del outdict['coordlist2']
 
         return IonoContainer(**outdict)
     #%% Reduce numbers
