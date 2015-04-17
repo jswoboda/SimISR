@@ -25,9 +25,13 @@ def ISRSspecmake(ionocont,sensdict,npts):
         full_grid = True
 
     (N_x,N_t) = outspecs.shape[:2]
+    outspecsorig = sp.zeros_like(outspecs)
+    outrcs = sp.zeros((N_x,N_t))
     #pdb.set_trace()
     for i_x in sp.arange(N_x):
         for i_t in sp.arange(N_t):
+            print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t,N_t,i_x,N_x))
+
             if full_grid:
                 cur_params = ionocont.Param_List[i_x,i_t]
                 cur_vel = Vi[i_x,i_t]
@@ -35,8 +39,9 @@ def ISRSspecmake(ionocont,sensdict,npts):
                 cur_params = ionocont.Param_List[i_x]
             (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,ionocont.Species,cur_vel,rcsflag=True)
             cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
+            outspecsorig[i_x,i_t] = cur_spec
+            outrcs[i_x,i_t] = rcs
             outspecs[i_x,i_t] = cur_spec_weighted
-
     return (omeg,outspecs,npts)
 
 def ISRSfitfunction(x,y_acf,amb_dict,sensdict,npts,numtype):
