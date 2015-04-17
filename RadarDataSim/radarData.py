@@ -124,11 +124,13 @@ class RadarDataFile(object):
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
                     # the double slicing is a clever way to get this to work. curdataloc takes
                     # the points that are the same spectrum. Then slice for the range dimension with : operator
-                    out_data[curdataloc][:,cur_pnts] = cur_pulse_data+out_data[curdataloc][:,cur_pnts]
+                    for idatn,idat in enumerate(curdataloc):
+                        out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
 
         # Noise spectrums
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
-        Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+1j*sp.random.randn(Np,N_samps).astype(complex))
+        Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+
+            1j*sp.random.randn(Np,N_samps).astype(complex))
         return out_data +Noise
         #%% Processing
     def processdataiono(self,timevec,inttime,lagfunc=CenteredLagProduct):
