@@ -95,4 +95,3 @@ def ISRSfitfunction(x,y_acf,amb_dict,sensdict,npts,numtype):
     y = y_interm.real
     return (y-spec_final)*penalty_mult
 
-def addpenalty(datablock):
