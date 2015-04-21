@@ -1,4 +1,4 @@
-from Tkinter import *
+from tkinter import *
 import numpy
 
 def rect(r, w, deg=1):
@@ -18,21 +18,21 @@ def polar(x, y, deg=1):
 
 def onCanvasClick(event):
     if event.widget.find_closest(event.x, event.y) == canv.find_withtag('finish'):
-        print 'Finished'
-        print canv.output
-        f = open('SelectedBeamCodes.txt', 'w')
-        for beam in canv.output:
-            f.write("%s\n" % (beam))
+        print('Finished')
+        print((canv.output))
+        with open('SelectedBeamCodes.txt', 'w') as f:
+            for beam in canv.output:
+                f.write("%s\n" % (beam))
         sys.exit()
     else:
         p_coords = polar(event.x-500,event.y-500)
-        print  'Clicked Az: ', p_coords[1],'El: ', numpy.abs(90 - p_coords[0]/6)
+        print(('Clicked Az: ', p_coords[1],'El: ', numpy.abs(90 - p_coords[0]/6)))
         fname = 'bcotable.txt'
         lines = numpy.loadtxt('bcotable.txt')
         closest = lines[numpy.int32(event.widget.find_closest(event.x, event.y))-1]
         canv.itemconfig(canv.find_withtag('header'),text='Closest beam is # %s, Az: %s, El: %s' %(closest[0][0],closest[0][1],closest[0][2]))
         canv.itemconfig(event.widget.find_closest(event.x, event.y), fill='orange')
-        print 'Closest beam is # %s, Az: %s, El: %s' %(closest[0][0],closest[0][1],closest[0][2])
+        print(('Closest beam is # %s, Az: %s, El: %s' %(closest[0][0],closest[0][1],closest[0][2])))
         canv.output.append(closest[0][0])
 
 
@@ -67,7 +67,7 @@ lines = numpy.loadtxt('bcotable.txt')
 #now draw the dots -- needed to rotate by 90 degrees counter-clockwise
 for beams in lines:
     c_coords = rect(90-beams[2],beams[1]-90)
-    print c_coords
+    print(c_coords)
     points = [c_coords[0]*div/10+offset_x -5,
             c_coords[1]*div/10+offset_y-5,
             c_coords[0]*div/10+offset_x +5,

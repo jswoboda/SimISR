@@ -28,5 +28,5 @@ curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()
 testpath = os.path.join(curpath,'Test')
 if not os.path.exists(testpath):
     os.mkdir(testpath)
-    print "Making a path for testing at "+testpath
+    print("Making a path for testing at "+testpath)
 setup(**config)

@@ -1,6 +1,6 @@
 """
 Python class to calculate an incoherent scatter spectrum.  Based on ISspectrum.java as written
-by John Holt at Millstone Hill in February 1996. 
+by John Holt at Millstone Hill in February 1996.
 
 P. Erickson  2009-07-09
 $Id$
@@ -13,10 +13,10 @@ class ISSpectrum:
     """ ISSpectrum is a class which calculates an incoherent scatter spectrum as a function
     of frequency from an input set of physical parameters and a measurement frequency.
     """
-    
+
     def __init__(self, centerFrequency = 440.2, bMag = 0.4e-4, nspec=64, sampfreq=50e3):
         """ __init__(centerFrequency, bMag) initializes the class.
-        
+
         Inputs:
            centerFrequency - float: center frequency in MHz.  Default = 440.2.
            bMag - float: Magnetic field strength in Gauss.  Default = 0.4e-4.
@@ -29,7 +29,7 @@ class ISSpectrum:
         Exceptions:
            None
         """
-    
+
         # Fixed physical constants
         self.__alpha = 0.314
         self.__b = bMag
@@ -48,18 +48,18 @@ class ISSpectrum:
         # set center frequency-dependent constants
         self.__freq = centerFrequency
         self.__setFreqConstants__()
-        
+
         # set sampling parameters
         self.__nspec = nspec
         self.__sampfreq = sampfreq
-        
+
         self.__nspec1D = self.__nspec/2 + 1
         self.__delom = 2*math.pi*self.__sampfreq/self.__nspec
 
     def __setFreqConstants__(self):
         """ __setFreqConstants__() is a private function which initializes several
         internal constants based on the center frequency.
-        
+
         Inputs:
             None
         Returns:
@@ -69,18 +69,18 @@ class ISSpectrum:
         Exceptions:
             None
         """
-        self.__rlam = 2.9979*100.0/self.__freq 
+        self.__rlam = 2.9979*100.0/self.__freq
         self.__rk = 4.0*math.pi/self.__rlam
-        self.__thface = math.sqrt(self.__rme/(2.0*self.__boltk))/self.__rk 
-        self.__thfaci = math.sqrt(self.__amu/(2.0*self.__boltk))/self.__rk 
+        self.__thface = math.sqrt(self.__rme/(2.0*self.__boltk))/self.__rk
+        self.__thfaci = math.sqrt(self.__amu/(2.0*self.__boltk))/self.__rk
         self.__phface = (self.__e*self.__b/self.__rme)*math.sqrt(self.__rme/(2.*self.__boltk))/self.__rk
         self.__phfaci = (self.__e*self.__b/self.__amu)*math.sqrt(self.__amu/(2.*self.__boltk))/self.__rk
 
     def __dfun__(self, tr, pfac):
         """ __dfun(tr, pfac)__ is a private function to calculate the Debye factor corresponding to
-        a given temperature ratio and a power factor pfac = 4761. * te * rk**2 / (pnorm*p). 
+        a given temperature ratio and a power factor pfac = 4761. * te * rk**2 / (pnorm*p).
         Newton's method is used to solve dfun*(1+tr+dfun)*(1+dfun)-pfac=0.
-        
+
         Inputs:
             tr - float: Temperature ratio Te/Ti
             pfac - float: Power factor pfac (see above)
@@ -95,7 +95,7 @@ class ISSpectrum:
         # initialize
         dfun = 0.0
 
-        for iter in range(10):
+        for i in range(10):
 
             a1 = 1. + tr
             a2 = 2.*(2.+tr)
@@ -104,15 +104,15 @@ class ISSpectrum:
             fpr = dfun*(3.*dfun+a2) + a1
             ddf = f/fpr
             dfun = dfun - ddf
-            iter = iter + 1
+            i += 1
             if (ddf < .001):
                 break
-        
+
         return dfun
-    
+
     def __daw__(self, x):
         """ __daw__(x) is a private function which solves Dawson's integral.
-        
+
         Inputs:
             x - float: argument to Dawson's integral.
         Returns:
@@ -122,7 +122,7 @@ class ISSpectrum:
         Exceptions:
             None
         """
-        
+
         # fixed integration coefficients
         p1 = [2.31569752013e+05, -2.91794643008e+04,
               9.66963981917e+03, -4.35011602076e+02,
@@ -151,7 +151,7 @@ class ISSpectrum:
 
         y = x*x
 
-        if (y < 6.25):     
+        if (y < 6.25):
             sump = (((((p1[6]*y + p1[5])*y + p1[4])*y + p1[3])*y +
                         p1[2])*y + p1[1])*y + p1[0]
             sumq = (((((q1[6]*y + q1[5])*y + q1[4])*y + q1[3])*y +
@@ -176,13 +176,13 @@ class ISSpectrum:
             daw = (0.5 + 0.5*w2*frac)/x
         else:
             daw = 0.5/x
-        
+
         return daw
-    
+
     def __spect2__(self, ti, te, df, p2, rm1, rm2, n, delom):
         """ __spect2__(ti, te, df, p2, rm1, rm2, n, delom) is a private function to calculate
         the incoherent scatter spectrum ion line.
-        
+
         Inputs:
             ti - float: Ion temperature, K
             te - float: Electron temperature, K
@@ -214,7 +214,7 @@ class ISSpectrum:
 
         omega = 0.0
         sp = []
-        
+
         for i in range(n):
 
             # Calculate electron admittance
@@ -258,16 +258,16 @@ class ISSpectrum:
             sd2 = sd2*sd2
             sd = sd1 + sd2
             sp.append(sn/sd)
-            
+
             # Step frequency forwards
             omega = omega + delom;
 
         return sp
-    
+
     def getSpectrum(self, ti, tr, po, rm1, rm2, p2):
         """getSpectrum(ti, tr, po, rm1, rm2, p2) is a public function to calculate and return the incoherent
         scatter ion line power spectrum.
-        
+
         Inputs:
             ti - float: Ion temperature, K
             tr - float: Ion-to-electron temperature ratio
@@ -300,11 +300,11 @@ class ISSpectrum:
         omega /= 2*math.pi  # result is in Hz, not radians/sec
 
         return (omega, sp)
-    
+
     def getSpectrumParameterVector(self, vec):
         """getSpectrum(ti, tr, pi, rm1, rm2, p2) is a public function to calculate and return the incoherent
         scatter ion line power spectrum.
-        
+
         Inputs:
             vec - list of parameters (ti, tr, po, rm1, rm2, p2)
             ti - float: Ion temperature, K
@@ -322,5 +322,5 @@ class ISSpectrum:
         Exceptions:
             None
         """
-        
+
         return self.getSpectrum(vec[0], vec[1], vec[2], vec[3], vec[4], vec[5])

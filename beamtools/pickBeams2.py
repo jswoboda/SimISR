@@ -4,12 +4,11 @@ Created on Wed Mar 25 19:53:46 2015
 
 @author: John Swoboda
 """
-
-from Tkinter import *
+from __future__ import division, absolute_import
+from tkinter import *
 import numpy as np
 import matplotlib.pyplot as plt
-import pdb
-from beamfuncs import BeamSelector
+from .beamfuncs import BeamSelector
 
 def rect(r, w, deg=1):
     # radian if deg=0; degree if deg=1
@@ -130,7 +129,7 @@ class Gui():
 
 
         p_coords = polar(event.x-self.off_x ,event.y-self.off_y)
-        print  'Clicked Az: ', p_coords[1],'El: ', np.abs(90 - p_coords[0]/6)
+        print('Clicked Az: ', p_coords[1],'El: ', np.abs(90 - p_coords[0]/6))
         x = self.canv.canvasx(event.x)
         y = self.canv.canvasy(event.y)
         dist = (self.ovalx-x)**2+(self.ovaly-y)**2
@@ -141,14 +140,14 @@ class Gui():
             self.canv.itemconfig(self.canv.find_withtag('header'),text=textheader)
             self.canv.itemconfig(self.beamhandles[linesit], fill='orange')
 
-            print '%s) Closest beam is # %s, Az: %s, El: %s' %(len(self.output)+1,int(closest[0]),closest[1],closest[2])
+            print('%s) Closest beam is # %s, Az: %s, El: %s' %(len(self.output)+1,int(closest[0]),closest[1],closest[2]))
             self.output.append(closest[0])
             self.canv.update()
         else:
-            print "Repeated beam"
+            print("Repeated beam")
     def buttonClick(self):
-        print 'Finished'
-        print self.output
+        print('Finished')
+        print(self.output)
         allbeam = BeamSelector(self.lines)
         fig = allbeam.plotbeams(self.output,True,'beampic.png',"Chosenbeams")
         plt.close(fig)

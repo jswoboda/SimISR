@@ -3,9 +3,9 @@
 Holds the IonoContainer class that contains the ionospheric parameters.
 @author: John Swoboda
 """
+from __future__ import absolute_import
 import os
 import inspect
-import pdb
 import posixpath
 
 import numpy as np
@@ -14,11 +14,11 @@ import scipy.io as sio
 import scipy.interpolate
 import tables
 # From my
-from ISSpectrum import ISSpectrum
+from .ISSpectrum import ISSpectrum
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
-from const.physConstants import v_C_0, v_Boltz, v_epsilon0
+from .const.physConstants import v_C_0, v_Boltz, v_epsilon0
 import const.sensorConstants as sensconst
-from utilFunctions import Chapmanfunc, TempProfile
+from .utilFunctions import Chapmanfunc, TempProfile
 
 class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will
@@ -241,9 +241,9 @@ class IonoContainer(object):
                         h5file.createArray('/',cvar,vardict[cvar],'Static array')
             h5file.close()
         except Exception as inst:
-            print type(inst)
-            print inst.args
-            print inst
+            print(type(inst))
+            print(inst.args)
+            print(inst)
             h5file.close()
             raise NameError('Failed to write to h5 file.')
 
@@ -618,10 +618,10 @@ if __name__== '__main__':
     Icont3 = IonoContainer.readh5(os.path.join(testpath,'testiono.h5'))
 
     if Icont1==Icont2:
-        print "Mat file saving and reading works"
+        print("Mat file saving and reading works")
     else:
-        print "Something is wrong with the Mat file writing and reading"
+        print("Something is wrong with the Mat file writing and reading")
     if Icont1==Icont3:
-        print "h5 file saving and reading works"
+        print("h5 file saving and reading works")
     else:
-        print "Something is wrong with the h5 file writing and reading"
+        print("Something is wrong with the h5 file writing and reading")

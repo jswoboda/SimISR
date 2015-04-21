@@ -4,14 +4,14 @@ Created on Tue Jul 22 16:18:21 2014
 
 @author: Bodangles
 """
-
+from __future__ import absolute_import
 import numpy as np
 import scipy as sp
 import scipy.fftpack as scfft
-from const.physConstants import v_C_0
+from .const.physConstants import v_C_0
 import tables
-from ISSpectrum import ISSpectrum
-import pdb
+from .ISSpectrum import ISSpectrum
+
 # utility functions
 def make_amb(Fsorg,m_up,plen,nlags):
     """ Make the ambiguity function dictionary that holds the lag ambiguity and
@@ -50,12 +50,12 @@ def make_amb(Fsorg,m_up,plen,nlags):
     envfunc = envfunc/np.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
     Wtt = np.zeros((nlags,d2d.shape[0],d2d.shape[1]))
-    cursincrep = np.tile(outsincpad[:,np.newaxis],(1,d2d.shape[1]))
+    cursincrep = np.tile(outsincpad[:,None],(1,d2d.shape[1]))
     Wt0 = Wta = cursincrep*envfunc
     Wt0fft = np.fft.fft(Wt0,axis=0)
     for ilag in np.arange(nlags):
         cursinc = np.roll(outsincpad,ilag*m_up)
-        cursincrep = np.tile(cursinc[:,np.newaxis],(1,d2d.shape[1]))
+        cursincrep = np.tile(cursinc[:,None],(1,d2d.shape[1]))
         Wta = cursincrep*envfunc
         #do fft based convolution, probably best method given sizes
         Wtafft = np.fft.fft(Wta,axis=0)
@@ -120,8 +120,8 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = np.complex
             array of noise data to avoid any problems with filter overlap.
     """
     npts = len(filt_freq)
-    filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
-    shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
+    filt_tile = sp.tile(filt_freq[None,:],(rep,1))
+    shaperep = sp.tile(pulse_shape[None,:],(rep,1))
     noise_vec = (np.random.randn(rep,npts).astype(numtype)+1j*np.random.randn(rep,npts).astype(numtype))/np.sqrt(2.0)# make a noise vector
     mult_freq = filt_tile.astype(numtype)*noise_vec
     data = scfft.ifft(mult_freq,axis=-1)
@@ -170,14 +170,14 @@ def dict2h5(filename,dictin):
     try:
         # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
         # Make group for each dictionary
-        for cvar in dictin.keys():
+        for cvar in list(dictin.keys()):
 
             h5file.createArray('/',cvar,dictin[cvar],'Static array')
         h5file.close()
     except Exception as inst:
-        print type(inst)
-        print inst.args
-        print inst
+        print(type(inst))
+        print(inst.args)
+        print(inst)
         h5file.close()
         raise NameError('Failed to write to h5 file.')
         #%% Test functions

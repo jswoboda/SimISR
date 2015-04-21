@@ -6,6 +6,8 @@ Created on Tue Dec 31 10:58:18 2013
 """
 import os
 import inspect
+from six import string_types
+
 def getangles(bcodes,radar='risr'):
     ref_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     if radar.lower() == 'risr':
@@ -13,9 +15,8 @@ def getangles(bcodes,radar='risr'):
     elif radar.lower() == 'pfisr':
         reffile = os.path.join(ref_path,'PFISRbeammap.txt')
 
-    ref_f = open(reffile)
-    all_ref = ref_f.readlines()
-    ref_f.close()
+    with open(reffile,'r') as ref_f:
+        all_ref = ref_f.readlines()
 
     # make a beamcode to angle dictionary
     bco_dict = dict()
@@ -26,11 +27,10 @@ def getangles(bcodes,radar='risr'):
 
     # Read in file
     #file_name = 'SelectedBeamCodes.txt'
-    if type(bcodes) is str:
+    if isinstance(bcodes,string_types):
         file_name = bcodes
-        f = open(file_name)
-        bcolines = f.readlines()
-        f.close()
+        with open(file_name,'r') as f:
+            bcolines = f.readlines()
 
         bcolist = [int(float(x.rstrip())) for x in bcolines]
     else:

@@ -4,12 +4,12 @@ Created on Mon Mar 16 19:36:27 2015
 
 @author: John Swoboda
 """
+from __future__ import absolute_import
 import scipy as sp
-import pdb
 import scipy.interpolate as spinterp
 import scipy.fftpack as scfft
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
-from utilFunctions import  spect2acf
+from .utilFunctions import  spect2acf
 
 
 def ISRSspecmake(ionocont,sensdict,npts):
@@ -28,9 +28,9 @@ def ISRSspecmake(ionocont,sensdict,npts):
     outspecsorig = sp.zeros_like(outspecs)
     outrcs = sp.zeros((N_x,N_t))
     #pdb.set_trace()
-    for i_x in sp.arange(N_x):
-        for i_t in sp.arange(N_t):
-            print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t,N_t,i_x,N_x))
+    for i_x in range(N_x):
+        for i_t in range(N_t):
+            print(('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t,N_t,i_x,N_x)))
 
             if full_grid:
                 cur_params = ionocont.Param_List[i_x,i_t]
