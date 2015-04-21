@@ -5,17 +5,17 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 @author: Bodangles
 """
-
+from __future__ import absolute_import
 import scipy as sp
 import os
 import scipy.fftpack as scfft
 import time
 import tables
 import pdb
-from IonoContainer import IonoContainer, MakeTestIonoclass
-from const.physConstants import v_C_0, v_Boltz
+from .IonoContainer import IonoContainer, MakeTestIonoclass
+from .const.physConstants import v_C_0, v_Boltz
 import const.sensorConstants as sensconst
-from utilFunctions import CenteredLagProduct, MakePulseData,MakePulseDataRep, dict2h5
+from .utilFunctions import CenteredLagProduct, MakePulseData,MakePulseDataRep, dict2h5
 
 class RadarDataFile(object):
     def __init__(self,Ionodict,sensdict,simparams,outdir,outfilelist=None,NNs =28,NNP=100,npts = 128):
@@ -30,8 +30,8 @@ class RadarDataFile(object):
        Npall = sp.floor(Npall/N_angles)*N_angles
        Np = Npall/N_angles
 
-       print "All spectrums created already"
-       filetimes = Ionodict.keys()
+       print("All spectrums created already")
+       filetimes = list(Ionodict.keys())
        filetimes.sort()
        ftimes = sp.array(filetimes)
        simdtype = self.simparams['dtype']
@@ -50,7 +50,7 @@ class RadarDataFile(object):
             for ifn, ifilet in enumerate(filetimes):
                 outdict = {}
                 ifile = Ionodict[ifilet]
-                print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),os.path.split(ifile)[1]))
+                print(('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),os.path.split(ifile)[1])))
                 curcontainer = IonoContainer.readh5(ifile)
                 pnts = pulsefile==ifn
                 pt =pulsetimes[pnts]
@@ -96,7 +96,7 @@ class RadarDataFile(object):
         specsused = sp.zeros((Ndtime,Nbeams,N_rg,speclen),dtype=allspecs.dtype)
         for istn, ist in enumerate(spectime):
             for ibn in range(Nbeams):
-                print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
+                print(('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams)))
                 weight = weights[ibn]
                 for isamp in sp.arange(len(range_gates)):
                     range_g = range_gates[isamp]
@@ -199,12 +199,12 @@ class RadarDataFile(object):
         # run the time loop
         print("Forming ACF estimates")
         for itn,it in enumerate(timevec):
-            print("\tTime {0:d} of {0:d}".format(itn,Ntime))
+            print(("\tTime {0:d} of {0:d}".format(itn,Ntime)))
             # do the book keeping to determine locations of data within the files
             cur_tlim = (it,it+inttime)
             curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
             if  not sp.any(curcases):
-                print("\tNo pulses for time {0:d} of {0:d}, lagdata adjusted accordinly".format(itn,Ntime))
+                print(("\tNo pulses for time {0:d} of {0:d}, lagdata adjusted accordinly".format(itn,Ntime)))
                 outdata = outdata[:itn]
                 outnoise = outnoise[:itn]
                 pulses=pulses[:itn]
@@ -232,14 +232,13 @@ class RadarDataFile(object):
                 curfileit =  [sp.where(pulsen_list[ifn]==item)[0] for item in pulseset ]
                 curfileitvec = sp.hstack(curfileit)
                 ifile = file_list[ifn]
-                h5file=tables.openFile(ifile)
-                file_arlocs = sp.where(curfileloc==ifn)[0]
-                curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)[curfileitvec]
-                curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)[curfileitvec]
-                h5file.close()
+                with tables.openFile(ifile) as h5file:
+                    file_arlocs = sp.where(curfileloc==ifn)[0]
+                    curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)[curfileitvec]
+                    curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)[curfileitvec]
             # After data is read in form lags for each beam
             for ibeam in range(Nbeams):
-                print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
+                print(("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams)))
                 beamlocstmp = sp.where(beamlocs==ibeam)[0]
                 pulses[itn,ibeam] = len(beamlocstmp)
                 pulsesN[itn,ibeam] = len(beamlocstmp)
@@ -314,8 +313,8 @@ class RadarData(object):
 
         self.rawnoise = sp.zeros((N_angles,NNP,NNs),dtype=sp.complex128)
         if type(Ionocont)==dict:
-            print "All spectrums created already"
-            filetimes = Ionocont.keys()
+            print("All spectrums created already")
+            filetimes = list(Ionocont.keys())
             filetimes.sort()
             ftimes = sp.array(filetimes)
 
@@ -328,7 +327,7 @@ class RadarData(object):
             for ifn, ifilet in enumerate(filetimes):
 
                 ifile = Ionocont[ifilet]
-                print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),os.path.split(ifile)[1]))
+                print(('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),os.path.split(ifile)[1])))
                 curcontainer = IonoContainer.readh5(ifile)
                 pnts = pulsefile==ifn
                 pt =pulsetimes[pnts].astype(int)
@@ -346,10 +345,10 @@ class RadarData(object):
 
             # determine the in_type
             if in_type ==0:
-                print "All spectrums being created"
+                print("All spectrums being created")
                 (omeg,self.allspecs,npts) = Ionocont.makeallspectrums(sensdict,npts)
             elif in_type ==1:
-                print "All spectrums created already"
+                print("All spectrums created already")
                 omeg = Ionocont.Param_Names
                 self.allspecs = Ionocont.Param_List
                 npts = len(omeg)
@@ -360,7 +359,7 @@ class RadarData(object):
 
                 self.rawdata[icode]=outdata
                 self.rawnoise[icode] = noisedata
-                print('\tData for Beam {0:d} of {1:d} created.'.format(icode,N_angles))
+                print(('\tData for Beam {0:d} of {1:d} created.'.format(icode,N_angles)))
 
     #%% Make functions
     def __makeTime__(self,pulsetimes,spectime,Sphere_Coords,allspecs,beamcodes):
@@ -677,4 +676,4 @@ if __name__== '__main__':
     (DataLags,NoiseLags) = radardata.processdata(timearr,curint_time)
 
     t2 = time.time()
-    print(t2-t1)
+    print((t2-t1))

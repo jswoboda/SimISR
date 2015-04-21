@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 import pdb
 
 class BeamSelector(object):
-    """This class will take in a numpy array with the first column being the beam numbers
+    """
+    This class will take in a numpy array with the first column being the beam numbers
     the second coloumn the az angle in degrees and the third column the el angle in degrees.
     The forth column is ksys variable for each beam.
     Variables
@@ -21,6 +22,7 @@ class BeamSelector(object):
     beamnumxydict - A dictionary with the beam number as the keys and x, y location the beams as the values.
     angledict - beamnumdict with the key value pairs switched.
     xydict - beamnumxydict with the key value pairs switched.
+    [candidate for pandas DataFrame]
     """
 
     def __init__(self,beammat,beamlist=None):
@@ -32,13 +34,13 @@ class BeamSelector(object):
         self.angledict = {}
         self.xydict = {}
         self.zenith = False # If this is false elevation is referenced to z=0 if true its referenced to z axis
-        allbeams = np.array([int(ib) for ib in beammat[:,0]])
+        allbeams = np.array(map(int,beammat[:,0]))
         if beamlist is None:
             beamlist = allbeams
         else:
             beamlog = np.in1d(allbeams,[] )
             for ibeam in beamlist:
-                beamlog = beamlog+(int(ibeam)==allbeams)
+                beamlog += (int(ibeam)==allbeams)
             beammat=beammat[beamlog]
         self.beammat = beammat
         for ibeam,curlist in enumerate(beammat):
@@ -90,7 +92,7 @@ class BeamSelector(object):
             self.zenith=False
             self.updatebeamlist(beamnums,azvec,elvec+90)
         if report:
-            print "Zenith now: " +str(self.zenith)
+            print("Zenith now:{}".format(self.zenith))
 
     def getbeamsdist(self,beamnum,desdist,distdict=None):
         """ This will get all of the beams within a specific spatial distance to
@@ -173,16 +175,15 @@ class BeamSelector(object):
         plt.title(title)
         if filename != None:
             plt.savefig(filename)
-            print 'Saved image in '+filename
+            print('Saved image in '+filename)
         return fig
     def printbeamlist(self,filename='outbeams.txt',beamlist=None):
         if beamlist is None:
             beamlist = self.beamnumdict.keys()
 
-        f = open(filename,'w')
-        for ib in beamlist:
-            f.write(str(int(ib))+'\n')
-        f.close()
+        with open(filename,'w') as f:
+            for ib in beamlist:
+                f.write(str(int(ib))+'\n')
 
     def printbeamangles(self,filename='outangles.txt',beamlist=None):
         if beamlist is None:

@@ -5,7 +5,7 @@ fitterMethods.py
 @author: John Swoboda
 Holds class that applies the fitter.
 """
-
+from __future__ import absolute_import
 #imported basic modules
 import os, inspect, time
 import pdb
@@ -16,11 +16,11 @@ import scipy.optimize,scipy.interpolate
 from matplotlib import rc
 import matplotlib.pylab as plt
 # My modules
-from IonoContainer import MakeTestIonoclass
-from radarData import RadarData
-from ISSpectrum import ISSpectrum
+from .IonoContainer import MakeTestIonoclass
+from .radarData import RadarData
+from .ISSpectrum import ISSpectrum
 import const.sensorConstants as sensconst
-from utilFunctions import make_amb, spect2acf
+from .utilFunctions import make_amb, spect2acf
 
 class FitterBasic(object):
     """ This is a basic fitter to take data created by the RadarData Class and
@@ -54,21 +54,24 @@ class FitterBasic(object):
         NoiseLags = self.NoiseDict
         (Nt,Nbeams,Nrng) = DataLags['Pow'].shape
         power = DataLags['Pow']
-        pulses = sp.repeat(DataLags['Pulses'][:,:,sp.newaxis],Nrng,axis=-1)
+        pulses = sp.repeat(DataLags['Pulses'][:,:,None],Nrng,axis=-1)
         power = power/pulses
         #noise power set up
         noisepower = sp.mean(NoiseLags['Pow'],axis=2)
         npulses = NoiseLags['Pulses']
         noisepower = noisepower/npulses
-        power = power-sp.repeat(noisepower[:,:,sp.newaxis],Nrng,axis=-1)
+        power = power-sp.repeat(noisepower[:,:,None],Nrng,axis=-1)
         rng_vec = self.sensdict['RG']*1e3
         rng3d = sp.tile(rng_vec,(Nt,Nbeams,1))
         Ksysvec = self.sensdict['Ksys'] # Beam shape and physcial constants
-        ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis],(Nt,1,Nrng))
+        ksys3d = sp.tile(Ksysvec[None,:,None],(Nt,1,Nrng))
 
         Ne = power*rng3d*rng3d/(pulsewidth*txpower*ksys3d)*(1.0+Tratio)
         return Ne
-    def fitdata2(self,npts=64,numtype = sp.complex128,startvalfunc=defstart,d_funcfunc = default_fit_func2,fitfunc=deffitfunc2):
+
+    def fitdata2(self,npts=64,numtype = sp.complex128,
+                 startvalfunc=defstart,d_funcfunc = default_fit_func2,
+                 fitfunc=deffitfunc2):
         """ """
 
         # get intial guess for NE
@@ -81,15 +84,15 @@ class FitterBasic(object):
         # get the data nd noise lags
         lagsData= self.DataDict['ACF']
         (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
-        pulses = sp.tile(self.DataDict['Pulses'][:,:,sp.newaxis,sp.newaxis],(1,1,Nrng,Nlags))
+        pulses = sp.tile(self.DataDict['Pulses'][:,:,None,None],(1,1,Nrng,Nlags))
 
         # average by the number of pulses
         lagsData = lagsData/pulses
         lagsNoise=self.NoiseDict['ACF']
         lagsNoise = sp.mean(lagsNoise,axis=2)
-        pulsesnoise = sp.tile(self.NoiseDict['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
+        pulsesnoise = sp.tile(self.NoiseDict['Pulses'][:,:,None],(1,1,Nlags))
         lagsNoise = lagsNoise/pulsesnoise
-        lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
+        lagsNoise = sp.tile(lagsNoise[:,:,None,:],(1,1,Nrng,1))
         # subtract out noise lags
         lagsData = lagsData-lagsNoise
 
@@ -97,9 +100,9 @@ class FitterBasic(object):
         pulsewidth = self.sensdict['taurg']*self.sensdict['t_s']
         txpower = self.sensdict['Pt']
         rng_vec = self.sensdict['RG']*1e3
-        rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags))
+        rng3d = sp.tile(rng_vec[None,None,:,None],(Nt,Nbeams,1,Nlags))
         Ksysvec = self.sensdict['Ksys']
-        ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
+        ksys3d = sp.tile(Ksysvec[None,:,None,None],(Nt,1,Nrng,Nlags))
         lagsData = lagsData*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
         Pulse_shape = self.simparams['Pulse']
         fittedarray = sp.zeros((Nt,Nbeams,Nrng2,nparams))
@@ -108,7 +111,7 @@ class FitterBasic(object):
         self.simparams['Rangegatesfinal'] = sp.array([ sp.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in sp.arange(minrg,maxrg)])
         print('\nData Now being fit.')
         for itime in sp.arange(Nt):
-            print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
+            print(('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt)))
             for ibeam in sp.arange(Nbeams):
                 for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
 
@@ -128,7 +131,7 @@ class FitterBasic(object):
                     except TypeError:
                         pdb.set_trace()
 
-                print('\t\tData for Beam {0:d} of {1:d} fitted.'.format(ibeam,Nbeams))
+                print(('\t\tData for Beam {0:d} of {1:d} fitted.'.format(ibeam,Nbeams)))
         return(fittedarray,fittederror)
     def fitdata(self,nparams=4,npnts = 64,numtype=sp.complex128):
         """ This function will fit the electron density Ti and Te for the ISR data.
@@ -153,15 +156,15 @@ class FitterBasic(object):
         # get the data nd noise lags
         lagsData= self.DataDict['ACF']
         (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
-        pulses = sp.tile(self.DataDict['Pulses'][:,:,sp.newaxis,sp.newaxis],(1,1,Nrng,Nlags))
+        pulses = sp.tile(self.DataDict['Pulses'][:,:,None,None],(1,1,Nrng,Nlags))
 
         # average by the number of pulses
         lagsData = lagsData/pulses
         lagsNoise=self.NoiseDict['ACF']
         lagsNoise = sp.mean(lagsNoise,axis=2)
-        pulsesnoise = sp.tile(self.NoiseDict['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
+        pulsesnoise = sp.tile(self.NoiseDict['Pulses'][:,:,None],(1,1,Nlags))
         lagsNoise = lagsNoise/pulsesnoise
-        lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
+        lagsNoise = sp.tile(lagsNoise[:,:,None,:],(1,1,Nrng,1))
         # subtract out noise lags
         lagsData = lagsData-lagsNoise
 
@@ -169,9 +172,9 @@ class FitterBasic(object):
         pulsewidth = self.sensdict['taurg']*self.sensdict['t_s']
         txpower = self.sensdict['Pt']
         rng_vec = self.sensdict['RG']*1e3
-        rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags))
+        rng3d = sp.tile(rng_vec[None,None,:,None],(Nt,Nbeams,1,Nlags))
         Ksysvec = self.sensdict['Ksys']
-        ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
+        ksys3d = sp.tile(Ksysvec[None,:,None,None],(Nt,1,Nrng,Nlags))
         lagsData = lagsData*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
         Pulse_shape = self.simparams['Pulse']
         fittedarray = sp.zeros((Nt,Nbeams,Nrng2,nparams))
@@ -180,7 +183,7 @@ class FitterBasic(object):
         self.simparams['Rangegatesfinal'] = sp.array([ sp.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in sp.arange(minrg,maxrg)])
         print('\nData Now being fit.')
         for itime in sp.arange(Nt):
-            print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
+            print(('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt)))
             for ibeam in sp.arange(Nbeams):
                 for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
 
@@ -200,7 +203,7 @@ class FitterBasic(object):
                     except TypeError:
                         pdb.set_trace()
 
-                print('\t\tData for Beam {0:d} of {1:d} fitted.'.format(ibeam,Nbeams))
+                print(('\t\tData for Beam {0:d} of {1:d} fitted.'.format(ibeam,Nbeams)))
         return(fittedarray,fittederror)
 
 #    def fitdataiono(self,nparams=4,filename=None,npnts = 64,numtype=sp.complex128):
@@ -226,7 +229,7 @@ class FitterBasic(object):
         Range_gates2 = self.simparams['Rangegatesfinal']
         ang = angles[beamnum]
         params = radardata.paramdict[ang]
-        if type(timenum)is int:
+        if type(timenum) is int:
             myfsize = 18
             titfsize = 22
             rng_arr = sp.zeros(0)
@@ -395,4 +398,4 @@ if __name__== '__main__':
     curfitter.plotbeams(0,radardata,fittedarray,fittederror,figsdir =testpath )
     plt.show(False)
     t2 = time.time()
-    print(t2-t1)
+    print((t2-t1))

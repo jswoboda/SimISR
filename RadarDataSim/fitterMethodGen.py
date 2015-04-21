@@ -5,17 +5,14 @@ fitterMethods.py
 @author: John Swoboda
 Holds class that applies the fitter.
 """
-
+from __future__ import absolute_import
 #imported basic modules
-import os, inspect, time
 import pdb
 # Imported scipy and matplotlib modules
 import scipy as sp
 import scipy.optimize
-from matplotlib import rc
-import matplotlib.pylab as plt
 # My modules
-from IonoContainer import IonoContainer
+from .IonoContainer import IonoContainer
 
 
 def defaultparamsfunc(curlag,amb_dict,sensdict,npts,numtype):
@@ -64,9 +61,9 @@ class Fitterionoconainer(object):
         first_lag = True
         x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector,exinputs)
         for itime in range(Nt):
-            print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
+            print(('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt)))
             for iloc in range(Nloc):
-                print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
+                print(('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc)))
                # self.simparams['Rangegatesfinal'][irngnew] = sp.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
                 curlag = lagsData[iloc,itime]
                 d_func = d_funcfunc(curlag, self.simparams['amb_dict'],self.sensdict,npts,numtype)
@@ -87,6 +84,6 @@ class Fitterionoconainer(object):
                 except TypeError:
                     pdb.set_trace()
 
-            print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
+            print(('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc)))
         return(fittedarray,fittederror)
 
