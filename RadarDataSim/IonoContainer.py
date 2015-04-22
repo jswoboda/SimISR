@@ -24,7 +24,8 @@ class IonoContainer(object):
     """Holds the coordinates and parameters to create the ISR data.  Also will
     make the spectrums for each point."""
     #%% Init function
-    def __init__(self,coordlist,paramlist,times = None,sensor_loc = sp.array(3),ver =0,coordvecs = None,paramnames=None,species=None,velocity=None):
+    def __init__(self,coordlist,paramlist,times = None,sensor_loc = sp.zeros(3),ver =0,coordvecs =
+            None,paramnames=None,species=None,velocity=None):
         """ This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
         Inputs:
@@ -266,7 +267,7 @@ class IonoContainer(object):
                 outdict[ikey] = indata[vardict[ikey]]
         #pdb.set_trace()
         if 'coordvecs' in outdict.keys():
-            if outdict['coordvecs'] == ['r','theta','phi']:
+            if [str(x) for x in outdict['coordvecs']] == ['r','theta','phi']:
                 outdict['ver']=1
                 outdict['coordlist']=outdict['coordlist2']
         del outdict['coordlist2']
@@ -556,7 +557,7 @@ def MakeTestIonoclass(testv=False,testtemp=False):
     follows a chapman function"""
     xvec = sp.arange(-250.0,250.0,20.0)
     yvec = sp.arange(-250.0,250.0,20.0)
-    zvec = sp.arange(200.0,500.0,3.0)
+    zvec = sp.arange(50.0,500.0,5.0)
     # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
     xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)
     coords = sp.zeros((xx.size,3))
@@ -578,24 +579,22 @@ def MakeTestIonoclass(testv=False,testtemp=False):
         Ti = np.ones_like(zz)*1000.0
 
     # set up the velocity
-    vel = sp.zeros(coords.shape)
+    (Nlocs,ndims) = coords.shape
+    vel = sp.zeros((Nlocs,1,ndims))
+    times = [0.0]
     if testv:
-        vel[:,2] = zz.flatten()/5.0
-
-    denom = np.tile(np.sqrt(np.sum(coords**2,1))[:,np.newaxis],(1,3))
-    unit_coords = coords/denom
-    Vi = (vel*unit_coords).sum(1)
+        vel[:,0,2] = zz.flatten()/5.0
+    species=['O+','e-']
     # put the parameters in order
-    params = sp.zeros((Ne_profile.size,7))
-    params[:,0] = Ti.flatten()
-    params[:,1] = Te.flatten()/Ti.flatten()
-    params[:,2] = sp.log10(Ne_profile.flatten())
-    params[:,3] = 16 # ion weight
-    params[:,4] = 1 # ion weight
-    params[:,5] = 0
-    params[:,6] = Vi
+    params = sp.zeros((Ne_profile.size,1,2,2))
+    params[:,0,0,1] = Ti.flatten()
+    params[:,0,1,1] = Te.flatten()
+    params[:,0,0,0] = Ne_profile.flatten()
+    params[:,0,1,0] = Ne_profile.flatten()
 
-    Icont1 = IonoContainer(coordlist=coords,paramlist=params)
+
+    Icont1 = IonoContainer(coordlist=coords,paramlist=params,times = times,sensor_loc = sp.zeros(3),ver =0,coordvecs =
+        ['x','y','z'],paramnames=None,species=species,velocity=vel)
     return Icont1
     #%% Main
 if __name__== '__main__':
@@ -605,12 +604,6 @@ if __name__== '__main__':
     testpath = os.path.join(os.path.split(curpath)[0],'Test')
 
     Icont1 = MakeTestIonoclass()
-    angles = [(90,85)]
-    ang_data = np.array([[iout[0],iout[1]] for iout in angles])
-    sensdict = sensconst.getConst('risr',ang_data)
-
-    range_gates = np.arange(250.0,500.0,sensdict['t_s']*v_C_0/1000)
-    (omeg,mydict,myparams) = Icont1.makespectrums(range_gates,angles[0],sensdict['BeamWidth'],sensdict)
 
     Icont1.savemat(os.path.join(testpath,'testiono.mat'))
     Icont1.saveh5(os.path.join(testpath,'testiono.h5'))

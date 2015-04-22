@@ -44,9 +44,12 @@ def ISRSspecmake(ionocont,sensdict,npts):
             outspecs[i_x,i_t] = cur_spec_weighted
     return (omeg,outspecs,npts)
 
-def ISRSfitfunction(x,y_acf,amb_dict,sensdict,npts,numtype):
+def ISRSfitfunction(x,y_acf,sensdict,simparams):
 
-    specs = sensdict['species']
+    npts = simparams['numpoints']
+    specs = simparams['species']
+    amb_dict = simparams['amb_dict']
+    numtype = simparams['dtype']
     nspecs = len(specs)
     datablock = sp.zeros((nspecs,2),dtype=x.dtype)
     datablock[:,0] = x[sp.arange(0,nspecs*2,2)]

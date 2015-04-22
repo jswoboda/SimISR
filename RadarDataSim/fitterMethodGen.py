@@ -16,13 +16,14 @@ from matplotlib import rc
 import matplotlib.pylab as plt
 # My modules
 from IonoContainer import IonoContainer
+from makeConfigFiles import readconfigfile
 
 
-def defaultparamsfunc(curlag,amb_dict,sensdict,npts,numtype):
-    return(curlag,amb_dict,sensdict,npts,numtype)
+def defaultparamsfunc(curlag,sensdict,simparams):
+    return(curlag,sensdict,simparams)
 
 class Fitterionoconainer(object):
-    def __init__(self,Ionocont,sensdict,simparams):
+    def __init__(self,Ionocont,inifile):
         """ The init function for the fitter take the inputs for the fitter programs.
 
             Inputs:
@@ -32,10 +33,8 @@ class Fitterionoconainer(object):
             the returned value from the RadarData class function processdata.
             sensdict: The dictionary that holds the sensor info.
             simparams: The dictionary that hold the specific simulation params"""
-
+        (self.sensdict,self.simparams) = readconfigfile(inifile)
         self.Iono = Ionocont
-        self.sensdict = sensdict
-        self.simparams = simparams
     def fitNE(self,Tratio = 1):
         """ This funtction will fit electron density assuming Te/Ti is constant
         thus only the zero lag will be needed.
@@ -56,9 +55,6 @@ class Fitterionoconainer(object):
         lagsData= self.Iono.Param_List
         (Nloc,Nt,Nlags) = lagsData.shape
 
-        # normalized out parameters
-
-        Pulse_shape = self.simparams['Pulse']
 
         print('\nData Now being fit.')
         first_lag = True
@@ -67,7 +63,7 @@ class Fitterionoconainer(object):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
                 print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
-               # self.simparams['Rangegatesfinal'][irngnew] = sp.mean(self.sensdict['RG'][irng+sumrule[0,0]:irng+sumrule[1,0]+1])
+
                 curlag = lagsData[iloc,itime]
                 d_func = d_funcfunc(curlag, self.simparams['amb_dict'],self.sensdict,npts,numtype)
                 x_0 = x_0all[iloc,itime]

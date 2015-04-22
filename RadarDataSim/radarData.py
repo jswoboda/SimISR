@@ -3,28 +3,30 @@
 radarData.py
 This file holds the RadarData class that hold the radar data and processes it.
 
-@author: Bodangles
+@author: John Swoboda
 """
 
-import scipy as sp
-import os
+
+import os, time,inspect
 import scipy.fftpack as scfft
-import time
+import scipy as sp
 import tables
 import pdb
-from IonoContainer import IonoContainer, MakeTestIonoclass
+# My modules
+from IonoContainer import IonoContainer
 from const.physConstants import v_C_0, v_Boltz
-import const.sensorConstants as sensconst
 from utilFunctions import CenteredLagProduct, MakePulseData,MakePulseDataRep, dict2h5
-
+from makeConfigFiles import readconfigfile
+import specfunctions
 class RadarDataFile(object):
-    def __init__(self,Ionodict,sensdict,simparams,outdir,outfilelist=None,NNs =28,NNP=100,npts = 128):
+    def __init__(self,Ionodict,inifile, outdir,outfilelist=None):
        """ """
+       (sensdict,simparams) = readconfigfile(inifile)
        self.simparams = simparams
        N_angles = len(self.simparams['angles'])
        sensdict['RG'] = self.simparams['Rangegates']
 
-       self.simparams['NNs'] = NNs
+       NNs = self.simparams['NNs']
        self.sensdict = sensdict
        Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
        Npall = sp.floor(Npall/N_angles)*N_angles
@@ -43,7 +45,6 @@ class RadarDataFile(object):
 
        if outfilelist is None:
             print('\nData Now being created.')
-            #NNpall = NNP*N_angles
 
             Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
             self.outfilelist = []
@@ -56,8 +57,10 @@ class RadarDataFile(object):
                 pt =pulsetimes[pnts]
                 pb = beams[pnts]
                 pn = pulsen[pnts].astype(int)
-                outdict['RawData']= self.__makeTime__(pt,curcontainer.Time_Vector,curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
-                outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn),NNs).astype(simdtype)+1j*sp.random.randn(len(pn),NNs).astype(simdtype))
+                outdict['RawData']= self.__makeTime__(pt,curcontainer.Time_Vector,
+                    curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
+                outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn),NNs).astype(simdtype)+
+                    1j*sp.random.randn(len(pn),NNs).astype(simdtype))
                 outdict['Pulses']=pn
                 outdict['Beams']=pb
                 outdict['Time'] = pt
@@ -133,7 +136,7 @@ class RadarDataFile(object):
             1j*sp.random.randn(Np,N_samps).astype(complex))
         return out_data +Noise
         #%% Processing
-    def processdataiono(self,timevec,inttime,lagfunc=CenteredLagProduct):
+    def processdataiono(self,lagfunc=CenteredLagProduct):
         """ This will perform the the data processing and create the ACF estimates
         for both the data and noise but put it in an Ionocontainer.
         Inputs:
@@ -143,9 +146,10 @@ class RadarDataFile(object):
         Outputs:
         Ionocontainer- This is an instance of the ionocontainer class that will hold the acfs.
         """
-        (DataLags,NoiseLags) = self.processdata(timevec,inttime,lagfunc)
-        return lagdict2ionocont(DataLags,NoiseLags,self.sensdict,self.simparams,timevec)
-    def processdata(self,timevec,inttime,lagfunc=CenteredLagProduct):
+        (DataLags,NoiseLags) = self.processdata(lagfunc)
+        return lagdict2ionocont(DataLags,NoiseLags,self.sensdict,self.simparams,self.simparams['Timevec'])
+
+    def processdata(self,lagfunc=CenteredLagProduct):
         """ This will perform the the data processing and create the ACF estimates
         for both the data and noise.
         Inputs:
@@ -158,6 +162,8 @@ class RadarDataFile(object):
         NoiseLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
         the numpy arrays of the data.
         """
+        timevec = self.simparams['Timevec']
+        inttime = self.simparams['Tint']
         # Get array sizes
         file_list = self.outfilelist
         NNs = self.simparams['NNs']
@@ -662,19 +668,18 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
 if __name__== '__main__':
     """ Test function for the RadarData class."""
     t1 = time.time()
-    IPP = .0087
-    angles = [(90,85),(90,84),(90,83),(90,82),(90,81)]
-    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-    t_int = 8.7*len(angles)
-    pulse = sp.ones(14)
-    rng_lims = [250,500]
-    ioncont = MakeTestIonoclass()
-    time_lim = t_int
-    sensdict = sensconst.getConst('risr',ang_data)
-    radardata = RadarData(ioncont,sensdict,angles,IPP,t_int,time_lim,pulse,rng_lims)
-    timearr = sp.linspace(0,t_int,10)
-    curint_time = IPP*100*len(angles)
-    (DataLags,NoiseLags) = radardata.processdata(timearr,curint_time)
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    testpath = os.path.join(os.path.split(curpath)[0],'Test')
+    inifile = os.path.join(testpath,'PFISRExample.pickle')
+    (sensdict,simparams) = readconfigfile(inifile)
+    testh5 = os.path.join(testpath,'testiono.h5')
+    ioncont = IonoContainer.readh5(testh5)
+    outfile = os.path.join(testpath,'testionospec.h5')
 
+    ioncont.makespectruminstanceopen(specfunctions.ISRSspecmake,sensdict,simparams['numpoints']).saveh5(outfile)
+    radardata = RadarDataFile({0.0:outfile},inifile,testpath)
+
+    ionoout = radardata.processdataiono()
+    ionoout.saveh5(os.path.join(testpath,'lags.h5'))
     t2 = time.time()
     print(t2-t1)
