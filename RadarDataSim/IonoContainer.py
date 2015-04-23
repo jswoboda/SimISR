@@ -534,10 +534,8 @@ def MakeTestIonoclass(testv=False,testtemp=False):
     Icont1 = IonoContainer(coordlist=coords,paramlist=params,times = times,sensor_loc = sp.zeros(3),ver =0,coordvecs =
         ['x','y','z'],paramnames=None,species=species,velocity=vel)
     return Icont1
-    #%% Main
-if __name__== '__main__':
 
-
+def main():
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     testpath = os.path.join(os.path.split(curpath)[0],'Test')
 
@@ -556,3 +554,8 @@ if __name__== '__main__':
         print "h5 file saving and reading works"
     else:
         print "Something is wrong with the h5 file writing and reading"
+    #%% Main
+if __name__== '__main__':
+
+
+   main()

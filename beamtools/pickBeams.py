@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 """
-Created on Wed Mar 25 19:53:46 2015
+This GUI is based off of a GUI originally developed by Steven Chen at SRI.
+The code was cleaned up so that the GUI is now encompassed in a class structure. Also
+the ability to switch between PFISR and RISR-N has been added along with a finish button.
+The code also outputs a picture of the selected beam pattern.
 
 @author: John Swoboda
 """

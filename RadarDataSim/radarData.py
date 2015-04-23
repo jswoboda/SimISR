@@ -353,9 +353,8 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
 
     return IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
 #%% Testing
-
-if __name__== '__main__':
-    """ Test function for the RadarData class."""
+def main():
+    """Testing function"""
     t1 = time.time()
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     testpath = os.path.join(os.path.split(curpath)[0],'Test')
@@ -365,10 +364,13 @@ if __name__== '__main__':
     ioncont = IonoContainer.readh5(testh5)
     outfile = os.path.join(testpath,'testionospec.h5')
 
-    ioncont.makespectruminstanceopen(specfunctions.ISRSspecmake,sensdict,simparams['numpoints']).saveh5(outfile)
+    ioncont.makespectruminstanceopen(specfunctions.ISRSspecmake,sensdict,
+                                     simparams['numpoints']).saveh5(outfile)
     radardata = RadarDataFile({0.0:outfile},inifile,testpath)
 
     ionoout = radardata.processdataiono()
     ionoout.saveh5(os.path.join(testpath,'lags.h5'))
     t2 = time.time()
     print(t2-t1)
+if __name__== '__main__':
+   main()

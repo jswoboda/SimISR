@@ -33,10 +33,7 @@ To determine if everything has been properly istalled it is suggested that user 
 
 
 	$ cd RadarDataSim/RadarDataSim
-	$ python makeConfigFiles.py
-	$ python IonoContainer.py
-	$ python radarData.py
-	$ python fitterMethodGen.py
+	$ python basictest.py
 	
 If h5 files for each stage have been created then it should be properly installed. 
 

@@ -97,8 +97,7 @@ def simpstart(Ne_init, loc,time,exinputs):
     xarray[:,:,4] = 0.0
     return xarray
 #%% Testing
-
-if __name__== '__main__':
+def main():
     """ Test function for the RadarData class."""
     t1 = time.time()
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -125,3 +124,7 @@ if __name__== '__main__':
                           coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
 
     Ionoout.saveh5(os.path.join(testpath,'fittedtestdata.h5'))
+    t2 = time.time()
+    print(t2-t1)
+if __name__== '__main__':
+    main()

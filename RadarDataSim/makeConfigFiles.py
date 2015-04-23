@@ -89,7 +89,7 @@ def ConfigSectionMap(Config,section):
             dict1[option] = None
     return dict1
 
-if __name__== '__main__':
+def main():
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     testpath = os.path.join(os.path.split(curpath)[0],'Test')
     beamlist = [64094,64091,64088,64085,64082,64238,64286,64070,64061,64058,64055,64052,
@@ -124,3 +124,6 @@ if __name__== '__main__':
 
     makeconfigfile(fname+'.ini',beamlist,radarname,simparams)
     makepicklefile(fname+'.pickle',beamlist,radarname,simparams)
+
+if __name__== '__main__':
+    main()
