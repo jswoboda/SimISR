@@ -14,10 +14,7 @@ import scipy.io as sio
 import scipy.interpolate
 import tables
 # From my
-from ISSpectrum import ISSpectrum
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
-from const.physConstants import v_C_0, v_Boltz, v_epsilon0
-import const.sensorConstants as sensconst
 from utilFunctions import Chapmanfunc, TempProfile
 
 class IonoContainer(object):
@@ -395,66 +392,7 @@ class IonoContainer(object):
         elif pmshape[1]==6:
             return self.makeallspectrumsv2(sensdict,npts)
 
-    def makeallspectrumsv1(self,sensdict,npts):
-        """This will create a numpy array of all of the spectrums for the data in
-        the instance of the class.
-        inputs:
-        sensdict - The structured dictionary of for the sensor.
-        npts - The number of points the spectrum is to be evaluated at.
-        Output:
-        omeg - A npts length numpy array. The frequency points that the ISR spectrum
-        is evaluated over in Hz
-        outspecs - A NlocxNtxnpts numpy array. The power spectrums for the plasma
-        in the entire instance of the class. The spectrum will be the correct power
-        level for the plasma parameters
-        npts - The actual number of points that the spectrum is evaluated over."""
 
-        #npts is going to be lowered by one because of this.
-        if np.mod(npts,2)==0:
-            npts = npts-1
-        specobj = ISSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
-
-        paramshape = self.Param_List.shape
-        if len(paramshape)==3:
-            outspecs = np.zeros((paramshape[0],paramshape[1],npts))
-            full_grid = True
-        elif len(paramshape)==2:
-            outspecs = np.zeros((paramshape[0],1,npts))
-            full_grid = False
-        (N_x,N_t) = outspecs.shape[:2]
-        #pdb.set_trace()
-        first_spec = True
-        for i_x in np.arange(N_x):
-            for i_t in np.arange(N_t):
-                if full_grid:
-                    cur_params = self.Param_List[i_x,i_t]
-                else:
-                    cur_params = self.Param_List[i_x]
-                Ti = cur_params[0]
-                Tr = cur_params[1]
-                Te = Ti*Tr
-                N_e = 10**cur_params[2]
-                debyel = np.sqrt(v_epsilon0*v_Boltz*Te/(v_epsilon0**2*N_e))
-                rcs = N_e/((1+sensdict['k']**2*debyel**2)*(1+sensdict['k']**2*debyel**2+Tr))# based of new way of calculating
-                if first_spec:
-                    (omeg,cur_spec) = specobj.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                        cur_params[3], cur_params[4], cur_params[5])
-                    fillspot = np.argmax(omeg)
-                else:
-                    cur_spec = specobj.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                        cur_params[3], cur_params[4], cur_params[5])[0]
-                cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
-                # Ion velocity
-                if len(cur_params)>6:
-                    Vi = cur_params[-1]
-                    Fd = -2.0*Vi/sensdict['lamb']
-                    omegnew = omeg-Fd
-                    fillval = cur_spec_weighted[fillspot]
-                    cur_spec_weighted =scipy.interpolate.interp1d(omeg,cur_spec_weighted,bounds_error=0,fill_value=fillval)(omegnew)
-
-                outspecs[i_x,i_t] = cur_spec_weighted
-
-        return (omeg,outspecs,npts)
     def makeallspectrumsv2(self,sensdict,npts):
         """This will create a numpy array of all of the spectrums for the data in
         the instance of the class.
