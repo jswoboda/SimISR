@@ -9,7 +9,6 @@ import scipy as sp
 import scipy.fftpack as scfft
 from const.physConstants import v_C_0
 import tables
-from ISSpectrum import ISSpectrum
 import pdb
 # utility functions
 def make_amb(Fsorg,m_up,plen,nlags):
@@ -237,39 +236,39 @@ def fitsurface(errfunc,paramlists,inputs):
         # return the fitsurace after its been de flattened
     return fit_surface.reshape(paramsizlist[outsize]).copy()
 
-def makexample(npts,sensdict,cur_params,pulse,npulses):
-    """This will create a set centered lag products as if it were collected from ISR
-    data with the parameter values in cur_params. The lag products will have the
-    the number of pulses found in npulses using evelope found in pulse.
-    Inputs
-    npts - The length of the spectrum, this will be reduced by 1 if its an even number.
-    sensdict - This is a sensor dictionary that can be created from one of the functions in
-    the sensorconst file.
-    cur_params - The parameters in the order seen for the spectrum method being used.
-    pulse - This is an array that hold the pulse shape from the envelope.
-    npulses - The number of pulses that will be integrated."""
-
-
-    Nrg = 3*len(pulse)
-    N_samps = Nrg +len(pulse)-1
-    #TODO: Make this able to handle any spectrum input.
-    myspec = ISSpectrum(nspec = npts,sampfreq=sensdict['fs'])
-    (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-                    cur_params[3], cur_params[4], cur_params[5])
-    Ne = 10**cur_params[2]
-    tr =  cur_params[1]
-    # Set the power for the spectrum
-    cur_spec =  len(cur_spec)**2*Ne/(1+tr)*cur_spec/sp.sum(cur_spec)
-    # Change the spectrum filter kernal for the fft based filtering
-    cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
-    outdata = sp.zeros((npulses,N_samps),dtype=sp.complex128)
-    samp_num = sp.arange(len(pulse))
-    for ipulse in range(npulses):
-        for isamp in range(Nrg):
-            curpnts =  samp_num+isamp
-            curpulse = MakePulseData(pulse,cur_filt,delay=len(pulse))
-            outdata[ipulse,curpnts] = curpulse +outdata[ipulse,curpnts]
-    # Perform a centered lag product.
-    lags = CenteredLagProduct(outdata,N =len(pulse))
-    return lags
-
+#def makexample(npts,sensdict,cur_params,pulse,npulses):
+#    """This will create a set centered lag products as if it were collected from ISR
+#    data with the parameter values in cur_params. The lag products will have the
+#    the number of pulses found in npulses using evelope found in pulse.
+#    Inputs
+#    npts - The length of the spectrum, this will be reduced by 1 if its an even number.
+#    sensdict - This is a sensor dictionary that can be created from one of the functions in
+#    the sensorconst file.
+#    cur_params - The parameters in the order seen for the spectrum method being used.
+#    pulse - This is an array that hold the pulse shape from the envelope.
+#    npulses - The number of pulses that will be integrated."""
+#
+#
+#    Nrg = 3*len(pulse)
+#    N_samps = Nrg +len(pulse)-1
+#    #TODO: Make this able to handle any spectrum input.
+#    myspec = ISSpectrum(nspec = npts,sampfreq=sensdict['fs'])
+#    (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
+#                    cur_params[3], cur_params[4], cur_params[5])
+#    Ne = 10**cur_params[2]
+#    tr =  cur_params[1]
+#    # Set the power for the spectrum
+#    cur_spec =  len(cur_spec)**2*Ne/(1+tr)*cur_spec/sp.sum(cur_spec)
+#    # Change the spectrum filter kernal for the fft based filtering
+#    cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
+#    outdata = sp.zeros((npulses,N_samps),dtype=sp.complex128)
+#    samp_num = sp.arange(len(pulse))
+#    for ipulse in range(npulses):
+#        for isamp in range(Nrg):
+#            curpnts =  samp_num+isamp
+#            curpulse = MakePulseData(pulse,cur_filt,delay=len(pulse))
+#            outdata[ipulse,curpnts] = curpulse +outdata[ipulse,curpnts]
+#    # Perform a centered lag product.
+#    lags = CenteredLagProduct(outdata,N =len(pulse))
+#    return lags
+#
