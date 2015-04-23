@@ -57,22 +57,16 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
     v_i = x[-1]
 
     # determine if you've gone beyond the bounds
-    multpen = 1e6
-    multsum = 0.0
     #penalty for being less then zero
-    grt0 = datablock<0
-    multsum = multsum+grt0.flatten().sum()
-    #penalties for densities not being equal
+    grt0 = sp.exp(-datablock)
+    pentsum = sp.zeros(grt0.size+1)
+    pentsum[:-1] = grt0.flatten()
 
+    #penalties for densities not being equal
     nis = datablock[:-1,0]
     ne = datablock[-1,0]
-    if nis.sum()> ne*1.5:
-        multsum=multsum+1
-    if nis.sum()<ne/2.0:
-        multsum=multsum+1
-
-    # final penalty
-    penalty_mult = sp.power(multpen,multsum)
+    nisum = nis.sum()
+    pentsum[-1] = sp.exp(-sp.absolute(ne-nisum))
 
     specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
     (omeg,cur_spec,rcs) = specobj.getspecsep(datablock,specs,v_i,rcsflag=True)
@@ -96,5 +90,7 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
     spec_final = spec_interm.real
     y_interm = scfft.fft(y_acf,n=len(spec_final))
     y = y_interm.real
-    return (y-spec_final)*penalty_mult
+    yout = (y-spec_final)
+    penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
+    return yout+penadd
 

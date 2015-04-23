@@ -565,8 +565,8 @@ def MakeTestIonoclass(testv=False,testtemp=False):
     coords[:,1] = yy.flatten()
     coords[:,2] = zz.flatten()
 
-    H_0 = 40 #km scale height
-    z_0 = 300 #km
+    H_0 = 50.0 #km scale height
+    z_0 = 250.0 #km
     N_0 = 10**11
 
     # Make electron density

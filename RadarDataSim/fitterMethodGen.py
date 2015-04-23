@@ -9,14 +9,13 @@ Holds class that applies the fitter.
 #imported basic modules
 import os, inspect, time
 import pdb
-# Imported scipy and matplotlib modules
+# Imported scipy modules
 import scipy as sp
 import scipy.optimize
-from matplotlib import rc
-import matplotlib.pylab as plt
 # My modules
 from IonoContainer import IonoContainer
 from makeConfigFiles import readconfigfile
+from RadarDataSim.specfunctions import ISRSfitfunction
 
 
 def defaultparamsfunc(curlag,sensdict,simparams):
@@ -65,7 +64,7 @@ class Fitterionoconainer(object):
                 print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
 
                 curlag = lagsData[iloc,itime]
-                d_func = d_funcfunc(curlag, self.simparams['amb_dict'],self.sensdict,npts,numtype)
+                d_func = d_funcfunc(curlag,self.sensdict,self.simparams)
                 x_0 = x_0all[iloc,itime]
                 if first_lag:
                     first_lag = False
@@ -86,3 +85,43 @@ class Fitterionoconainer(object):
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror)
 
+#%% fit function stuff
+def simpstart(Ne_init, loc,time,exinputs):
+    """ """
+
+    xarray = sp.zeros((loc.shape[0],len(time),5))
+    xarray[:,:,0] = Ne_init
+    xarray[:,:,2] = Ne_init
+    xarray[:,:,1] = 1e3
+    xarray[:,:,3] = 1e3
+    xarray[:,:,4] = 0.0
+    return xarray
+#%% Testing
+
+if __name__== '__main__':
+    """ Test function for the RadarData class."""
+    t1 = time.time()
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    testpath = os.path.join(os.path.split(curpath)[0],'Test')
+    Ionoin=IonoContainer.readh5(os.path.join(testpath,'lags.h5'))
+    inifile = os.path.join(testpath,'PFISRExample.pickle')
+
+    fitterone = Fitterionoconainer(Ionoin,inifile)
+    (fitteddata,fittederror) = fitterone.fitdata(ISRSfitfunction,simpstart)
+    (Nloc,Ntimes,nparams)=fitteddata.shape
+    fittederronly = fittederror[:,:,range(nparams),range(nparams)]
+    paramlist = sp.concatenate((fitteddata,fittederronly),axis=2)
+    paramnames = []
+    species = fitterone.simparams['species']
+    for isp in species[:-1]:
+        paramnames.append('Ni_'+isp)
+        paramnames.append('Ti_'+isp)
+    paramnames = paramnames+['Ne','Te','Vi']
+    paramnamese = ['n'+ip for ip in paramnames]
+    paranamsf = sp.array(paramnames+paramnamese)
+
+
+    Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,Ionoin.Time_Vector,ver =1,
+                          coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
+
+    Ionoout.saveh5(os.path.join(testpath,'fittedtestdata.h5'))
