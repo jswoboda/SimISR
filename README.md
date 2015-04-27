@@ -1,5 +1,5 @@
 ##RadarDataSim
-by John Swoboda 
+by John Swoboda
 ![alt text](https://raw.github.com/jswoboda/RadarDataSim/master/Images/logofig.png "RadarDataSim")
 
 #Overview
@@ -11,34 +11,49 @@ This Python module can be used create synthetic incoherenent scatter radar. It d
 From there the data can be processed like ISR data. The following flow diagram represents the data flow for long pulse experiment.
 
 ![Diagram2](https://raw.github.com/jswoboda/RadarDataSim/master/Images/datastackchain.png)
+# Requirements
+This runs on Python 2.7.9. The packages required include
+* six
+* numpy
+* scipy
+* pytables
+* numba
+* matplotlib
+* [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum)
 
 #Installation
+
 To install first clone repository:
 
 	$ git clone https://github.com/jswoboda/RadarDataSim.git
+
 Before going further in the install the user also needs to download and install the module [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum) from the repository found in the link.
 
-After the ISRSpectrum module is installed move to the const directory. This is a directory that was turned into a submodule because it was being used by multiple repositories.
+Then get the submodule housed in the const directory by using the following commands.
 
-	$ cd RadarDataSim/RadarDataSim/const
-	$ git pull origin
+	$ git submodule init
+	$ git submodule update
+
+Alternatively one can pass the `--recursive` option to the intial cloning of the repository.  
+
+	$ git clone --recursive  https://github.com/jswoboda/RadarDataSim.git
 
 Then move to the main directory and run the Python setup script, which should be run in develop mode.
 
-	$ cd ../..
+	$ cd RadarDataSim
 	$ python setup.py develop
 
 ###Install Test
-To determine if everything has been properly istalled it is suggested that user runs the following Python files to create some test data. 
+To determine if everything has been properly istalled it is suggested that user runs the following Python files to create some test data.
 
 
 	$ cd RadarDataSim/RadarDataSim
 	$ python basictest.py
-	
-If h5 files for each stage have been created then it should be properly installed. 
+
+If h5 files for each stage have been created then it should be properly installed.
 
 #Software Archetecture
-The module is split up into three classes. 
+The module is split up into three classes.
 
 IonoContainer - A container class that holds information on the ionosphere or auto correlation functions (ACFs)/spectrums.
 
@@ -46,7 +61,7 @@ RadarDataFile - A class that holds and operates on the radar data to create esti
 
 FitterMethodsGen - A class that applies the fitter to the data.
 
-A high level mathematical flow of the software can be seen in the figure below with the operations of each class labelled. 
+A high level mathematical flow of the software can be seen in the figure below with the operations of each class labelled.
 
 ![Diagram2](https://raw.github.com/jswoboda/RadarDataSim/master/Images/softwareflowandmath.png)
 
