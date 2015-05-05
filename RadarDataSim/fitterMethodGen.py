@@ -50,6 +50,8 @@ class Fitterionoconainer(object):
 
         # get intial guess for NE
         Ne_start =self.fitNE()
+        if self.simparams['Pulsetype'].lower()=='barker':
+            return(Ne_start,Ne_start)
         # get the data nd noise lags
         lagsData= self.Iono.Param_List
         (Nloc,Nt,Nlags) = lagsData.shape
@@ -84,6 +86,8 @@ class Fitterionoconainer(object):
 
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror)
+
+
 
 #%% fit function stuff
 def simpstart(Ne_init, loc,time,exinputs):

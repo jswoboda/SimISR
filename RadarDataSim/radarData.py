@@ -14,8 +14,7 @@ import pdb
 # My modules
 from IonoContainer import IonoContainer
 from const.physConstants import v_C_0, v_Boltz
-from utilFunctions import CenteredLagProduct, MakePulseData,MakePulseDataRep, dict2h5
-from makeConfigFiles import readconfigfile
+from utilFunctions import CenteredLagProduct,MakePulseDataRep, dict2h5,readconfigfile, BarkerLag
 import specfunctions
 class RadarDataFile(object):
     """ This class will will take the ionosphere class and create radar data both
@@ -169,20 +168,18 @@ class RadarDataFile(object):
             1j*sp.random.randn(Np,N_samps).astype(complex))
         return out_data +Noise
         #%% Processing
-    def processdataiono(self,lagfunc=CenteredLagProduct):
+    def processdataiono(self):
         """ This will perform the the data processing and create the ACF estimates
         for both the data and noise but put it in an Ionocontainer.
         Inputs:
-        timevec - A numpy array of times in seconds where the integration will begin.
-        inttime - The integration time in seconds.
-        lagfunc - A function that will make the desired lag products.
+
         Outputs:
         Ionocontainer- This is an instance of the ionocontainer class that will hold the acfs.
         """
-        (DataLags,NoiseLags) = self.processdata(lagfunc)
+        (DataLags,NoiseLags) = self.processdata()
         return lagdict2ionocont(DataLags,NoiseLags,self.sensdict,self.simparams,self.simparams['Timevec'])
 
-    def processdata(self,lagfunc=CenteredLagProduct):
+    def processdata(self):
         """ This will perform the the data processing and create the ACF estimates
         for both the data and noise.
         Inputs:
@@ -203,15 +200,22 @@ class RadarDataFile(object):
         range_gates = self.simparams['Rangegates']
         N_rg = len(range_gates)# take the size
         pulse = self.simparams['Pulse']
-        Nlag = len(pulse)
-        N_samps = N_rg +Nlag-1
+        Pulselen = len(pulse)
+        N_samps = N_rg +Pulselen-1
         simdtype = self.simparams['dtype']
         Ntime=len(timevec)
         Nbeams = len(self.simparams['angles'])
 
+        # Choose type of processing
+        if self.simparams['Pulsetype'].lower() == 'barker':
+            lagfunc=BarkerLag
+            Nlag=1
+        else:
+            lagfunc=CenteredLagProduct
+            Nlag=Pulselen
         # initialize output arrays
         outdata = sp.zeros((Ntime,Nbeams,N_rg,Nlag),dtype=simdtype)
-        outnoise = sp.zeros((Ntime,Nbeams,NNs-Nlag+1,Nlag),dtype=simdtype)
+        outnoise = sp.zeros((Ntime,Nbeams,NNs-Pulselen+1,Nlag),dtype=simdtype)
         pulses = sp.zeros((Ntime,Nbeams))
         pulsesN = sp.zeros((Ntime,Nbeams))
         timemat = sp.zeros((Ntime,2))
@@ -282,8 +286,8 @@ class RadarDataFile(object):
                 beamlocstmp = sp.where(beamlocs==ibeam)[0]
                 pulses[itn,ibeam] = len(beamlocstmp)
                 pulsesN[itn,ibeam] = len(beamlocstmp)
-                outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp],Nlag)
-                outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp],Nlag)
+                outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp],numtype=self.simparams['dtype'], pulse=pulse)
+                outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp],numtype=self.simparams['dtype'], pulse=pulse)
         # Create output dictionaries and output data
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat}
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}

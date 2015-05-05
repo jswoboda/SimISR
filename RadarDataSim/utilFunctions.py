@@ -87,6 +87,7 @@ def spect2acf(omeg,spec):
     return tau, acf
 
 
+#%% making pulse data
 def MakePulseData(pulse_shape, filt_freq, delay=16,numtype = sp.complex128):
     """ This function will create a pulse width of data shaped by the filter that who's frequency
         response is passed as the parameter filt_freq.  The pulse shape is delayed by the parameter
@@ -129,8 +130,16 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     data = scfft.ifft(mult_freq,axis=-1)
     data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]
     return data_out
-
-def CenteredLagProduct(rawbeams,N =14,numtype=sp.complex128):
+#%% Pulse shapes
+def GenBarker(blen):
+    bdict = {1:[-1], 2:[-1, 1], 3:[-1, -1, 1], 4:[-1, -1, 1, -1], 5:[-1, -1, -1, 1, -1],
+             7:[-1, -1, -1, 1, 1, -1, 1], 11:[-1, -1, -1, 1, 1, 1, -1, 1, 1, -1, 1],
+            13:[-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1]}
+    outar = sp.array(bdict[blen])
+    outar.astype(sp.float64)
+    return outar
+#%% Lag Functions
+def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14)):
     """ This function will create a centered lag product for each range using the
     raw IQ given to it.  It will form each lag for each pulse and then integrate
     all of the pulses.
@@ -143,6 +152,7 @@ def CenteredLagProduct(rawbeams,N =14,numtype=sp.complex128):
         acf_cent - This is a NrxNl complex numpy array where Nr is number of
         range gate and Nl is number of lags.
     """
+    N=len(pulse)
     # It will be assumed the data will be pulses vs rangne
     rawbeams = rawbeams.transpose()
     (Nr,Np) = rawbeams.shape
@@ -168,6 +178,22 @@ def CenteredLagProduct(rawbeams,N =14,numtype=sp.complex128):
     return acf_cent
 
 
+def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13)):
+    """ """
+     # It will be assumed the data will be pulses vs rangne
+    rawbeams = rawbeams.transpose()
+    (Nr,Np) = rawbeams.shape
+    # Make matched filter
+    filt = sp.fft(pulse[::-1],n=Nr)
+    filtmat = sp.repeat(filt[:,sp.newaxis],Np,axis=1)
+    rawfreq = sp.fft(rawbeams,axis=0)
+    outdata = sp.ifft(filtmat*rawfreq,axis=0)
+    outdata = sp.sum(outdata,axis=-1)
+    #increase the number of axes
+    return outdata[len(pulse)-1:,sp.newaxis]
+
+
+#%% dictionary file
 def dict2h5(filename,dictin):
 # Main function test
     h5file = tables.openFile(filename, mode = "w", title = "RadarDataFile out.")
@@ -268,6 +294,7 @@ def readconfigfile(fname):
         simparams['Rangegates']=rng_gates
 
     return(sensdict,simparams)
+
 
 #def makexample(npts,sensdict,cur_params,pulse,npulses):
 #    """This will create a set centered lag products as if it were collected from ISR
