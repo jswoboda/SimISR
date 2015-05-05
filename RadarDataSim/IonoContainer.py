@@ -118,15 +118,15 @@ class IonoContainer(object):
             self.Param_Names = paramnames
 
     #%% Getting closest objects
-    def getclosestsphere(self,coords):
+    def getclosestsphere(self,coords,timelist=None):
         d2r = np.pi/180.0
         (R,Az,El) = coords
         x_coord = R*np.cos(Az*d2r)*np.cos(El*d2r)
         y_coord = R*np.sin(Az*d2r)*np.cos(El*d2r)
         z_coord= R*np.sin(El*d2r)
         cartcoord = np.array([x_coord,y_coord,z_coord])
-        return self.getclosest(cartcoord)
-    def getclosest(self,coords):
+        return self.getclosest(cartcoord,timelist)
+    def getclosest(self,coords,timelist=None):
         """This method will get the closest set of parameters in the coordinate space. It will return
         the parameters from all times.
         Input
@@ -146,9 +146,16 @@ class IonoContainer(object):
         distall = xdiff**2+ydiff**2+zdiff**2
         minidx = np.argmin(distall)
         paramout = self.Param_List[minidx]
+        velout = self.Velocity[minidx]
+        if timelist is not None:
+            timeindx = []
+            for itime in timelist:
+                timeindx.append(sp.argmin(sp.absolute(itime-self.Time_Vector)))
+            paramout=paramout[timeindx]
+            velout=velout[timeindx]
         sphereout = self.Sphere_Coords[minidx]
         cartout = self.Cart_Coords[minidx]
-        return (paramout,sphereout,cartout,np.sqrt(distall[minidx]))
+        return (paramout,velout,sphereout,cartout,np.sqrt(distall[minidx]))
     #%% Interpolation methods
     def interp(self,new_coords,ver=0,sensor_loc = None,method='linear',fill_value=np.nan):
         """This method will take the parameters in the Param_List variable and spatially.
@@ -537,7 +544,7 @@ def MakeTestIonoclass(testv=False,testtemp=False):
 
 def main():
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Test')
+    testpath = os.path.join(os.path.split(curpath)[0],'testdata')
 
     Icont1 = MakeTestIonoclass()
 

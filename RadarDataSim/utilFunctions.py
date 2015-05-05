@@ -4,10 +4,14 @@ Created on Tue Jul 22 16:18:21 2014
 
 @author: Bodangles
 """
-
+import os
+import pickle
 import scipy as sp
 import scipy.fftpack as scfft
 from const.physConstants import v_C_0
+import const.sensorConstants as sensconst
+from beamtools.bcotools import getangles
+
 import tables
 import pdb
 # utility functions
@@ -235,6 +239,35 @@ def fitsurface(errfunc,paramlists,inputs):
         fit_surface[inum]=(sp.absolute(diffthing)**2).sum()
         # return the fitsurace after its been de flattened
     return fit_surface.reshape(paramsizlist[outsize]).copy()
+#%% Config files
+
+def makepicklefile(fname,beamlist,radarname,simparams):
+    pickleFile = open(fname, 'wb')
+    pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
+    pickleFile.close()
+def readconfigfile(fname):
+
+    ftype = os.path.splitext(fname)[-1]
+    if ftype=='.pickle':
+        pickleFile = open(fname, 'rb')
+        dictlist = pickle.load(pickleFile)
+        pickleFile.close()
+        angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
+        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+        sensdict = sensconst.getConst(dictlist[0]['radarname'],ang_data)
+
+        simparams = dictlist[1]
+        time_lim = simparams['TimeLim']
+        pulse  = simparams['Pulse']
+        simparams['amb_dict'] = make_amb(sensdict['fs'],simparams['ambupsamp'],
+            sensdict['t_s']*len(pulse),len(pulse))
+        simparams['angles']=angles
+        rng_lims = simparams['RangeLims']
+        rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
+        simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
+        simparams['Rangegates']=rng_gates
+
+    return(sensdict,simparams)
 
 #def makexample(npts,sensdict,cur_params,pulse,npulses):
 #    """This will create a set centered lag products as if it were collected from ISR

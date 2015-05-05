@@ -357,7 +357,7 @@ def main():
     """Testing function"""
     t1 = time.time()
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Test')
+    testpath = os.path.join(os.path.split(curpath)[0],'Testdata')
     inifile = os.path.join(testpath,'PFISRExample.pickle')
     (sensdict,simparams) = readconfigfile(inifile)
     testh5 = os.path.join(testpath,'testiono.h5')

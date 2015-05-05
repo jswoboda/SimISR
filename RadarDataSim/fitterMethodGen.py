@@ -45,8 +45,8 @@ class Fitterionoconainer(object):
 
         Ne = sp.absolute(self.Iono.Param_List[:,:,0]*(1.0+Tratio))
         return Ne
-    def fitdata(self,fitfunc,startvalfunc,npts=64,numtype = sp.complex128, d_funcfunc=defaultparamsfunc,exinputs=[]):
-        """ """
+    def fitdata(self,fitfunc,startvalfunc,d_funcfunc=defaultparamsfunc,exinputs=[]):
+        """This funcition is used to fit data given in terms of lags """
 
         # get intial guess for NE
         Ne_start =self.fitNE()
@@ -101,7 +101,7 @@ def main():
     """ Test function for the RadarData class."""
     t1 = time.time()
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Test')
+    testpath = os.path.join(os.path.split(curpath)[0],'Testdata')
     Ionoin=IonoContainer.readh5(os.path.join(testpath,'lags.h5'))
     inifile = os.path.join(testpath,'PFISRExample.pickle')
 
