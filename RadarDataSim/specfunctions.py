@@ -38,7 +38,7 @@ def ISRSspecmake(ionocont,sensdict,npts):
             else:
                 cur_params = ionocont.Param_List[i_x]
             (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,ionocont.Species,cur_vel,rcsflag=True)
-            cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
+            cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/sp.sqrt(sp.power(sp.absolute(cur_spec),2).sum())
             outspecsorig[i_x,i_t] = cur_spec
             outrcs[i_x,i_t] = rcs
             outspecs[i_x,i_t] = cur_spec_weighted

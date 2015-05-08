@@ -147,7 +147,11 @@ class RadarDataFile(object):
                     weight_cur =weight[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
 
-                    specsinrng = allspecs[rangelog][istn]
+                    specsinrng = allspecs[rangelog]
+                    if specsinrng.ndim==3:
+                        specsinrng=specsinrng[:,istn]
+                    elif specsinrng.ndim==2:
+                        specsinrng=specsinrng[istn]
                     specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
                     cur_spec = specsinrng.sum(0)
                     specsused[istn,ibn,isamp] = cur_spec
@@ -163,9 +167,12 @@ class RadarDataFile(object):
                     for idatn,idat in enumerate(curdataloc):
                         out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
         # Noise spectrums
+
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
+
         Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+
             1j*sp.random.randn(Np,N_samps).astype(complex))
+#        pdb.set_trace()
         return out_data +Noise
         #%% Processing
     def processdataiono(self):
@@ -286,6 +293,7 @@ class RadarDataFile(object):
                 beamlocstmp = sp.where(beamlocs==ibeam)[0]
                 pulses[itn,ibeam] = len(beamlocstmp)
                 pulsesN[itn,ibeam] = len(beamlocstmp)
+#                pdb.set_trace()
                 outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp],numtype=self.simparams['dtype'], pulse=pulse)
                 outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp],numtype=self.simparams['dtype'], pulse=pulse)
         # Create output dictionaries and output data
@@ -304,7 +312,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
     rng_vec = sensdict['RG']
     # pull in other data
-    pulsewidth = sensdict['taurg']*sensdict['t_s']
+    pulsewidth = len(simparams['Pulse'])*sensdict['t_s']
     txpower = sensdict['Pt']
     Ksysvec = sensdict['Ksys']
     sumrule = simparams['SUMRULE']

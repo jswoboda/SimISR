@@ -14,7 +14,7 @@ import scipy as sp
 import scipy.optimize
 # My modules
 from IonoContainer import IonoContainer
-from makeConfigFiles import readconfigfile
+from utilFunctions import readconfigfile
 from RadarDataSim.specfunctions import ISRSfitfunction
 
 

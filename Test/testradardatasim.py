@@ -5,7 +5,7 @@ Created on Mon May  4 18:39:39 2015
 @author: John Swoboda
 """
 
-import os, inspect, glob
+import os, inspect, glob,pdb
 import scipy as sp
 from RadarDataSim.utilFunctions import makepicklefile
 from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
@@ -75,10 +75,17 @@ def main():
     if not os.path.exists(origparamsdir):
         os.mkdir(origparamsdir)
         print "Making a path for testdata at "+origparamsdir
+
+    # clear everything out
+    folderlist = ['Origparams','Spectrums','Radardata','ACF','Fitted']
+    for ifl in folderlist:
+        flist = glob.glob(os.path.join(testpath,ifl,'*.h5'))
+        for ifile in flist:
+            os.remove(ifile)
+    # Now make stuff again
     makeconfigfile(testpath)
 
-
-    Icont1 = MakeTestIonoclass(testv=True,testtemp=True)
+    Icont1 = MakeTestIonoclass(testv=True,testtemp=False)
     makeinputh5(Icont1,testpath)
     Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
     funcnamelist=['spectrums','radardata','fitting']

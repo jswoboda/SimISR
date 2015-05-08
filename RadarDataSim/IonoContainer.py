@@ -497,7 +497,7 @@ def pathparts(path):
             return components
         components.append(tail)
 
-def MakeTestIonoclass(testv=False,testtemp=False):
+def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0):
     """ This function will create a test ionoclass with an electron density that
     follows a chapman function"""
     xvec = sp.arange(-250.0,250.0,20.0)
@@ -510,9 +510,9 @@ def MakeTestIonoclass(testv=False,testtemp=False):
     coords[:,1] = yy.flatten()
     coords[:,2] = zz.flatten()
 
-    H_0 = 50.0 #km scale height
-    z_0 = 250.0 #km
-    N_0 = 10**11
+#    H_0 = 50.0 #km scale height
+#    z_0 = 250.0 #km
+#    N_0 = 10**11
 
     # Make electron density
     Ne_profile = Chapmanfunc(zz,H_0,z_0,N_0)

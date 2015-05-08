@@ -183,11 +183,14 @@ def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13)):
      # It will be assumed the data will be pulses vs rangne
     rawbeams = rawbeams.transpose()
     (Nr,Np) = rawbeams.shape
+    pulsepow = sp.power(sp.absolute(pulse),2.0).sum()
     # Make matched filter
-    filt = sp.fft(pulse[::-1],n=Nr)
+    filt = sp.fft(pulse[::-1]/sp.sqrt(pulsepow),n=Nr)
     filtmat = sp.repeat(filt[:,sp.newaxis],Np,axis=1)
     rawfreq = sp.fft(rawbeams,axis=0)
     outdata = sp.ifft(filtmat*rawfreq,axis=0)
+    # XXX Need to determine cause of power being off by a factor of 4 in barker code.
+    outdata = outdata*outdata.conj()/4.0
     outdata = sp.sum(outdata,axis=-1)
     #increase the number of axes
     return outdata[len(pulse)-1:,sp.newaxis]
