@@ -318,7 +318,8 @@ class IonoContainer(object):
             if outdict['coordvecs'] == ['r','theta','phi']:
                 outdict['ver']=1
                 outdict['coordlist']=outdict['coordlist2']
-        del outdict['coordlist2']
+        if 'coordlist2' in outdict.keys():
+            del outdict['coordlist2']
 
         return IonoContainer(**outdict)
     #%% Reduce numbers

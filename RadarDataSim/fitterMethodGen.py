@@ -51,7 +51,7 @@ class Fitterionoconainer(object):
         # get intial guess for NE
         Ne_start =self.fitNE()
         if self.simparams['Pulsetype'].lower()=='barker':
-            return(Ne_start,Ne_start)
+            return(Ne_start[:,:,sp.newaxis],Ne_start[:,:,sp.newaxis])
         # get the data nd noise lags
         lagsData= self.Iono.Param_List
         (Nloc,Nt,Nlags) = lagsData.shape
