@@ -485,6 +485,23 @@ class IonoContainer(object):
             Vi[:,itime] = (self.Velocity[:,itime]*unit_coords).sum(1)
         return Vi
 
+    def copy(self):
+        """This is the function to copy an instance of the class."""
+        vardict = vars(self)
+        outdict = {}
+        for ikey in vardict.keys():
+            obj1 = vardict[ikey]
+            if type(obj1)==str:
+                outdict[ikey] = (obj1+'.')[:-1]
+            else:
+                outdict[ikey] = obj1.copy()
+
+        if 'coordvecs' in outdict.keys():
+            if [str(x) for x in outdict['coordvecs']] == ['r','theta','phi']:
+                outdict['ver']=1
+                outdict['coordlist']=outdict['coordlist2']
+        del outdict['coordlist2']
+        return IonoContainer(**outdict)
 #%%    utility functions
 def pathparts(path):
     '''This will break up a path name into componenets using recursion
