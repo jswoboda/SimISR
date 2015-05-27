@@ -7,6 +7,7 @@ import os
 import inspect
 import pdb
 import posixpath
+import copy
 
 import numpy as np
 import scipy as sp
@@ -442,8 +443,15 @@ class IonoContainer(object):
         return func(self,sensdict,npts)
 
     def combinetimes(self,self2):
-        assert self.Cart_Coords == self2.Cart_Coords, "Need to have same spatial coordinates"
-        assert self.Param_Names == self2.Param_Names, "Need to have same parameter names"
+        a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
+        blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
+        
+        assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+        
+        assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
+        
+        
+        assert sp.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
         assert self.Species== self2.Species, "Need to have the same species"
 
         self.Time_Vector = sp.concatenate((self.Time_Vector,self2.Time_Vector))
@@ -487,21 +495,25 @@ class IonoContainer(object):
 
     def copy(self):
         """This is the function to copy an instance of the class."""
-        vardict = vars(self)
-        outdict = {}
-        for ikey in vardict.keys():
-            obj1 = vardict[ikey]
-            if type(obj1)==str:
-                outdict[ikey] = (obj1+'.')[:-1]
-            else:
-                outdict[ikey] = obj1.copy()
-
-        if 'coordvecs' in outdict.keys():
-            if [str(x) for x in outdict['coordvecs']] == ['r','theta','phi']:
-                outdict['ver']=1
-                outdict['coordlist']=outdict['coordlist2']
-        del outdict['coordlist2']
-        return IonoContainer(**outdict)
+        return copy.copy(self)
+#        vardict = vars(self)
+#        outdict = {}
+#        for ikey in vardict.keys():
+#            obj1 = vardict[ikey]
+#            if type(obj1)==str:
+#                outdict[ikey] = (obj1+'.')[:-1]
+#            else:
+#                outdict[ikey] = obj1.copy()
+#
+#        if 'coordvecs' in outdict.keys():
+#            if [str(x) for x in outdict['coordvecs']] == ['r','theta','phi']:
+#                outdict['ver']=1
+#                outdict['coordlist']=outdict['coordlist2']
+#        del outdict['coordlist2']
+#        return IonoContainer(**outdict)
+        
+    def deepcopy(self):
+        return copy.deepcopy(self)
 #%%    utility functions
 def pathparts(path):
     '''This will break up a path name into componenets using recursion
