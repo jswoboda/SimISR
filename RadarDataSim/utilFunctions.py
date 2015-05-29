@@ -20,17 +20,17 @@ def make_amb(Fsorg,m_up,plen,nlags):
     range ambiguity. Uses a sinc function weighted by a blackman window. Currently
     only set up for an uncoded pulse.
     Inputs:
-    Fsorg: A scalar, the original sampling frequency in Hertz.
-    m_up: The upsampled ratio between the original sampling rate and the rate of
-    the ambiguity function up sampling.
-    plen: The length of the pulse in samples at the original sampling frequency.
-    nlags: The number of lags used.
+        Fsorg: A scalar, the original sampling frequency in Hertz.
+        m_up: The upsampled ratio between the original sampling rate and the rate of
+        the ambiguity function up sampling.
+        plen: The length of the pulse in samples at the original sampling frequency.
+        nlags: The number of lags used.
     Outputs:
-    Wttdict: A dictionary with the keys 'WttAll' which is the full ambiguity function
-    for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the
-    ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity
-    for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array
-    for the range sampling.
+        Wttdict: A dictionary with the keys 'WttAll' which is the full ambiguity function
+        for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the
+        ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity
+        for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array
+        for the range sampling.
     """
 
     # make the sinc
@@ -88,39 +88,26 @@ def spect2acf(omeg,spec):
 
 
 #%% making pulse data
-def MakePulseData(pulse_shape, filt_freq, delay=16,numtype = sp.complex128):
-    """ This function will create a pulse width of data shaped by the filter that who's frequency
-        response is passed as the parameter filt_freq.  The pulse shape is delayed by the parameter
-        delay into the data. The noise vector that will be multiplied by the filter's frequency
-        response will be zero mean complex white Gaussian noise with a power of 1. The user
-        then will need to scale their filter to get the desired power out.
-        Inputs:
-            pulse_shape: A numpy array that holds the shape of the single pulse.
-            filt_freq - a numpy array that holds the complex frequency response of the filter
-            that will be used to shape the noise data.
-            delay - The number of samples that the pulse will be delayed into the
-            array of noise data to avoid any problems with filter overlap.
-    """
-    npts = len(filt_freq)
-
-    noise_vec = (sp.random.randn(npts).astype(numtype)+1j*sp.random.randn(npts).astype(numtype))/sp.sqrt(2.0)# make a noise vector
-    mult_freq = filt_freq.astype(numtype)*noise_vec
-    data = scfft.ifft(mult_freq)
-    data_out = pulse_shape*data[delay:(delay+len(pulse_shape))]
-    return data_out
-
 def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex128):
-    """ This function will create a pulse width of data shaped by the filter that who's frequency
-        response is passed as the parameter filt_freq.  The pulse shape is delayed by the parameter
+    """ This function will create a repxLp numpy array, where rep is number of independent
+        repeats and Lp is number of pulses, of noise shaped by the filter who's frequency
+        response is passed as the parameter filt_freq. The pulse shape is delayed by the parameter
         delay into the data. The noise vector that will be multiplied by the filter's frequency
         response will be zero mean complex white Gaussian noise with a power of 1. The user
-        then will need to scale their filter to get the desired power out.
+        then will need to multiply the filter by its size to get the desired power from using
+        the function.
         Inputs:
             pulse_shape: A numpy array that holds the shape of the single pulse.
             filt_freq - a numpy array that holds the complex frequency response of the filter
             that will be used to shape the noise data.
             delay - The number of samples that the pulse will be delayed into the
             array of noise data to avoid any problems with filter overlap.
+            rep - Number of indepent samples/pulses shaped by the filter.
+            numtype - The type of numbers used for the output.
+        Output
+            data_out - A repxLp of data that has been shaped by the filter. Points along
+            The first axis are independent of each other while samples along the second
+            axis are colored using the filter and multiplied by the pulse shape.
     """
     npts = len(filt_freq)
     filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
@@ -132,6 +119,12 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     return data_out
 #%% Pulse shapes
 def GenBarker(blen):
+    """This function will output a barker code pulse.
+    Inputs
+        blen -An integer for number of bauds in barker code.
+    Output
+        outar - A blen length numpy array.
+    """
     bdict = {1:[-1], 2:[-1, 1], 3:[-1, -1, 1], 4:[-1, -1, 1, -1], 5:[-1, -1, -1, 1, -1],
              7:[-1, -1, -1, 1, 1, -1, 1], 11:[-1, -1, -1, 1, 1, 1, -1, 1, 1, -1, 1],
             13:[-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1]}
@@ -179,7 +172,16 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14)):
 
 
 def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13)):
-    """ """
+    """This will process barker code data by filtering it with a barker code pulse and
+    then sum up the pulses.
+    Inputs
+        rawbeams - A complex numpy array size NpxNs where Np is the number of pulses and
+        Ns is the number of samples.
+        numtype - The type of numbers being used for processing.
+        pulse - The barkercode pulse.
+    Outputs
+        outdata- A Nrx1 size numpy array that holds the processed data. Nr is the number
+        of range gates  """
      # It will be assumed the data will be pulses vs rangne
     rawbeams = rawbeams.transpose()
     (Nr,Np) = rawbeams.shape
@@ -189,8 +191,7 @@ def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13)):
     filtmat = sp.repeat(filt[:,sp.newaxis],Np,axis=1)
     rawfreq = sp.fft(rawbeams,axis=0)
     outdata = sp.ifft(filtmat*rawfreq,axis=0)
-    # XXX Need to determine cause of power being off by a factor of 4 in barker code.
-    outdata = outdata*outdata.conj()/4.0
+    outdata = outdata*outdata.conj()
     outdata = sp.sum(outdata,axis=-1)
     #increase the number of axes
     return outdata[len(pulse)-1:,sp.newaxis]
@@ -198,6 +199,11 @@ def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13)):
 
 #%% dictionary file
 def dict2h5(filename,dictin):
+    """A function that will save a dictionary to a h5 file.
+    Inputs
+        filename - The file name in a string.
+        dictin - A dictionary that will be saved out.
+    """
 # Main function test
     h5file = tables.openFile(filename, mode = "w", title = "RadarDataFile out.")
     try:
@@ -218,10 +224,10 @@ def Chapmanfunc(z,H_0,Z_0,N_0):
     """This function will return the Chapman function for a given altitude
     vector z.  All of the height values are assumed km.
     Inputs
-    z: An array of z values in km.
-    H_0: A single float of the height in km.
-    Z_0: The peak density location.
-    N_0: The peak electron density.
+        z: An array of z values in km.
+        H_0: A single float of the height in km.
+        Z_0: The peak density location.
+        N_0: The peak electron density.
     """
     z1 = (z-Z_0)/H_0
     Ne = N_0*sp.exp(0.5*(1-z1-sp.exp(-z1)))
@@ -244,10 +250,10 @@ def fitsurface(errfunc,paramlists,inputs):
     where each dimension is the size of the array given for each of the parameters. Arrays of
     one element are not represented in the returned fit surface array.
     Inputs:
-    errfunc - The function used to determine the error between the given data and
-    the theoretical function
-    paramlists - An N length list of arrays for each of the parameters.
-    inputs - A tuple of the rest of the inputs for error function."""
+        errfunc - The function used to determine the error between the given data and
+        the theoretical function
+        paramlists - An N length list of arrays for each of the parameters.
+        inputs - A tuple of the rest of the inputs for error function."""
     paramsizlist = sp.array([len(i) for i in paramlists])
     outsize = sp.where(paramsizlist!=1)[0]
     #  make the fit surface and flatten it
@@ -271,11 +277,22 @@ def fitsurface(errfunc,paramlists,inputs):
 #%% Config files
 
 def makepicklefile(fname,beamlist,radarname,simparams):
+    """This will make the config file based off of the desired input parmeters.
+    Inputs
+        fname - Name of the file as a string.
+        beamlist - A list of beams numbers used by the AMISRS
+        radarname - A string that is the name of the radar being simulated.
+        simparams - A set of simulation parameters in a dictionary."""
     pickleFile = open(fname, 'wb')
     pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
     pickleFile.close()
 def readconfigfile(fname):
-
+    """This funciton will read in the pickle files that are used for configuration.
+    Inputs
+        fname - A string containing the file name and location.
+    Outputs
+        sensdict - A dictionary that holds the sensor parameters.
+        simparams - A dictionary that holds the simulation parameters."""
     ftype = os.path.splitext(fname)[-1]
     if ftype=='.pickle':
         pickleFile = open(fname, 'rb')

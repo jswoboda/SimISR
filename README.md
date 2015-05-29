@@ -47,8 +47,8 @@ Then move to the main directory and run the Python setup script, which should be
 To determine if everything has been properly istalled it is suggested that user runs the following Python files to create some test data.
 
 
-	$ cd RadarDataSim/RadarDataSim
-	$ python basictest.py
+	$ cd RadarDataSim/Test
+	$ python testradardatasim.py
 
 If h5 files for each stage have been created then it should be properly installed.
 
