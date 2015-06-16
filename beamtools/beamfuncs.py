@@ -211,7 +211,7 @@ def make_polax(zenith=False):
     azlines = np.arange(0.0,360.0,30.0)
 
 
-    fig = plt.figure(num=None, figsize=(12, 9), dpi=80, facecolor='w', edgecolor='w')
+    fig = plt.figure(num=None, figsize=(12, 9), dpi=600, facecolor='w', edgecolor='w')
     # plot all of the azlines
     elvec = np.linspace(maxel,minel,100)
     firstplot = True
