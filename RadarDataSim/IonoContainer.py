@@ -314,14 +314,14 @@ class IonoContainer(object):
 
             if ivar in basekeys:
                 outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
+        pdb.set_trace()
         # determine version of data
         if 'coordvecs' in outdict.keys():
-            if outdict['coordvecs'] == ['r','theta','phi']:
+            if outdict['coordvecs'].tolist() == ['r','theta','phi']:
                 outdict['ver']=1
                 outdict['coordlist']=outdict['coordlist2']
         if 'coordlist2' in outdict.keys():
             del outdict['coordlist2']
-
         return IonoContainer(**outdict)
     #%% Reduce numbers
     def coordreduce(self,coorddict):
@@ -445,12 +445,12 @@ class IonoContainer(object):
     def combinetimes(self,self2):
         a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
         blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
-        
+
         assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
-        
+
         assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
-        
-        
+
+
         assert sp.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
         assert self.Species== self2.Species, "Need to have the same species"
 
@@ -511,7 +511,7 @@ class IonoContainer(object):
 #                outdict['coordlist']=outdict['coordlist2']
 #        del outdict['coordlist2']
 #        return IonoContainer(**outdict)
-        
+
     def deepcopy(self):
         return copy.deepcopy(self)
 #%%    utility functions
