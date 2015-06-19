@@ -85,6 +85,7 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
     for i in range(amb_dict['Wlag'].shape[0]):
         guess_acf[i] = sp.sum(acfinterp*amb_dict['Wlag'][i])
 
+#    pdb.set_trace()
     guess_acf = guess_acf*rcs/guess_acf[0].real
     # fit to spectrums
     spec_interm = scfft.fft(guess_acf,n=len(cur_spec))
@@ -95,3 +96,17 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
     penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
     return yout+penadd
 
+def makefitsurf(xarrs,y_acf,sensdict,simparams):
+    youtsize = [len(x) for x in xarrs]
+    ytprod = 1
+    for xl in youtsize:
+        ytprod = ytprod*xl
+
+    yout = sp.zeros(youtsize,dtype=sp.float128)
+
+    for iparam in range(ytprod):
+        curind = sp.unravel_index(iparam,youtsize)
+        curx = sp.array([x[curind[ix]] for ix, x in enumerate(xarrs)])
+
+        yout[curind[:]] = sp.power(sp.absolute(ISRSfitfunction(curx,y_acf,sensdict,simparams)),2).sum()
+    return(yout)

@@ -142,7 +142,8 @@ class RadarDataFile(object):
                     cur_pnts = samp_num+isamp
 
                     if sp.sum(rangelog)==0:
-                        pdb.set_trace()
+                        continue
+                        #pdb.set_trace()
                     #create the weights and weight location based on the beams pattern.
                     weight_cur =weight[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
@@ -162,17 +163,14 @@ class RadarDataFile(object):
                     # create data
                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
-                    # the double slicing is a clever way to get this to work. curdataloc takes
-                    # the points that are the same spectrum. Then slice for the range dimension with : operator
+
                     for idatn,idat in enumerate(curdataloc):
                         out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
         # Noise spectrums
 
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
-
         Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+
             1j*sp.random.randn(Np,N_samps).astype(complex))
-#        pdb.set_trace()
         return out_data +Noise
         #%% Processing
     def processdataiono(self):
@@ -293,7 +291,6 @@ class RadarDataFile(object):
                 beamlocstmp = sp.where(beamlocs==ibeam)[0]
                 pulses[itn,ibeam] = len(beamlocstmp)
                 pulsesN[itn,ibeam] = len(beamlocstmp)
-#                pdb.set_trace()
                 outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp],numtype=self.simparams['dtype'], pulse=pulse)
                 outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp],numtype=self.simparams['dtype'], pulse=pulse)
         # Create output dictionaries and output data

@@ -314,10 +314,11 @@ class IonoContainer(object):
 
             if ivar in basekeys:
                 outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
-        pdb.set_trace()
         # determine version of data
         if 'coordvecs' in outdict.keys():
-            if outdict['coordvecs'].tolist() == ['r','theta','phi']:
+            if type(outdict['coordvecs']) ==sp.ndarray:
+                outdict['coordvecs'] = outdict['coordvecs'].tolist()
+            if outdict['coordvecs'] == ['r','theta','phi']:
                 outdict['ver']=1
                 outdict['coordlist']=outdict['coordlist2']
         if 'coordlist2' in outdict.keys():
