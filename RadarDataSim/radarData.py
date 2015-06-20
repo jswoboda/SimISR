@@ -142,7 +142,15 @@ class RadarDataFile(object):
                     cur_pnts = samp_num+isamp
 
                     if sp.sum(rangelog)==0:
-                        continue
+#                        # make a linear interpolation
+#                        if range_g>=sp.max(rho):
+#                            rangelog = rho==sp.max(rho)
+#                        elif range_g<=sp.min(rho):
+#                            rangelog = rho==sp.min(rho)
+#                        else:
+                        #nearest neighbor interpolation in range
+                        minrng = sp.argmin(sp.absolute(range_g-rho))
+                        rangelog[minrng] = True
                         #pdb.set_trace()
                     #create the weights and weight location based on the beams pattern.
                     weight_cur =weight[rangelog]
@@ -167,7 +175,6 @@ class RadarDataFile(object):
                     for idatn,idat in enumerate(curdataloc):
                         out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
         # Noise spectrums
-
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
         Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+
             1j*sp.random.randn(Np,N_samps).astype(complex))

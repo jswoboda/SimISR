@@ -533,7 +533,7 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0):
     follows a chapman function"""
     xvec = sp.arange(-250.0,250.0,20.0)
     yvec = sp.arange(-250.0,250.0,20.0)
-    zvec = sp.arange(50.0,500.0,5.0)
+    zvec = sp.arange(50.0,900.0,5.0)
     # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
     xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)
     coords = sp.zeros((xx.size,3))
