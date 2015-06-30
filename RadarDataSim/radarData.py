@@ -189,7 +189,7 @@ class RadarDataFile(object):
         Ionocontainer- This is an instance of the ionocontainer class that will hold the acfs.
         """
         (DataLags,NoiseLags) = self.processdata()
-        return lagdict2ionocont(DataLags,NoiseLags,self.sensdict,self.simparams,self.simparams['Timevec'])
+        return lagdict2ionocont(DataLags,NoiseLags,self.sensdict,self.simparams,DataLags['Time'])
 
     def processdata(self):
         """ This will perform the the data processing and create the ACF estimates

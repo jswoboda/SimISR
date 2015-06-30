@@ -8,6 +8,7 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import scipy as sp
+import scipy.fftpack as scfft
 import numpy as np
 import seaborn as sns
 
@@ -125,4 +126,65 @@ def plotaltparameters(param='Ne',ffit=None,fin=None,acfname=None):
 
         plt.savefig('comp{0}'.format(ibeam))
         plt.close(fig)
+
+def plotspecs(coords,times,cartcoordsys = True, specsfilename=None,acfname=None,outdir='',npts = 128):
+    indisp = specsfilename is not None
+    acfdisp = acfname is not None
+
+    if sp.ndim(coords)==1:
+        coords = coords[sp.newaxis,:]
+    Nt = len(times)
+    Nloc = coords.shape[0]
+
+    if indisp:
+        Ionoin = IonoContainer.readh5(specsfilename)
+        omeg = Ionoin.Param_Names
+        npts = Ionoin.Param_List.shape[-1]
+        specin = sp.zeros(Nloc,Nt,Ionoin.Param_List.shape[-1]).astype(Ionoin.Param_List.dtype)
+        for icn, ic in enumerate(coords):
+            if cartcoordsys:
+                tempin = Ionoin.getclosest(ic,times)[0]
+            else:
+                tempin = Ionoin.getclosestsphere(ic,times)[0]
+            if sp.ndim(tempin)==1:
+                tempin = tempin[sp.newaxis,:]
+            specin[icn] = tempin
+
+    if acfdisp:
+        Ionoacf = IonoContainer.readh5(acfname)
+        ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
+        ts = Ionoacf.Param_Names[1]-Ionoacf.Param_Names[0]
+        omeg = sp.arange(sp.ceil((npts-1)/2),sp.floor((npts-1)/2))/ts/npts
+        for icn, ic in enumerate(coords):
+            if cartcoordsys:
+                tempin = Ionoacf.getclosest(ic,times)[0]
+            else:
+                tempin = Ionoacf.getclosestsphere(ic,times)[0]
+            if sp.ndim(tempin)==1:
+                tempin = tempin[sp.newaxis,:]
+            ACFin[icn] = tempin
+        specout = scfft.fftshift(scfft.fft(ACFin,n=npts,axis=-1),axis=-1)
+
+
+    nfig = sp.ceil(Nt*Nloc/6)
+    imcount = 0
+    for i_fig in range(nfig):
+        (figmplf, axmat) = plt.subplots(2, 3,figsize=(16, 12), facecolor='w')
+        axvec = axflatten()
+        for iax,ax in axvec:
+            iloc = sp.floor(imcount/Nloc)
+            itime = sp.mod(imcount,Nt)
+            if indisp:
+                ax.plot(omeg*1e-3,specin[iloc,itime].real,label='Input',linewidth=10)
+            if indisp:
+                ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=10)
+            ax.grid(True)
+            ax.set_xlabel('f in kHz')
+            ax.set_ylabel('Amp')
+            ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
+
+        fname= os.path.join(outdir,'Specs_{0:0>3}.png'.format(i_fig))
+        plt.savefig(fname)
+        plt.close(figmplf)
+
 if __name__== '__main__':
