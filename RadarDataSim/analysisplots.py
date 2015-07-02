@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """
 Created on Wed May  6 13:55:26 2015
-
+analysisplots.py
+This module is used to plot the output from various stages of the simulator to debug
+problems.
 @author: John Swoboda
 """
 import os
@@ -150,7 +152,7 @@ def plotspecs(coords,times,cartcoordsys = True, specsfilename=None,acfname=None,
                 tempin = Ionoin.getclosestsphere(ic,times)[0]
             if sp.ndim(tempin)==1:
                 tempin = tempin[sp.newaxis,:]
-            specin[icn] = tempin
+            specin[icn] = tempin/npts/npts
 
     if acfdisp:
         Ionoacf = IonoContainer.readh5(acfname)
@@ -181,8 +183,8 @@ def plotspecs(coords,times,cartcoordsys = True, specsfilename=None,acfname=None,
             if indisp:
                 ax.plot(omeg*1e-3,specin[iloc,itime].real,label='Input',linewidth=5)
             if indisp:
-                ax.plot(omeg*1e-3,specout[iloc,itime].real*npts,label='Output',linewidth=5)
-            
+                ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)
+
             ax.set_xlabel('f in kHz')
             ax.set_ylabel('Amp')
             ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
