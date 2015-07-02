@@ -176,8 +176,8 @@ class RadarDataFile(object):
                         out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
         # Noise spectrums
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
-        Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(complex)+
-            1j*sp.random.randn(Np,N_samps).astype(complex))
+        Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(simdtype)+
+            1j*sp.random.randn(Np,N_samps).astype(simdtype))
         return out_data +Noise
         #%% Processing
     def processdataiono(self):
@@ -334,7 +334,6 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
     pulses = sp.tile(DataLags['Pulses'][:,:,sp.newaxis,sp.newaxis],(1,1,Nrng,Nlags))
     time_vec = time_vec[:Nt]
-
     # average by the number of pulses
     lagsData = lagsData/pulses
     lagsNoise=NoiseLags['ACF']

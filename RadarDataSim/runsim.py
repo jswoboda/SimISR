@@ -176,7 +176,7 @@ def main(funcnamelist,basedir,configfile,remakealldata):
         f.write(time.asctime()+'\n')
         try:
             stime = datetime.now()
-            curfunc(basedir,configfile,curfuncn)
+            curfunc(basedir,configfile,remakealldata)
             ftime = datetime.now()
             ptime = ftime-stime
             f.write('Success!\n')

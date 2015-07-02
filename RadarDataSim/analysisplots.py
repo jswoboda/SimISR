@@ -188,11 +188,11 @@ def plotspecs(coords,times,inifile,cartcoordsys = True, specsfilename=None,acfna
             iloc = int(sp.floor(imcount/Nt))
             itime = int(imcount-(iloc*Nt))
 
-
+            maxvec = []
             if indisp:
                 # apply ambiguity funciton to spectrum
                 curin = specin[iloc,itime]
-                rcs = curin.real.sum()/npts**2
+                rcs = curin.real.sum()
                 (tau,acf) = spect2acf(omeg,curin)
 
                 # apply ambiguity function
@@ -211,13 +211,15 @@ def plotspecs(coords,times,inifile,cartcoordsys = True, specsfilename=None,acfna
 
                 # fit to spectrums
                 spec_interm = scfft.fftshift(scfft.fft(guess_acf,n=npts))
+                maxvec.append(spec_interm.real.max())
                 ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)
             if indisp:
                 ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)
-
+                maxvec.append(specout[iloc,itime].real.max())
             ax.set_xlabel('f in kHz')
             ax.set_ylabel('Amp')
             ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
+            ax.set_ylim(0.0,max(maxvec)*1.1)
             imcount=imcount+1
 
         fname= os.path.join(outdir,'Specs_{0:0>3}.png'.format(i_fig))
