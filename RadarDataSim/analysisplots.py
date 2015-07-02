@@ -11,11 +11,14 @@ import matplotlib.pyplot as plt
 from matplotlib import rc
 import scipy as sp
 import scipy.fftpack as scfft
+import scipy.interpolate as spinterp
+
 import numpy as np
 import seaborn as sns
 import pdb
 
 from RadarDataSim.IonoContainer import IonoContainer
+from RadarDataSim.utilFunctions import readconfigfile,spect2acf
 
 
 def plotbeamparameters(param='Ne',ffit=None,fin=None,acfname=None):
@@ -130,10 +133,13 @@ def plotaltparameters(param='Ne',ffit=None,fin=None,acfname=None):
         plt.savefig('comp{0}'.format(ibeam))
         plt.close(fig)
 
-def plotspecs(coords,times,cartcoordsys = True, specsfilename=None,acfname=None,outdir='',npts = 128):
+def plotspecs(coords,times,inifile,cartcoordsys = True, specsfilename=None,acfname=None,outdir='',):
     indisp = specsfilename is not None
     acfdisp = acfname is not None
-
+    (sensdict,simparams) = readconfigfile(inifile)
+    simdtype = simparams['dtype']
+    npts = simparams['numpoints']
+    amb_dict = simparams['amb_dict']
     if sp.ndim(coords)==1:
         coords = coords[sp.newaxis,:]
     Nt = len(times)
@@ -172,6 +178,7 @@ def plotspecs(coords,times,cartcoordsys = True, specsfilename=None,acfname=None,
 
     nfig = sp.ceil(Nt*Nloc/6.0)
     imcount = 0
+
     for i_fig in sp.arange(nfig):
         (figmplf, axmat) = plt.subplots(2, 3,figsize=(16, 12), facecolor='w')
         axvec = axmat.flatten()
@@ -180,8 +187,31 @@ def plotspecs(coords,times,cartcoordsys = True, specsfilename=None,acfname=None,
                 break
             iloc = int(sp.floor(imcount/Nt))
             itime = int(imcount-(iloc*Nt))
+
+
             if indisp:
-                ax.plot(omeg*1e-3,specin[iloc,itime].real,label='Input',linewidth=5)
+                # apply ambiguity funciton to spectrum
+                curin = specin[iloc,itime]
+                rcs = curin.real.sum()/npts**2
+                (tau,acf) = spect2acf(omeg,curin)
+
+                # apply ambiguity function
+                tauint = amb_dict['Delay']
+                acfinterp = sp.zeros(len(tauint),dtype=simdtype)
+
+                acfinterp.real =spinterp.interp1d(tau,acf.real,bounds_error=0)(tauint)
+                acfinterp.imag =spinterp.interp1d(tau,acf.imag,bounds_error=0)(tauint)
+                # Apply the lag ambiguity function to the data
+                guess_acf = sp.zeros(amb_dict['Wlag'].shape[0],dtype=sp.complex128)
+                for i in range(amb_dict['Wlag'].shape[0]):
+                    guess_acf[i] = sp.sum(acfinterp*amb_dict['Wlag'][i])
+
+            #    pdb.set_trace()
+                guess_acf = guess_acf*rcs/guess_acf[0].real
+
+                # fit to spectrums
+                spec_interm = scfft.fftshift(scfft.fft(guess_acf,n=npts))
+                ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)
             if indisp:
                 ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)
 
