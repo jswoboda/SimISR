@@ -179,7 +179,7 @@ def plotspecs(coords,times,cartcoordsys = True, specsfilename=None,acfname=None,
             if imcount>=Nt*Nloc:
                 break
             iloc = int(sp.floor(imcount/Nt))
-            itime = int(imcount-(iloc*Nloc))
+            itime = int(imcount-(iloc*Nt))
             if indisp:
                 ax.plot(omeg*1e-3,specin[iloc,itime].real,label='Input',linewidth=5)
             if indisp:
