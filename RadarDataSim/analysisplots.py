@@ -133,10 +133,22 @@ def plotaltparameters(param='Ne',ffit=None,fin=None,acfname=None):
         plt.savefig('comp{0}'.format(ibeam))
         plt.close(fig)
 
-def plotspecs(coords,times,inifile,cartcoordsys = True, specsfilename=None,acfname=None,outdir='',):
+def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,acfname=None,filetemplate='spec'):
+    """ This will create a set of images that compare the input ISR spectrum to the
+    Output ISR spectrum from the simulator.
+    Inputs
+    coords - An Nx3 numpy array that holds the coordinates of the desired points.
+    times - A numpy list of times in seconds.
+    configfile - The name of the configuration file used.
+    cartcoordsys - (default True)A bool, if true then the coordinates are given in cartisian if
+    false then it is assumed that the coords are given in sphereical coordinates. 
+    specsfilename - (default None) The name of the file holding the input spectrum.
+    acfname - (default None) The name of the file holding the estimated ACFs.
+    filetemplate (default 'spec') This is the beginning string used to save the images."""
     indisp = specsfilename is not None
     acfdisp = acfname is not None
-    (sensdict,simparams) = readconfigfile(inifile)
+
+    (sensdict,simparams) = readconfigfile(configfile)
     simdtype = simparams['dtype']
     npts = simparams['numpoints']
     amb_dict = simparams['amb_dict']
@@ -180,6 +192,8 @@ def plotspecs(coords,times,inifile,cartcoordsys = True, specsfilename=None,acfna
     imcount = 0
 
     for i_fig in sp.arange(nfig):
+        lines = [None]*2
+        labels = [None]*2
         (figmplf, axmat) = plt.subplots(2, 3,figsize=(16, 12), facecolor='w')
         axvec = axmat.flatten()
         for iax,ax in enumerate(axvec):
@@ -189,6 +203,7 @@ def plotspecs(coords,times,inifile,cartcoordsys = True, specsfilename=None,acfna
             itime = int(imcount-(iloc*Nt))
 
             maxvec = []
+            
             if indisp:
                 # apply ambiguity funciton to spectrum
                 curin = specin[iloc,itime]
@@ -212,17 +227,24 @@ def plotspecs(coords,times,inifile,cartcoordsys = True, specsfilename=None,acfna
                 # fit to spectrums
                 spec_interm = scfft.fftshift(scfft.fft(guess_acf,n=npts))
                 maxvec.append(spec_interm.real.max())
-                ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)
-            if indisp:
-                ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)
+                lines[0]=ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)[0]
+                labels[0] = 'Input Spectrum With Ambiguity Applied'
+            if acfdisp:
+                lines[1]=ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)[0]
+                labels[1] = 'Estimated Spectrum'
                 maxvec.append(specout[iloc,itime].real.max())
             ax.set_xlabel('f in kHz')
             ax.set_ylabel('Amp')
             ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
             ax.set_ylim(0.0,max(maxvec)*1.1)
+            
             imcount=imcount+1
-
-        fname= os.path.join(outdir,'Specs_{0:0>3}.png'.format(i_fig))
+        figmplf.suptitle('Spectrum Comparison', fontsize=20)
+        if None in labels:
+            labels.remove(None)
+            lines.remove(None)
+        plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
+        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
         plt.savefig(fname)
         plt.close(figmplf)
 
