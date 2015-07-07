@@ -90,7 +90,7 @@ class RadarDataFile(object):
                 pt =pulsetimes[pnts]
                 pb = beams[pnts]
                 pn = pulsen[pnts].astype(int)
-                outdict['RawData']= self.__makeTime__(pt,curcontainer.Time_Vector,
+                (outdict['RawData'],outdict['SpecsUsed'])= self.__makeTime__(pt,curcontainer.Time_Vector,
                     curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
                 outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn),NNs).astype(simdtype)+
                     1j*sp.random.randn(len(pn),NNs).astype(simdtype))
@@ -178,7 +178,7 @@ class RadarDataFile(object):
         Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
         Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(simdtype)+
             1j*sp.random.randn(Np,N_samps).astype(simdtype))
-        return out_data +Noise
+        return (out_data +Noise,specsused)
         #%% Processing
     def processdataiono(self):
         """ This will perform the the data processing and create the ACF estimates
