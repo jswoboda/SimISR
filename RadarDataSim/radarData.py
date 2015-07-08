@@ -75,7 +75,10 @@ class RadarDataFile(object):
        beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
 
        pulsen = sp.repeat(sp.arange(Np),N_angles)
-
+       pt_list = []
+       pb_list = []
+       pn_list = []
+       fname_list = []
        if outfilelist is None:
             print('\nData Now being created.')
 
@@ -97,17 +100,38 @@ class RadarDataFile(object):
                 outdict['Pulses']=pn
                 outdict['Beams']=pb
                 outdict['Time'] = pt
-                newfn = os.path.join(outdir,'{0:d} RawData.h5'.format(ifn))
+                fname = '{0:d} RawData.h5'.format(ifn)
+                newfn = os.path.join(outdir,fname)
                 self.outfilelist.append(newfn)
                 dict2h5(newfn,outdict)
+
+                #Listing info
+                pt_list.append(pt)
+                pb_list.append(pb)
+                pn_list.append(pn)
+                fname_list.append(fname)
+            infodict = {'Files':fname_list,'Time':pt_list,'Beams':pb_list,'Pulses':pn_list}
+            dict2h5(os.path.join(outdir,'INFO.h5'),infodict)
+
+
        else:
            self.outfilelist=outfilelist
 
+
 #%% Make functions
     def __makeTime__(self,pulsetimes,spectime,Sphere_Coords,allspecs,beamcodes):
+        """This is will make raw radar data for a given time period and set of
+        spectrums. This is an internal function called by __init__.
+        Inputs-
+        self - RadarDataFile object.
+        pulsetimes - The time the pulses are sent out in reference to the spectrums.
+        spectime - The times for the spectrums.
+        Sphere_Coords - An Nlx3 array that holds the spherical coordinates of the spectrums.
+        allspecs - An NlxNdtimexNspec array that holds the spectrums.
+        beamcodes - A NBx4 array that holds the beam codes along with the beam location
+        in az el along with a system constant in the array. """
 
         range_gates = self.simparams['Rangegates']
-        #beamwidths = self.sensdict['BeamWidth']
         pulse = self.simparams['Pulse']
         sensdict = self.sensdict
         pulse2spec = sp.array([sp.where(itimes-spectime>=0)[0][-1] for itimes in pulsetimes])
