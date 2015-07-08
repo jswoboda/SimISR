@@ -210,8 +210,17 @@ def dict2h5(filename,dictin):
         # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
         # Make group for each dictionary
         for cvar in dictin.keys():
+#            pdb.set_trace()
+            if type(dictin[cvar]) is list:
+                h5file.createGroup('/',cvar)
+                lenzeros= len(str(len(dictin[cvar])))-1
+                for inum, datapnts in enumerate(dictin[cvar]):
+                    h5file.createArray('/'+cvar,'Inst{0:0{1:d}d}'.format(inum,lenzeros),datapnts,'Static array')
+            elif type(dictin[cvar]) is sp.ndarray:
+                h5file.createArray('/',cvar,dictin[cvar],'Static array')
+            else:
+                raise ValueError('Values in list must be lists or numpy arrays')
 
-            h5file.createArray('/',cvar,dictin[cvar],'Static array')
         h5file.close()
     except Exception as inst:
         print type(inst)
@@ -219,6 +228,35 @@ def dict2h5(filename,dictin):
         print inst
         h5file.close()
         raise NameError('Failed to write to h5 file.')
+
+def h52dict(filename):
+    """This will read in the information from a structure h5 file where it is assumed
+    that the base groups are either root or are a group that leads to arrays.
+    Input
+    filename - A string that holds the name of the h5 file that will be opened.
+    Output
+    outputuple - A tuple made of arrays or lists of arrays."""
+    h5file = tables.openFile(filename, mode = "r")
+    output ={}
+    for group in h5file.walkGroups('/'):
+            output[group._v_pathname]={}
+            for array in h5file.listNodes(group, classname = 'Array'):
+                output[group._v_pathname][array.name]=array.read()
+    h5file.close()
+
+    outputuple= []
+    # first get the
+    base_arrs = output['/']
+
+    outputuple= [base_arrs[ikey] for ikey in base_arrs.keys()]
+
+    del output['/']
+    for ikey in output.keys():
+        sublist = [output[ikey][l] for l in output[ikey].keys()]
+        outputuple.append(sublist)
+
+
+    return tuple(outputuple)
         #%% Test functions
 def Chapmanfunc(z,H_0,Z_0,N_0):
     """This function will return the Chapman function for a given altitude

@@ -79,6 +79,10 @@ class RadarDataFile(object):
        pb_list = []
        pn_list = []
        fname_list = []
+       self.datadir = outdir
+       self.maindir = os.path.dirname(os.path.abspath(outdir))
+       self.procdir =os.path.join(self.maindir,'ACF')
+       self.procdir
        if outfilelist is None:
             print('\nData Now being created.')
 
@@ -101,7 +105,7 @@ class RadarDataFile(object):
                 outdict['Beams']=pb
                 outdict['Time'] = pt
                 fname = '{0:d} RawData.h5'.format(ifn)
-                newfn = os.path.join(outdir,fname)
+                newfn = os.path.join(self.datadir,fname)
                 self.outfilelist.append(newfn)
                 dict2h5(newfn,outdict)
 
@@ -256,20 +260,27 @@ class RadarDataFile(object):
         pulsesN = sp.zeros((Ntime,Nbeams))
         timemat = sp.zeros((Ntime,2))
 
-        # initalize lists for stuff
-        pulsen_list = []
-        beamn_list = []
-        time_list = []
-        file_loclist = []
+        if os.path.isfile(os.path.join(self.datadir,'INFO.h5')):
+            h5file=tables.openFile(os.path.join(self.datadir,'INFO.h5'))
+            filelist =  h5file.get_node('/Files').read()
+            pulsen_list = h5file.get_node('/Pulses').read()
+            beamn_list = h5file.get_node('/Beams').read()
+            time_list = h5file.get_node('/Time').read()
+        else:
+            # initalize lists for stuff
+            pulsen_list = []
+            beamn_list = []
+            time_list = []
+            file_loclist = []
 
-        # read in times
-        for ifn, ifile in enumerate(file_list):
-            h5file=tables.openFile(ifile)
-            pulsen_list.append(h5file.get_node('/Pulses').read())
-            beamn_list.append(h5file.get_node('/Beams').read())
-            time_list.append(h5file.get_node('/Time').read())
-            file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
-            h5file.close()
+            # read in times
+            for ifn, ifile in enumerate(file_list):
+                h5file=tables.openFile(ifile)
+                pulsen_list.append(h5file.get_node('/Pulses').read())
+                beamn_list.append(h5file.get_node('/Beams').read())
+                time_list.append(h5file.get_node('/Time').read())
+                file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
+                h5file.close()
 
         pulsen = sp.hstack(pulsen_list).astype(int)
         beamn = sp.hstack(beamn_list).astype(int)
