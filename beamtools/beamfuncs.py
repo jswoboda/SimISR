@@ -126,8 +126,9 @@ class BeamSelector(object):
     def getbeammat(self,beamlist=None):
         if beamlist is None:
             return self.beammat
-        allbeams = [int(ibeam) for ibeam in self.beammat[:,0]]
-        indxlist = [np.where(ibeam==allbeams)[0] for ibeam in beamlist]
+        allbeams = np.array([int(ibeam) for ibeam in self.beammat[:,0]])
+        indxlist = [np.where(ibeam==allbeams)[0][0] for ibeam in beamlist]
+
         return self.beammat[indxlist,:]
 
     def __calcxydist__(self,beamnum):

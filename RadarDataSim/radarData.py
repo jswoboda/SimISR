@@ -268,6 +268,7 @@ class RadarDataFile(object):
             pulsen_list = infodict['Pulses']
             beamn_list = infodict['Beams']
             time_list = infodict['Time']
+            file_loclist = [ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(beamn_list)]
         else:
             file_list = self.outfilelist
             # initalize lists for stuff
@@ -284,7 +285,6 @@ class RadarDataFile(object):
                 time_list.append(h5file.get_node('/Time').read())
                 file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
                 h5file.close()
-
         pulsen = sp.hstack(pulsen_list).astype(int)
         beamn = sp.hstack(beamn_list).astype(int)
         ptimevec = sp.hstack(time_list).astype(int)

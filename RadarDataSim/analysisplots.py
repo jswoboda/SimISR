@@ -141,7 +141,7 @@ def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,ac
     times - A numpy list of times in seconds.
     configfile - The name of the configuration file used.
     cartcoordsys - (default True)A bool, if true then the coordinates are given in cartisian if
-    false then it is assumed that the coords are given in sphereical coordinates. 
+    false then it is assumed that the coords are given in sphereical coordinates.
     specsfilename - (default None) The name of the file holding the input spectrum.
     acfname - (default None) The name of the file holding the estimated ACFs.
     filetemplate (default 'spec') This is the beginning string used to save the images."""
@@ -150,7 +150,7 @@ def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,ac
 
     (sensdict,simparams) = readconfigfile(configfile)
     simdtype = simparams['dtype']
-    npts = simparams['numpoints']
+    npts = simparams['numpoints']*3.0
     amb_dict = simparams['amb_dict']
     if sp.ndim(coords)==1:
         coords = coords[sp.newaxis,:]
@@ -192,8 +192,8 @@ def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,ac
     imcount = 0
 
     for i_fig in sp.arange(nfig):
-        lines = [None]*2
-        labels = [None]*2
+        lines = [None]*3
+        labels = [None]*3
         (figmplf, axmat) = plt.subplots(2, 3,figsize=(16, 12), facecolor='w')
         axvec = axmat.flatten()
         for iax,ax in enumerate(axvec):
@@ -203,7 +203,7 @@ def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,ac
             itime = int(imcount-(iloc*Nt))
 
             maxvec = []
-            
+
             if indisp:
                 # apply ambiguity funciton to spectrum
                 curin = specin[iloc,itime]
@@ -227,17 +227,20 @@ def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,ac
                 # fit to spectrums
                 spec_interm = scfft.fftshift(scfft.fft(guess_acf,n=npts))
                 maxvec.append(spec_interm.real.max())
-                lines[0]=ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)[0]
+                lines[0]= ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)[0]
                 labels[0] = 'Input Spectrum With Ambiguity Applied'
+                normset = spec_interm.real.max()/curin.real.max()
+                lines[1]= ax.plot(omeg*1e-3,curin.real*normset,label='Input',linewidth=5)[0]
+                labels[1] = 'Input Spectrum'
             if acfdisp:
-                lines[1]=ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)[0]
-                labels[1] = 'Estimated Spectrum'
+                lines[2]=ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)[0]
+                labels[2] = 'Estimated Spectrum'
                 maxvec.append(specout[iloc,itime].real.max())
             ax.set_xlabel('f in kHz')
             ax.set_ylabel('Amp')
             ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
             ax.set_ylim(0.0,max(maxvec)*1.1)
-            
+
             imcount=imcount+1
         figmplf.suptitle('Spectrum Comparison', fontsize=20)
         if None in labels:

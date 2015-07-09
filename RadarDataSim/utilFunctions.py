@@ -249,12 +249,12 @@ def h52dict(filename):
     # first get the
     base_arrs = output['/']
 
-    outdict={ikey:base_arrs[ikey] for ikey in base_arrs.keys()}
+    outdict={ikey.strip('/'):base_arrs[ikey] for ikey in base_arrs.keys()}
 
     del output['/']
     for ikey in output.keys():
         sublist = [output[ikey][l] for l in output[ikey].keys()]
-        outdict[ikey] = sublist
+        outdict[ikey.strip('/')] = sublist
 
     return outdict
         #%% Test functions
