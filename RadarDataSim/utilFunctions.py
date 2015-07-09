@@ -235,7 +235,8 @@ def h52dict(filename):
     Input
     filename - A string that holds the name of the h5 file that will be opened.
     Output
-    outputuple - A tuple made of arrays or lists of arrays."""
+    outdict - A dictionary where the keys are the group names and the values are lists
+    or numpy arrays."""
     h5file = tables.openFile(filename, mode = "r")
     output ={}
     for group in h5file.walkGroups('/'):
@@ -244,19 +245,18 @@ def h52dict(filename):
                 output[group._v_pathname][array.name]=array.read()
     h5file.close()
 
-    outputuple= []
+    outdict= {}
     # first get the
     base_arrs = output['/']
 
-    outputuple= [base_arrs[ikey] for ikey in base_arrs.keys()]
+    outdict={ikey:base_arrs[ikey] for ikey in base_arrs.keys()}
 
     del output['/']
     for ikey in output.keys():
         sublist = [output[ikey][l] for l in output[ikey].keys()]
-        outputuple.append(sublist)
+        outdict[ikey] = sublist
 
-
-    return tuple(outputuple)
+    return outdict
         #%% Test functions
 def Chapmanfunc(z,H_0,Z_0,N_0):
     """This function will return the Chapman function for a given altitude

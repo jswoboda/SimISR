@@ -14,7 +14,7 @@ import pdb
 # My modules
 from IonoContainer import IonoContainer
 from const.physConstants import v_C_0, v_Boltz
-from utilFunctions import CenteredLagProduct,MakePulseDataRep, dict2h5,readconfigfile, BarkerLag
+from utilFunctions import CenteredLagProduct,MakePulseDataRep, dict2h5,h52dict,readconfigfile, BarkerLag
 import specfunctions
 class RadarDataFile(object):
     """ This class will will take the ionosphere class and create radar data both
@@ -235,7 +235,7 @@ class RadarDataFile(object):
         timevec = self.simparams['Timevec']
         inttime = self.simparams['Tint']
         # Get array sizes
-        file_list = self.outfilelist
+
         NNs = self.simparams['NNs']
         range_gates = self.simparams['Rangegates']
         N_rg = len(range_gates)# take the size
@@ -260,13 +260,16 @@ class RadarDataFile(object):
         pulsesN = sp.zeros((Ntime,Nbeams))
         timemat = sp.zeros((Ntime,2))
 
-        if os.path.isfile(os.path.join(self.datadir,'INFO.h5')):
-            h5file=tables.openFile(os.path.join(self.datadir,'INFO.h5'))
-            filelist =  h5file.get_node('/Files').read()
-            pulsen_list = h5file.get_node('/Pulses').read()
-            beamn_list = h5file.get_node('/Beams').read()
-            time_list = h5file.get_node('/Time').read()
+        infoname = os.path.join(self.datadir,'INFO.h5')
+        if os.path.isfile(infoname):
+            infodict =h52dict(infoname)
+            flist =  infodict['Files']
+            file_list = [os.path.join(self.datadir,i) for i in flist]
+            pulsen_list = infodict['Pulses']
+            beamn_list = infodict['Beams']
+            time_list = infodict['Time']
         else:
+            file_list = self.outfilelist
             # initalize lists for stuff
             pulsen_list = []
             beamn_list = []
