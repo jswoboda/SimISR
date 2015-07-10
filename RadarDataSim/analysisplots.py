@@ -133,7 +133,7 @@ def plotaltparameters(param='Ne',ffit=None,fin=None,acfname=None):
         plt.savefig('comp{0}'.format(ibeam))
         plt.close(fig)
 
-def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,acfname=None,filetemplate='spec'):
+def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,filetemplate='spec'):
     """ This will create a set of images that compare the input ISR spectrum to the
     Output ISR spectrum from the simulator.
     Inputs
@@ -145,9 +145,11 @@ def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,ac
     specsfilename - (default None) The name of the file holding the input spectrum.
     acfname - (default None) The name of the file holding the estimated ACFs.
     filetemplate (default 'spec') This is the beginning string used to save the images."""
-    indisp = specsfilename is not None
-    acfdisp = acfname is not None
+#    indisp = specsfilename is not None
+#    acfdisp = acfname is not None
 
+    acfname = os.path.join(maindir,'ACF','00lags.h5')
+    specsfiledir = os.path.join(maindir,'Spectrums')
     (sensdict,simparams) = readconfigfile(configfile)
     simdtype = simparams['dtype']
     npts = simparams['numpoints']*3.0
@@ -158,19 +160,31 @@ def plotspecs(coords,times,configfile,cartcoordsys = True, specsfilename=None,ac
     Nloc = coords.shape[0]
     sns.set_style("whitegrid")
     sns.set_context("notebook")
+
     if indisp:
-        Ionoin = IonoContainer.readh5(specsfilename)
-        omeg = Ionoin.Param_Names
-        npts = Ionoin.Param_List.shape[-1]
-        specin = sp.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
-        for icn, ic in enumerate(coords):
-            if cartcoordsys:
-                tempin = Ionoin.getclosest(ic,times)[0]
+        dirlist = os.listdir(specsfiledir)
+        timelist = sp.array([int(i.split()[0]) for i in dirlist])
+        for itn,itime in enumerate(times):
+            filear = sp.argwhere(timelist>=itime)
+            if len(filear)==0:
+                filenum = len(timelist)-1
             else:
-                tempin = Ionoin.getclosestsphere(ic,times)[0]
-            if sp.ndim(tempin)==1:
-                tempin = tempin[sp.newaxis,:]
-            specin[icn] = tempin/npts/npts
+                filenum = filear[0][0]
+            specsfilename = os.path.join(specsfiledir,dirlist[filenum])
+            Ionoin = IonoContainer.readh5(specsfilename)
+            if itn==0:
+                specin = sp.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
+            omeg = Ionoin.Param_Names
+            npts = Ionoin.Param_List.shape[-1]
+
+            for icn, ic in enumerate(coords):
+                if cartcoordsys:
+                    tempin = Ionoin.getclosest(ic,times)[0]
+                else:
+                    tempin = Ionoin.getclosestsphere(ic,times)[0]
+#                if sp.ndim(tempin)==1:
+#                    tempin = tempin[sp.newaxis,:]
+                specin[icn,itn] = tempin/npts/npts
 
     if acfdisp:
         Ionoacf = IonoContainer.readh5(acfname)
