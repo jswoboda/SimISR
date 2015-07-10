@@ -24,7 +24,7 @@ def makeconfigfile(testpath):
     Tint=60.0 # integration time in seconds
     time_lim = 4.0*Tint # simulation length in seconds
     fitter_int = 60.0 # time interval between fitted params
-    pulse = sp.ones(14)# pulse
+#    pulse = sp.ones(14)# pulse
     rng_lims = [150,500]# limits of the range gates
     IPP = .0087 #interpulse period in seconds
     NNs = 28 # number of noise samples per pulse
@@ -32,7 +32,9 @@ def makeconfigfile(testpath):
     simparams =   {'IPP':IPP, #interpulse period
                    'TimeLim':time_lim, # length of simulation
                    'RangeLims':rng_lims, # range swath limit
-                   'Pulse':pulse, # pulse shape
+#                   'Pulse':pulse, # pulse shape
+                   'Pulselength':280e-6,
+                   't_s': 20e-6,
                    'Pulsetype':'long', # type of pulse can be long or barker,
                    'Tint':Tint, #Integration time for each fitting
                    'Fitinter':fitter_int, # time interval between fitted params
@@ -42,9 +44,9 @@ def makeconfigfile(testpath):
                    'ambupsamp':30, # up sampling factor for ambiguity function
                    'species':['O+','e-'], # type of ion species used in simulation
                    'numpoints':128, # number of points for each spectrum
-                   'startfile':os.path.join(testpath,'startdata.h5'),# file used to
-                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
-                       ,[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])}
+                   'startfile':os.path.join(testpath,'startdata.h5')}# file used for starting points
+#                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
+#                       ,[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])}
 
     fname = os.path.join(testpath,'PFISRExample')
 

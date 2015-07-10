@@ -21,14 +21,14 @@ from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf
 
 
-def plotbeamparameters(param='Ne',ffit=None,fin=None,acfname=None):
+
+def plotbeamparameters(times,configfile,maindir,param='Ne',indisp=True,acfdisp= True,fitdisp = True,filetemplate='spec'):
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     rc('text', usetex=True)
+    acfname = os.path.join(maindir,'ACF','00lags.h5')
+    ffit = os.path.join(maindir,'Fitted/','fitteddata.h5')
 
-    fitdisp= ffit is not None
-    indisp = ffit is not None
-    acfdisp = acfname is not None
 
     if not param.lower()=='ne':
         acfdisp = False
@@ -189,7 +189,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
     if acfdisp:
         Ionoacf = IonoContainer.readh5(acfname)
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
-        ts = Ionoacf.Param_Names[1]-Ionoacf.Param_Names[0]
+        ts = sensdict['t_s']
         omeg = sp.arange(-sp.ceil((npts+1)/2),sp.floor((npts+1)/2))/ts/npts
         for icn, ic in enumerate(coords):
             if cartcoordsys:

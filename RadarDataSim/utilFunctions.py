@@ -272,13 +272,13 @@ def Chapmanfunc(z,H_0,Z_0,N_0):
     return Ne
 
 
-def TempProfile(z):
+def TempProfile(z,T0=2000.):
     """This function creates a tempreture profile for test purposes."""
 
-    Te = ((45.0/500.0)*(z-200.0))**2+1000.0
-    Ti = ((20.0/500.0)*(z-200.0))**2+1000.0
-    Te[z<=200.0]=1000.0
-    Ti[z<=200.0]=1000.0
+    Te = ((45.0/500.0)*(z-200.0))**2+T0
+    Ti = ((20.0/500.0)*(z-200.0))**2+T0
+    Te[z<=200.0]=T0
+    Ti[z<=200.0]=T0
     return (Te,Ti)
 
 
@@ -341,8 +341,14 @@ def readconfigfile(fname):
         sensdict = sensconst.getConst(dictlist[0]['radarname'],ang_data)
 
         simparams = dictlist[1]
+        if 't_s' in simparams.keys():
+            sensdict['t_s'] = simparams['t_s']
+            sensdict['fs'] =1.0/simparams['t_s']
+            sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
+
         time_lim = simparams['TimeLim']
-        pulse  = simparams['Pulse']
+        (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+        simparams['Pulse'] = pulse
         simparams['amb_dict'] = make_amb(sensdict['fs'],simparams['ambupsamp'],
             sensdict['t_s']*len(pulse),len(pulse))
         simparams['angles']=angles
@@ -350,10 +356,36 @@ def readconfigfile(fname):
         rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
         simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
         simparams['Rangegates']=rng_gates
-
+        simparams['SUMRULE'] = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
     return(sensdict,simparams)
 
+def makepulse(ptype,plen,ts):
 
+    nsamps = sp.round_(plen/ts)
+
+    if ptype.lower()=='long':
+        pulse = sp.ones(nsamps)
+        plen = nsamps*ts
+
+    elif ptype.lower()=='barker':
+        blen = sp.array([1,2, 3, 4, 5, 7, 11,13])
+        nsamps = sp.min(sp.absolute(blen-nsamps))
+        pulse = GenBarker(nsamps)
+        plen = nsamps*ts
+#elif ptype.lower()=='ac':
+    else:
+        raise ValueError('The pulse type %s is not a valide pulse type.' % (ptype))
+
+    return (pulse,plen)
+
+def makesumrule(ptype,plen,ts):
+    nlags = sp.round_(plen/ts)
+    if ptype.lower()=='long':
+        arback = -sp.ceil(sp.arange(0,nlags/2.0,0.5)).astype(int)
+        arforward = sp.floor(sp.arange(0,nlags/2.0,0.5)).astype(int)
+        sumrule = sp.array([arback,arforward])
+
+    return sumrule
 #def makexample(npts,sensdict,cur_params,pulse,npulses):
 #    """This will create a set centered lag products as if it were collected from ISR
 #    data with the parameter values in cur_params. The lag products will have the
