@@ -96,14 +96,27 @@ def fitdata(basedir,configfile,optintputs):
         (Nloc,Ntimes,nparams)=fitteddata.shape
         fittederronly = fittederror[:,:,range(nparams),range(nparams)]
 
-        paramlist = sp.concatenate((fitteddata,fittederronly),axis=2)
+
 
         paramnames = []
         species = fitterone.simparams['species']
+        Nions = len(species)-1
+        Nis = fitteddata[:,:,0:Nions*2:2]
+        Tis = fitteddata[:,:,1:Nions*2:2]
+        Nisum = sp.nansum(Nis,axis=2)
+        Tisum = sp.nansum(Nis*Tis,axis=2)
+        Ti = Tisum/Nisum
+
+        nNis = fittederronly[:,:,0:Nions*2:2]
+        nTis = fittederronly[:,:,1:Nions*2:2]
+        nNisum = sp.sqrt(sp.nansum(Nis*nNis**2,axis=2))/Nisum
+        nTisum = sp.sqrt(sp.nansum(Nis*nTis**2,axis=2))
+        nTi = nTisum/Nisum
+        paramlist = sp.concatenate((fitteddata,Nisum,Ti,fittederronly,nNisum,nTi),axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)
-        paramnames = paramnames+['Ne','Te','Vi']
+        paramnames = paramnames+['Ne','Te','Vi','Ni','Ti']
         paramnamese = ['n'+ip for ip in paramnames]
         paranamsf = sp.array(paramnames+paramnamese)
 

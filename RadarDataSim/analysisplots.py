@@ -6,7 +6,7 @@ This module is used to plot the output from various stages of the simulator to d
 problems.
 @author: John Swoboda
 """
-import os
+import os, glob
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import scipy as sp
@@ -21,121 +21,150 @@ from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf
 
 
+def maketi(Ionoin):
+    (Nloc,Nt,Nion,Nppi) = Ionoin.Param_List.shape
+    Paramlist = Ionoin.Param_List[:,:,:-1,:]
+    Nisum = sp.sum(Paramlist[:,:,:,0],axis=2)
+    Tisum = sp.sum(Paramlist[:,:,:,0]*Paramlist[:,:,:,1],axis=2)
+    Tiave = Tisum/Nisum
+    Newpl = sp.zeros((Nloc,Nt,Nion+1,Nppi))
+    Newpl[:,:,:-1,:] = Ionoin.Param_List
+    Newpl[:,:,-1,0] = Nisum
+    Newpl[:,:,-1,1] = Tiave
+    newrow = sp.array(['Ni','Ti'])
+    newpn = sp.vstack((Ionoin.Param_Names,newrow))
+    Ionoin.Param_List = Newpl
+    Ionoin.Param_Names = newpn
+    return Ionoin
 
-def plotbeamparameters(times,configfile,maindir,param='Ne',indisp=True,acfdisp= True,fitdisp = True,filetemplate='spec'):
+def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdisp = True,filetemplate='params'):
+    """ """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     rc('text', usetex=True)
-    acfname = os.path.join(maindir,'ACF','00lags.h5')
-    ffit = os.path.join(maindir,'Fitted/','fitteddata.h5')
+    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
+    inputfiledir = os.path.join(maindir,'Origparams')
 
+    paramslower = [ip.lower() for ip in params]
+    Nt = len(times)
+    Np = len(params)
 
-    if not param.lower()=='ne':
-        acfdisp = False
-
-    if acfdisp:
-        Ionoacf = IonoContainer.readh5(acfname)
-        dataloc = Ionoacf.Sphere_Coords
-    if indisp:
-        Ionoin = IonoContainer.readh5(fin)
     if fitdisp:
         Ionofit = IonoContainer.readh5(ffit)
-        dataloc = Ionoacf.Sphere_Coords
+        dataloc = Ionofit.Sphere_Coords
+        pnames = Ionofit.Param_Names
+        pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
+        p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
+        time2fit = [None]*Nt
+        for itn,itime in enumerate(times):
+            filear = sp.argwhere(Ionofit.Time_Vector>=itime)
+            if len(filear)==0:
+                filenum = len(Ionofit.Time_Vector)-1
+            else:
+                filenum = filear[0][0]
+            time2fit[itn] = filenum
 
     angles = dataloc[:,1:]
+    rng = sp.unique(dataloc[:,0])
     b = np.ascontiguousarray(angles).view(np.dtype((np.void, angles.dtype.itemsize * angles.shape[1])))
     _, idx, invidx = np.unique(b, return_index=True,return_inverse=True)
 
-    Neind = sp.argwhere(param==Ionofit.Param_Names)[0,0]
-    beamnums = [0,1]
     beamlist = angles[idx]
-    for ibeam in beamnums:
-        curbeam = beamlist[ibeam]
-        indxkep = np.argwhere(invidx==ibeam)[:,0]
-        Ne_data = np.abs(Ionoacf.Param_List[indxkep,0,0])*2.0
-        Ne_fit = Ionofit.Param_List[indxkep,0,Neind]
-        rng= dataloc[indxkep,0]
-        curlocs = dataloc[indxkep]
-        origNe = np.zeros_like(Ne_data)
-        rngin = np.zeros_like(rng)
-        for ilocn,iloc in enumerate(curlocs):
-            temparam,_,tmpsph = Ionoin.getclosestsphere(iloc)[:3]
-            origNe[ilocn]=temparam[0,-1,0]
-            rngin[ilocn] = tmpsph[0]
-        print sp.nanmean(Ne_data/origNe)
-        fig = plt.figure()
-        plt.plot(Ne_data,rng,'bo',label='Data')
-        plt.gca().set_xscale('log')
-        plt.hold(True)
-        plt.plot(origNe,rngin,'g.',label='Input')
-        plt.plot(Ne_fit,rngin,'r*',label='Fit')
-        plt.xlabel('$N_e$')
-        plt.ylabel('Range km')
-        plt.title('Ne vs Range for beam {0} {1}'.format(*curbeam))
-        plt.legend(loc=1)
 
-        plt.savefig('comp{0}'.format(ibeam))
-        plt.close(fig)
+    Nb = beamlist.shape[0]
 
-def plotaltparameters(param='Ne',ffit=None,fin=None,acfname=None):
-    sns.set_style("whitegrid")
-    sns.set_context("notebook")
-    rc('text', usetex=True)
-
-    fitdisp= ffit is not None
-    indisp = ffit is not None
-    acfdisp = acfname is not None
-
-    if not param.lower()=='ne':
-        acfdisp = False
-
-    if acfdisp:
-        Ionoacf = IonoContainer.readh5(acfname)
-        dataloc = Ionoacf.Sphere_Coords
     if indisp:
-        Ionoin = IonoContainer.readh5(fin)
-    if fitdisp:
-        Ionofit = IonoContainer.readh5(ffit)
-        dataloc = Ionoacf.Sphere_Coords
+        dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
+        filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
 
-    angles = dataloc[:,1:]
-    b = np.ascontiguousarray(angles).view(np.dtype((np.void, angles.dtype.itemsize * angles.shape[1])))
-    _, idx, invidx = np.unique(b, return_index=True,return_inverse=True)
+        timelist = sp.array([int(i.split()[0]) for i in filesonly])
+        time2file = [None]*Nt
+        for itn,itime in enumerate(times):
+            filear = sp.argwhere(timelist>=itime)
+            if len(filear)==0:
+                filenum = len(timelist)-1
+            else:
+                filenum = filear[0][0]
+            time2file[itn] = filenum
 
-    Neind = sp.argwhere(param==Ionofit.Param_Names)[0,0]
-    beamnums = [0,1]
-    beamlist = angles[idx]
-    for ibeam in beamnums:
-        curbeam = beamlist[ibeam]
-        indxkep = np.argwhere(invidx==ibeam)[:,0]
-        Ne_data = np.abs(Ionoacf.Param_List[indxkep,0,0])*2.0
-        Ne_fit = Ionofit.Param_List[indxkep,0,Neind]
-        rng= dataloc[indxkep,0]
-        curlocs = dataloc[indxkep]
-        origNe = np.zeros_like(Ne_data)
-        rngin = np.zeros_like(rng)
-        for ilocn,iloc in enumerate(curlocs):
-            temparam,_,tmpsph = Ionoin.getclosestsphere(iloc)[:3]
-            origNe[ilocn]=temparam[0,-1,0]
-            rngin[ilocn] = tmpsph[0]
-        print sp.nanmean(Ne_data/origNe)
-        fig = plt.figure()
-        plt.plot(Ne_data,rng,'bo',label='Data')
-        plt.gca().set_xscale('log')
-        plt.hold(True)
-        plt.plot(origNe,rngin,'g.',label='Input')
-        plt.plot(Ne_fit,rngin,'r*',label='Fit')
-        plt.xlabel('$N_e$')
-        plt.ylabel('Range km')
-        plt.title('Ne vs Range for beam {0} {1}'.format(*curbeam))
-        plt.legend(loc=1)
 
-        plt.savefig('comp{0}'.format(ibeam))
-        plt.close(fig)
+    nfig = sp.ceil(Nt*Nb*Np/6.0)
+    imcount = 0
+    curfilenum = -1
+    for i_fig in sp.arange(nfig):
+        lines = [None]*2
+        labels = [None]*2
+        (figmplf, axmat) = plt.subplots(2, 3,figsize=(16, 12), facecolor='w')
+        axvec = axmat.flatten()
+        for iax,ax in enumerate(axvec):
+            if imcount>=Nt*Nb*Np:
+                break
+            itime = int(sp.floor(imcount/Nb/Np))
+            iparam = int(imcount/Nb-Np*itime)
+            ibeam = int(imcount-(itime*Np+iparam*Nb))
+
+            curbeam = beamlist[ibeam]
+
+            altlist = sp.sin(curbeam[1]*sp.pi/180.)*rng
+            if indisp:
+                filenum = time2file[itime]
+                if curfilenum!=filenum:
+                    curfilenum=filenum
+                    datafilename = os.path.join(inputfiledir,dirlist[filenum])
+                    Ionoin = IonoContainer.readh5(datafilename)
+                    if 'ti' in paramslower:
+                        Ionoin = maketi(Ionoin)
+                    pnames = Ionoin.Param_Names
+                    pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
+
+
+                prmloc = sp.argwhere(paramslower[iparam]==pnameslower)
+
+                if prmloc.size !=0:
+                    curprm = prmloc[0][0]
+
+                curcoord = sp.zeros(3)
+                curcoord[1:] = curbeam
+                curdata = sp.zeros(len(rng))
+                for irngn, irng in enumerate(rng):
+                    curcoord[0] = irng
+                    tempin = Ionoin.getclosestsphere(curcoord,times)[0]
+                    Ntloc = tempin.shape[0]
+                    tempin = sp.reshape(tempin,(Ntloc,len(pnameslower)))
+                    curdata[irngn] = tempin[0,curprm]
+                lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
+                labels[0] = 'Input Parameters'
+
+            if fitdisp:
+
+                indxkep = np.argwhere(invidx==ibeam)[:,0]
+
+                curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
+                rng_fit= dataloc[indxkep,0]
+                alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
+                if iparam==2:
+                    pdb.set_trace()
+                lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
+                labels[1] = 'Fitted Parameters'
+            if paramslower[iparam]=='ne':
+                plt.gca().set_xscale('log')
+            ax.set_xlabel(params[iparam])
+            ax.set_ylabel('Alt km')
+            ax.set_title('{0} vs Altitude, Time: {1}s Az: {2}$^o$ El: {3}$^o$'.format(params[iparam],times[itime],*curbeam))
+            imcount=imcount+1
+
+        figmplf.suptitle('Parameter Comparison', fontsize=20)
+        if None in labels:
+            labels.remove(None)
+            lines.remove(None)
+        plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
+        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
+        plt.savefig(fname)
+        plt.close(figmplf)
 
 def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,filetemplate='spec'):
     """ This will create a set of images that compare the input ISR spectrum to the
-    Output ISR spectrum from the simulator.
+    output ISR spectrum from the simulator.
     Inputs
     coords - An Nx3 numpy array that holds the coordinates of the desired points.
     times - A numpy list of times in seconds.
@@ -264,4 +293,6 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
         plt.savefig(fname)
         plt.close(figmplf)
+
+
 
