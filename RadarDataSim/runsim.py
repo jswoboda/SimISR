@@ -103,15 +103,16 @@ def fitdata(basedir,configfile,optintputs):
         Nions = len(species)-1
         Nis = fitteddata[:,:,0:Nions*2:2]
         Tis = fitteddata[:,:,1:Nions*2:2]
-        Nisum = sp.nansum(Nis,axis=2)
-        Tisum = sp.nansum(Nis*Tis,axis=2)
+        Nisum = sp.nansum(Nis,axis=2)[:,:,sp.newaxis]
+        Tisum = sp.nansum(Nis*Tis,axis=2)[:,:,sp.newaxis]
         Ti = Tisum/Nisum
 
         nNis = fittederronly[:,:,0:Nions*2:2]
         nTis = fittederronly[:,:,1:Nions*2:2]
-        nNisum = sp.sqrt(sp.nansum(Nis*nNis**2,axis=2))/Nisum
-        nTisum = sp.sqrt(sp.nansum(Nis*nTis**2,axis=2))
+        nNisum = sp.sqrt(sp.nansum(Nis*nNis**2,axis=2))[:,:,sp.newaxis]/Nisum
+        nTisum = sp.sqrt(sp.nansum(Nis*nTis**2,axis=2))[:,:,sp.newaxis]
         nTi = nTisum/Nisum
+
         paramlist = sp.concatenate((fitteddata,Nisum,Ti,fittederronly,nNisum,nTi),axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)

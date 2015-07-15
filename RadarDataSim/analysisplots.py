@@ -44,6 +44,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
     rc('text', usetex=True)
     ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
     inputfiledir = os.path.join(maindir,'Origparams')
+    (sensdict,simparams) = readconfigfile(configfile)
 
     paramslower = [ip.lower() for ip in params]
     Nt = len(times)
@@ -88,10 +89,10 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
             time2file[itn] = filenum
 
 
-    nfig = sp.ceil(Nt*Nb*Np/6.0)
+    nfig = int(sp.ceil(Nt*Nb*Np/6.0))
     imcount = 0
     curfilenum = -1
-    for i_fig in sp.arange(nfig):
+    for i_fig in range(nfig):
         lines = [None]*2
         labels = [None]*2
         (figmplf, axmat) = plt.subplots(2, 3,figsize=(16, 12), facecolor='w')
@@ -101,7 +102,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 break
             itime = int(sp.floor(imcount/Nb/Np))
             iparam = int(imcount/Nb-Np*itime)
-            ibeam = int(imcount-(itime*Np+iparam*Nb))
+            ibeam = int(imcount-(itime*Np*Nb+iparam*Nb))
 
             curbeam = beamlist[ibeam]
 
@@ -142,8 +143,8 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
                 rng_fit= dataloc[indxkep,0]
                 alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
-                if iparam==2:
-                    pdb.set_trace()
+#                if iparam==2:
+#                    pdb.set_trace()
                 lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
                 labels[1] = 'Fitted Parameters'
             if paramslower[iparam]=='ne':
@@ -213,7 +214,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
                     tempin = Ionoin.getclosestsphere(ic,times)[0]
 #                if sp.ndim(tempin)==1:
 #                    tempin = tempin[sp.newaxis,:]
-                specin[icn,itn] = tempin/npts/npts
+                specin[icn,itn] = tempin[0,:]/npts/npts
 
     if acfdisp:
         Ionoacf = IonoContainer.readh5(acfname)
@@ -231,10 +232,10 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         specout = scfft.fftshift(scfft.fft(ACFin,n=npts,axis=-1),axes=-1)
 
 
-    nfig = sp.ceil(Nt*Nloc/6.0)
+    nfig = int(sp.ceil(Nt*Nloc/6.0))
     imcount = 0
 
-    for i_fig in sp.arange(nfig):
+    for i_fig in range(nfig):
         lines = [None]*3
         labels = [None]*3
         (figmplf, axmat) = plt.subplots(2, 3,figsize=(16, 12), facecolor='w')
@@ -294,5 +295,25 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         plt.savefig(fname)
         plt.close(figmplf)
 
+def analysisdump(maindir,configfile):
+    """ """
+    plotdir = os.path.join(maindir,'AnalysisPlots')
+    if not os.path.isdir(plotdir):
+        os.mkdir(plotdir)
 
+    #plot spectrums
+    filetemplate1 = os.path.join(maindir,'AnalysisPlots','Spec')
+    (sensdict,simparams) = readconfigfile(configfile)
+    angles = simparams['angles']
+    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+    zenang = ang_data[sp.argmax(ang_data[:,1])]
+    rnggates = simparams['Rangegatesfinal']
+    rngchoices = sp.linspace(sp.amin(rnggates),sp.amax(rnggates),4)
+    angtile = sp.tile(zenang,(len(rngchoices),1))
+    coords = sp.column_stack((sp.transpose(rngchoices),angtile))
+    times = simparams['Timevec']
 
+    plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
+
+    filetemplate2= os.path.join(maindir,'AnalysisPlots','Params')
+    plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2)

@@ -57,7 +57,6 @@ class RadarDataFile(object):
        (sensdict,simparams) = readconfigfile(inifile)
        self.simparams = simparams
        N_angles = len(self.simparams['angles'])
-       sensdict['RG'] = self.simparams['Rangegates']
 
        NNs = self.simparams['NNs']
        self.sensdict = sensdict
@@ -352,16 +351,16 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # Pull in Location Data
     angles = simparams['angles']
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-    rng_vec = sensdict['RG']
+    rng_vec = simparams['Rangegates']
     # pull in other data
     pulsewidth = len(simparams['Pulse'])*sensdict['t_s']
     txpower = sensdict['Pt']
     Ksysvec = sensdict['Ksys']
     sumrule = simparams['SUMRULE']
+    rng_vec2 = simparams['Rangegatesfinal']
     minrg = -sumrule[0].min()
     maxrg = len(rng_vec)-sumrule[1].max()
-    Nrng2 = maxrg-minrg;
-    rng_vec2 = sp.array([ sp.mean(rng_vec[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
+    Nrng2 = len(rng_vec2)
     # Set up Coordinate list
     angtile = sp.tile(ang_data,(Nrng2,1))
     rng_rep = sp.repeat(rng_vec2,ang_data.shape[0],axis=0)

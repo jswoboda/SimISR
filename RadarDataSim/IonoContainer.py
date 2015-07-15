@@ -148,10 +148,13 @@ class IonoContainer(object):
         minidx = np.argmin(distall)
         paramout = self.Param_List[minidx]
         velout = self.Velocity[minidx]
+        datatime = self.Time_Vector
+        if sp.ndim(self.Time_Vector)>1:
+            datatime = datatime[:,0]
         if timelist is not None:
             timeindx = []
             for itime in timelist:
-                timeindx.append(sp.argmin(sp.absolute(itime-self.Time_Vector)))
+                timeindx.append(sp.argmin(sp.absolute(itime-datatime)))
             paramout=paramout[timeindx]
             velout=velout[timeindx]
         sphereout = self.Sphere_Coords[minidx]

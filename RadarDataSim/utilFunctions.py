@@ -356,7 +356,12 @@ def readconfigfile(fname):
         rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
         simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
         simparams['Rangegates']=rng_gates
-        simparams['SUMRULE'] = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+        sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+        simparams['SUMRULE'] = sumrule
+        minrg = -sumrule[0].min()
+        maxrg = len(rng_gates)-sumrule[1].max()
+
+        simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
     return(sensdict,simparams)
 
 def makepulse(ptype,plen,ts):
