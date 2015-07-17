@@ -9,11 +9,12 @@ in the command line and this should run.
 
 import os, inspect, glob,pdb
 import scipy as sp
-from RadarDataSim.utilFunctions import makepicklefile
+from RadarDataSim.utilFunctions import makeconfigfile
 from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
 import RadarDataSim.runsim as runsim
+from RadarDataSim.analysisplots import analysisdump
 
-def makeconfigfile(testpath):
+def configsetup(testpath):
     """This function will make a pickle file used to configure the simulation.
     Inputs
     testpath - A string for the path that this file will be saved."""
@@ -50,7 +51,7 @@ def makeconfigfile(testpath):
 
     fname = os.path.join(testpath,'PFISRExample')
 
-    makepicklefile(fname+'.pickle',beamlist,radarname,simparams)
+    makeconfigfile(fname+'.pickle',beamlist,radarname,simparams)
 def makeinputh5(Iono,basedir):
     """This will make a h5 file for the IonoContainer that can be used as starting
     points for the fitter. The ionocontainer taken will be average over the x and y dimensions
@@ -103,14 +104,14 @@ def main():
         for ifile in flist:
             os.remove(ifile)
     # Now make stuff again
-    makeconfigfile(testpath)
+    configsetup(testpath)
 
     Icont1 = MakeTestIonoclass(testv=True,testtemp=False)
     makeinputh5(Icont1,testpath)
     Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
     funcnamelist=['spectrums','radardata','fitting']
     runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.pickle'),True)
-
+    analysisdump(testpath,os.path.join(testpath,'PFISRExample.pickle'))
 if __name__== '__main__':
 
     main()

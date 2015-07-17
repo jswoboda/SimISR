@@ -37,7 +37,7 @@ def maketi(Ionoin):
     Ionoin.Param_Names = newpn
     return Ionoin
 
-def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdisp = True,filetemplate='params'):
+def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdisp = True,filetemplate='params',suptitle = 'Parameter Comparison'):
     """ """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
@@ -89,13 +89,13 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
             time2file[itn] = filenum
 
 
-    nfig = int(sp.ceil(Nt*Nb*Np/6.0))
+    nfig = int(sp.ceil(Nt*Nb*Np/9.0))
     imcount = 0
     curfilenum = -1
     for i_fig in range(nfig):
         lines = [None]*2
         labels = [None]*2
-        (figmplf, axmat) = plt.subplots(2, 3,figsize=(16, 12), facecolor='w')
+        (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         for iax,ax in enumerate(axvec):
             if imcount>=Nt*Nb*Np:
@@ -154,7 +154,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
             ax.set_title('{0} vs Altitude, Time: {1}s Az: {2}$^o$ El: {3}$^o$'.format(params[iparam],times[itime],*curbeam))
             imcount=imcount+1
 
-        figmplf.suptitle('Parameter Comparison', fontsize=20)
+        figmplf.suptitle(suptitle, fontsize=20)
         if None in labels:
             labels.remove(None)
             lines.remove(None)
@@ -163,7 +163,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
         plt.savefig(fname)
         plt.close(figmplf)
 
-def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,filetemplate='spec'):
+def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,filetemplate='spec',suptitle = 'Spectrum Comparison'):
     """ This will create a set of images that compare the input ISR spectrum to the
     output ISR spectrum from the simulator.
     Inputs
@@ -286,7 +286,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
             ax.set_ylim(0.0,max(maxvec)*1.1)
 
             imcount=imcount+1
-        figmplf.suptitle('Spectrum Comparison', fontsize=20)
+        figmplf.suptitle(suptitle, fontsize=20)
         if None in labels:
             labels.remove(None)
             lines.remove(None)
@@ -295,7 +295,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         plt.savefig(fname)
         plt.close(figmplf)
 
-def analysisdump(maindir,configfile):
+def analysisdump(maindir,configfile,suptitle=None):
     """ """
     plotdir = os.path.join(maindir,'AnalysisPlots')
     if not os.path.isdir(plotdir):
@@ -313,7 +313,13 @@ def analysisdump(maindir,configfile):
     coords = sp.column_stack((sp.transpose(rngchoices),angtile))
     times = simparams['Timevec']
 
-    plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
 
     filetemplate2= os.path.join(maindir,'AnalysisPlots','Params')
-    plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2)
+    if suptitle is None:
+        plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
+
+
+        plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2)
+    else:
+        plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1,suptitle=suptitle)
+        plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2,suptitle=suptitle)

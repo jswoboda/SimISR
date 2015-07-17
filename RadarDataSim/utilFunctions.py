@@ -6,14 +6,17 @@ Created on Tue Jul 22 16:18:21 2014
 """
 import os
 import pickle
+import ConfigParser
+import tables
+import pdb
 import scipy as sp
 import scipy.fftpack as scfft
+
 from const.physConstants import v_C_0
 import const.sensorConstants as sensconst
 from beamtools.bcotools import getangles
 
-import tables
-import pdb
+
 # utility functions
 def make_amb(Fsorg,m_up,plen,nlags):
     """ Make the ambiguity function dictionary that holds the lag ambiguity and
@@ -314,16 +317,47 @@ def fitsurface(errfunc,paramlists,inputs):
     return fit_surface.reshape(paramsizlist[outsize]).copy()
 #%% Config files
 
-def makepicklefile(fname,beamlist,radarname,simparams):
+def makeconfigfile(fname,beamlist,radarname,simparams):
     """This will make the config file based off of the desired input parmeters.
     Inputs
         fname - Name of the file as a string.
         beamlist - A list of beams numbers used by the AMISRS
         radarname - A string that is the name of the radar being simulated.
         simparams - A set of simulation parameters in a dictionary."""
-    pickleFile = open(fname, 'wb')
-    pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
-    pickleFile.close()
+
+    fext = os.path.splitext(fname)[-1]
+    if fext =='.pickle':
+        pickleFile = open(fname, 'wb')
+        pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
+        pickleFile.close()
+    elif fext =='.ini':
+        cfgfile = open(fname,'w')
+        config = ConfigParser.ConfigParser()
+
+        config.add_section('section 1')
+        beamstring = ""
+        for beam in beamlist:
+            beamstring += str(beam)
+            beamstring += " "
+        config.set('section 1','beamlist',beamstring)
+        config.set('section 1','radarname',radarname)
+
+        config.add_section('simparams')
+        for param in simparams:
+            if isinstance(simparams[param],list):
+                data = ""
+                for a in simparams[param]:
+                    data += str(a)
+                    data += " "
+                config.set('simparams',param,data)
+            else:
+                config.set('simparams',param,simparams[param])
+
+        config.write(cfgfile)
+        cfgfile.close()
+    else:
+        raise ValueError('fname needs to have an extension of .pickle or .ini')
+
 def readconfigfile(fname):
     """This funciton will read in the pickle files that are used for configuration.
     Inputs
@@ -341,27 +375,61 @@ def readconfigfile(fname):
         sensdict = sensconst.getConst(dictlist[0]['radarname'],ang_data)
 
         simparams = dictlist[1]
-        if 't_s' in simparams.keys():
-            sensdict['t_s'] = simparams['t_s']
-            sensdict['fs'] =1.0/simparams['t_s']
-            sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
+    if ftype=='.ini':
 
-        time_lim = simparams['TimeLim']
-        (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
-        simparams['Pulse'] = pulse
-        simparams['amb_dict'] = make_amb(sensdict['fs'],simparams['ambupsamp'],
-            sensdict['t_s']*len(pulse),len(pulse))
-        simparams['angles']=angles
-        rng_lims = simparams['RangeLims']
-        rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
-        simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
-        simparams['Rangegates']=rng_gates
-        sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
-        simparams['SUMRULE'] = sumrule
-        minrg = -sumrule[0].min()
-        maxrg = len(rng_gates)-sumrule[1].max()
+        config = ConfigParser.ConfigParser()
+        config.read(fname)
+        beamlist = config.get('section 1','beamlist').split()
+        beamlist = [float(i) for i in beamlist]
+        angles = getangles(beamlist,config.get('section 1','radarname'))
+        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+        sensdict = sensconst.getConst(config.get('section 1','radarname'),ang_data)
 
-        simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
+        simparams = {}
+        for param in config.options('simparams'):
+            simparams[param] = config.get('simparams',param)
+
+        for param in simparams:
+            if simparams[param]=="<type 'numpy.complex128'>":
+                simparams[param]=sp.complex128
+            elif simparams[param]=="<type 'numpy.complex64'>":
+                simparams[param]=sp.complex64
+            else:
+                simparams[param]=simparams[param].split(" ")
+                if len(simparams[param])==1:
+                    simparams[param]=simparams[param][0]
+                    try:
+                        simparams[param]=float(simparams[param])
+                    except:
+                        pass
+                else:
+                    for a in range(len(simparams[param])):
+                        try:
+                            simparams[param][a]=float(simparams[param][a])
+                        except:
+                            pass
+
+    if 't_s' in simparams.keys():
+        sensdict['t_s'] = simparams['t_s']
+        sensdict['fs'] =1.0/simparams['t_s']
+        sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
+
+    time_lim = simparams['TimeLim']
+    (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+    simparams['Pulse'] = pulse
+    simparams['amb_dict'] = make_amb(sensdict['fs'],simparams['ambupsamp'],
+        sensdict['t_s']*len(pulse),len(pulse))
+    simparams['angles']=angles
+    rng_lims = simparams['RangeLims']
+    rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
+    simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
+    simparams['Rangegates']=rng_gates
+    sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+    simparams['SUMRULE'] = sumrule
+    minrg = -sumrule[0].min()
+    maxrg = len(rng_gates)-sumrule[1].max()
+
+    simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
     return(sensdict,simparams)
 
 def makepulse(ptype,plen,ts):
@@ -427,3 +495,65 @@ def makesumrule(ptype,plen,ts):
 #    lags = CenteredLagProduct(outdata,N =len(pulse))
 #    return lags
 #
+def makeINI(fname,beamlist,radarname,simparams):
+
+    cfgfile = open(fname,'w')
+    config = ConfigParser.ConfigParser()
+
+    config.add_section('section 1')
+    beamstring = ""
+    for beam in beamlist:
+        beamstring += str(beam)
+        beamstring += " "
+    config.set('section 1','beamlist',beamstring)
+    config.set('section 1','radarname',radarname)
+
+    config.add_section('simparams')
+    for param in simparams:
+        if isinstance(simparams[param],list):
+            data = ""
+            for a in simparams[param]:
+                data += str(a)
+                data += " "
+            config.set('simparams',param,data)
+        else:
+            config.set('simparams',param,simparams[param])
+
+    config.write(cfgfile)
+    cfgfile.close()
+
+def readINI(fname):
+
+    config = ConfigParser.ConfigParser()
+    config.read(fname)
+    beamlist = config.get('section 1','beamlist').split()
+    beamlist = [float(i) for i in beamlist]
+    angles = getangles(beamlist,config.get('section 1','radarname'))
+    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+    sensdict = sensconst.getConst(config.get('section 1','radarname'),ang_data)
+
+    simparams = {}
+    for param in config.options('simparams'):
+        simparams[param] = config.get('simparams',param)
+
+    for param in simparams:
+        if simparams[param]=="<type 'numpy.complex128'>":
+            simparams[param]=sp.complex128
+        elif simparams[param]=="<type 'numpy.complex64'>":
+            simparams[param]=sp.complex64
+        else:
+            simparams[param]=simparams[param].split(" ")
+            if len(simparams[param])==1:
+                simparams[param]=simparams[param][0]
+                try:
+                    simparams[param]=float(simparams[param])
+                except:
+                    pass
+            else:
+                for a in range(len(simparams[param])):
+                    try:
+                        simparams[param][a]=float(simparams[param][a])
+                    except:
+                        pass
+
+    return (sensdict,simparams)
