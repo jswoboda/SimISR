@@ -107,6 +107,17 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
             curbeam = beamlist[ibeam]
 
             altlist = sp.sin(curbeam[1]*sp.pi/180.)*rng
+
+            if fitdisp:
+
+                indxkep = np.argwhere(invidx==ibeam)[:,0]
+
+                curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
+                rng_fit= dataloc[indxkep,0]
+                alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
+
+                lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
+                labels[1] = 'Fitted Parameters'
             if indisp:
                 filenum = time2file[itime]
                 if curfilenum!=filenum:
@@ -135,20 +146,11 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                     curdata[irngn] = tempin[0,curprm]
                 lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
                 labels[0] = 'Input Parameters'
-
-            if fitdisp:
-
-                indxkep = np.argwhere(invidx==ibeam)[:,0]
-
-                curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
-                rng_fit= dataloc[indxkep,0]
-                alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
-#                if iparam==2:
-#                    pdb.set_trace()
-                lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
-                labels[1] = 'Fitted Parameters'
+                if paramslower[iparam]!='ne':
+                    ax.set(xlim=[0.25*sp.amin(curdata),2.5*sp.amax(curdata)])
             if paramslower[iparam]=='ne':
-                plt.gca().set_xscale('log')
+                ax.set_xscale('log')
+
             ax.set_xlabel(params[iparam])
             ax.set_ylabel('Alt km')
             ax.set_title('{0} vs Altitude, Time: {1}s Az: {2}$^o$ El: {3}$^o$'.format(params[iparam],times[itime],*curbeam))
