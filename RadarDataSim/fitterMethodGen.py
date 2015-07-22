@@ -77,7 +77,7 @@ class Fitterionoconainer(object):
                     (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,x0=x_0,args=d_func,full_output=True)
 
                     fittedarray[iloc,itime] = x
-                    if cov_x == None:
+                    if cov_x is None:
                         fittederror[iloc,itime] = sp.ones((len(x_0),len(x_0)))*float('nan')
                     else:
                         fittederror[iloc,itime] = cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))
