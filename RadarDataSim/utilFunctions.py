@@ -11,6 +11,9 @@ import tables
 import pdb
 import scipy as sp
 import scipy.fftpack as scfft
+import scipy.signal as scisig
+import scipy.interpolate as spinterp
+
 
 from const.physConstants import v_C_0
 import const.sensorConstants as sensconst
@@ -18,7 +21,7 @@ from beamtools.bcotools import getangles
 
 
 # utility functions
-def make_amb(Fsorg,m_up,plen,nlags):
+def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
     """ Make the ambiguity function dictionary that holds the lag ambiguity and
     range ambiguity. Uses a sinc function weighted by a blackman window. Currently
     only set up for an uncoded pulse.
@@ -33,7 +36,8 @@ def make_amb(Fsorg,m_up,plen,nlags):
         for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the
         ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity
         for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array
-        for the range sampling.
+        for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity
+        function on a pulses.
     """
 
     # make the sinc
@@ -41,7 +45,9 @@ def make_amb(Fsorg,m_up,plen,nlags):
     nsamps = nsamps-(1-sp.mod(nsamps,2))
 
     nvec = sp.arange(-sp.floor(nsamps/2.0),sp.floor(nsamps/2.0)+1)
-    outsinc = sp.blackman(nsamps)*sp.sinc(nvec/m_up)
+    pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann']
+    curwin = scisig.get_window(winname,nsamps)
+    outsinc = curwin*sp.sinc(nvec/m_up)
     outsinc = outsinc/sp.sum(outsinc)
     dt = 1/(Fsorg*m_up)
     Delay = sp.arange(-(len(nvec)-1),m_up*(nlags+5))*dt
@@ -69,7 +75,14 @@ def make_amb(Fsorg,m_up,plen,nlags):
         else:
             nmove = len(nvec)
         Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft),axis=0).real,nmove,axis=0)
-    Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),'Delay':Delay,'Range':v_C_0*t_rng/2.0}
+
+    # make matrix to take
+    imat = sp.eye(nspec)
+    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
+    tauint = Delay
+    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
+    lagmat = sp.dot(Wtt.sum(axis=2),interpmat)
+    Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
     return Wttdict
 
 def spect2acf(omeg,spec):
@@ -80,12 +93,12 @@ def spect2acf(omeg,spec):
     Output:
     tau: The time sampling array.
     acf: The acf from the original spectrum."""
-    padnum = sp.floor(len(spec)/2)
+#    padnum = sp.floor(len(spec)/2)
     df = omeg[1]-omeg[0]
 
-    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
-    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(specpadd)))
-    dt = 1/(df*len(specpadd))
+#    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
+    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec)))
+    dt = 1/(df*len(spec))
     tau = sp.arange(-sp.ceil((len(acf)-1.0)/2),sp.floor((len(acf)-1.0)/2+1))*dt
     return tau, acf
 
@@ -418,7 +431,7 @@ def readconfigfile(fname):
     (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
     simparams['Pulse'] = pulse
     simparams['amb_dict'] = make_amb(sensdict['fs'],simparams['ambupsamp'],
-        sensdict['t_s']*len(pulse),len(pulse))
+        sensdict['t_s']*len(pulse),len(pulse),simparams['numpoints'])
     simparams['angles']=angles
     rng_lims = simparams['RangeLims']
     rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)

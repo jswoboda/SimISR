@@ -74,16 +74,19 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
     # Create spectrum guess
     (tau,acf) = spect2acf(omeg,cur_spec)
 
+    if amb_dict['WttMatrix'].shape[-1]!=acf.shape[0]:
+        pdb.set_trace()
+    guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
     # apply ambiguity function
-    tauint = amb_dict['Delay']
-    acfinterp = sp.zeros(len(tauint),dtype=numtype)
-
-    acfinterp.real =spinterp.interp1d(tau,acf.real,bounds_error=0)(tauint)
-    acfinterp.imag =spinterp.interp1d(tau,acf.imag,bounds_error=0)(tauint)
-    # Apply the lag ambiguity function to the data
-    guess_acf = sp.zeros(amb_dict['Wlag'].shape[0],dtype=sp.complex128)
-    for i in range(amb_dict['Wlag'].shape[0]):
-        guess_acf[i] = sp.sum(acfinterp*amb_dict['Wlag'][i])
+#    tauint = amb_dict['Delay']
+#    acfinterp = sp.zeros(len(tauint),dtype=numtype)
+#
+#    acfinterp.real =spinterp.interp1d(tau,acf.real,bounds_error=0)(tauint)
+#    acfinterp.imag =spinterp.interp1d(tau,acf.imag,bounds_error=0)(tauint)
+#    # Apply the lag ambiguity function to the data
+#    guess_acf = sp.zeros(amb_dict['Wlag'].shape[0],dtype=sp.complex128)
+#    for i in range(amb_dict['Wlag'].shape[0]):
+#        guess_acf[i] = sp.sum(acfinterp*amb_dict['Wlag'][i])
 
 #    pdb.set_trace()
     guess_acf = guess_acf*rcs/guess_acf[0].real
