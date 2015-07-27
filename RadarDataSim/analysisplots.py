@@ -37,7 +37,7 @@ def maketi(Ionoin):
     Ionoin.Param_Names = newpn
     return Ionoin
 
-def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdisp = True,filetemplate='params',suptitle = 'Parameter Comparison'):
+def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdisp = True,filetemplate='params',suptitle = 'Parameter Comparison',werrors=False):
     """ """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
@@ -115,9 +115,15 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
                 rng_fit= dataloc[indxkep,0]
                 alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
-
-                lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
+                errorexist = 'n'+paramslower[iparam] in pnameslower
+                if errorexist and werrors:
+                    eparam = sp.argwhere( 'n'+paramslower[iparam]==pnameslower)[0][0]
+                    curerror = Ionofit.Param_List[indxkep,time2fit[itime],eparam]
+                    lines[1]=ax.errorbar(curfit, alt_fit, xerr=curerror,fmt='-.',c='g')[0]
+                else:
+                    lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
                 labels[1] = 'Fitted Parameters'
+
             if indisp:
                 filenum = time2file[itime]
                 if curfilenum!=filenum:
@@ -127,10 +133,10 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                     if 'ti' in paramslower:
                         Ionoin = maketi(Ionoin)
                     pnames = Ionoin.Param_Names
-                    pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
+                    pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
 
 
-                prmloc = sp.argwhere(paramslower[iparam]==pnameslower)
+                prmloc = sp.argwhere(paramslower[iparam]==pnameslowerin)
 
                 if prmloc.size !=0:
                     curprm = prmloc[0][0]
@@ -142,7 +148,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                     curcoord[0] = irng
                     tempin = Ionoin.getclosestsphere(curcoord,times)[0]
                     Ntloc = tempin.shape[0]
-                    tempin = sp.reshape(tempin,(Ntloc,len(pnameslower)))
+                    tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
                     curdata[irngn] = tempin[0,curprm]
                 lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
                 labels[0] = 'Input Parameters'
@@ -321,7 +327,7 @@ def analysisdump(maindir,configfile,suptitle=None):
         plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
 
 
-        plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2)
+        plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2,werrors=True)
     else:
         plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1,suptitle=suptitle)
-        plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2,suptitle=suptitle)
+        plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2,suptitle=suptitle,werrors=True)

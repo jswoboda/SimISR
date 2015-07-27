@@ -80,7 +80,7 @@ class Fitterionoconainer(object):
                     if cov_x is None:
                         fittederror[iloc,itime] = sp.ones((len(x_0),len(x_0)))*float('nan')
                     else:
-                        fittederror[iloc,itime] = cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))
+                        fittederror[iloc,itime] = sp.sqrt(sp.absolute(cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))))
                 except TypeError:
                     pdb.set_trace()
 
