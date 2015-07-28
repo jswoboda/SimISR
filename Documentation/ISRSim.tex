@@ -159,6 +159,8 @@ Lastly if one is to add a magnetic field to the equations the single particle AC
 \end{equation}
  
 \noindent where $\gamma = \tan^{-1}(\nu\Omega)$. The for the case with the magnetic field as one gets closer to being fulling perpendicular to $\mathbf{B}$ the single particle ACFs become much more narrow band, to the point of becoming delta functions in the frequency space. It is necessary to use other methods beyond numerical integration to determine the Gordeyeve Integrals. The authors of \cite{kudeki:milla:2} get around this problem by making a PIC code to determine the particle statistics. 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  \section*{Computational Considerations}
 One of the main challenges to calculating the ISR spectrums is calculating the Gordeyeve integrals. The case with no collisions or magnetic fields can be done analytically using Dawsons integral. This can be done using the identity
@@ -225,8 +227,37 @@ Also, to avoid having to more calculations then necessary the $j\omega\epsilon_0
 \displaystyle \langle \left|n_e(\mathbf{k},\omega)\right|^2\rangle =  \frac{\left|1 +  \sum_k^K\frac{\sigma_{ik}}{j\omega\epsilon_0} \right|^2 \langle |n_{te}(\mathbf{k},\omega)|^2\rangle}{\left|1 +\frac{\sigma_e+ \sum_k^K\sigma_{ik}}{j\omega\epsilon_0} \right|^2} + \frac{\left| \frac{\sigma_e}{j\omega\epsilon_0} \right|^2\left \langle \left|\sum_k^Kn_{tik}(\mathbf{k},\omega)\right|^2\right\rangle}{\left|1 +\frac{\sigma_e+ \sum_k^K\sigma_{ik}}{j\omega\epsilon_0} \right|^2}.
 \end{equation}
 
+\section{Examples}
+We can see in Figure \ref{fig:diffspectrums} examples of ISR spectrums from different ISR systems. The spectrums were generated using the the parameters values $N_e=1e11$, $T_e=3000^o$K and $T_i=3000^o$K and the system parameter values seen in Table \ref{tab:ISRsys}. The ion acoustic frequency$f_{ia}$ for each system with the following plasma parameters its wavelength $\lambda$ was calculated using the following formula,
 
+\begin{equation}
+\label{eq:iaf}
+f_{ia} = \frac{\lambda}{2}\sqrt{\frac{k_bT_e +k_b\gamma_iT_i}{M}},
+\end{equation}
 
+\noindent where $M$ is the ion mass in kg, $k_b$ is Botlzmann's constant and $\gamma_i$ is the adiabatic index which is set to 3 in all cases.
+\begin{figure}[!h]
+\centering
+\includegraphics[width=7.0in]{DifferentSystems}
+
+\caption{Spectrums From Different ISR Systems}
+\label{fig:diffspectrums}
+\end{figure}
+
+\begin{table}[!h]
+\centering
+\caption{ISR System Parameters}
+\label{tab:ISRsys}
+\begin{tabular}{lllll}
+System Name & $f_0$ in MHz & $f_s$ in kHz & $\alpha$ in $^o$ &  \\
+AMISR       & 449          & 50           & 70               &  \\
+Sondrestrom & 1290         & 100          & 80               &  \\
+Haystack    & 440          & 50           & 65               &  \\
+Arecibo     & 430          & 50           & 45               &  \\
+Jicamarca   & 50           & 10           & 1                & 
+\end{tabular}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Chapter 2%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Data Formation}
 The 3-D ISR simulator creates data by deriving a time filter from the autocorrelation functions and applying them to complex white Gaussian noise generators. Stating this in another way, every point in time and space has a noise plant and filter structure as in Figure \ref{fig:IQdiagram}. The data is then scaled and summed together according to its location in range and angle space to radar. For this simulation, data points are only used if they are within 1.1 $^\circ$ of the center beam which is a simplification of the AMISR beam pattern. 
 
