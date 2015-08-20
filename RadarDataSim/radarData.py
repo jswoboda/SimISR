@@ -96,8 +96,12 @@ class RadarDataFile(object):
                 pt =pulsetimes[pnts]
                 pb = beams[pnts]
                 pn = pulsen[pnts].astype(int)
-                (outdict['RawData'],outdict['SpecsUsed'])= self.__makeTime__(pt,curcontainer.Time_Vector,
+                (rawdata,outdict['SpecsUsed'])= self.__makeTime__(pt,curcontainer.Time_Vector,
                     curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
+                Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(*rawdata.shape).astype(simdtype)+
+                    1j*sp.random.randn(*rawdata.shape).astype(simdtype))
+
+                outdict['RawData'] = rawdata+Noise
                 outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn),NNs).astype(simdtype)+
                     1j*sp.random.randn(len(pn),NNs).astype(simdtype))
                 outdict['Pulses']=pn
@@ -168,14 +172,8 @@ class RadarDataFile(object):
                     rangelog = (rho>=rnglims[0])&(rho<rnglims[1])
                     cur_pnts = samp_num+isamp
 
+                    # This is a nearest neighbors interpolation for the spectrums in the range domain
                     if sp.sum(rangelog)==0:
-#                        # make a linear interpolation
-#                        if range_g>=sp.max(rho):
-#                            rangelog = rho==sp.max(rho)
-#                        elif range_g<=sp.min(rho):
-#                            rangelog = rho==sp.min(rho)
-#                        else:
-                        #nearest neighbor interpolation in range
                         minrng = sp.argmin(sp.absolute(range_g-rho))
                         rangelog[minrng] = True
                         #pdb.set_trace()
@@ -202,10 +200,10 @@ class RadarDataFile(object):
                     for idatn,idat in enumerate(curdataloc):
                         out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
         # Noise spectrums
-        Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
-        Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(simdtype)+
-            1j*sp.random.randn(Np,N_samps).astype(simdtype))
-        return (out_data +Noise,specsused)
+#        Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
+#        Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(simdtype)+
+#            1j*sp.random.randn(Np,N_samps).astype(simdtype))
+        return (out_data,specsused)
         #%% Processing
     def processdataiono(self):
         """ This will perform the the data processing and create the ACF estimates

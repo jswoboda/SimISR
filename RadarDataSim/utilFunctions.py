@@ -85,24 +85,45 @@ def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
     Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
     return Wttdict
 
-def spect2acf(omeg,spec):
+def spect2acf(omeg,spec,n=None):
     """ Creates acf and time array associated with the given frequency vector and spectrum
     Inputs:
     omeg: The frequency sampling vector
     spec: The spectrum array.
+    n: optional, default len(spec), Length of output spectrum
     Output:
     tau: The time sampling array.
     acf: The acf from the original spectrum."""
+    if n is None:
+        n=len(spec)
 #    padnum = sp.floor(len(spec)/2)
     df = omeg[1]-omeg[0]
 
 #    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
     acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec)))
-    dt = 1/(df*len(spec))
+    dt = 1/(df*n)
     tau = sp.arange(-sp.ceil((len(acf)-1.0)/2),sp.floor((len(acf)-1.0)/2+1))*dt
     return tau, acf
 
+def acf2spect(tau,acf,n=None):
+    """ Creates spectrum and frequency vector associated with the given time array and acf.
+    Inputs:
+    tau: The time sampling array.
+    acf: The acf from the original spectrum.
+    n: optional, default len(acf), Length of output spectrum
+    Output:
+    omeg: The frequency sampling vector
+    spec: The spectrum array.
+    """
 
+    if n is None:
+        n=len(acf)
+    dt = tau[1]-tau[0]
+
+    spec = scfft.ifftshift(scfft.fft(acf,n=n))
+    fs = 1/dt
+    omeg = sp.arange(-sp.ceil((n-1.0)/2.0),sp.floor((n-1.0)/2.0+1))*(fs/(2*sp.ceil((n-1.0)/2.0)))
+    return omeg, spec
 #%% making pulse data
 def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex128):
     """ This function will create a repxLp numpy array, where rep is number of independent
@@ -128,7 +149,7 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     npts = len(filt_freq)
     filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
     shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
-    noise_vec = (sp.random.randn(rep,npts).astype(numtype)+1j*sp.random.randn(rep,npts).astype(numtype))/sp.sqrt(2.0)# make a noise vector
+    noise_vec = (sp.random.randn(rep,npts).astype(numtype)+1j*sp.random.randn(rep,npts).astype(numtype))/sp.sqrt(2.0)#sp.random.randn(rep,npts).astype(numtype)# make a noise vector
     mult_freq = filt_tile.astype(numtype)*noise_vec
     data = scfft.ifft(mult_freq,axis=-1)
     data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]
@@ -175,13 +196,14 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14)):
     ap = sp.nanmax(abs(arback));
     ep = Nr- sp.nanmax(arfor);
     rng_ar_all = sp.arange(ap,ep);
+#    wearr = (1./(N-sp.tile((arfor-arback)[:,sp.newaxis],(1,Np)))).astype(numtype)
     #acf_cent = sp.zeros((ep-ap,N))*(1+1j)
     acf_cent = sp.zeros((ep-ap,N),dtype=numtype)
     for irng in  sp.arange(len(rng_ar_all)):
         rng_ar1 =sp.int_(rng_ar_all[irng]) + arback
         rng_ar2 = sp.int_(rng_ar_all[irng]) + arfor
         # get all of the acfs across pulses # sum along the pulses
-        acf_tmp = sp.conj(rawbeams[rng_ar1,:])*rawbeams[rng_ar2,:]
+        acf_tmp = sp.conj(rawbeams[rng_ar1,:])*rawbeams[rng_ar2,:]#*wearr
         acf_ave = sp.sum(acf_tmp,1)
         acf_cent[irng,:] = acf_ave# might need to transpose this
     return acf_cent
@@ -455,7 +477,8 @@ def makepulse(ptype,plen,ts):
 
     elif ptype.lower()=='barker':
         blen = sp.array([1,2, 3, 4, 5, 7, 11,13])
-        nsamps = sp.min(sp.absolute(blen-nsamps))
+        nsampsarg = sp.argmin(sp.absolute(blen-nsamps))
+        nsamps = blen[nsampsarg]
         pulse = GenBarker(nsamps)
         plen = nsamps*ts
 #elif ptype.lower()=='ac':
@@ -472,101 +495,3 @@ def makesumrule(ptype,plen,ts):
         sumrule = sp.array([arback,arforward])
 
     return sumrule
-#def makexample(npts,sensdict,cur_params,pulse,npulses):
-#    """This will create a set centered lag products as if it were collected from ISR
-#    data with the parameter values in cur_params. The lag products will have the
-#    the number of pulses found in npulses using evelope found in pulse.
-#    Inputs
-#    npts - The length of the spectrum, this will be reduced by 1 if its an even number.
-#    sensdict - This is a sensor dictionary that can be created from one of the functions in
-#    the sensorconst file.
-#    cur_params - The parameters in the order seen for the spectrum method being used.
-#    pulse - This is an array that hold the pulse shape from the envelope.
-#    npulses - The number of pulses that will be integrated."""
-#
-#
-#    Nrg = 3*len(pulse)
-#    N_samps = Nrg +len(pulse)-1
-#    #TODO: Make this able to handle any spectrum input.
-#    myspec = ISSpectrum(nspec = npts,sampfreq=sensdict['fs'])
-#    (omeg,cur_spec) = myspec.getSpectrum(cur_params[0], cur_params[1], cur_params[2], \
-#                    cur_params[3], cur_params[4], cur_params[5])
-#    Ne = 10**cur_params[2]
-#    tr =  cur_params[1]
-#    # Set the power for the spectrum
-#    cur_spec =  len(cur_spec)**2*Ne/(1+tr)*cur_spec/sp.sum(cur_spec)
-#    # Change the spectrum filter kernal for the fft based filtering
-#    cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
-#    outdata = sp.zeros((npulses,N_samps),dtype=sp.complex128)
-#    samp_num = sp.arange(len(pulse))
-#    for ipulse in range(npulses):
-#        for isamp in range(Nrg):
-#            curpnts =  samp_num+isamp
-#            curpulse = MakePulseData(pulse,cur_filt,delay=len(pulse))
-#            outdata[ipulse,curpnts] = curpulse +outdata[ipulse,curpnts]
-#    # Perform a centered lag product.
-#    lags = CenteredLagProduct(outdata,N =len(pulse))
-#    return lags
-#
-def makeINI(fname,beamlist,radarname,simparams):
-
-    cfgfile = open(fname,'w')
-    config = ConfigParser.ConfigParser()
-
-    config.add_section('section 1')
-    beamstring = ""
-    for beam in beamlist:
-        beamstring += str(beam)
-        beamstring += " "
-    config.set('section 1','beamlist',beamstring)
-    config.set('section 1','radarname',radarname)
-
-    config.add_section('simparams')
-    for param in simparams:
-        if isinstance(simparams[param],list):
-            data = ""
-            for a in simparams[param]:
-                data += str(a)
-                data += " "
-            config.set('simparams',param,data)
-        else:
-            config.set('simparams',param,simparams[param])
-
-    config.write(cfgfile)
-    cfgfile.close()
-
-def readINI(fname):
-
-    config = ConfigParser.ConfigParser()
-    config.read(fname)
-    beamlist = config.get('section 1','beamlist').split()
-    beamlist = [float(i) for i in beamlist]
-    angles = getangles(beamlist,config.get('section 1','radarname'))
-    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-    sensdict = sensconst.getConst(config.get('section 1','radarname'),ang_data)
-
-    simparams = {}
-    for param in config.options('simparams'):
-        simparams[param] = config.get('simparams',param)
-
-    for param in simparams:
-        if simparams[param]=="<type 'numpy.complex128'>":
-            simparams[param]=sp.complex128
-        elif simparams[param]=="<type 'numpy.complex64'>":
-            simparams[param]=sp.complex64
-        else:
-            simparams[param]=simparams[param].split(" ")
-            if len(simparams[param])==1:
-                simparams[param]=simparams[param][0]
-                try:
-                    simparams[param]=float(simparams[param])
-                except:
-                    pass
-            else:
-                for a in range(len(simparams[param])):
-                    try:
-                        simparams[param][a]=float(simparams[param][a])
-                    except:
-                        pass
-
-    return (sensdict,simparams)

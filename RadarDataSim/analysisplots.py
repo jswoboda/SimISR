@@ -18,7 +18,7 @@ import seaborn as sns
 import pdb
 
 from RadarDataSim.IonoContainer import IonoContainer
-from RadarDataSim.utilFunctions import readconfigfile,spect2acf
+from RadarDataSim.utilFunctions import readconfigfile,spect2acf,acf2spect
 
 
 def maketi(Ionoin):
@@ -223,7 +223,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
 #                if sp.ndim(tempin)==1:
 #                    tempin = tempin[sp.newaxis,:]
                 specin[icn,itn] = tempin[0,:]/npts/npts
-
+    fs = sensdict['fs']
     if acfdisp:
         Ionoacf = IonoContainer.readh5(acfname)
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
@@ -291,8 +291,8 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
             ax.set_xlabel('f in kHz')
             ax.set_ylabel('Amp')
             ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
-            ax.set_ylim(0.0,max(maxvec)*1.1)
-
+            ax.set_ylim(0.0,max(maxvec)*1)
+            ax.set_xlim([-fs*5e-4,fs*5e-4])
             imcount=imcount+1
         figmplf.suptitle(suptitle, fontsize=20)
         if None in labels:
@@ -302,6 +302,39 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
         plt.savefig(fname)
         plt.close(figmplf)
+
+
+def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png',n=None):
+    fig1 = plt.figure()
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+
+    lines = []
+    if specnames is None:
+        specnames = ['Spec {0}'.format(i) for i in range(len(speclist))]
+    labels = specnames
+    xlims = [-sp.Inf,sp.Inf]
+    ylims = [-sp.Inf,sp.Inf]
+    for ispecn,ispec in enumerate(speclist):
+        if type(timeomeg)==list:
+            curbasis = timeomeg[ispecn]
+        else:
+            curbasis=timeomeg
+
+        if needtrans[ispecn]:
+           curbasis,ispec= acf2spect(curbasis,ispec,n=n)
+
+        lines.append(plt.plot(curbasis*1e-3,ispec.real,linewidth=5)[0])
+        xlims = [min(xlims[0],min(curbasis)),max(xlims[1],max(curbasis))]
+        ylims = [min(ylims[0],min(curbasis)),max(ylims[1],max(curbasis))]
+    plt.xlabel('f in kHz')
+    plt.ylabel('Amp')
+    plt.title('Output Spectrums')
+    plt.xlim(xlims)
+    plt.ylim(ylims)
+    plt.legend()
+    plt.savefig(filename)
+    plt.close(fig1)
 
 def analysisdump(maindir,configfile,suptitle=None):
     """ """

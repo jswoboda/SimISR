@@ -256,7 +256,7 @@ Also, to avoid having to more calculations then necessary the $j\omega\epsilon_0
 \displaystyle \langle \left|n_e(\mathbf{k},\omega)\right|^2\rangle =  \frac{\left|1 +  \sum_k^K\frac{\sigma_{ik}}{j\omega\epsilon_0} \right|^2 \langle |n_{te}(\mathbf{k},\omega)|^2\rangle}{\left|1 +\frac{\sigma_e+ \sum_k^K\sigma_{ik}}{j\omega\epsilon_0} \right|^2} + \frac{\left| \frac{\sigma_e}{j\omega\epsilon_0} \right|^2\left \langle \left|\sum_k^Kn_{tik}(\mathbf{k},\omega)\right|^2\right\rangle}{\left|1 +\frac{\sigma_e+ \sum_k^K\sigma_{ik}}{j\omega\epsilon_0} \right|^2}.
 \end{equation}
 
-\section{Examples}
+\section*{Examples}
 We can see in Figure \ref{fig:diffspectrums} examples of ISR spectrums from different ISR systems. The spectrums were generated using the the parameters values $N_e=1e11$, $T_e=3000^o$K and $T_i=3000^o$K and the system parameter values seen in Table \ref{tab:ISRsys}. The ion acoustic frequency$f_{ia}$ for each system with the following plasma parameters its wavelength $\lambda$ was calculated using the following formula,
 
 \begin{equation}
@@ -264,7 +264,7 @@ We can see in Figure \ref{fig:diffspectrums} examples of ISR spectrums from diff
 f_{ia} = \frac{\lambda}{2}\sqrt{\frac{k_bT_e +k_b\gamma_iT_i}{M}},
 \end{equation}
 
-\noindent where $M$ is the ion mass in kg, $k_b$ is Botlzmann's constant and $\gamma_i$ is the adiabatic index which is set to 3 in all cases.
+\noindent where $M$ is the ion mass in kg, $k_b$ is Botlzmann's constant and $\gamma_i$ is the adiabatic index which is set to 3 in all cases. In most of the cases the familiar double hump spectrum is visible. The only exception to this is Jicamarca, where the system's k-vector is very close to being perpendicular to the earths magnetic field. This also impacts the amount of time it takes to calculate the spectrum because as the k-vector gets closer to being perpendicular to magnetic field the Gordeyeve integral will take longer to converge.
 \begin{figure}[!h]
 \centering
 \includegraphics[width=7.0in]{DifferentSystems}
@@ -272,6 +272,7 @@ f_{ia} = \frac{\lambda}{2}\sqrt{\frac{k_bT_e +k_b\gamma_iT_i}{M}},
 \caption{Spectrums From Different ISR Systems}
 \label{fig:diffspectrums}
 \end{figure}
+
 
 \begin{table}[!h]
 \centering
@@ -287,8 +288,20 @@ Jicamarca   & 50           & 10           & 1                &
 \end{tabular}
 \end{table}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Chapter 2%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Data Formation}
-The 3-D ISR simulator creates data by deriving a time filter from the autocorrelation functions and applying them to complex white Gaussian noise generators. Stating this in another way, every point in time and space has a noise plant and filter structure as in Figure \ref{fig:IQdiagram}. 
+\chapter{Data Creation}
+
+\section*{Overview}
+The goal of incoherent scatter radar is to measure plasma parameters by first estimating a power spectrum from the random fluctuations of the electron density in the ionosphere. In order to model the the return signal from an ISR a complex gaussian process with a correlation properties dictated by the plasma parameters is created. 
+In this chapter the methods used to create the ISR data are detailed. The First the inputs will be covered, after which the signal processing procedures to make the base band IQ data will be shown.
+
+\section*{Inputs}
+The simulator takes as input a discretized set of ionosphere parameters in Cartesian coordinates and which can change with time. Each point in time and space has a set of parameters that allow it to make an ISR spectrum using the methods detailed in the previous chapter. The spectrums are then created so every point in space and time will have its own intrinsic ISR spectrum. The radar will then act on these spectrums as a linear operator and average them together in time and space using the beam patterns and pulse pattern. 
+
+Using the fact that any spatial correlations between the electron density fluctuations will be on the order of the Debye length \cite{farley1969}, the intrinsic ISR spectrums will be first averaged over a resolution cell for the radar. 
+
+\section*{Signal Processing}
+The IQ data is created by taking a complex white Gaussian noise process and shaping the spectrum using a filter. Each point in space and time will have a separate noise plant and filter which is derived from the plasma and radar parameters parameters, like that seen in Figure \ref{fig:IQdiagram}. 
+%The 3-D ISR simulator creates data by deriving a time filter from the autocorrelation functions and applying them to complex white Gaussian noise generators. Stating this in another way, every point in time and space has a noise plant and filter structure as in Figure \ref{fig:IQdiagram}. 
 \begin{figure}[h!]
 \centering
 \includegraphics[width=4in]{diagrampart}
@@ -296,73 +309,8 @@ The 3-D ISR simulator creates data by deriving a time filter from the autocorrel
 \label{fig:IQdiagram}
 \end{figure}
 
-These filters are created using spatial averaging of an intrinsic ISR spectrum which come from the parameters at each point in space and space put into the simulator. The spatial averaging occurs by way of the antenna beam pattern, range gate size and pulse pattern. The beam pattern and range gate size act as an averaging across the range, azimuth and elevation dimensions of the intrinsic ISR spectrums. The pulse pattern acts as a windowing of the final samples of the data.
+The radar samples the space in a spherical coordinate system with discrete range and beam positions. For each range gate and beam the different spectrums are averaged together together. In range this is simply a window the length of a range gate. Across the azimuth and elevation space the beam pattern for the system is used. In order to calculate the beam pattern for the AMISR system the method detailed in the appendix of \cite{RDS:RDS20236}. The entire process of the spatial sample is shown in the simplified diagram in Figure \ref{fig:beamdia}.
 
-\begin{figure}[!h]
-\centering
-\includegraphics[width=7.0in]{diagram}
-\caption{ISR Simulation Diagram}
-\label{fig:isrdiag}
-\end{figure}
-
-
-
-
-The simulator discretizes the ionosphere into a set of $m\in 0,1,...M-1$ range gates that have specific values of electron density ($N_e$), ion temperature ($T_i$), electron temperature($T_e$), and masses of ion species ($M_1$ and ($M_2$)) that are present and their ratios ($\kappa$).  The simulator creates a filter by taking the square root of the IS spectrum derived from a model,
-
-\begin{equation}
-\label{eq1}
-H_m(\omega) = \sqrt{S_m(\omega | \: N_e, T_i,  T_r, M_{i1}, M_{i2},\kappa)}.
-\end{equation}
-
-\noindent The filter can be created by taking the inverse Fourier transform of $H_m(\omega)$.  Complex white Gaussian noise  ($w(k)\sim CN(0,1)$) is then pushed though each of the filters and then windowed by the pulse creating the following:   
-
-\begin{equation}
-\label{eq2}
-y_m (k)= s(k)\left[h_m(k)*w(k)\right],
-\end{equation}
- 
-\noindent where $s(k)$ is the pulse shape.  Currently in the the filtering is implemented by using the frequency response of the filter and multiplying by the complex noise and then inverse Fourier transforming it back.  A diagram of a single noise plant can be seen in Figure \ref{fig:singlefilt}
-
-\begin{figure}[!t]
-\centering
-\includegraphics[width=4in]{diagrampart}
-% where an .eps filename suffix will be assumed under latex, 
-% and a .pdf suffix will be assumed for pdflatex; or what has been declared
-% via \DeclareGraphicsExtensions.
-\caption{I/Q Simulator Diagram}
-\label{fig:singlefilt}
-\end{figure}
-
-After the data for each range gate $y_m(k)$ is created the power of the return is calculated
-
-\begin{equation}
-\label{eq3}
-P_r = \frac{cG \lambda^2}{2(4\pi)^2}\frac{P_t }{R^2}\frac{\sigma_e N_e}{(1+k^2\lambda_D^2),(1+k^2\lambda_D^2 + T_r)}
-\end{equation}
- 
- \noindent where $P_r$ is the power received, $c$ is the speed of light, $G$ is the gain of the antenna, $P_t$ is the power of the transmitter, $\sigma_e$ is the electron radar cross section, $k$ is the wavenumber of the radar, $\lambda_D$ is the Debye length and $T_r$ is the temperature ratio.\footnote{Currently all of the radar parameters used in the simulations are from the Poker Flat ISR system.}
- 
-Once the power has been calculated for each range all of the data is delayed and summed together so as to model the arrival of the radar return at the receive: 
- 
-\begin{equation}
-\label{eq4}
-x(n) = \displaystyle\sum\limits_{m =0}^{M-1} \alpha(m)y_m(n-m),
-\end{equation}
-
-\noindent where $\alpha(m) = \sqrt{P_r(m)}$.  A full diagram of the model can be seen in Figure \ref{fig:sumrule}.
-
-\begin{figure}[!t]
-\centering
-\includegraphics[width=5in]{diagram}
-% where an .eps filename suffix will be assumed under latex, 
-% and a .pdf suffix will be assumed for pdflatex; or what has been declared
-% via \DeclareGraphicsExtensions.
-\caption{I/Q Simulator Diagram}
-\label{fig:sumrule}
-\end{figure}
-
-The extension of this idea to three dimensional space takes the same concepts and repeats the process for multiple beams.  The main differences is how the data is that the plasma parameters are first represented in Cartesian space.  Each point will have a filter noise plant set up as seen in Figure \ref{fig:singlefilt}.  From there the data will be combined together with a weighting depending on the beam pattern.  The data will then be delayed and weighted further depending on the range the point is located.  A basic diagram can be seen in Figure \ref{fig:beamdia}.
 
 \begin{figure}[!t]
 \centering
@@ -374,11 +322,60 @@ The extension of this idea to three dimensional space takes the same concepts an
 \label{fig:beamdia}
 \end{figure}
 
+Once the spectrum has been created the filter,$H_m(\omega)$, is created by simply taking the square root of the spectrum, $S_m(\omega | \: \bm{\theta})$
+
+\begin{equation}
+\label{eq1}
+H_m(\omega) = \sqrt{S_m(\omega | \: \bm{\theta})}.
+\end{equation}
+
+\noindent The term $ \bm{\theta}$ refers to the different plasma and system parameters needed to make the spectrum. Complex white Gaussian noise  ($w(k)\sim CN(0,1)$) is then pushed though each of the filters and then windowed by the pulse creating the following:   
+
+\begin{equation}
+\label{eq2}
+y_m (k)= s(k)\left[h_m(k)*w(k)\right],
+\end{equation}
+ 
+\noindent where $s(k)$ is the pulse shape.  Currently in the the filtering is implemented by using the frequency response of the filter and multiplying by the complex noise and then inverse Fourier transforming it back. 
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=7.0in]{diagram}
+\caption{ISR Simulation Diagram}
+\label{fig:isrdiag}
+\end{figure}
+
+
+After the data for each range gate $y_m(k)$ is created the power of the return is calculated
+
+\begin{equation}
+\label{eq3}
+P_r = \frac{cG \lambda^2}{2(4\pi)^2}\frac{P_t }{R^2}\frac{\sigma_e N_e}{(1+k^2\lambda_D^2),(1+k^2\lambda_D^2 + T_r)}
+\end{equation}
+ 
+ \noindent where $P_r$ is the power received, $c$ is the speed of light, $G$ is the gain of the antenna, $P_t$ is the power of the transmitter, $\sigma_e$ is the electron radar cross section, $k$ is the wavenumber of the radar, $\lambda_D$ is the Debye length, $N_e$ is the electron density and $T_r$ is the electron to ion temperature ratio.
+  
+Once the power has been calculated for each range all of the data is delayed and summed together so as to model the arrival of the radar return at the receive: 
+ 
+\begin{equation}
+\label{eq4}
+x(n) = \displaystyle\sum\limits_{m =0}^{M-1} \alpha(m)y_m(n-m),
+\end{equation}
+
+\noindent where $\alpha(m) = \sqrt{P_r(m)}$. Lastly, to model the inherent noise in the radar and environment more complex Gaussian noise is added
+
+\begin{equation}
+\label{eq4}
+x_f(n) = x(n) +\sqrt{\frac{k_bT_{sys}B}{2}} w(n), \quad w(n)\sim CN(0,1)
+\end{equation}
+
+\noindent where $k_b$ is Boltzmann's constant, $T_{sys}$ is the system temperature and $B$ is the system bandwidth.
+A full diagram of the model can be seen in Figure \ref{fig:isrdiag}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Chapter 3%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{ISR Processing}
 
-After the IQ data has been created it is processed to create estimates of the ACF at desired points of space. This processing follows a flow chart seen in Figure \ref{fig:chain}.
+After the IQ data has been created it is processed to create estimates of the ACF at desired points of space. This type of processing has been detailed and analyzed in \cite{farley1969} and in other publications. This processing follows a flow chart seen in Figure \ref{fig:chain}.
 
 \begin{figure}[!t]
 \centering
@@ -390,7 +387,7 @@ After the IQ data has been created it is processed to create estimates of the AC
 
 
 \section{Lag Product Formation}
-The lag product formation is an initial estimate of the autocorrelation function.  The sampled I/Q can be represented as $x(n) \in\mathbb{C}^N$ where $N$ is the number of samples in an inter pulse period.  At this point the first step in estimating the autocorrelation function is taken.  For each range gate $m\in 0,1,...M-1$ an autocorrelation is estimated for each lag of $l \in 0,1...,L-1$.  To get better statistics this operation is performed for each pulse $j\in 0,1,...J-1$ and then summed over the $J$ pulses.  The entire operation to form the initial estimate of $\hat{R}(m,l)$ can be seen in Equation \ref{lagpro}:
+The lag product formation is an initial estimate of the autocorrelation function. The sampled I/Q can be represented as $x(n) \in\mathbb{C}^N$ where $N$ is the number of samples in an inter pulse period. For each range gate $m\in 0,1,...M-1$ an autocorrelation is estimated for each lag of $l \in 0,1...,L-1$.  To get better statistics this operation is performed for each pulse $j\in 0,1,...J-1$ and then summed over the $J$ pulses. The entire operation to form the initial estimate of $\hat{R}(m,l)$ can be seen in Equation \ref{lagpro}:
 
 \begin{equation}
 \label{lagpro}
@@ -399,10 +396,19 @@ The lag product formation is an initial estimate of the autocorrelation function
 
 The case shown in Equation \ref{lagpro} is a centered lag product, other types of lag products calculations are available but generally a centered product is used. In the centered lag product case range gate index $m$ and sample index $n$ can be related by $m=n-\lfloor L/2\rfloor$ and the maximum lag and sample relation is $M=N-\lceil L/2 \rceil$.  This lag product formation is the first step in taking a discrete Wigner Distribution \cite{TFAcohen}.
 
-\section{Summation Rules}
-Applying a summation rule is usually the next step in creating an estimate of the autocorrelation function.  This is done to get a constant range ambiguity across all of the lags for long pulse experiment\cite{nygren1996}. 
+This specific type of lag product formation is detailed in \cite{farley1969} and had been referred to as unbiased. This terminology does differ from what is used in statistic signal processing literature such as \cite{randomsigshanmugan} where the unbiased autocorrelation function estimate is carried out as so,
 
-The summation rule idea can be seen in Figure \ref{fig:sumrule}.  In the figure the image on the left is a basic representation of an ambiguity function of a long pulse.  Its mirrored on the right with red bars which would show the integration area under it so the ambiguity function will be of equal size in range.  
+\begin{equation}
+\label{eq:lagproub}
+\hat{R}(m,l) = \frac{1}{L-l}\displaystyle\sum\limits_{j=0}^{J-1} x(m-\lfloor l/2\rfloor,j)x^*(m+\lceil l/2 \rceil,j).
+\end{equation}
+
+\noindent With out the $\frac{1}{L-l}$ term the estimator will be windowed with a triangular function thus impacting the estimate of the ISR spectrum as this will act as a convolution in the frequency domain. This bias is taken into account in \cite{farley1969} but it is simply wrapped up into the ambiguity function. 
+
+\section{Summation Rules}
+Applying a summation rule is usually the next step in creating an estimate of the autocorrelation function.  This is done to get a constant range ambiguity across all of the lags for long pulse experiment\cite{nygren1996}. It also equalizes the statistics for each lag as the higher lags have greater variance. 
+
+An example summation rule for a forward product is shown in Figure \ref{fig:sumrule}. In the figure the image on the left is a basic representation of an ambiguity function of a long pulse.  Its mirrored on the right with red bars which would show the integration area under it so the ambiguity function will be of equal size in range.  
 
 In the processing this is basically a summing of lags from different ranges.  The amount of summing is similar to what is shown in Figure \ref{fig:sumrule}.  There are a number of different summing rule each with their own trade offs \cite{nygren1996}.  
 
@@ -432,7 +438,7 @@ After the final estimation of the spectrum is complete the nonlinear least squar
 \label{nlls}
 \end{equation}
 
-In Equation \ref{nlls}, the data represented as $\mathbf{y}$ would be the final estimate of the autocorrelation function $\hat{R}_f(m,l)$ at a specific range or its spectrum $\hat{S}_f(m,\omega)$.  The parameter vector $\mathbf{P}$ would be the plasma parameters $N_e$, $T_e$, $T_i$ and various other parameters including ion mass and ratios between different species.  The fit function $\bm{\theta}$ is the IS spectrum calculated from models, such as once seen in \cite{kudeki:milla:1}, smeared by the ambiguity function.  In the case of the long pulse the ambiguity can be simply applied by multiplying it with the autocorrelation function $R(l)$, if the summation rule is properly applied.  Lastly the correlation matrix $\bm{\Sigma}$ if often realized as a diagonal matrix for many ISR systems.  If it was not that would imply correlation with the measurement uncertainties between different lags or samples of the spectrum.  The diagonal values usually used, noted as $\sigma_i^2$, usually the same unless there is a larger measurement error for one of the lags or spectrums.  The following formula from  \cite{nicollsisrschool2013} can be used:
+In Equation \ref{nlls}, the data represented as $\mathbf{y}$ would be the final estimate of the autocorrelation function $\hat{R}_f(m,l)$ at a specific range or its spectrum $\hat{S}_f(m,\omega)$.  The parameter vector $\mathbf{P}$ would be the plasma parameters $N_e$, $T_e$, $T_i$ and various other parameters including ion velocities. The fit function $\bm{\theta}$ is the IS spectrum calculated from models, such as once seen in \cite{kudeki:milla:1}, smeared by the ambiguity function.  In the case of the long pulse the ambiguity can be simply applied by multiplying it with the autocorrelation function $R(l)$, if the summation rule is properly applied.  Lastly the correlation matrix $\bm{\Sigma}$ if often realized as a diagonal matrix for many ISR systems.  If it was not that would imply correlation with the measurement uncertainties between different lags or samples of the spectrum.  The diagonal values usually used, noted as $\sigma_i^2$, usually the same unless there is a larger measurement error for one of the lags or spectrums.  The following formula from  \cite{nicollsisrschool2013} can be used:
 
 \begin{equation}
 \label{sigpow}
