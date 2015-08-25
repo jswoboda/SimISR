@@ -261,17 +261,17 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
                 curin = specin[iloc,itime]
                 rcs = curin.real.sum()
                 (tau,acf) = spect2acf(omeg,curin)
-
-                # apply ambiguity function
-                tauint = amb_dict['Delay']
-                acfinterp = sp.zeros(len(tauint),dtype=simdtype)
-
-                acfinterp.real =spinterp.interp1d(tau,acf.real,bounds_error=0)(tauint)
-                acfinterp.imag =spinterp.interp1d(tau,acf.imag,bounds_error=0)(tauint)
-                # Apply the lag ambiguity function to the data
-                guess_acf = sp.zeros(amb_dict['Wlag'].shape[0],dtype=sp.complex128)
-                for i in range(amb_dict['Wlag'].shape[0]):
-                    guess_acf[i] = sp.sum(acfinterp*amb_dict['Wlag'][i])
+                guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
+#                # apply ambiguity function
+#                tauint = amb_dict['Delay']
+#                acfinterp = sp.zeros(len(tauint),dtype=simdtype)
+#
+#                acfinterp.real =spinterp.interp1d(tau,acf.real,bounds_error=0)(tauint)
+#                acfinterp.imag =spinterp.interp1d(tau,acf.imag,bounds_error=0)(tauint)
+#                # Apply the lag ambiguity function to the data
+#                guess_acf = sp.zeros(amb_dict['Wlag'].shape[0],dtype=sp.complex128)
+#                for i in range(amb_dict['Wlag'].shape[0]):
+#                    guess_acf[i] = sp.sum(acfinterp*amb_dict['Wlag'][i])
 
             #    pdb.set_trace()
                 guess_acf = guess_acf*rcs/guess_acf[0].real
@@ -279,19 +279,19 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
                 # fit to spectrums
                 spec_interm = scfft.fftshift(scfft.fft(guess_acf,n=npts))
                 maxvec.append(spec_interm.real.max())
-                lines[0]= ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)[0]
+                lines[0]= ax.plot(omeg*1e-3,spec_interm.real/spec_interm.real.max(),label='Input',linewidth=5)[0]
                 labels[0] = 'Input Spectrum With Ambiguity Applied'
                 normset = spec_interm.real.max()/curin.real.max()
-                lines[1]= ax.plot(omeg*1e-3,curin.real*normset,label='Input',linewidth=5)[0]
+                lines[1]= ax.plot(omeg*1e-3,curin.real/curin.real.max(),label='Input',linewidth=5)[0]
                 labels[1] = 'Input Spectrum'
             if acfdisp:
-                lines[2]=ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)[0]
+                lines[2]=ax.plot(omeg*1e-3,specout[iloc,itime].real/specout[iloc,itime].real.max(),label='Output',linewidth=5)[0]
                 labels[2] = 'Estimated Spectrum'
                 maxvec.append(specout[iloc,itime].real.max())
             ax.set_xlabel('f in kHz')
             ax.set_ylabel('Amp')
             ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
-            ax.set_ylim(0.0,max(maxvec)*1)
+            ax.set_ylim(0.0,1.)#max(maxvec)*1)
             ax.set_xlim([-fs*5e-4,fs*5e-4])
             imcount=imcount+1
         figmplf.suptitle(suptitle, fontsize=20)
@@ -308,13 +308,12 @@ def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png'
     fig1 = plt.figure()
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-
     lines = []
     if specnames is None:
         specnames = ['Spec {0}'.format(i) for i in range(len(speclist))]
     labels = specnames
-    xlims = [-sp.Inf,sp.Inf]
-    ylims = [-sp.Inf,sp.Inf]
+    xlims = [sp.Inf,-sp.Inf]
+    ylims = [sp.Inf,-sp.Inf]
     for ispecn,ispec in enumerate(speclist):
         if type(timeomeg)==list:
             curbasis = timeomeg[ispecn]
@@ -325,14 +324,14 @@ def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png'
            curbasis,ispec= acf2spect(curbasis,ispec,n=n)
 
         lines.append(plt.plot(curbasis*1e-3,ispec.real,linewidth=5)[0])
-        xlims = [min(xlims[0],min(curbasis)),max(xlims[1],max(curbasis))]
-        ylims = [min(ylims[0],min(curbasis)),max(ylims[1],max(curbasis))]
+        xlims = [min(xlims[0],min(curbasis)*1e-3),max(xlims[1],max(curbasis)*1e-3)]
+        ylims = [min(ylims[0],min(ispec.real)),max(ylims[1],max(ispec.real))]
     plt.xlabel('f in kHz')
     plt.ylabel('Amp')
     plt.title('Output Spectrums')
     plt.xlim(xlims)
     plt.ylim(ylims)
-    plt.legend()
+    plt.legend(lines,labels)
     plt.savefig(filename)
     plt.close(fig1)
 

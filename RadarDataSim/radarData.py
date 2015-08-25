@@ -16,6 +16,7 @@ from IonoContainer import IonoContainer
 from const.physConstants import v_C_0, v_Boltz
 from utilFunctions import CenteredLagProduct,MakePulseDataRep, dict2h5,h52dict,readconfigfile, BarkerLag
 import specfunctions
+from analysisplots import plotspecsgen
 class RadarDataFile(object):
     """ This class will will take the ionosphere class and create radar data both
     at the IQ and fitted level.
@@ -100,8 +101,9 @@ class RadarDataFile(object):
                     curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
                 Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(*rawdata.shape).astype(simdtype)+
                     1j*sp.random.randn(*rawdata.shape).astype(simdtype))
-
+                outdict['AddedNoise'] =Noise
                 outdict['RawData'] = rawdata+Noise
+                outdict['RawDatanonoise'] = rawdata
                 outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn),NNs).astype(simdtype)+
                     1j*sp.random.randn(len(pn),NNs).astype(simdtype))
                 outdict['Pulses']=pn
@@ -119,7 +121,6 @@ class RadarDataFile(object):
                 fname_list.append(fname)
             infodict = {'Files':fname_list,'Time':pt_list,'Beams':pb_list,'Pulses':pn_list}
             dict2h5(os.path.join(outdir,'INFO.h5'),infodict)
-
 
        else:
            self.outfilelist=outfilelist
@@ -199,10 +200,7 @@ class RadarDataFile(object):
 
                     for idatn,idat in enumerate(curdataloc):
                         out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
-        # Noise spectrums
-#        Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
-#        Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(Np,N_samps).astype(simdtype)+
-#            1j*sp.random.randn(Np,N_samps).astype(simdtype))
+
         return (out_data,specsused)
         #%% Processing
     def processdataiono(self):
@@ -252,11 +250,13 @@ class RadarDataFile(object):
             Nlag=Pulselen
         # initialize output arrays
         outdata = sp.zeros((Ntime,Nbeams,N_rg,Nlag),dtype=simdtype)
+        outaddednoise = sp.zeros((Ntime,Nbeams,N_rg,Nlag),dtype=simdtype)
         outnoise = sp.zeros((Ntime,Nbeams,NNs-Pulselen+1,Nlag),dtype=simdtype)
         pulses = sp.zeros((Ntime,Nbeams))
         pulsesN = sp.zeros((Ntime,Nbeams))
         timemat = sp.zeros((Ntime,2))
 
+        # set up arrays that hold the location of pulses that are to be processed together
         infoname = os.path.join(self.datadir,'INFO.h5')
         if os.path.isfile(infoname):
             infodict =h52dict(infoname)
@@ -315,6 +315,7 @@ class RadarDataFile(object):
             timemat[itn,0] = ptimevec[pos_all].min()
             timemat[itn,1]=ptimevec[pos_all].max()
             curdata = sp.zeros((len(pos_all),N_samps),dtype = simdtype)
+            curaddednoise = sp.zeros((len(pos_all),N_samps),dtype = simdtype)
             curnoise = sp.zeros((len(pos_all),NNs),dtype = simdtype)
             # Open files and get required data
             # XXX come up with way to get open up new files not have to reread in data that is already in memory
@@ -324,8 +325,15 @@ class RadarDataFile(object):
                 ifile = file_list[ifn]
                 h5file=tables.openFile(ifile)
                 file_arlocs = sp.where(curfileloc==ifn)[0]
-                curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)[curfileitvec]
-                curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)[curfileitvec]
+                curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)[curfileitvec].copy()
+                if ifn==0:
+                    specsused = h5file.get_node('/SpecsUsed').read().astype(simdtype)
+                else:
+                    specsusedtmp = h5file.get_node('/SpecsUsed').read().astype(simdtype)
+                    specsused = sp.concatenate((specsused,specsusedtmp),axis=0)
+
+                curaddednoise[file_arlocs] = h5file.get_node('/AddedNoise').read().astype(simdtype)[curfileitvec].copy()
+                curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)[curfileitvec].copy()
                 h5file.close()
             # After data is read in form lags for each beam
             for ibeam in range(Nbeams):
@@ -333,10 +341,11 @@ class RadarDataFile(object):
                 beamlocstmp = sp.where(beamlocs==ibeam)[0]
                 pulses[itn,ibeam] = len(beamlocstmp)
                 pulsesN[itn,ibeam] = len(beamlocstmp)
-                outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp],numtype=self.simparams['dtype'], pulse=pulse)
-                outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp],numtype=self.simparams['dtype'], pulse=pulse)
+                outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),numtype=self.simparams['dtype'], pulse=pulse)
+                outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),numtype=self.simparams['dtype'], pulse=pulse)
+                outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),numtype=self.simparams['dtype'], pulse=pulse)
         # Create output dictionaries and output data
-        DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat}
+        DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat,'AddedNoiseACF':outaddednoise,'SpecsUsed':specsused}
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
         return(DataLags,NoiseLags)
 
@@ -365,22 +374,86 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     coordlist=sp.zeros((len(rng_rep),3))
     [coordlist[:,0],coordlist[:,1:]] = [rng_rep,angtile]
     # set up the lags
-    lagsData= DataLags['ACF']
+    lagsData= DataLags['ACF'].copy()
     (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
+    rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags)) *1e3
+    ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
+    radar2acfmult = rng3d*rng3d/(pulsewidth*txpower*ksys3d)
     pulses = sp.tile(DataLags['Pulses'][:,:,sp.newaxis,sp.newaxis],(1,1,Nrng,Nlags))
     time_vec = time_vec[:Nt]
     # average by the number of pulses
     lagsData = lagsData/pulses
-    lagsNoise=NoiseLags['ACF']
+    lagsNoise=NoiseLags['ACF'].copy()
     lagsNoise = sp.mean(lagsNoise,axis=2)
     pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
     lagsNoise = lagsNoise/pulsesnoise
     lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
+
+    # output debug plots
+
+    if 'debug' in simparams.keys():
+        debuginfo = simparams['debug']
+        plotdir =debuginfo['plotdir']
+        if debuginfo['PlotNoise']:
+            addednoise = DataLags['AddedNoiseACF']/pulses
+            addednoise = sp.mean(addednoise,axis=2)
+
+            noiseacf = [addednoise[0,0],lagsNoise[0,0,0]]
+            taun = sp.arange(Nlags)*sensdict['t_s']
+            noisepltfname = os.path.join(plotdir,'NoiseACF.png')
+            plotspecsgen(taun,noiseacf,[True,True],['Actual Noise','Noise Est'],noisepltfname,simparams['numpoints'])
+        if debuginfo['PlotDatawon']:
+            addednoise = DataLags['AddedNoiseACF']/pulses
+            lagsDatapnt = lagsData-addednoise
+            lagsDatapnt = lagsDatapnt*radar2acfmult
+            beamnumn = debuginfo['beam']
+            rnggaten = debuginfo['range']
+            realspec = DataLags['SpecsUsed'].mean(0)
+            lagsDatapnt = sp.transpose(lagsDatapnt,axes=(2,3,0,1))
+            lagsDatasumpnt = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsData.dtype)
+
+            for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
+                for ilag in range(Nlags):
+                    lagsDatasumpnt[irngnew,ilag] = lagsDatapnt[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
+            lagsDatasumpnt = sp.transpose(lagsDatasumpnt,axes=(3,0,2,1))
+            n= simparams['numpoints']
+            fs = 1./sensdict['t_s']
+            omegn = sp.arange(-sp.ceil((n-1.0)/2.0),sp.floor((n-1.0)/2.0+1))*(fs/(2*sp.ceil((n-1.0)/2.0)))
+            taun = sp.arange(Nlags)*sensdict['t_s']
+            baslist = [omegn,taun]
+            acspec = realspec[beamnumn,rnggaten]
+            acspec = acspec*simparams['numpoints']*lagsDatasumpnt[beamnumn,rnggaten,0,0].real/acspec.real.sum()
+            specacf = [acspec,lagsDatasumpnt[beamnumn,rnggaten,0]]
+            specpltfname = os.path.join(plotdir,'Specacfwon.png')
+            plotspecsgen(baslist,specacf,[False,True],['Input Spec','Spec Est'],specpltfname,simparams['numpoints'])
+        if debuginfo['PlotDatawn']:
+
+            lagsDatapnt = lagsData.copy()
+            lagsDatapnt = lagsDatapnt*radar2acfmult
+            beamnumn = debuginfo['beam']
+            rnggaten = debuginfo['range']
+            realspec = DataLags['SpecsUsed'].mean(0)
+            lagsDatapnt = sp.transpose(lagsDatapnt,axes=(2,3,0,1))
+            lagsDatasumpnt = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsData.dtype)
+
+            for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
+                for ilag in range(Nlags):
+                    lagsDatasumpnt[irngnew,ilag] = lagsDatapnt[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
+            lagsDatasumpnt = sp.transpose(lagsDatasumpnt,axes=(3,0,2,1))
+            n= simparams['numpoints']
+            fs = 1./sensdict['t_s']
+            omegn = sp.arange(-sp.ceil((n-1.0)/2.0),sp.floor((n-1.0)/2.0+1))*(fs/(2*sp.ceil((n-1.0)/2.0)))
+            taun = sp.arange(Nlags)*sensdict['t_s']
+            baslist = [omegn,taun]
+            acspec = realspec[beamnumn,rnggaten]
+            acspec = acspec*simparams['numpoints']*lagsDatasumpnt[beamnumn,rnggaten,0,0].real/acspec.real.sum()
+            specacf = [acspec,lagsDatasumpnt[beamnumn,rnggaten,0]]
+            specpltfname = os.path.join(plotdir,'Specacfon.png')
+            plotspecsgen(baslist,specacf,[False,True],['Input Spec','Spec Est'],specpltfname,simparams['numpoints'])
     # subtract out noise lags
     lagsData = lagsData-lagsNoise
-    rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags)) *1e3
-    ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
-    lagsData = lagsData*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
+
+    lagsData = lagsData*radar2acfmult
 
     # Apply summation rule
     # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
@@ -398,7 +471,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     curloc = 0
     for irng in range(Nrng2):
         for ibeam in range(Nbeams):
-            Paramdata[curloc] = lagsDataSum[ibeam,irng]
+            Paramdata[curloc] = lagsDataSum[ibeam,irng].copy()
             curloc+=1
 
     return IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])

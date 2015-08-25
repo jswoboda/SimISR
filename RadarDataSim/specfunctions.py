@@ -71,6 +71,7 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
 
     specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
     (omeg,cur_spec,rcs) = specobj.getspecsep(datablock,specs,v_i,rcsflag=True)
+    cur_spec.astype(numtype)
     # Create spectrum guess
     (tau,acf) = spect2acf(omeg,cur_spec)
 

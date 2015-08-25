@@ -531,45 +531,49 @@ def pathparts(path):
             return components
         components.append(tail)
 
-def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0):
+def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times = [0.0]):
     """ This function will create a test ionoclass with an electron density that
     follows a chapman function"""
-    xvec = sp.arange(-250.0,250.0,20.0)
-    yvec = sp.arange(-250.0,250.0,20.0)
-    zvec = sp.arange(50.0,900.0,2.0)
-    # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
-    xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)
-    coords = sp.zeros((xx.size,3))
-    coords[:,0] = xx.flatten()
-    coords[:,1] = yy.flatten()
-    coords[:,2] = zz.flatten()
-
+    if coords is None:
+        xvec = sp.arange(-250.0,250.0,20.0)
+        yvec = sp.arange(-250.0,250.0,20.0)
+        zvec = sp.arange(50.0,900.0,2.0)
+        # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
+        xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)
+        coords = sp.zeros((xx.size,3))
+        coords[:,0] = xx.flatten()
+        coords[:,1] = yy.flatten()
+        coords[:,2] = zz.flatten()
+        zzf=zz.flatten()
+    else:
+        zzf = coords[:,2]
 #    H_0 = 50.0 #km scale height
 #    z_0 = 250.0 #km
 #    N_0 = 10**11
 
     # Make electron density
-    Ne_profile = Chapmanfunc(zz,H_0,z_0,N_0)
+    Ne_profile = Chapmanfunc(zzf,H_0,z_0,N_0)
     # Make temperture background
     if testtemp:
-        (Te,Ti)= TempProfile(zz)
+        (Te,Ti)= TempProfile(zzf)
     else:
-        Te = np.ones_like(zz)*3000.0
-        Ti = np.ones_like(zz)*3000.0
+        Te = np.ones_like(zzf)*3000.0
+        Ti = np.ones_like(zzf)*3000.0
 
     # set up the velocity
     (Nlocs,ndims) = coords.shape
-    vel = sp.zeros((Nlocs,1,ndims))
-    times = [0.0]
+    Ntime= len(times)
+    vel = sp.zeros((Nlocs,Ntime,ndims))
+
     if testv:
-        vel[:,0,2] = zz.flatten()/5.0
+        vel[:,:,2] = sp.repmat(zzf[:,sp.newaxis],Ntime,axis=1)/5.0
     species=['O+','e-']
     # put the parameters in order
-    params = sp.zeros((Ne_profile.size,1,2,2))
-    params[:,0,0,1] = Ti.flatten()
-    params[:,0,1,1] = Te.flatten()
-    params[:,0,0,0] = Ne_profile.flatten()
-    params[:,0,1,0] = Ne_profile.flatten()
+    params = sp.zeros((Ne_profile.size,len(times),2,2))
+    params[:,:,0,1] = sp.repeat(Ti[:,sp.newaxis],Ntime,axis=1)
+    params[:,:,1,1] = sp.repeat(Te[:,sp.newaxis],Ntime,axis=1)
+    params[:,:,0,0] = sp.repeat(Ne_profile[:,sp.newaxis],Ntime,axis=1)
+    params[:,:,1,0] = sp.repeat(Ne_profile[:,sp.newaxis],Ntime,axis=1)
 
 
     Icont1 = IonoContainer(coordlist=coords,paramlist=params,times = times,sensor_loc = sp.zeros(3),ver =0,coordvecs =

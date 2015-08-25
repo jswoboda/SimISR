@@ -9,6 +9,7 @@ The code also outputs a picture of the selected beam pattern.
 """
 
 from Tkinter import *
+import os, inspect
 import numpy as np
 import matplotlib.pyplot as plt
 import pdb
@@ -32,6 +33,7 @@ def polar(x, y, deg=1):
 
 class Gui():
     def __init__(self,root):
+        curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
         self.root = root
         self.root.title("Beam Selector")
 
@@ -50,7 +52,7 @@ class Gui():
         self.leb.grid(row=0, sticky=W+E+N+S,columnspan=2)
         self.var = StringVar()
         self.var.set("PFISR")
-        self.choices = {"PFISR":'PFISRbeammap.txt', "RISR-N":'RISRNbeammap.txt'}#, "RISR-S":'file3'}
+        self.choices = {"PFISR":os.path.join(curpath,'PFISRbeammap.txt'), "RISR-N":os.path.join(curpath,'RISRNbeammap.txt')}#, "RISR-S":'file3'}
         self.option = OptionMenu(self.frame, self.var, *self.choices)
         self.option.grid(row=1,column=0,sticky='w')
         self.lines = np.loadtxt(self.choices[self.var.get()])
@@ -158,7 +160,9 @@ class Gui():
         f = open('SelectedBeamCodes.txt', 'w')
         for beam in self.output:
             f.write("%s\n" % (int(beam)))
-        sys.exit()
+        self.root.quit()
+        self.root.destroy()
+        #sys.exit()
 
     def onCanvasRightClick(self,event):
         x = self.canv.canvasx(event.x)
@@ -170,6 +174,11 @@ class Gui():
             self.canv.itemconfig(self.beamhandles[linesit], fill='blue')
             self.output.remove(closest[0])
             self.canv.update()
+def run_beam_gui():
+    root = Tk()
+    gui = Gui(root)
+    root.mainloop()
+
 if __name__ == "__main__":
 
     root = Tk()

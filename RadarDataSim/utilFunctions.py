@@ -100,7 +100,7 @@ def spect2acf(omeg,spec,n=None):
     df = omeg[1]-omeg[0]
 
 #    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
-    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec)))
+    acf = scfft.ifftshift(scfft.ifft(scfft.fftshift(spec)))
     dt = 1/(df*n)
     tau = sp.arange(-sp.ceil((len(acf)-1.0)/2),sp.floor((len(acf)-1.0)/2+1))*dt
     return tau, acf
@@ -120,7 +120,7 @@ def acf2spect(tau,acf,n=None):
         n=len(acf)
     dt = tau[1]-tau[0]
 
-    spec = scfft.ifftshift(scfft.fft(acf,n=n))
+    spec = scfft.fftshift(scfft.fft(acf,n=n))
     fs = 1/dt
     omeg = sp.arange(-sp.ceil((n-1.0)/2.0),sp.floor((n-1.0)/2.0+1))*(fs/(2*sp.ceil((n-1.0)/2.0)))
     return omeg, spec
@@ -242,7 +242,8 @@ def dict2h5(filename,dictin):
         filename - The file name in a string.
         dictin - A dictionary that will be saved out.
     """
-# Main function test
+    if os.path.exists(filename):
+        os.remove(filename)
     h5file = tables.openFile(filename, mode = "w", title = "RadarDataFile out.")
     try:
         # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
