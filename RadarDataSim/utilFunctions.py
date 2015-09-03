@@ -77,12 +77,20 @@ def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
         Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft),axis=0).real,nmove,axis=0)
 
     # make matrix to take
-    imat = sp.eye(nspec)
+#    imat = sp.eye(nspec)
     tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
-    tauint = Delay
-    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
-    lagmat = sp.dot(Wtt.sum(axis=2),interpmat)
-    Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
+#    tauint = Delay
+#    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
+#    lagmat = sp.dot(Wtt.sum(axis=2),interpmat)
+    amb1d = plen-tau
+    amb1d[amb1d<0]=0.
+    amb1d[tau<0]=0.
+    amb1d=amb1d/plen
+    kp = sp.argwhere(amb1d>0).flatten()
+    lagmat = sp.zeros((Wtt.shape[0],nspec))
+    lagmat.flat[sp.ravel_multi_index((sp.arange(Wtt.shape[0]),kp),lagmat.shape)]=amb1d[kp]
+    Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),
+               'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
     return Wttdict
 
 def spect2acf(omeg,spec,n=None):
