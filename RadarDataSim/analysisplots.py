@@ -262,36 +262,25 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
                 rcs = curin.real.sum()
                 (tau,acf) = spect2acf(omeg,curin)
                 guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
-#                # apply ambiguity function
-#                tauint = amb_dict['Delay']
-#                acfinterp = sp.zeros(len(tauint),dtype=simdtype)
-#
-#                acfinterp.real =spinterp.interp1d(tau,acf.real,bounds_error=0)(tauint)
-#                acfinterp.imag =spinterp.interp1d(tau,acf.imag,bounds_error=0)(tauint)
-#                # Apply the lag ambiguity function to the data
-#                guess_acf = sp.zeros(amb_dict['Wlag'].shape[0],dtype=sp.complex128)
-#                for i in range(amb_dict['Wlag'].shape[0]):
-#                    guess_acf[i] = sp.sum(acfinterp*amb_dict['Wlag'][i])
 
-            #    pdb.set_trace()
                 guess_acf = guess_acf*rcs/guess_acf[0].real
 
                 # fit to spectrums
                 spec_interm = scfft.fftshift(scfft.fft(guess_acf,n=npts))
                 maxvec.append(spec_interm.real.max())
-                lines[0]= ax.plot(omeg*1e-3,spec_interm.real/spec_interm.real.max(),label='Input',linewidth=5)[0]
+                lines[0]= ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)[0]
                 labels[0] = 'Input Spectrum With Ambiguity Applied'
                 normset = spec_interm.real.max()/curin.real.max()
-                lines[1]= ax.plot(omeg*1e-3,curin.real/curin.real.max(),label='Input',linewidth=5)[0]
+                lines[1]= ax.plot(omeg*1e-3,curin.real,label='Input',linewidth=5)[0]
                 labels[1] = 'Input Spectrum'
             if acfdisp:
-                lines[2]=ax.plot(omeg*1e-3,specout[iloc,itime].real/specout[iloc,itime].real.max(),label='Output',linewidth=5)[0]
+                lines[2]=ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)[0]
                 labels[2] = 'Estimated Spectrum'
                 maxvec.append(specout[iloc,itime].real.max())
             ax.set_xlabel('f in kHz')
             ax.set_ylabel('Amp')
             ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
-            ax.set_ylim(0.0,1.)#max(maxvec)*1)
+            ax.set_ylim(0.0,max(maxvec)*1)
             ax.set_xlim([-fs*5e-4,fs*5e-4])
             imcount=imcount+1
         figmplf.suptitle(suptitle, fontsize=20)
@@ -303,6 +292,141 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         plt.savefig(fname)
         plt.close(figmplf)
 
+def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,filetemplate='acf',suptitle = 'ACF Comparison'):
+
+    """ This will create a set of images that compare the input ISR acf to the
+    output ISR acfs from the simulator.
+    Inputs
+    coords - An Nx3 numpy array that holds the coordinates of the desired points.
+    times - A numpy list of times in seconds.
+    configfile - The name of the configuration file used.
+    cartcoordsys - (default True)A bool, if true then the coordinates are given in cartisian if
+    false then it is assumed that the coords are given in sphereical coordinates.
+    specsfilename - (default None) The name of the file holding the input spectrum.
+    acfname - (default None) The name of the file holding the estimated ACFs.
+    filetemplate (default 'spec') This is the beginning string used to save the images."""
+#    indisp = specsfilename is not None
+#    acfdisp = acfname is not None
+
+    acfname = os.path.join(maindir,'ACF','00lags.h5')
+    specsfiledir = os.path.join(maindir,'Spectrums')
+    (sensdict,simparams) = readconfigfile(configfile)
+    simdtype = simparams['dtype']
+    npts = simparams['numpoints']*3.0
+    amb_dict = simparams['amb_dict']
+    if sp.ndim(coords)==1:
+        coords = coords[sp.newaxis,:]
+    Nt = len(times)
+    Nloc = coords.shape[0]
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+    pulse = simparams['Pulse']
+    ts = sensdict['t_s']
+    tau1 = sp.arange(pulse.shape[-1])*ts
+    if indisp:
+        dirlist = os.listdir(specsfiledir)
+        timelist = sp.array([int(i.split()[0]) for i in dirlist])
+        for itn,itime in enumerate(times):
+            filear = sp.argwhere(timelist>=itime)
+            if len(filear)==0:
+                filenum = len(timelist)-1
+            else:
+                filenum = filear[0][0]
+            specsfilename = os.path.join(specsfiledir,dirlist[filenum])
+            Ionoin = IonoContainer.readh5(specsfilename)
+            if itn==0:
+                specin = sp.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
+            omeg = Ionoin.Param_Names
+            npts = Ionoin.Param_List.shape[-1]
+
+            for icn, ic in enumerate(coords):
+                if cartcoordsys:
+                    tempin = Ionoin.getclosest(ic,times)[0]
+                else:
+                    tempin = Ionoin.getclosestsphere(ic,times)[0]
+#                if sp.ndim(tempin)==1:
+#                    tempin = tempin[sp.newaxis,:]
+                specin[icn,itn] = tempin[0,:]/npts
+    fs = sensdict['fs']
+    if acfdisp:
+        Ionoacf = IonoContainer.readh5(acfname)
+        ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
+
+        omeg = sp.arange(-sp.ceil((npts+1)/2),sp.floor((npts+1)/2))/ts/npts
+        for icn, ic in enumerate(coords):
+            if cartcoordsys:
+                tempin = Ionoacf.getclosest(ic,times)[0]
+            else:
+                tempin = Ionoacf.getclosestsphere(ic,times)[0]
+            if sp.ndim(tempin)==1:
+                tempin = tempin[sp.newaxis,:]
+            ACFin[icn] = tempin
+
+
+
+    nfig = int(sp.ceil(Nt*Nloc/6.0))
+    imcount = 0
+
+    for i_fig in range(nfig):
+        lines = [None]*6
+        labels = [None]*6
+        (figmplf, axmat) = plt.subplots(2, 3,figsize=(24, 18), facecolor='w')
+        axvec = axmat.flatten()
+        for iax,ax in enumerate(axvec):
+            if imcount>=Nt*Nloc:
+                break
+            iloc = int(sp.floor(imcount/Nt))
+            itime = int(imcount-(iloc*Nt))
+
+            maxvec = []
+            minvec = []
+
+            if indisp:
+                # apply ambiguity funciton to spectrum
+                curin = specin[iloc,itime]
+                (tau,acf) = spect2acf(omeg,curin)
+                acf1 = scfft.ifftshift(acf)[:len(pulse)]
+                rcs=acf1[0].real
+                guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
+                guess_acf = guess_acf*rcs/guess_acf[0].real
+
+                # fit to spectrums
+                maxvec.append(guess_acf.real.max())
+                maxvec.append(guess_acf.imag.max())
+                minvec.append(acf1.real.min())
+                minvec.append(acf1.imag.min())
+                lines[0]= ax.plot(tau1*1e6,guess_acf.real,label='Input',linewidth=5)[0]
+                labels[0] = 'Input ACF With Ambiguity Applied Real'
+                lines[1]= ax.plot(tau1*1e6,guess_acf.imag,label='Input',linewidth=5)[0]
+                labels[1] = 'Input ACF With Ambiguity Applied Imag'
+                lines[2]= ax.plot(tau1*1e6,acf1.real,label='Input',linewidth=5)[0]
+                labels[2] = 'Input ACF real'
+                lines[3]= ax.plot(tau1*1e6,acf1.imag,label='Input',linewidth=5)[0]
+                labels[3] = 'Input ACF Imag'
+            if acfdisp:
+                lines[4]=ax.plot(tau1*1e6,ACFin[iloc,itime].real,label='Output',linewidth=5)[0]
+                labels[4] = 'Estimated ACF Real'
+                lines[5]=ax.plot(tau1*1e6,ACFin[iloc,itime].imag,label='Output',linewidth=5)[0]
+                labels[5] = 'Estimated ACF Imag'
+
+                maxvec.append(ACFin[iloc,itime].real.max())
+                maxvec.append(ACFin[iloc,itime].imag.max())
+                minvec.append(ACFin[iloc,itime].real.min())
+                minvec.append(ACFin[iloc,itime].imag.min())
+            ax.set_xlabel('t in us')
+            ax.set_ylabel('Amp')
+            ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
+            ax.set_ylim(min(minvec),max(maxvec)*1)
+            ax.set_xlim([tau1.min()*1e6,tau1.max()*1e6])
+            imcount=imcount+1
+        figmplf.suptitle(suptitle, fontsize=20)
+        if None in labels:
+            labels.remove(None)
+            lines.remove(None)
+        plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
+        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
+        plt.savefig(fname)
+        plt.close(figmplf)
 
 def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png',n=None):
     fig1 = plt.figure()
@@ -343,6 +467,8 @@ def analysisdump(maindir,configfile,suptitle=None):
 
     #plot spectrums
     filetemplate1 = os.path.join(maindir,'AnalysisPlots','Spec')
+    filetemplate3 = os.path.join(maindir,'AnalysisPlots','ACF')
+
     (sensdict,simparams) = readconfigfile(configfile)
     angles = simparams['angles']
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
@@ -357,9 +483,9 @@ def analysisdump(maindir,configfile,suptitle=None):
     filetemplate2= os.path.join(maindir,'AnalysisPlots','Params')
     if suptitle is None:
         plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
-
-
+        plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3)
         plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2,werrors=True)
     else:
         plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1,suptitle=suptitle)
+        plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3,suptitle=suptitle)
         plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2,suptitle=suptitle,werrors=True)

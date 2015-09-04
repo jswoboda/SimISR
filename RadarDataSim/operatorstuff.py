@@ -6,24 +6,43 @@ Created on Tue Apr 14 11:10:40 2015
 """
 from const.physConstants import v_C_0, v_Boltz
 import scipy as sp
-def makemat(Sphere_Coords,sensdict,simparams):
+
+def makematPA(Sphere_Coords,timein,timeout,sensdict,simparams):
     #
+    fullmat = True
     range_gates = simparams['Rangegates']
+    rng_bin=sensdict['t_s']*v_C_0/1000.0
+    sumrule = simparams['SUMRULE']
+    #
+    minrgbin = -sumrule[0].min()
+    maxrgbin = len(rng_vec)-sumrule[1].max()
+    minrg = minrgbin*rng_bin
+    maxrg = maxrgbin*rng_bin
     angles = simparams['angles']
     Nbeams = len(angles)
     rho = Sphere_Coords[:,0]
     Az = Sphere_Coords[:,1]
     El = Sphere_Coords[:,2]
-    rng_len=sensdict['t_s']*v_C_0/1000.0
+
+    rng_vec2 = simparams['Rangegatesfinal']
+    nrgout = len(rng_vec2)
+
+    Nlocbeg = len(rho)
+    Ntbeg = len(timein)
+    Ntout = len(timeout)
+    if fullmat:
+        outmat= sp.matrix(sp.zeros((Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg)))
+    else:
+        sp.sparse((Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg),dype =sp.float64)
     weights = {ibn:sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
 
     for ibn in range(Nbeams):
         print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
         weight = weights[ibn]
-        for isamp in sp.arange(len(range_gates)):
-            range_g = range_gates[isamp]
+        for isamp in sp.arange(len(rng_vec2)):
+            range_g = rng_vec2[isamp]
             range_m = range_g*1e3
-            rnglims = [range_g-rng_len/2.0,range_g+rng_len/2.0]
+            rnglims = [range_g-minrg,range_g+maxrg]
             rangelog = sp.argwhere((rho>=rnglims[0])&(rho<rnglims[1]))
             cur_pnts = samp_num+isamp
             if rangelog.size==0:
