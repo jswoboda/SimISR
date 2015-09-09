@@ -63,7 +63,8 @@ class Gui():
 
         self.var = StringVar()
         self.var.set("PFISR")
-        self.choices = {"PFISR":os.path.join(curpath,'PFISRbeammap.txt'), "RISR-N":os.path.join(curpath,'RISRNbeammap.txt')}#, "RISR-S":'file3'}
+        self.choices = {"PFISR":os.path.join(curpath,'PFISRbeammap.txt'),
+                        "RISR-N":os.path.join(curpath,'RISRNbeammap.txt')}#, "RISR-S":'file3'}
         self.option = OptionMenu(self.frame1, self.var, *self.choices)
         self.option.grid(row=1,column=0,sticky='w')
         self.lines = np.loadtxt(self.choices[self.var.get()])
@@ -97,13 +98,15 @@ class Gui():
         self.beamtext = Text(self.frame2,yscrollcommand=self.scroll.set)
         self.beamtext.config(width=30,state=DISABLED)
         self.beamtext.grid(row = 1,column = 0,columnspan=3)
-
+        self.beamlines = []
         self.scroll.config(command=self.beamtext.yview)
 
     def Changefile(self,*args):
         """ This function will change the files to a different radar system."""
         filename= self.choices[self.var.get()]
-        self.beamtext.delete(1.0,END)
+        self.beamtext.config(state=NORMAL)
+        self.beamtext.delete(1.0,'end')
+        self.beamtext.config(state=DISABLED)
         self.readfile.set(filename)
         self.lines = np.loadtxt(filename)
         self.output=[]
@@ -132,6 +135,20 @@ class Gui():
             self.ovaly[ibeam] = c_coords[1]*div/10+off_y
             self.beamhandles.append(self.canv.create_oval(points, fill='blue',tags='beams'))
 
+    def addbeamlist(self,beamlist):
+        div =self.div
+        off_x = self.off_x
+        off_y = self.off_y
+        for ibeam in beamlist:
+            c_coords = rect(90-ibeam[1],ibeam[0]-90)
+            x = c_coords[0]*div/10+off_x
+            y = c_coords[1]*div/10+off_y
+
+            dist = (self.ovalx-x)**2+(self.ovaly-y)**2
+            linesit = np.argmin(dist)
+            closest = self.lines[linesit]
+            if closest[0] not in self.output:
+                self.__addbeam__(closest,linesit)
     def Drawlines(self):
         """This function will draw all of the lines on the canvas for the """
         off_x = self.off_x
@@ -168,18 +185,47 @@ class Gui():
         linesit = np.argmin(dist)
         closest = self.lines[linesit]
         if closest[0] not in self.output:
-            textheader = 'Closest beam is # %s, Az: %s, El: %s' %(int(closest[0]),closest[1],closest[2])
-            self.canv.itemconfig(self.canv.find_withtag('header'),text=textheader)
-            self.canv.itemconfig(self.beamhandles[linesit], fill='orange')
-
-            self.output.append(closest[0])
-            self.canv.update()
-
-            self.beamtext.config(state=NORMAL)
-            self.beamtext.insert(INSERT,"{:>9} {:>9} {:>9}\n".format(closest[0],closest[1],closest[2]))
-            self.beamtext.config(state=DISABLED)
+            self.__addbeam__(closest,linesit)
         else:
             print("Repeated beam")
+    def onCanvasRightClick(self,event):
+        """This will undo the choice of the nearest highlighted beam."""
+        x = self.canv.canvasx(event.x)
+        y = self.canv.canvasy(event.y)
+        dist = (self.ovalx-x)**2+(self.ovaly-y)**2
+        linesit = np.argmin(dist)
+        closest = self.lines[linesit]
+        if (closest[0] in self.output) and (dist[linesit]<self.div/5.0):
+            self.__removebeam__(closest,linesit)
+
+    def __removebeam__(self,closest,linesit):
+        self.canv.itemconfig(self.beamhandles[linesit], fill='blue')
+        self.output.remove(closest[0])
+        beamstr = "{:>9} {:>9} {:>9}\n".format(closest[0],closest[1],closest[2])
+        self.beamlines.remove(beamstr)
+        self.beamtext.config(state=NORMAL)
+        self.beamtext.delete(1.0,'end')
+        for ibeam in self.beamlines:
+            self.beamtext.insert(INSERT,ibeam)
+
+        self.beamtext.config(state=DISABLED)
+        self.canv.update()
+
+
+
+    def __addbeam__(self,closest,linesit):
+        textheader = 'Closest beam is # %s, Az: %s, El: %s' %(int(closest[0]),closest[1],closest[2])
+        self.canv.itemconfig(self.canv.find_withtag('header'),text=textheader)
+        self.canv.itemconfig(self.beamhandles[linesit], fill='orange')
+
+        self.output.append(closest[0])
+        self.canv.update()
+
+        beamstr = "{:>9} {:>9} {:>9}\n".format(closest[0],closest[1],closest[2])
+        self.beamtext.config(state=NORMAL)
+        self.beamtext.insert(INSERT,beamstr)
+        self.beamtext.config(state=DISABLED)
+        self.beamlines.append(beamstr)
 
     def buttonClick(self):
         """This will output the beam list, create an image of the beams and close the program. """
@@ -191,17 +237,7 @@ class Gui():
             f.write("%s\n" % (int(beam)))
         sys.exit()
 
-    def onCanvasRightClick(self,event):
-        """This will undo the choice of the nearest highlighted beam."""
-        x = self.canv.canvasx(event.x)
-        y = self.canv.canvasy(event.y)
-        dist = (self.ovalx-x)**2+(self.ovaly-y)**2
-        linesit = np.argmin(dist)
-        closest = self.lines[linesit]
-        if (closest[0] in self.output) and (dist[linesit]<self.div/5.0):
-            self.canv.itemconfig(self.beamhandles[linesit], fill='blue')
-            self.output.remove(closest[0])
-            self.canv.update()
+
 
 def run_beam_gui():
     """Used to run the GUI as a function"""

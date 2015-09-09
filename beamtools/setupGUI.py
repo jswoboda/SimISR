@@ -9,6 +9,7 @@ file, change the settings and then save out a new version.
 from Tkinter import *
 import tkFileDialog
 import pickBeams as pb
+import pdb
 import scipy as sp
 from RadarDataSim.utilFunctions import makeconfigfile,readconfigfile
 
@@ -157,6 +158,7 @@ class App():
                            'numpoints':self.numpoints,
                            'startfile':self.startfile}
     def set_defaults(self,*args):
+        """Set the default files for the data."""
         self.ipp.delete(0, 'end')
         self.ipp.insert(0,'8.7e-3')
 
@@ -229,7 +231,8 @@ class App():
         """Imports parameters from old files"""
         fn = tkFileDialog.askopenfilename(title="Load File",filetypes=[('INI','.ini'),('PICKLE','.pickle')])
         sensdict,simparams = readconfigfile(fn)
-
+        rdrnames = {'PFISR':'PFISR','pfisr':'PFISR','risr':'RISR-N','RISR-N':'RISR-N','RISR':'RISR-N'}
+        currdr = rdrnames[sensdict['Name']]
         for i in simparams:
             try:
                 if i=='RangeLims':
@@ -262,20 +265,19 @@ class App():
                 elif i in self.paramdic:
                     self.paramdic[i].set(simparams[i])
 
-        self.pickbeams.var.set(sensdict['Name'])
+        self.pickbeams.var.set(currdr)
         self.pickbeams.Changefile()
-        kdtree=sp.spatial.cKDTree(simparams['angles'])
-        dists, inds = kdtree.query(self.pickbeams.lines[:,1:3], distance_upper_bound=1e-5)
-        bmask = (dists < .001)
-        ovals = sp.array(self.pickbeams.beamhandles)
-        self.pickbeams.beamtext.config(state=NORMAL)
-        self.pickbeams.beamtext.delete(1.0,END)
-        for a,b in zip(ovals[bmask],self.pickbeams.lines[bmask]):
-            self.pickbeams.canv.itemconfig(a,fill='orange')
-            self.pickbeams.beamtext.insert(INSERT,"{:>9} {:>9} {:>9}\n".format(b[0],b[1],b[2]))
-        self.pickbeams.beamtext.config(state=DISABLED)
-        self.pickbeams.canv.update()
-        self.pickbeams.output=self.pickbeams.lines[:,0][bmask]
+        self.pickbeams.addbeamlist(simparams['angles'])
+#        print(simparams['angles'])
+#        kdtree=sp.spatial.cKDTree(simparams['angles'])
+#        dists, inds = kdtree.query(self.pickbeams.lines[:,1:3], distance_upper_bound=1e-5)
+#        bmask = (dists < .001)
+#        ovals = sp.array(self.pickbeams.beamhandles)
+#        for a,b in zip(ovals[bmask],self.pickbeams.lines[bmask]):
+#            print(a)
+#            print(b)
+#            self.pickbeams.__addbeam__(b,a)
+
 
 
 def runsetupgui():

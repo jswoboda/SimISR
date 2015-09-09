@@ -42,7 +42,7 @@ def configsetup(testpath):
                    'NNs': NNs,# number of noise samples per pulse
                    'NNp':NNp, # number of noise pulses
                    'dtype':sp.complex128, #type of numbers used for simulation
-                   'ambupsamp':30, # up sampling factor for ambiguity function
+                   'ambupsamp':1, # up sampling factor for ambiguity function
                    'species':['O+','e-'], # type of ion species used in simulation
                    'numpoints':128, # number of points for each spectrum
                    'startfile':os.path.join(testpath,'startdata.h5')}# file used for starting points
@@ -88,7 +88,7 @@ def main():
     ionospheric parameters based off of a Chapman function. Then it will create configuration
     and start files followed by running the simulation."""
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Testdata')
+    testpath = os.path.join(os.path.split(curpath)[0],'Testdata','Lone_Pulse')
     origparamsdir = os.path.join(testpath,'Origparams')
     if not os.path.exists(testpath):
         os.mkdir(testpath)

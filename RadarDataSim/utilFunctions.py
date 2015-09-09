@@ -387,6 +387,7 @@ def makeconfigfile(fname,beamlist,radarname,simparams):
         config.set('section 1','radarname',radarname)
 
         config.add_section('simparams')
+        config.add_section('simparamsnames')
         for param in simparams:
             if isinstance(simparams[param],list):
                 data = ""
@@ -396,7 +397,7 @@ def makeconfigfile(fname,beamlist,radarname,simparams):
                 config.set('simparams',param,data)
             else:
                 config.set('simparams',param,simparams[param])
-
+            config.set('simparamsnames',param,param)
         config.write(cfgfile)
         cfgfile.close()
     else:
@@ -431,7 +432,8 @@ def readconfigfile(fname):
 
         simparams = {}
         for param in config.options('simparams'):
-            simparams[param] = config.get('simparams',param)
+            rname  = config.get('simparamsnames',param)
+            simparams[rname] = config.get('simparams',param)
 
         for param in simparams:
             if simparams[param]=="<type 'numpy.complex128'>":
@@ -457,11 +459,12 @@ def readconfigfile(fname):
         sensdict['t_s'] = simparams['t_s']
         sensdict['fs'] =1.0/simparams['t_s']
         sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
-
+#    pdb.set_trace()
     time_lim = simparams['TimeLim']
     (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
     simparams['Pulse'] = pulse
-    simparams['amb_dict'] = make_amb(sensdict['fs'],simparams['ambupsamp'],
+#    pdb.set_trace()
+    simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
         sensdict['t_s']*len(pulse),len(pulse),simparams['numpoints'])
     simparams['angles']=angles
     rng_lims = simparams['RangeLims']
