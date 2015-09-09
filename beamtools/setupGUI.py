@@ -156,14 +156,35 @@ class App():
                            'species':self.species,
                            'numpoints':self.numpoints,
                            'startfile':self.startfile}
-    def set_defaults(self):
+    def set_defaults(self,*args):
+        self.ipp.delete(0, 'end')
         self.ipp.insert(0,'8.7e-3')
+
+        self.tint.delete(0,'end')
         self.tint.insert(0,'180')
+        self.fitinter.delete(0,'end')
         self.fitinter.insert(0,'180')
-        self.species.insert(0,'0+ e-')
+
+        self.species.delete(0, 'end')
+        self.species.insert(0,'O+ e-')
+        self.numpoints.delete(0, 'end')
         self.numpoints.insert(0,'128')
+        self.ambupsamp.delete(0, 'end')
         self.ambupsamp.insert(0,'1')
+        self.timelim.delete(0, 'end')
         self.timelim.insert(0,'540')
+        # noise
+        self.nns.delete(0,'end')
+        self.nns.insert(0,'28')
+        self.nnp.delete(0,'end')
+        self.nnp.insert(0,'100')
+        # For different pulse types
+        self.rangelimlow.delete(0, 'end')
+        self.rangelimhigh.delete(0, 'end')
+        self.pulselength.delete(0, 'end')
+        self.t_s.delete(0, 'end')
+
+
         if self.pulsetype.get().lower()=='long':
             self.rangelimlow.insert(0,'150')
             self.rangelimhigh.insert(0,'500')
@@ -176,6 +197,7 @@ class App():
             self.pulselength.insert(0,'130')
 
     def savefile(self):
+        """Saves the parameters out"""
         fn = tkFileDialog.asksaveasfilename(title="Save File",filetypes=[('INI','.ini'),('PICKLE','.pickle')])
         blist = self.pickbeams.output
         radarname = self.pickbeams.var.get()
@@ -204,6 +226,7 @@ class App():
 
 
     def loadfile(self):
+        """Imports parameters from old files"""
         fn = tkFileDialog.askopenfilename(title="Load File",filetypes=[('INI','.ini'),('PICKLE','.pickle')])
         sensdict,simparams = readconfigfile(fn)
 
