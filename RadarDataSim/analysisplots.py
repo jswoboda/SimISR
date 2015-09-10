@@ -271,7 +271,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
                 lines[0]= ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)[0]
                 labels[0] = 'Input Spectrum With Ambiguity Applied'
                 normset = spec_interm.real.max()/curin.real.max()
-                lines[1]= ax.plot(omeg*1e-3,curin.real*normset/curin.real.max(),label='Input',linewidth=5)[0]
+                lines[1]= ax.plot(omeg*1e-3,curin.real*normset,label='Input',linewidth=5)[0]
                 labels[1] = 'Input Spectrum'
             if acfdisp:
                 lines[2]=ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)[0]
