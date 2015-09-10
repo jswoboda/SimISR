@@ -202,6 +202,7 @@ class App():
         """Saves the parameters out"""
         fn = tkFileDialog.asksaveasfilename(title="Save File",filetypes=[('INI','.ini'),('PICKLE','.pickle')])
         blist = self.pickbeams.output
+        self.pickbeams.buttonClick(fn)
         radarname = self.pickbeams.var.get()
         posspec =  ['N2+', 'N+', 'O+', 'NO+', 'H+', 'O2+','e-' ]
         specieslist = self.species.get().lower().split()
@@ -268,15 +269,7 @@ class App():
         self.pickbeams.var.set(currdr)
         self.pickbeams.Changefile()
         self.pickbeams.addbeamlist(simparams['angles'])
-#        print(simparams['angles'])
-#        kdtree=sp.spatial.cKDTree(simparams['angles'])
-#        dists, inds = kdtree.query(self.pickbeams.lines[:,1:3], distance_upper_bound=1e-5)
-#        bmask = (dists < .001)
-#        ovals = sp.array(self.pickbeams.beamhandles)
-#        for a,b in zip(ovals[bmask],self.pickbeams.lines[bmask]):
-#            print(a)
-#            print(b)
-#            self.pickbeams.__addbeam__(b,a)
+
 
 
 

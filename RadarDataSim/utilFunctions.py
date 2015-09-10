@@ -5,6 +5,7 @@ Created on Tue Jul 22 16:18:21 2014
 @author: Bodangles
 """
 import os
+import warnings
 import pickle
 import ConfigParser
 import tables
@@ -78,10 +79,13 @@ def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
 
     # make matrix to take
 #    imat = sp.eye(nspec)
-    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
+#    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
 #    tauint = Delay
 #    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
 #    lagmat = sp.dot(Wtt.sum(axis=2),interpmat)
+
+    # triangle window
+    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
     amb1d = plen-tau
     amb1d[amb1d<0]=0.
     amb1d[tau<0]=0.
@@ -477,6 +481,13 @@ def readconfigfile(fname):
     maxrg = len(rng_gates)-sumrule[1].max()
 
     simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
+    if 'startfile' in simparams.keys() and simparams['Pulsetype'].lower()!='barker':
+        stext = os.path.isfile(simparams['startfile'])
+        if not stext:
+            warnings.warn('The given start file does not exist',UserWarning)
+
+    elif simparams['Pulsetype'].lower()!='barker':
+        warnings.warn('No start file given',UserWarning)
     return(sensdict,simparams)
 
 def makepulse(ptype,plen,ts):
@@ -505,5 +516,6 @@ def makesumrule(ptype,plen,ts):
         arback = -sp.ceil(sp.arange(0,nlags/2.0,0.5)).astype(int)
         arforward = sp.floor(sp.arange(0,nlags/2.0,0.5)).astype(int)
         sumrule = sp.array([arback,arforward])
-
+    elif ptype.lower()=='barker':
+        sumrule = sp.array([[0],[0]])
     return sumrule

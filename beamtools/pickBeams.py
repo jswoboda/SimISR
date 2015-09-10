@@ -10,6 +10,7 @@ Updated by Greg Starr so it can be used as part of a larger GUI
 """
 
 from Tkinter import *
+import tkFileDialog
 import os, inspect
 import numpy as np
 import matplotlib.pyplot as plt
@@ -37,6 +38,7 @@ class Gui():
         curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
         # set the root
         self.parent = parent
+        self.subgui = subgui
         # set up frames for list
         self.frame1 = Frame(self.parent)
         self.frame1.grid(row=0,column=0)
@@ -47,14 +49,26 @@ class Gui():
         self.beamhandle = None
         if subgui:
             self.sizecanv = [500,500]
+            self.beamcodeent= Entry(self.frame1)
+            self.beamcodeent.grid(row=1,column=1)
+            self.beamcodeentlabel = Label(self.frame1,text="Enter Beamcodes")
+            self.beamcodeentlabel.grid(row=1)
+            self.beambutt = Button(self.frame1, text="...", command=self.beambuttonClick)
+            self.beambutt.grid(row=1,column=2,sticky='w')
+            canvrow = 2
         else:
             self.sizecanv = [1000,1000]
-            self.butt = Button(self.frame1, text="Finished", command=self.buttonClick)
-            self.butt.grid(row=1,column=1,sticky='w')
             self.leb = Label(self.frame1, text="Beam Selector",font=("Helvetica", 16))
             self.leb.grid(row=0, sticky=W+E+N+S,columnspan=2)
-
-
+            self.butt = Button(self.frame1, text="Finished", command=self.buttonClick)
+            self.butt.grid(row=1,column=1,sticky='w')
+            self.beamcodeent= Entry(self.frame1)
+            self.beamcodeent.grid(row=2,column=1,sticky='w')
+            self.beamcodeentlabel = Label(self.frame1,text="Enter Beamcodes")
+            self.beamcodeentlabel.grid(row=2,column = 0)
+            self.beambutt = Button(self.frame1, text="...", command=self.beambuttonClick)
+            self.beambutt.grid(row=2,column=2,sticky='w')
+            canvrow = 3
         self.off_x = self.sizecanv[0]/2
         self.off_y = self.sizecanv[1]/2
         self.div = 75.0*self.sizecanv[0]/1000.0
@@ -74,7 +88,7 @@ class Gui():
 
         # set up the canvas
         self.canv = Canvas(self.frame1 , width=self.sizecanv[0], height=self.sizecanv[1],background='white')
-        self.canv.grid(row=2,column=0,columnspan=2)
+        self.canv.grid(row=canvrow,column=0,columnspan=2)
 
         self.Drawlines()
         self.Drawbeams()
@@ -136,6 +150,7 @@ class Gui():
             self.beamhandles.append(self.canv.create_oval(points, fill='blue',tags='beams'))
 
     def addbeamlist(self,beamlist):
+        """ """
         div =self.div
         off_x = self.off_x
         off_y = self.off_y
@@ -147,6 +162,19 @@ class Gui():
             dist = (self.ovalx-x)**2+(self.ovaly-y)**2
             linesit = np.argmin(dist)
             closest = self.lines[linesit]
+            if closest[0] not in self.output:
+                self.__addbeam__(closest,linesit)
+    def addbeamlistbco(self,bcolist):
+        allbco = self.lines[:,0]
+        allbco = np.array([int(i) for i in allbco])
+
+        for ibco in bcolist:
+            ibco = int(ibco)
+            linesit =np.flatnonzero(allbco==ibco)
+            if len(linesit)==0:
+                continue
+            linesit = linesit[0]
+            closest= self.lines[linesit]
             if closest[0] not in self.output:
                 self.__addbeam__(closest,linesit)
     def Drawlines(self):
@@ -212,8 +240,8 @@ class Gui():
         self.canv.update()
 
 
-
     def __addbeam__(self,closest,linesit):
+        """This will add a beam"""
         textheader = 'Closest beam is # %s, Az: %s, El: %s' %(int(closest[0]),closest[1],closest[2])
         self.canv.itemconfig(self.canv.find_withtag('header'),text=textheader)
         self.canv.itemconfig(self.beamhandles[linesit], fill='orange')
@@ -226,18 +254,40 @@ class Gui():
         self.beamtext.insert(INSERT,beamstr)
         self.beamtext.config(state=DISABLED)
         self.beamlines.append(beamstr)
+        bcolist = self.beamcodeent.get().split()
+        bcolist = [int(i.strip(',')) for i in bcolist]
+        cbco = int(closest[0])
+        if cbco not in bcolist:
+            bcolist.append(cbco)
+            bcoliststr = [str(ib) for ib in bcolist]
+            bcostr = ' '.join(bcoliststr)
+            self.beamcodeent.delete(0,'end')
+            self.beamcodeent.insert(0,bcostr)
 
-    def buttonClick(self):
+
+
+    def buttonClick(self,fn=None):
         """This will output the beam list, create an image of the beams and close the program. """
+        if fn is None:
+            fn = tkFileDialog.asksaveasfilename(title="save Beam Codes and Image",filetypes=[('TXT','.txt')])
+        fnbase = ''.join(os.path.splitext(fn)[:-1])
         allbeam = BeamSelector(self.lines)
-        fig = allbeam.plotbeams(self.output,True,'beampic.png',"Chosenbeams")
+        fig = allbeam.plotbeams(self.output,True,fnbase+'.png',"Chosenbeams")
         plt.close(fig)
-        f = open('SelectedBeamCodes.txt', 'w')
+        f = open(fnbase+'.txt', 'w')
         for beam in self.output:
             f.write("%s\n" % (int(beam)))
-        sys.exit()
+        if not self.subgui:
+            sys.exit()
 
-
+    def beambuttonClick(self):
+        fn = tkFileDialog.askopenfilename(title="Load Beam Codes",filetypes=[('TXT','.txt')])
+        bcolist = np.loadtxt(fn)
+        self.addbeamlistbco(bcolist)
+    def readbcobar(self):
+        bcolist = self.beamcodeent.get().split()
+        bcolist = [int(i.strip(',')) for i in bcolist]
+        self.addbeamlistbco(bcolist)
 
 def run_beam_gui():
     """Used to run the GUI as a function"""
