@@ -286,6 +286,7 @@ class RadarDataFile(object):
         beamn = sp.hstack(beamn_list).astype(int)
         ptimevec = sp.hstack(time_list).astype(int)
         file_loc = sp.hstack(file_loclist).astype(int)
+        firstfile = True
         # run the time loop
         print("Forming ACF estimates")
         for itn,it in enumerate(timevec):
@@ -326,8 +327,9 @@ class RadarDataFile(object):
                 h5file=tables.openFile(ifile)
                 file_arlocs = sp.where(curfileloc==ifn)[0]
                 curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)[curfileitvec].copy()
-                if ifn==0:
+                if firstfile:
                     specsused = h5file.get_node('/SpecsUsed').read().astype(simdtype)
+                    firstfile=False
                 else:
                     specsusedtmp = h5file.get_node('/SpecsUsed').read().astype(simdtype)
                     specsused = sp.concatenate((specsused,specsusedtmp),axis=0)

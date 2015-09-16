@@ -42,8 +42,8 @@ def makespectrums(basedir,configfile,remakealldata):
         print('Processing file {} starting at {}\n'.format(os.path.split(curfile)[1]
             ,datetime.now()))
         curiono = IonoContainer.readh5(curfile)
-        if curiono.Time_Vector[0]==1e-6:
-            curiono.Time_Vector[0] = 0.0
+        if curiono.Time_Vector[0,0]==1e-6:
+            curiono.Time_Vector[0,0] = 0.0
 #        curiono.coordreduce(coordlims)
 #        curiono.saveh5(os.path.join(inputdir,inum+' red.h5'))
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake,sensdict,
