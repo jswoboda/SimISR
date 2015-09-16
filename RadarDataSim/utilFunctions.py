@@ -84,7 +84,7 @@ def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
 #    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
 #    lagmat = sp.dot(Wtt.sum(axis=2),interpmat)
 
-    # triangle window
+#    # triangle window
     tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
     amb1d = plen-tau
     amb1d[amb1d<0]=0.
@@ -414,7 +414,9 @@ def readconfigfile(fname):
     Outputs
         sensdict - A dictionary that holds the sensor parameters.
         simparams - A dictionary that holds the simulation parameters."""
+
     ftype = os.path.splitext(fname)[-1]
+    curpath = os.path.split(fname)[0]
     if ftype=='.pickle':
         pickleFile = open(fname, 'rb')
         dictlist = pickle.load(pickleFile)
@@ -482,6 +484,10 @@ def readconfigfile(fname):
 
     simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
     if 'startfile' in simparams.keys() and simparams['Pulsetype'].lower()!='barker':
+        relpath = simparams['startfile'][0] !=os.path.sep
+        if relpath:
+            fullfilepath = os.path.join(curpath,simparams['startfile'])
+            simparams['startfile'] = fullfilepath
         stext = os.path.isfile(simparams['startfile'])
         if not stext:
             warnings.warn('The given start file does not exist',UserWarning)
