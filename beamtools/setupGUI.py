@@ -231,44 +231,47 @@ class App():
     def loadfile(self):
         """Imports parameters from old files"""
         fn = tkFileDialog.askopenfilename(title="Load File",filetypes=[('INI','.ini'),('PICKLE','.pickle')])
-        sensdict,simparams = readconfigfile(fn)
-        rdrnames = {'PFISR':'PFISR','pfisr':'PFISR','risr':'RISR-N','RISR-N':'RISR-N','RISR':'RISR-N'}
-        currdr = rdrnames[sensdict['Name']]
-        for i in simparams:
-            try:
-                if i=='RangeLims':
-                    self.paramdic[i][0].delete(0,END)
-                    self.paramdic[i][1].delete(0,END)
-                    self.paramdic[i][0].insert(0,str(simparams[i][0]))
-                    self.paramdic[i][1].insert(0,str(simparams[i][1]))
-                elif i=='species':
-                    self.paramdic[i].delete(0,END)
-                    string=''
-                    if isinstance(simparams[i],list):
-                        for a in simparams[i]:
-                            string+=a
-                            string+=" "
+        try:
+            sensdict,simparams = readconfigfile(fn)
+            rdrnames = {'PFISR':'PFISR','pfisr':'PFISR','risr':'RISR-N','RISR-N':'RISR-N','RISR':'RISR-N'}
+            currdr = rdrnames[sensdict['Name']]
+            for i in simparams:
+                try:
+                    if i=='RangeLims':
+                        self.paramdic[i][0].delete(0,END)
+                        self.paramdic[i][1].delete(0,END)
+                        self.paramdic[i][0].insert(0,str(simparams[i][0]))
+                        self.paramdic[i][1].insert(0,str(simparams[i][1]))
+                    elif i=='species':
+                        self.paramdic[i].delete(0,END)
+                        string=''
+                        if isinstance(simparams[i],list):
+                            for a in simparams[i]:
+                                string+=a
+                                string+=" "
+                        else:
+                            string = simparams[i]
+                        self.paramdic[i].insert(0,string)
+                    elif i=='Pulselength' or i=='t_s':
+                        self.paramdic[i].delete(0,END)
+                        num = float(simparams[i])*10**6
+                        self.paramdic[i].insert(0,str(num))
                     else:
-                        string = simparams[i]
-                    self.paramdic[i].insert(0,string)
-                elif i=='Pulselength' or i=='t_s':
-                    self.paramdic[i].delete(0,END)
-                    num = float(simparams[i])*10**6
-                    self.paramdic[i].insert(0,str(num))
-                else:
-                    self.paramdic[i].delete(0,END)
-                    self.paramdic[i].insert(0,str(simparams[i]))
-            except:
-                if simparams[i]==sp.complex128:
-                    self.paramdic[i].set('complex128')
-                elif simparams[i]==sp.complex64:
-                    self.paramdic[i].set('complex64')
-                elif i in self.paramdic:
-                    self.paramdic[i].set(simparams[i])
+                        self.paramdic[i].delete(0,END)
+                        self.paramdic[i].insert(0,str(simparams[i]))
+                except:
+                    if simparams[i]==sp.complex128:
+                        self.paramdic[i].set('complex128')
+                    elif simparams[i]==sp.complex64:
+                        self.paramdic[i].set('complex64')
+                    elif i in self.paramdic:
+                        self.paramdic[i].set(simparams[i])
 
-        self.pickbeams.var.set(currdr)
-        self.pickbeams.Changefile()
-        self.pickbeams.addbeamlist(simparams['angles'])
+            self.pickbeams.var.set(currdr)
+            self.pickbeams.Changefile()
+            self.pickbeams.addbeamlist(simparams['angles'])
+        except:
+            print "Failed to import file."
 
 
 

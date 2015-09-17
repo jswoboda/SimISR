@@ -52,10 +52,12 @@ class Gui():
             self.beamcodeent= Entry(self.frame1)
             self.beamcodeent.grid(row=1,column=1)
             self.beamcodeentlabel = Label(self.frame1,text="Enter Beamcodes")
-            self.beamcodeentlabel.grid(row=1)
-            self.beambutt = Button(self.frame1, text="...", command=self.beambuttonClick)
-            self.beambutt.grid(row=1,column=2,sticky='w')
-            canvrow = 2
+            self.beamcodeentlabel.grid(row=1,column=0,sticky='e')
+            self.beambuttex = Button(self.frame1, text="Read", command=self.readbcobar)
+            self.beambuttex.grid(row=1,column=2,sticky='w')
+            self.beambutt = Button(self.frame1, text="Import", command=self.beambuttonClick)
+            self.beambutt.grid(row=2,column=2,sticky='w')
+            canvrow = 3
         else:
             self.sizecanv = [1000,1000]
             self.leb = Label(self.frame1, text="Beam Selector",font=("Helvetica", 16))
@@ -65,10 +67,13 @@ class Gui():
             self.beamcodeent= Entry(self.frame1)
             self.beamcodeent.grid(row=2,column=1,sticky='w')
             self.beamcodeentlabel = Label(self.frame1,text="Enter Beamcodes")
-            self.beamcodeentlabel.grid(row=2,column = 0)
-            self.beambutt = Button(self.frame1, text="...", command=self.beambuttonClick)
-            self.beambutt.grid(row=2,column=2,sticky='w')
-            canvrow = 3
+            self.beamcodeentlabel.grid(row=2,column = 0,sticky='e')
+            self.beambuttex = Button(self.frame1, text="Read", command=self.readbcobar)
+            self.beambuttex.grid(row=2,column=2,sticky='w')
+            self.beambutt = Button(self.frame1, text="Import", command=self.beambuttonClick)
+            self.beambutt.grid(row=3,column=2,sticky='w')
+
+            canvrow = 4
         self.off_x = self.sizecanv[0]/2
         self.off_y = self.sizecanv[1]/2
         self.div = 75.0*self.sizecanv[0]/1000.0
@@ -284,6 +289,7 @@ class Gui():
         fn = tkFileDialog.askopenfilename(title="Load Beam Codes",filetypes=[('TXT','.txt')])
         bcolist = np.loadtxt(fn)
         self.addbeamlistbco(bcolist)
+
     def readbcobar(self):
         bcolist = self.beamcodeent.get().split()
         bcolist = [int(i.strip(',')) for i in bcolist]
