@@ -183,8 +183,6 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
     specsfilename - (default None) The name of the file holding the input spectrum.
     acfname - (default None) The name of the file holding the estimated ACFs.
     filetemplate (default 'spec') This is the beginning string used to save the images."""
-#    indisp = specsfilename is not None
-#    acfdisp = acfname is not None
 
     acfname = os.path.join(maindir,'ACF','00lags.h5')
     specsfiledir = os.path.join(maindir,'Spectrums')
@@ -220,8 +218,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
                     tempin = Ionoin.getclosest(ic,times)[0]
                 else:
                     tempin = Ionoin.getclosestsphere(ic,times)[0]
-#                if sp.ndim(tempin)==1:
-#                    tempin = tempin[sp.newaxis,:]
+
                 specin[icn,itn] = tempin[0,:]/npts/npts
     fs = sensdict['fs']
     if acfdisp:

@@ -42,8 +42,8 @@ def makespectrums(basedir,configfile,remakealldata):
         print('Processing file {} starting at {}\n'.format(os.path.split(curfile)[1]
             ,datetime.now()))
         curiono = IonoContainer.readh5(curfile)
-        if curiono.Time_Vector[0,0]==1e-6:
-            curiono.Time_Vector[0,0] = 0.0
+#        if curiono.Time_Vector[0,0]==1e-6:
+#            curiono.Time_Vector[0,0] = 0.0
 #        curiono.coordreduce(coordlims)
 #        curiono.saveh5(os.path.join(inputdir,inum+' red.h5'))
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake,sensdict,
@@ -72,8 +72,9 @@ def makeradardata(basedir,configfile,remakealldata):
         outlist2 = None
 
     rdata = RadarDataFile(Ionodict,configfile,outputdir,outfilelist=outlist2)
-    ionoout = rdata.processdataiono()
+    (ionoout,ionosig) = rdata.processdataiono()
     ionoout.saveh5(os.path.join(outputdir2,'00lags.h5'))
+    ionosig.saveh5(os.path.join(outputdir2,'00sigs.h5'))
     return ()
 #%% Fitt data
 def fitdata(basedir,configfile,optintputs):
@@ -82,9 +83,11 @@ def fitdata(basedir,configfile,optintputs):
     outputdir = os.path.join(basedir,dirio[1])
 
     dirlist = glob.glob(os.path.join(inputdir,'*lags.h5'))
+    dirlistsig = glob.glob(os.path.join(inputdir,'*sigs.h5'))
 
     Ionoin=IonoContainer.readh5(dirlist[0])
-    fitterone = Fitterionoconainer(Ionoin,configfile)
+    Ionoinsig=IonoContainer.readh5(dirlistsig[0])
+    fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
     (fitteddata,fittederror) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']])
 
 
@@ -117,7 +120,7 @@ def fitdata(basedir,configfile,optintputs):
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)
-        paramnames = paramnames+['Ne','Te','Vi','Ni','Ti']
+        paramnames = paramnames+['Ne','Te','Vi','Ni','Ti','Nepow']
         paramnamese = ['n'+ip for ip in paramnames]
         paranamsf = sp.array(paramnames+paramnamese)
 

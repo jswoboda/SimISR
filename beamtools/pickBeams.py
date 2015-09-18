@@ -283,7 +283,8 @@ class Gui():
         for beam in self.output:
             f.write("%s\n" % (int(beam)))
         if not self.subgui:
-            sys.exit()
+            #sys.exit()
+            self.parent.destroy()
 
     def beambuttonClick(self):
         fn = tkFileDialog.askopenfilename(title="Load Beam Codes",filetypes=[('TXT','.txt')])

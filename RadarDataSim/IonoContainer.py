@@ -531,7 +531,7 @@ def pathparts(path):
             return components
         components.append(tail)
 
-def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times = [0.0]):
+def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times =sp.array([[0,1e6]])):
     """ This function will create a test ionoclass with an electron density that
     follows a chapman function"""
     if coords is None:
@@ -566,7 +566,7 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coo
     vel = sp.zeros((Nlocs,Ntime,ndims))
 
     if testv:
-        vel[:,:,2] = sp.repmat(zzf[:,sp.newaxis],Ntime,axis=1)/5.0
+        vel[:,:,2] = sp.repeat(zzf[:,sp.newaxis],Ntime,axis=1)/5.0
     species=['O+','e-']
     # put the parameters in order
     params = sp.zeros((Ne_profile.size,len(times),2,2))

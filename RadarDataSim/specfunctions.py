@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 """
-Created on Mon Mar 16 19:36:27 2015
-
+specfunctions.py
+This module holds the functions that deal with the spectrum formation functions like
+fitting and making spectrums.
 @author: John Swoboda
 """
 import scipy as sp
 import pdb
-import scipy.interpolate as spinterp
 import scipy.fftpack as scfft
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 from utilFunctions import  spect2acf
 
 
 def ISRSspecmake(ionocont,sensdict,npts):
+    """ """
     Vi = ionocont.getDoppler()
     specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
 
@@ -46,11 +47,15 @@ def ISRSspecmake(ionocont,sensdict,npts):
     return (omeg,outspecs,npts)
 
 def ISRSfitfunction(x,y_acf,sensdict,simparams):
-
+    """ """
     npts = simparams['numpoints']
     specs = simparams['species']
     amb_dict = simparams['amb_dict']
     numtype = simparams['dtype']
+    if 'FitType' in simparams.keys():
+        fitspec = simparams['FitType']
+    else:
+        fitspec ='Spectrum'
     nspecs = len(specs)
     datablock = sp.zeros((nspecs,2),dtype=x.dtype)
     datablock[:,0] = x[sp.arange(0,nspecs*2,2)]
@@ -81,12 +86,15 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
     # apply ambiguity function
 
     guess_acf = guess_acf*rcs/guess_acf[0].real
-    # fit to spectrums
-    spec_interm = scfft.fft(guess_acf,n=len(cur_spec))
-    spec_final = spec_interm.real
-    y_interm = scfft.fft(y_acf,n=len(spec_final))
-    y = y_interm.real
-    yout = (y-spec_final)
+    if fitspec.lower()=='spectrum':
+        # fit to spectrums
+        spec_interm = scfft.fft(guess_acf,n=len(cur_spec))
+        spec_final = spec_interm.real
+        y_interm = scfft.fft(y_acf,n=len(spec_final))
+        y = y_interm.real
+        yout = (y-spec_final)
+    elif fitspec.lower() =='acf':
+        yout = y_acf-guess_acf
     penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
     return yout+penadd
 

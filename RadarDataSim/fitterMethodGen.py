@@ -22,7 +22,7 @@ def defaultparamsfunc(curlag,sensdict,simparams):
     return(curlag,sensdict,simparams)
 
 class Fitterionoconainer(object):
-    def __init__(self,Ionocont,inifile):
+    def __init__(self,Ionocont,Ionosig,inifile):
         """ The init function for the fitter take the inputs for the fitter programs.
 
             Inputs:
@@ -34,6 +34,7 @@ class Fitterionoconainer(object):
             simparams: The dictionary that hold the specific simulation params"""
         (self.sensdict,self.simparams) = readconfigfile(inifile)
         self.Iono = Ionocont
+        self.sig = Ionosig
     def fitNE(self,Tratio = 1):
         """ This funtction will fit electron density assuming Te/Ti is constant
         thus only the zero lag will be needed.
@@ -44,15 +45,16 @@ class Fitterionoconainer(object):
         of beams and Nrg is number of range gates."""
 
         Ne = sp.absolute(self.Iono.Param_List[:,:,0]*(1.0+Tratio))
-        return Ne
+        Nesig = sp.absolute(self.sig.Param_List[:,:,0]*(1.0+Tratio))
+        return (Ne,Nesig)
     def fitdata(self,fitfunc,startvalfunc,d_funcfunc=defaultparamsfunc,exinputs=[]):
         """This funcition is used to fit data given in terms of lags """
 
         # get intial guess for NE
-        Ne_start =self.fitNE()
+        Ne_start,Ne_sig =self.fitNE()
         if self.simparams['Pulsetype'].lower()=='barker':
-            return(Ne_start[:,:,sp.newaxis],Ne_start[:,:,sp.newaxis])
-        # get the data nd noise lags
+            return(Ne_start[:,:,sp.newaxis],Ne_sig[:,:,sp.newaxis])
+        # get the data and noise lags
         lagsData= self.Iono.Param_List.copy()
         (Nloc,Nt,Nlags) = lagsData.shape
 
@@ -70,17 +72,18 @@ class Fitterionoconainer(object):
                 x_0 = x_0all[iloc,itime]
                 if first_lag:
                     first_lag = False
-                    nparams = len(x_0)
+                    nparams = len(x_0) +1
                     fittedarray = sp.zeros((Nloc,Nt,nparams))
                     fittederror = sp.zeros((Nloc,Nt,nparams,nparams))
                 try:
                     (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,x0=x_0,args=d_func,full_output=True)
 
-                    fittedarray[iloc,itime] = x
+                    fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
                     if cov_x is None:
-                        fittederror[iloc,itime] = sp.ones((len(x_0),len(x_0)))*float('nan')
+                        fittederror[iloc,itime,:-1,:-1] = sp.ones((len(x_0),len(x_0)))*float('nan')
                     else:
-                        fittederror[iloc,itime] = sp.sqrt(sp.absolute(cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))))
+                        fittederror[iloc,itime,:-1,:-1] = sp.sqrt(sp.absolute(cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))))
+                    fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
                 except TypeError:
                     pdb.set_trace()
 

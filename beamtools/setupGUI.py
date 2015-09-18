@@ -134,6 +134,14 @@ class App():
         self.startfilelabel = Label(self.frame,text="Start File")
         self.startfilelabel.grid(row=rown)
         rown+=1
+        # Fitting Type
+        self.fittype = StringVar()
+        self.fittype.set("Spectrum")
+        self.fittypelabel = Label(self.frame,text="Fit type")
+        self.fittypelabel.grid(row=rown)
+        self.fittypemenu = OptionMenu(self.frame, self.fittype,"Spectrum","ACF")
+        self.fittypemenu.grid(row=rown,column=1,sticky='w')
+        rown+=1
         # Beam selector GUI
         self.frame2 = LabelFrame(self.root,text="Beam Selector",padx=5,pady=5)
         self.frame2.grid(row=1,column=1, sticky="e")
@@ -156,7 +164,9 @@ class App():
                            'ambupsamp':self.ambupsamp,
                            'species':self.species,
                            'numpoints':self.numpoints,
-                           'startfile':self.startfile}
+                           'startfile':self.startfile,
+                           'FitSpectrums':self.fittype }
+
     def set_defaults(self,*args):
         """Set the default files for the data."""
         self.ipp.delete(0, 'end')
@@ -224,7 +234,8 @@ class App():
                     'ambupsamp':int(float(self.ambupsamp.get())),
                     'species':newlist,
                     'numpoints':int(float(self.numpoints.get())),
-                    'startfile':self.startfile.get()}
+                    'startfile':self.startfile.get(),
+                    'FitType': self.fittype}
         makeconfigfile(fn,blist,radarname,simparams)
 
 
@@ -235,6 +246,7 @@ class App():
             sensdict,simparams = readconfigfile(fn)
             rdrnames = {'PFISR':'PFISR','pfisr':'PFISR','risr':'RISR-N','RISR-N':'RISR-N','RISR':'RISR-N'}
             currdr = rdrnames[sensdict['Name']]
+            fitnfound = True
             for i in simparams:
                 try:
                     if i=='RangeLims':
@@ -256,6 +268,9 @@ class App():
                         self.paramdic[i].delete(0,END)
                         num = float(simparams[i])*10**6
                         self.paramdic[i].insert(0,str(num))
+                    elif i== 'FitType':
+                        self.fittype = simparams[i]
+                        fitnfound=False
                     else:
                         self.paramdic[i].delete(0,END)
                         self.paramdic[i].insert(0,str(simparams[i]))
@@ -266,7 +281,8 @@ class App():
                         self.paramdic[i].set('complex64')
                     elif i in self.paramdic:
                         self.paramdic[i].set(simparams[i])
-
+            if fitnfound:
+                self.fittype = 'Spectrum'
             self.pickbeams.var.set(currdr)
             self.pickbeams.Changefile()
             self.pickbeams.addbeamlist(simparams['angles'])

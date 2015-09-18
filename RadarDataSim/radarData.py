@@ -454,29 +454,38 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
             plotspecsgen(baslist,specacf,[False,True],['Input Spec','Spec Est'],specpltfname,simparams['numpoints'])
     # subtract out noise lags
     lagsData = lagsData-lagsNoise
-
+    # Use a basic formula to find the std of the lagss
+    sigS = (sp.absolute(lagsData)+sp.absolute(lagsNoise))/sp.sqrt(pulses)
+    # multiply the data and the sigma by inverse of the scaling from the radar
     lagsData = lagsData*radar2acfmult
+    sigS = sigS*radar2acfmult
 
     # Apply summation rule
     # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
     lagsData = sp.transpose(lagsData,axes=(2,3,0,1))
+    sigS = sp.transpose(sigS,axes=(2,3,0,1))
     lagsDatasum = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsData.dtype)
-
+    sigsSsum = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=sigS.dtype)
     for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
         for ilag in range(Nlags):
             lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
-
+            sigsSsum[irngnew,ilag] = sp.sqrt(sp.power(sigS[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag],2).mean(axis=0))
     # Put everything in a parameter list
     Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=lagsData.dtype)
+    # Put everything in a parameter list
+    Paramdatasig = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=sigsSsum.dtype)
     # transpose from (range,lag,time,beams) to (beams,range,time,lag)
     lagsDataSum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
+    sigsSsum = sp.transpose(sigsSsum,axes=(3,0,2,1))
     curloc = 0
     for irng in range(Nrng2):
         for ibeam in range(Nbeams):
             Paramdata[curloc] = lagsDataSum[ibeam,irng].copy()
+            Paramdatasig[curloc] = sigsSsum[ibeam,irng].copy()
             curloc+=1
-
-    return IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
+    ionodata = IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
+    ionosigs = IonoContainer(coordlist,Paramdatasig,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
+    return (ionodata,ionosigs)
 #%% Testing
 def main():
     """Testing function"""
