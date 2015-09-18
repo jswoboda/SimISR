@@ -235,7 +235,7 @@ class App():
                     'species':newlist,
                     'numpoints':int(float(self.numpoints.get())),
                     'startfile':self.startfile.get(),
-                    'FitType': self.fittype}
+                    'FitType': self.fittype.get()}
         makeconfigfile(fn,blist,radarname,simparams)
 
 
