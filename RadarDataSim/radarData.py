@@ -160,7 +160,6 @@ class RadarDataFile(object):
         out_data = sp.zeros((Np,N_samps),dtype=simdtype)
         weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
 
-
         specsused = sp.zeros((Ndtime,Nbeams,N_rg,speclen),dtype=allspecs.dtype)
         for istn, ist in enumerate(spectime):
             for ibn in range(Nbeams):
@@ -255,7 +254,7 @@ class RadarDataFile(object):
         pulses = sp.zeros((Ntime,Nbeams))
         pulsesN = sp.zeros((Ntime,Nbeams))
         timemat = sp.zeros((Ntime,2))
-
+        
         # set up arrays that hold the location of pulses that are to be processed together
         infoname = os.path.join(self.datadir,'INFO.h5')
         if os.path.isfile(infoname):
@@ -347,6 +346,7 @@ class RadarDataFile(object):
                 outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),numtype=self.simparams['dtype'], pulse=pulse)
                 outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),numtype=self.simparams['dtype'], pulse=pulse)
         # Create output dictionaries and output data
+        pdb.set_trace()
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat,'AddedNoiseACF':outaddednoise,'SpecsUsed':specsused}
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
         return(DataLags,NoiseLags)

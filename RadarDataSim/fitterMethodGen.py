@@ -66,7 +66,6 @@ class Fitterionoconainer(object):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
                 print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
-
                 curlag = lagsData[iloc,itime]
                 d_func = d_funcfunc(curlag,self.sensdict,self.simparams)
                 x_0 = x_0all[iloc,itime]
