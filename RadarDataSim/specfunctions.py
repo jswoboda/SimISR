@@ -94,10 +94,16 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
         y = y_interm.real
         yout = (y-spec_final)
     elif fitspec.lower() =='acf':
-        youttmp = y_acf-guess_acf
+        yout = y_acf-guess_acf
+        
+    # Cannot make the output a complex array! To avoid this problem simply double 
+    # the size of the array and place the real and imaginary parts in alternating spots.
+    if sp.iscomplexobj(yout):
+        youttmp=yout.copy()
         yout=sp.zeros(2*len(youttmp)).astype(youttmp.real.dtype)
         yout[::2]=youttmp.real
         yout[1::2] = youttmp.imag
+        
     penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
     return yout+penadd
 
