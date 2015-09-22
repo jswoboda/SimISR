@@ -487,8 +487,8 @@ def analysisdump(maindir,configfile,suptitle=None):
         if suptitle is None:
             plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
             plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3)
-            plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2,werrors=True)
+            plotbeamparameters(times,configfile,maindir,params=['Ne','Nepow','Te','Ti'],filetemplate=filetemplate2,werrors=True)
         else:
             plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1,suptitle=suptitle)
             plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3,suptitle=suptitle)
-            plotbeamparameters(times,configfile,maindir,params=['Ne','Te','Ti'],filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
+            plotbeamparameters(times,configfile,maindir,params=['Ne','Nepow','Te','Ti'],filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
