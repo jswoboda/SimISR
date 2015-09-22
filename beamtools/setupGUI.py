@@ -165,7 +165,7 @@ class App():
                            'species':self.species,
                            'numpoints':self.numpoints,
                            'startfile':self.startfile,
-                           'FitSpectrums':self.fittype }
+                           'FitType':self.fittype }
 
     def set_defaults(self,*args):
         """Set the default files for the data."""
