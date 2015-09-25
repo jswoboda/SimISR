@@ -13,16 +13,23 @@ from utilFunctions import  spect2acf
 
 
 def ISRSspecmake(ionocont,sensdict,npts):
-    """ """
+    """This function will take an ionocontainer instance of plasma parameters and create
+    ISR spectra for each object.
+
+    Inputs
+    ionocont - An instance of the ionocontainer class with plasma parameters. Its param list
+    must an array of [Nl,Nt,Ni,2]."""
     Vi = ionocont.getDoppler()
     specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
 
-    paramshape = ionocont.Param_List.shape
     if ionocont.Time_Vector is None:
-        outspecs = sp.zeros((paramshape[0],1,npts))
+        N_x = ionocont.Param_List.shape[0]
+        N_t = 1
+        outspecs = sp.zeros((N_x,1,npts))
         full_grid = False
     else:
-        outspecs = sp.zeros((paramshape[0],paramshape[1],npts))
+        (N_x,N_t) = ionocont.Param_List.shape[:2]
+        outspecs = sp.zeros((N_x,N_t,npts))
         full_grid = True
 
     (N_x,N_t) = outspecs.shape[:2]
@@ -44,8 +51,33 @@ def ISRSspecmake(ionocont,sensdict,npts):
             outspecsorig[i_x,i_t] = cur_spec
             outrcs[i_x,i_t] = rcs
             outspecs[i_x,i_t] = cur_spec_weighted
-    return (omeg,outspecs,npts)
+    return (omeg,outspecs)
 
+def ISRspecmakeout(paramvals,fc,fs,species,npts):
+
+
+    if paramvals.ndims==2:
+        paramvals=paramvals[sp.newaxis]
+
+    (N_x,N_t) = paramvals
+    Nsp = len(species)
+    Vi = paramvals[:,:,2*Nsp]
+    Parammat = paramvals[:,:,:2*Nsp].reshape((N_x,N_t,Nsp,2))
+    outspecs=sp.zeros(N_x,N_t)
+    specobj = ISRSpectrum(centerFrequency =fc,nspec = npts,sampfreq=fs)
+    outspecsorig = sp.zeros_like(outspecs)
+    outrcs = sp.zeros((N_x,N_t))
+    for i_x in sp.arange(N_x):
+        for i_t in sp.arange(N_t):
+            cur_params = Parammat[i_x,i_t]
+            cur_vel = Vi[i_x,i_t]
+            (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,species,cur_vel,rcsflag=True)
+            specsum = sp.absolute(cur_spec).sum()
+            cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/specsum
+            outspecsorig[i_x,i_t] = cur_spec
+            outrcs[i_x,i_t] = rcs
+            outspecs[i_x,i_t] = cur_spec_weighted
+    return (omeg,outspecs,npts)
 def ISRSfitfunction(x,y_acf,sensdict,simparams):
     """ """
     npts = simparams['numpoints']
@@ -95,15 +127,15 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
         yout = (y-spec_final)
     elif fitspec.lower() =='acf':
         yout = y_acf-guess_acf
-        
-    # Cannot make the output a complex array! To avoid this problem simply double 
+
+    # Cannot make the output a complex array! To avoid this problem simply double
     # the size of the array and place the real and imaginary parts in alternating spots.
     if sp.iscomplexobj(yout):
         youttmp=yout.copy()
         yout=sp.zeros(2*len(youttmp)).astype(youttmp.real.dtype)
         yout[::2]=youttmp.real
         yout[1::2] = youttmp.imag
-        
+
     penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
     return yout+penadd
 

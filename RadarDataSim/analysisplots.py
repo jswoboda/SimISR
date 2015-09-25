@@ -19,7 +19,7 @@ import pdb
 
 from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf,acf2spect
-
+from RadarDataSim.specfunctions import ISRspecmakeout
 
 def maketi(Ionoin):
     (Nloc,Nt,Nion,Nppi) = Ionoin.Param_List.shape
@@ -135,8 +135,10 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                     pnames = Ionoin.Param_Names
                     pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
 
-
-                prmloc = sp.argwhere(paramslower[iparam]==pnameslowerin)
+                curparm = paramslower[iparam]
+                if curparm == 'nepow':
+                    curparm = 'ne'
+                prmloc = sp.argwhere(curparm==pnameslowerin)
 
                 if prmloc.size !=0:
                     curprm = prmloc[0][0]
@@ -152,9 +154,9 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                     curdata[irngn] = tempin[0,curprm]
                 lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
                 labels[0] = 'Input Parameters'
-                if paramslower[iparam]!='ne':
+                if curparm!='ne':
                     ax.set(xlim=[0.25*sp.amin(curdata),2.5*sp.amax(curdata)])
-            if paramslower[iparam]=='ne':
+            if curparm=='ne':
                 ax.set_xscale('log')
 
             ax.set_xlabel(params[iparam])
@@ -171,7 +173,8 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
         plt.savefig(fname)
         plt.close(figmplf)
 
-def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,filetemplate='spec',suptitle = 'Spectrum Comparison'):
+def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
+              fitdisp=True,filetemplate='spec',suptitle = 'Spectrum Comparison'):
     """ This will create a set of images that compare the input ISR spectrum to the
     output ISR spectrum from the simulator.
     Inputs
@@ -185,6 +188,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
     filetemplate (default 'spec') This is the beginning string used to save the images."""
 
     acfname = os.path.join(maindir,'ACF','00lags.h5')
+    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
     specsfiledir = os.path.join(maindir,'Spectrums')
     (sensdict,simparams) = readconfigfile(configfile)
     simdtype = simparams['dtype']
@@ -221,6 +225,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
 
                 specin[icn,itn] = tempin[0,:]/npts/npts
     fs = sensdict['fs']
+
     if acfdisp:
         Ionoacf = IonoContainer.readh5(acfname)
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
@@ -235,6 +240,21 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
                 tempin = tempin[sp.newaxis,:]
             ACFin[icn] = tempin
         specout = scfft.fftshift(scfft.fft(ACFin,n=npts,axis=-1),axes=-1)
+
+    if fitdisp:
+        Ionofit = IonoContainer.readh5(ffit)
+        (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
+        Ionofit.Param_List= outspecsfit
+        Ionofit.Param_Names = omegfit
+        specfit = sp.zeros((Nloc,Nt,Ionofit.Param_List.shape[-1]))
+        for icn, ic in enumerate(coords):
+            if cartcoordsys:
+                tempin = Ionoacf.getclosest(ic,times)[0]
+            else:
+                tempin = Ionoacf.getclosestsphere(ic,times)[0]
+            if sp.ndim(tempin)==1:
+                tempin = tempin[sp.newaxis,:]
+            specfit[icn] = tempin/npts/npts
 
 
     nfig = int(sp.ceil(Nt*Nloc/6.0))
@@ -252,9 +272,17 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
             itime = int(imcount-(iloc*Nt))
 
             maxvec = []
-
+            if fitdisp:
+                curfitspec = specfit[iloc,itime]
+                rcsfit = curfitspec.sum()
+                (taufit,acffit) = spect2acf(omegfit,curfitspec)
+                guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
+                guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
+                spec_intermfit = scfft.fftshift(scfft.fft(guess_acffit,n=npts))
+                lines[1]= ax.plot(omeg*1e-3,spec_intermfit.real,label='Fitted Spectrum',linewidth=5)[0]
+                labels[1] = 'Fitted Spectrum'
             if indisp:
-                # apply ambiguity funciton to spectrum
+                # apply ambiguity function to spectrum
                 curin = specin[iloc,itime]
                 rcs = curin.real.sum()
                 (tau,acf) = spect2acf(omeg,curin)
@@ -267,9 +295,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
                 maxvec.append(spec_interm.real.max())
                 lines[0]= ax.plot(omeg*1e-3,spec_interm.real,label='Input',linewidth=5)[0]
                 labels[0] = 'Input Spectrum With Ambiguity Applied'
-                normset = spec_interm.real.max()/curin.real.max()
-                lines[1]= ax.plot(omeg*1e-3,curin.real*normset,label='Input',linewidth=5)[0]
-                labels[1] = 'Input Spectrum'
+
             if acfdisp:
                 lines[2]=ax.plot(omeg*1e-3,specout[iloc,itime].real,label='Output',linewidth=5)[0]
                 labels[2] = 'Estimated Spectrum'
@@ -289,7 +315,8 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         plt.savefig(fname)
         plt.close(figmplf)
 
-def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,filetemplate='acf',suptitle = 'ACF Comparison'):
+def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
+             fitdisp=True, filetemplate='acf',suptitle = 'ACF Comparison'):
 
     """ This will create a set of images that compare the input ISR acf to the
     output ISR acfs from the simulator.
@@ -306,6 +333,8 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
 #    acfdisp = acfname is not None
 
     acfname = os.path.join(maindir,'ACF','00lags.h5')
+    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
+
     specsfiledir = os.path.join(maindir,'Spectrums')
     (sensdict,simparams) = readconfigfile(configfile)
     simdtype = simparams['dtype']
@@ -344,7 +373,6 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
 #                if sp.ndim(tempin)==1:
 #                    tempin = tempin[sp.newaxis,:]
                 specin[icn,itn] = tempin[0,:]/npts
-    fs = sensdict['fs']
     if acfdisp:
         Ionoacf = IonoContainer.readh5(acfname)
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
@@ -360,6 +388,20 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
             ACFin[icn] = tempin
 
 
+    if fitdisp:
+        Ionofit = IonoContainer.readh5(ffit)
+        (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
+        Ionofit.Param_List= outspecsfit
+        Ionofit.Param_Names = omegfit
+        specfit = sp.zeros((Nloc,Nt,Ionofit.Param_List.shape[-1]))
+        for icn, ic in enumerate(coords):
+            if cartcoordsys:
+                tempin = Ionoacf.getclosest(ic,times)[0]
+            else:
+                tempin = Ionoacf.getclosestsphere(ic,times)[0]
+            if sp.ndim(tempin)==1:
+                tempin = tempin[sp.newaxis,:]
+            specfit[icn] = tempin/npts/npts
 
     nfig = int(sp.ceil(Nt*Nloc/6.0))
     imcount = 0
@@ -396,10 +438,19 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 labels[0] = 'Input ACF With Ambiguity Applied Real'
                 lines[1]= ax.plot(tau1*1e6,guess_acf.imag,label='Input',linewidth=5)[0]
                 labels[1] = 'Input ACF With Ambiguity Applied Imag'
-                lines[2]= ax.plot(tau1*1e6,acf1.real,label='Input',linewidth=5)[0]
-                labels[2] = 'Input ACF real'
-                lines[3]= ax.plot(tau1*1e6,acf1.imag,label='Input',linewidth=5)[0]
-                labels[3] = 'Input ACF Imag'
+
+            if fitdisp:
+                curinfit = specfit[iloc,itime]
+                (taufit,acffit) = spect2acf(omegfit,curinfit)
+                acffit = scfft.ifftshift(acffit)[:len(pulse)]
+                rcsfit=acffit[0].real
+                guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
+                guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
+
+                lines[2]= ax.plot(tau1*1e6,guess_acffit.real,label='Input',linewidth=5)[0]
+                labels[2] = 'Fitted ACF real'
+                lines[3]= ax.plot(tau1*1e6,guess_acffit.imag,label='Input',linewidth=5)[0]
+                labels[3] = 'Fitted ACF Imag'
             if acfdisp:
                 lines[4]=ax.plot(tau1*1e6,ACFin[iloc,itime].real,label='Output',linewidth=5)[0]
                 labels[4] = 'Estimated ACF Real'
