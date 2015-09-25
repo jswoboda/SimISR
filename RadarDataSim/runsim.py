@@ -126,6 +126,7 @@ def fitdata(basedir,configfile,optintputs):
 
 
     Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,Ionoin.Time_Vector,ver =1,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
+
     outfile = os.path.join(outputdir,'fitteddata.h5')
     Ionoout.saveh5(outfile)
 

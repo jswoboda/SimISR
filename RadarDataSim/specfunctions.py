@@ -51,19 +51,19 @@ def ISRSspecmake(ionocont,sensdict,npts):
             outspecsorig[i_x,i_t] = cur_spec
             outrcs[i_x,i_t] = rcs
             outspecs[i_x,i_t] = cur_spec_weighted
-    return (omeg,outspecs)
+    return (omeg,outspecs,npts)
 
 def ISRspecmakeout(paramvals,fc,fs,species,npts):
 
 
-    if paramvals.ndims==2:
+    if paramvals.ndim==2:
         paramvals=paramvals[sp.newaxis]
 
-    (N_x,N_t) = paramvals
+    (N_x,N_t) = paramvals.shape[:2]
     Nsp = len(species)
     Vi = paramvals[:,:,2*Nsp]
     Parammat = paramvals[:,:,:2*Nsp].reshape((N_x,N_t,Nsp,2))
-    outspecs=sp.zeros(N_x,N_t)
+    outspecs=sp.zeros((N_x,N_t,npts))
     specobj = ISRSpectrum(centerFrequency =fc,nspec = npts,sampfreq=fs)
     outspecsorig = sp.zeros_like(outspecs)
     outrcs = sp.zeros((N_x,N_t))
@@ -77,7 +77,7 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
             outspecsorig[i_x,i_t] = cur_spec
             outrcs[i_x,i_t] = rcs
             outspecs[i_x,i_t] = cur_spec_weighted
-    return (omeg,outspecs,npts)
+    return (omeg,outspecs)
 def ISRSfitfunction(x,y_acf,sensdict,simparams):
     """ """
     npts = simparams['numpoints']

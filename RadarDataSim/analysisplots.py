@@ -128,7 +128,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 filenum = time2file[itime]
                 if curfilenum!=filenum:
                     curfilenum=filenum
-                    datafilename = os.path.join(inputfiledir,dirlist[filenum])
+                    datafilename = dirlist[filenum]
                     Ionoin = IonoContainer.readh5(datafilename)
                     if 'ti' in paramslower:
                         Ionoin = maketi(Ionoin)
@@ -246,12 +246,12 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
         Ionofit.Param_List= outspecsfit
         Ionofit.Param_Names = omegfit
-        specfit = sp.zeros((Nloc,Nt,Ionofit.Param_List.shape[-1]))
+        specfit = sp.zeros((Nloc,Nt,npts))
         for icn, ic in enumerate(coords):
             if cartcoordsys:
-                tempin = Ionoacf.getclosest(ic,times)[0]
+                tempin = Ionofit.getclosest(ic,times)[0]
             else:
-                tempin = Ionoacf.getclosestsphere(ic,times)[0]
+                tempin = Ionofit.getclosestsphere(ic,times)[0]
             if sp.ndim(tempin)==1:
                 tempin = tempin[sp.newaxis,:]
             specfit[icn] = tempin/npts/npts
@@ -393,12 +393,12 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
         (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
         Ionofit.Param_List= outspecsfit
         Ionofit.Param_Names = omegfit
-        specfit = sp.zeros((Nloc,Nt,Ionofit.Param_List.shape[-1]))
+        specfit = sp.zeros((Nloc,Nt,npts))
         for icn, ic in enumerate(coords):
             if cartcoordsys:
-                tempin = Ionoacf.getclosest(ic,times)[0]
+                tempin = Ionofit.getclosest(ic,times)[0]
             else:
-                tempin = Ionoacf.getclosestsphere(ic,times)[0]
+                tempin = Ionofit.getclosestsphere(ic,times)[0]
             if sp.ndim(tempin)==1:
                 tempin = tempin[sp.newaxis,:]
             specfit[icn] = tempin/npts/npts
@@ -442,7 +442,6 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
             if fitdisp:
                 curinfit = specfit[iloc,itime]
                 (taufit,acffit) = spect2acf(omegfit,curinfit)
-                acffit = scfft.ifftshift(acffit)[:len(pulse)]
                 rcsfit=acffit[0].real
                 guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
                 guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
