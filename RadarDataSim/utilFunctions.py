@@ -161,7 +161,10 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     npts = len(filt_freq)
     filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
     shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
-    noise_vec = (sp.random.randn(rep,npts).astype(numtype)+1j*sp.random.randn(rep,npts).astype(numtype))/sp.sqrt(2.0)#sp.random.randn(rep,npts).astype(numtype)# make a noise vector
+    noisereal = sp.random.randn(rep,npts).astype(numtype)
+    noiseimag = sp.random.randn(rep,npts).astype(numtype)
+#    noise_vec =(noisereal+1j*noiseimag)/sp.sqrt(2.0)
+    noise_vec = noisereal
     mult_freq = filt_tile.astype(numtype)*noise_vec
     data = scfft.ifft(mult_freq,axis=-1)
     data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]

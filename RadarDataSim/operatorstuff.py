@@ -34,8 +34,10 @@ def makematPA(Sphere_Coords,timein,timeout,sensdict,simparams):
         outmat= sp.matrix(sp.zeros((Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg)))
     else:
         sp.sparse((Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg),dype =sp.float64)
+
     weights = {ibn:sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
 
+    # usually the matrix size is nbeamsxnrange
     for ibn in range(Nbeams):
         print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
         weight = weights[ibn]

@@ -120,7 +120,7 @@ def fitdata(basedir,configfile,optintputs):
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)
-        paramnames = paramnames+['Ne','Te','Vi','Ni','Ti','Nepow']
+        paramnames = paramnames+['Ne','Te','Vi','Nepow','Ni','Ti']
         paramnamese = ['n'+ip for ip in paramnames]
         paranamsf = sp.array(paramnames+paramnamese)
 
