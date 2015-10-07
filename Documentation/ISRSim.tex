@@ -322,23 +322,29 @@ The radar samples the space in a spherical coordinate system with discrete range
 \label{fig:beamdia}
 \end{figure}
 
-Once the spectrum has been created the filter,$H_m(\omega)$, is created by simply taking the square root of the spectrum, $S_m(\omega | \: \bm{\theta})$
+Once the spectrum has been created the filter, $H_m(\omega)$, is created by simply taking the square root of the spectrum, $S_m(\omega | \: \bm{\theta})$
 
 \begin{equation}
 \label{eq1}
 H_m(\omega) = \sqrt{S_m(\omega | \: \bm{\theta})}.
 \end{equation}
 
-\noindent The term $ \bm{\theta}$ refers to the different plasma and system parameters needed to make the spectrum. Complex white Gaussian noise  ($w(k)\sim CN(0,1)$) is then pushed though each of the filters and then windowed by the pulse creating the following:   
+\noindent The term $ \bm{\theta}$ refers to the different plasma and system parameters needed to make the spectrum. Complex white Gaussian noise, CWGN, ($w(k)\sim CN(0,\mathbf{I})$) is then pushed though each of the filters and then windowed by the pulse creating the following:   
 
 \begin{equation}
 \label{eq2}
 y_m (k)= s(k)\left[h_m(k)*w(k)\right],
 \end{equation}
  
-\noindent where $s(k)$ is the pulse shape. Currently in the the filtering is implemented by using the frequency response of the filter and multiplying by the complex noise and then inverse Fourier transforming it back. 
+\noindent where $s(k)$ is the pulse shape. The application of this filter is actually done in the frequency domain. This is possible because the Discrete Fourier Transform (DFT) of a vector of CWGN is also CWGN. The only difference is that there is a change in the variance, which is tied to the number of points used in the DFT \cite{kayvol1}. With this in mind Equation \ref{eq2} can be implemented as the following,
 
-Creating noise and then 
+\begin{equation}
+\label{eq:fftfilt}
+y_m (k)= s(k)\displaystyle \sum_{i=0}^{K-1}e^{j\omega_ik}\left[ \sqrt{S_m(\omega_i | \: \bm{\theta})}w(\omega_i)\right],
+\end{equation}
+
+\noindent where $\omega_i$ is the frequency variable, $w(\omega_i) \sim CN(0,\mathbf{I})$ and $K$ is the number of points used for the DFT \cite{michellnoisesim1981}.
+
 \begin{figure}[!h]
 \centering
 \includegraphics[width=7.0in]{diagram}
@@ -363,7 +369,7 @@ Once the power has been calculated for each range all of the data is delayed and
 x(n) = \displaystyle\sum\limits_{m =0}^{M-1} \alpha(m)y_m(n-m),
 \end{equation}
 
-\noindent where $\alpha(m) = \sqrt{P_r(m)}$. Lastly, to model the inherent noise in the radar and environment more complex Gaussian noise is added
+\noindent where $\alpha(m) = \sqrt{P_r(m)}/\hat{\sigma_y}$ and $\hat{\sigma_y}$ is the estimate of the standard deviation of $y_m(k)$. Lastly, to model the inherent noise in the radar and environment more complex Gaussian noise is added
 
 \begin{equation}
 \label{eq4}

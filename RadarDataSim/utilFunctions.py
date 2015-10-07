@@ -163,8 +163,8 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
     noisereal = sp.random.randn(rep,npts).astype(numtype)
     noiseimag = sp.random.randn(rep,npts).astype(numtype)
-#    noise_vec =(noisereal+1j*noiseimag)/sp.sqrt(2.0)
-    noise_vec = noisereal
+    noise_vec =(noisereal+1j*noiseimag)/sp.sqrt(2.0)
+#    noise_vec = noisereal
     mult_freq = filt_tile.astype(numtype)*noise_vec
     data = scfft.ifft(mult_freq,axis=-1)
     data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]

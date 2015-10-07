@@ -8,6 +8,9 @@ from const.physConstants import v_C_0, v_Boltz
 import scipy as sp
 
 def makematPA(Sphere_Coords,timein,timeout,sensdict,simparams):
+    """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc matrix. The output space will have range repeated first,
+    then beams then time. The coordinates will be [t0,b0,r0],[t0,b0,r1],[t0,b0,r2],...
+    [t0,b1,r0],[t0,b1,r1], ... [t1,b0,r0],[t1,b0,r1],...[t1,b1,r0]..."""
     #
     fullmat = True
     range_gates = simparams['Rangegates']
