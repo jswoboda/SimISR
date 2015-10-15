@@ -557,8 +557,8 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coo
     if testtemp:
         (Te,Ti)= TempProfile(zzf)
     else:
-        Te = np.ones_like(zzf)*3000.0
-        Ti = np.ones_like(zzf)*3000.0
+        Te = np.ones_like(zzf)*2000.0
+        Ti = np.ones_like(zzf)*2000.0
 
     # set up the velocity
     (Nlocs,ndims) = coords.shape

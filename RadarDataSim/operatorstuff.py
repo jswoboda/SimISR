@@ -52,7 +52,12 @@ def makematPA(Sphere_Coords,timein,timeout,sensdict,simparams):
             cur_pnts = samp_num+isamp
             if rangelog.size==0:
                 pdb.set_trace()
+            # This is a nearest neighbors interpolation for the spectrums in the range domain
+            if sp.sum(rangelog)==0:
+                minrng = sp.argmin(sp.absolute(range_g-rho))
+                rangelog[minrng] = True
             #create the weights and weight location based on the beams pattern.
             weight_cur =weight[rangelog[:,0]]
             weight_cur = weight_cur/weight_cur.sum()
+
 

@@ -8,7 +8,6 @@ problems.
 """
 import os, glob
 import matplotlib.pyplot as plt
-from matplotlib import rc
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.interpolate as spinterp
@@ -41,7 +40,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
     """ """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-    rc('text', usetex=True)
+#    rc('text', usetex=True)
     ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
     inputfiledir = os.path.join(maindir,'Origparams')
     (sensdict,simparams) = readconfigfile(configfile)
@@ -312,6 +311,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
             lines.remove(None)
         plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
         fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
+
         plt.savefig(fname)
         plt.close(figmplf)
 

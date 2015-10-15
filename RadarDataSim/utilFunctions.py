@@ -326,13 +326,13 @@ def Chapmanfunc(z,H_0,Z_0,N_0):
     return Ne
 
 
-def TempProfile(z,T0=2000.):
+def TempProfile(z,T0=1000.,z0=100.):
     """This function creates a tempreture profile for test purposes."""
+    zall = (z-z0)*2.*sp.exp(1)/400. -sp.exp(1)
+    atanshp = (sp.tanh(zall)+1.)/2
+    Te = 1700*atanshp+T0
+    Ti = 500*atanshp+T0
 
-    Te = ((45.0/500.0)*(z-200.0))**2+T0
-    Ti = ((20.0/500.0)*(z-200.0))**2+T0
-    Te[z<=200.0]=T0
-    Ti[z<=200.0]=T0
     return (Te,Ti)
 
 

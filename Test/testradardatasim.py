@@ -35,6 +35,7 @@ def configsetup(testpath):
                    'RangeLims':rng_lims, # range swath limit
 #                   'Pulse':pulse, # pulse shape
                    'Pulselength':280e-6,
+                   'FitType' :'acf',
                    't_s': 20e-6,
                    'Pulsetype':'long', # type of pulse can be long or barker,
                    'Tint':Tint, #Integration time for each fitting
@@ -51,7 +52,7 @@ def configsetup(testpath):
 
     fname = os.path.join(testpath,'PFISRExample')
 
-    makeconfigfile(fname+'.pickle',beamlist,radarname,simparams)
+    makeconfigfile(fname+'.ini',beamlist,radarname,simparams)
 def makeinputh5(Iono,basedir):
     """This will make a h5 file for the IonoContainer that can be used as starting
     points for the fitter. The ionocontainer taken will be average over the x and y dimensions
@@ -88,7 +89,7 @@ def main():
     ionospheric parameters based off of a Chapman function. Then it will create configuration
     and start files followed by running the simulation."""
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Testdata','Lone_Pulse')
+    testpath = os.path.join(os.path.split(curpath)[0],'Testdata','Long_Pulse')
     origparamsdir = os.path.join(testpath,'Origparams')
     if not os.path.exists(testpath):
         os.mkdir(testpath)
@@ -106,12 +107,12 @@ def main():
     # Now make stuff again
     configsetup(testpath)
 
-    Icont1 = MakeTestIonoclass(testv=True,testtemp=False)
-    makeinputh5(Icont1,testpath)
+    Icont1 = MakeTestIonoclass(testv=True,testtemp=True)
+    makeinputh5(MakeTestIonoclass(testv=True,testtemp=False),testpath)
     Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
     funcnamelist=['spectrums','radardata','fitting']
-    runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.pickle'),True)
-    analysisdump(testpath,os.path.join(testpath,'PFISRExample.pickle'))
+    runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.ini'),True)
+    analysisdump(testpath,os.path.join(testpath,'PFISRExample.ini'))
 if __name__== '__main__':
 
     main()

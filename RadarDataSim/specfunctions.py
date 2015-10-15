@@ -78,7 +78,7 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
             outrcs[i_x,i_t] = rcs
             outspecs[i_x,i_t] = cur_spec_weighted
     return (omeg,outspecs)
-def ISRSfitfunction(x,y_acf,sensdict,simparams):
+def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
     """ """
     npts = simparams['numpoints']
     specs = simparams['species']
@@ -128,6 +128,8 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams):
     elif fitspec.lower() =='acf':
         yout = y_acf-guess_acf
 
+    if y_err is not None:
+        yout*1/y_err
     # Cannot make the output a complex array! To avoid this problem simply double
     # the size of the array and place the real and imaginary parts in alternating spots.
     if sp.iscomplexobj(yout):

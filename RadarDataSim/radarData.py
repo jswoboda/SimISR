@@ -455,6 +455,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsData = lagsData-lagsNoise
     # Use a basic formula to find the std of the lagss
     sigS = (sp.absolute(lagsData)+sp.absolute(lagsNoise))/sp.sqrt(pulses)
+    sigS = sp.sqrt(varacf(lagsData)+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
     # multiply the data and the sigma by inverse of the scaling from the radar
     lagsData = lagsData*radar2acfmult
     sigS = sigS*radar2acfmult
@@ -485,6 +486,47 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     ionodata = IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
     ionosigs = IonoContainer(coordlist,Paramdatasig,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
     return (ionodata,ionosigs)
+
+def varacf(acf):
+    """This calculates the variances of an ACF. """
+    axisvec =sp.roll( sp.arange(acf.ndim),1)
+    acftrans = sp.transpose(acf,tuple(axisvec))
+    acfvar = sp.zeros_like(acftrans)
+    axisvec = sp.roll(axisvec,-2)
+    N= acftrans.shape[0]
+
+    for l in range(N):
+        for m in range(-(N+l)+1,N-l-1):
+            constterm = (N-sp.absolute(m)+l)
+            # for r1, Rxx(m)
+            if sp.absolute(m)>=N-1:
+                r1=sp.zeros_like(acftrans[0])
+            elif m>=0:
+                r1 = acftrans[m]
+            elif m<0:
+                r1=acftrans[-m]
+
+            # for r2, Rxx(m+1)
+            m2=m+l
+            if sp.absolute(m2)>=N-1:
+                r2=sp.zeros_like(acftrans[0])
+            elif m2>=0:
+                r2 = acftrans[m2]
+            elif m2<0:
+                r2=acftrans[-m2]
+
+            # for r3, Rxx(m-1)
+            m3=m+l
+            if sp.absolute(m3)>=N-1:
+                r3=sp.zeros_like(acftrans[0])
+            elif m3>=0:
+                r3 = acftrans[m3]
+            elif m3<0:
+                r3=acftrans[-m3]
+
+            acfvar[l]=acfvar[l]+constterm*(sp.absolute(r1)**2+sp.absolute(r2*r3))
+
+    return sp.transpose(acfvar/N,tuple(axisvec))
 #%% Testing
 def main():
     """Testing function"""
