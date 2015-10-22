@@ -336,36 +336,7 @@ def TempProfile(z,T0=1000.,z0=100.):
     return (Te,Ti)
 
 
-def fitsurface(errfunc,paramlists,inputs):
-    """This function will create a fit surface using an error function given by the user
-    and an N length list of parameter value lists. The output will be a N-dimensional array
-    where each dimension is the size of the array given for each of the parameters. Arrays of
-    one element are not represented in the returned fit surface array.
-    Inputs:
-        errfunc - The function used to determine the error between the given data and
-        the theoretical function
-        paramlists - An N length list of arrays for each of the parameters.
-        inputs - A tuple of the rest of the inputs for error function."""
-    paramsizlist = sp.array([len(i) for i in paramlists])
-    outsize = sp.where(paramsizlist!=1)[0]
-    #  make the fit surface and flatten it
-    fit_surface = sp.zeros(paramsizlist[outsize])
-    fit_surface = fit_surface.flatten()
 
-    for inum in range(sp.prod(paramsizlist)):
-        numcopy = inum
-        curnum = sp.zeros_like(paramsizlist)
-        # TODO: Replace with sp.unravel_index
-        # determine current parameters
-        for i, iparam in enumerate(reversed(paramsizlist)):
-            curnum[i] = sp.mod(numcopy,iparam)
-            numcopy = sp.floor(numcopy/iparam)
-        curnum = curnum[::-1]
-        cur_x = sp.array([ip[curnum[num_p]] for num_p ,ip in enumerate(paramlists)])
-        diffthing = errfunc(cur_x,*inputs)
-        fit_surface[inum]=(sp.absolute(diffthing)**2).sum()
-        # return the fitsurace after its been de flattened
-    return fit_surface.reshape(paramsizlist[outsize]).copy()
 #%% Config files
 
 def makeconfigfile(fname,beamlist,radarname,simparams):

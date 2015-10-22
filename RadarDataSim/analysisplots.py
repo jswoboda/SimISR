@@ -18,7 +18,42 @@ import pdb
 
 from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf,acf2spect
-from RadarDataSim.specfunctions import ISRspecmakeout
+from RadarDataSim.specfunctions import ISRspecmakeout,ISRSfitfunction,makefitsurf
+
+def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None):
+
+    (sensdict,simparams) = readconfigfile(configfile)
+    specs = simparams['species']
+    nspecs = len(specs)
+
+    # make param lists
+    paramlist = [[]]*(2*nspecs+1)
+    paramlist[2*(nspecs-1)] =paramdict['Ne']
+    paramlist[2*(nspecs-1)+1] =paramdict['Te']
+
+    if 'frac' in paramdict.keys():
+        frac = paramdict['frac']
+    else:
+        frac = [[1./nspecs]]*nspecs
+
+    for ispec in range(nspecs-1):
+        paramlist[2*ispec] =frac[ispec]
+        paramlist[2*ispec+1] =  paramdict['Ti'][ispec]
+
+    if 'Vi' in paramdict.keys():
+        paramlist[-1] = paramdict['Vi']
+    else:
+        paramlist[-1] =[0.]
+
+    pvals = {'Ne':2*(nspecs-1),'Te':2*(nspecs-1)+1,'Ti':1,'frac':0}
+
+    fitsurfs= makefitsurf(paramlist,y_acf,sensdict,simparams,yerr)
+
+    for idict in plotvals:
+
+
+
+
 
 def maketi(Ionoin):
     (Nloc,Nt,Nion,Nppi) = Ionoin.Param_List.shape

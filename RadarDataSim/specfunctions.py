@@ -79,7 +79,20 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
             outspecs[i_x,i_t] = cur_spec_weighted
     return (omeg,outspecs)
 def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
-    """ """
+    """
+    This is the fit fucntion that is used with scipy.optimize.leastsquares. It will
+    take a set parameter values construct a spectrum/acf based on those values, apply
+    the ambiguity function and take the difference between the two. Since the ACFs are
+    complex the arrays split up and the size doubled as it is output.
+    Inputs
+    x - A Np array of parameter values used
+    y_acf - This is the esitmated ACF/spectrum represented as a complex numpy array
+    sensdict - This is a dictionary that holds many of the sensor parameters.
+    simparams - This is a dictionary that holds info on the simulation parameters.
+    y_err -  default None - A numpy array of size Nd that holds the standard deviations of the data.
+    Output
+    y_diff - A Nd or 2Nd array if input data is complex that is the difference
+    between the data and the fitted model"""
     npts = simparams['numpoints']
     specs = simparams['species']
     amb_dict = simparams['amb_dict']
@@ -141,7 +154,42 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
     penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
     return yout+penadd
 
-def makefitsurf(xarrs,y_acf,sensdict,simparams):
+def fitsurface(errfunc,paramlists,inputs):
+    """This function will create a fit surface using an error function given by the user
+    and an N length list of parameter value lists. The output will be a N-dimensional array
+    where each dimension is the size of the array given for each of the parameters. Arrays of
+    one element are not represented in the returned fit surface array.
+    Inputs:
+        errfunc - The function used to determine the error between the given data and
+        the theoretical function
+        paramlists - An N length list of arrays for each of the parameters.
+        inputs - A tuple of the rest of the inputs for error function."""
+    paramsizlist = sp.array([len(i) for i in paramlists])
+    outsize = sp.where(paramsizlist!=1)[0]
+    #  make the fit surface and flatten it
+    fit_surface = sp.zeros(paramsizlist[outsize])
+    fit_surface = fit_surface.flatten()
+
+    for inum in range(sp.prod(paramsizlist)):
+        numcopy = inum
+        curnum = sp.zeros_like(paramsizlist)
+        # TODO: Replace with sp.unravel_index
+        # determine current parameters
+        for i, iparam in enumerate(reversed(paramsizlist)):
+            curnum[i] = sp.mod(numcopy,iparam)
+            numcopy = sp.floor(numcopy/iparam)
+        curnum = curnum[::-1]
+        cur_x = sp.array([ip[curnum[num_p]] for num_p ,ip in enumerate(paramlists)])
+        diffthing = errfunc(cur_x,*inputs)
+        fit_surface[inum]=(sp.absolute(diffthing)**2).sum()
+        # return the fitsurace after its been de flattened
+    return fit_surface.reshape(paramsizlist[outsize]).copy()
+
+
+
+def makefitsurf(xarrs,y_acf,sensdict,simparams,yerr=None):
+
+
     youtsize = [len(x) for x in xarrs]
     ytprod = 1
     for xl in youtsize:
@@ -153,5 +201,23 @@ def makefitsurf(xarrs,y_acf,sensdict,simparams):
         curind = sp.unravel_index(iparam,youtsize)
         curx = sp.array([x[curind[ix]] for ix, x in enumerate(xarrs)])
 
-        yout[curind[:]] = sp.power(sp.absolute(ISRSfitfunction(curx,y_acf,sensdict,simparams)),2).sum()
+        yout[curind[:]] = sp.power(sp.absolute(ISRSfitfunction(curx,y_acf,sensdict,simparams,yerr)),2).sum()
+    return(yout)
+
+
+def makefitsurfv2(xarrs,y_acf,sensdict,simparams,yerr=None):
+
+
+    youtsize = [len(x) for x in xarrs]
+    ytprod = 1
+    for xl in youtsize:
+        ytprod = ytprod*xl
+
+    yout = sp.zeros(youtsize,dtype=sp.float128)
+
+    for iparam in range(ytprod):
+        curind = sp.unravel_index(iparam,youtsize)
+        curx = xarrs[curind[0]][curind[1]]
+
+        yout[curind[:]] = sp.power(sp.absolute(ISRSfitfunction(curx,y_acf,sensdict,simparams,yerr)),2).sum()
     return(yout)
