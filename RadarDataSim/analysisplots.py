@@ -8,6 +8,7 @@ problems.
 """
 import os, glob
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.interpolate as spinterp
@@ -20,7 +21,7 @@ from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf,acf2spect
 from RadarDataSim.specfunctions import ISRspecmakeout,ISRSfitfunction,makefitsurf
 
-def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None):
+def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='fitsurfs',suptitle = 'Fit Surfaces'):
 
     (sensdict,simparams) = readconfigfile(configfile)
     specs = simparams['species']
@@ -34,7 +35,7 @@ def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None):
     if 'frac' in paramdict.keys():
         frac = paramdict['frac']
     else:
-        frac = [[1./nspecs]]*nspecs
+        frac = [[1./(nspecs-1)]]*(nspecs-1)
 
     for ispec in range(nspecs-1):
         paramlist[2*ispec] =frac[ispec]
@@ -48,9 +49,46 @@ def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None):
     pvals = {'Ne':2*(nspecs-1),'Te':2*(nspecs-1)+1,'Ti':1,'frac':0}
 
     fitsurfs= makefitsurf(paramlist,y_acf,sensdict,simparams,yerr)
+    quad = (3,3)
+    i_fig=0
+    for iplt, idict in enumerate(plotvals):
+        iaxn = sp.mod(iplt,sp.prod(quad))
 
-    for idict in plotvals:
+        if iaxn==0:
+            (figmplf, axmat) = plt.subplots(quad[0],quad[1],figsize=(20, 15), facecolor='w')
+            axvec = axmat.flatten()
 
+        setstr = idict['setparam']
+        xstr = idict['xparam']
+        ystr = idict['yparam']
+        mloc = pvals[setstr]
+        xdim = pvals[xstr]
+        ydim = pvals[ystr]
+        setval = paramlist[setstr][idict['indx']]
+        transarr = sp.arange(2*nspecs+1).tolist()
+        transarr.remove(mloc)
+        transarr.remove(xdim)
+        transarr.remove(ydim)
+        transarr = [mloc,ydim,xdim] +transarr
+        fitupdate = sp.transpose(fitsurfs,transarr)
+        while fitupdate.ndim>3:
+            fitupdate = sp.nanmean(fitupdate,dim=-1)
+        Z1 = fitupdate[idict['indx']]
+        iax = axvec[iaxn]
+        xvec = paramdict[xstr]
+        yvec = paramdict[ystr]
+        [Xmat,Ymat]= sp.meshgrid(xvec,yvec)
+
+        iax.pcolor(Xmat,Ymat,Z1,norm=LogNorm(vmin=Z1.min(), vmax=Z1.max()))
+        iax.xlabel=xstr
+        iax.ylabel=ystr
+        iax.title('{0} at {0}'.format(setstr,setval))
+        if iaxn ==sp.prod(quad)-1:
+            figmplf.suptitle(suptitle, fontsize=20)
+            fname= filetemplate+'_{0:0>4}.png'.format(i_fig)
+            plt.savefig(fname)
+            plt.close(figmplf)
+            i_fig+=1
 
 
 

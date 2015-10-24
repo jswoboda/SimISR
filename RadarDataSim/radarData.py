@@ -72,7 +72,14 @@ class RadarDataFile(object):
        simdtype = self.simparams['dtype']
        pulsetimes = sp.arange(Npall)*self.simparams['IPP']
        pulsefile = sp.array([sp.where(itimes-ftimes>=0)[0][-1] for itimes in pulsetimes])
-       beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
+       if sensdict['Name'] in ['risr','pfisr']:
+           beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
+       else:
+           # for dish arrays
+            brate = simparams['beamrate']
+            beams2 = sp.repeat(sp.arange(N_angles),brate)
+            beam3 = sp.concatenate((beams2,beams2[:-1,::-1]))
+            beams = sp.tile(beam3,Npall/len(beam3))
 
        pulsen = sp.repeat(sp.arange(Np),N_angles)
        pt_list = []
