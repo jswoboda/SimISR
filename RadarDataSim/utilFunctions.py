@@ -5,6 +5,7 @@ Created on Tue Jul 22 16:18:21 2014
 @author: Bodangles
 """
 import os
+import inspect
 import warnings
 import pickle
 import ConfigParser
@@ -347,26 +348,36 @@ def makeconfigfile(fname,beamlist,radarname,simparams):
         radarname - A string that is the name of the radar being simulated.
         simparams - A set of simulation parameters in a dictionary."""
 
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    d_file = os.path.join(curpath,'Testdata')
     fext = os.path.splitext(fname)[-1]
     if fext =='.pickle':
         pickleFile = open(fname, 'wb')
         pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
         pickleFile.close()
     elif fext =='.ini':
+        defaultparser = ConfigParser.ConfigParser()
+        defaultparser.read(d_file)
+#        config = ConfigParser.ConfigParser()
+#        config.read(fname)
         cfgfile = open(fname,'w')
-        config = ConfigParser.ConfigParser()
+        config = ConfigParser.ConfigParser(allow_no_value = True)
 
         config.add_section('section 1')
         beamstring = ""
         for beam in beamlist:
             beamstring += str(beam)
             beamstring += " "
+        config.set('section 1','; beamlist must be list of ints')
         config.set('section 1','beamlist',beamstring)
+        config.set('section 1','; radarname can be pfisr, risr, or sondastrom')
         config.set('section 1','radarname',radarname)
 
         config.add_section('simparams')
         config.add_section('simparamsnames')
         for param in simparams:
+            paramnote = defaultparser.get('simparamsnotes',param.lower())
+            config.set('simparams','; '+param +' '+paramnote)
             if isinstance(simparams[param],list):
                 data = ""
                 for a in simparams[param]:
