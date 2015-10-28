@@ -74,7 +74,7 @@ class RadarDataFile(object):
        pulsefile = sp.array([sp.where(itimes-ftimes>=0)[0][-1] for itimes in pulsetimes])
 
        # differentiate between phased arrays and dish antennas
-       if sensdict['Name'] in ['risr','pfisr']:
+       if sensdict['Name'].lower() in ['risr','pfisr']:
            beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
        else:
            # for dish arrays
