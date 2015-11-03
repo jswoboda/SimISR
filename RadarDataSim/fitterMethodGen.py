@@ -73,7 +73,7 @@ class Fitterionoconainer(object):
                 #XXX Added random noise to start points
                 # add some random noise so we don't just go to the desired value right away
                 x_rand = sp.random.standard_normal(x_0.shape)*sp.sqrt(.1)*x_0
-                x_0 =x_0+x_rand
+#                x_0 =x_0+x_rand
 
                 if first_lag:
                     first_lag = False
