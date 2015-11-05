@@ -349,7 +349,7 @@ def makeconfigfile(fname,beamlist,radarname,simparams):
         simparams - A set of simulation parameters in a dictionary."""
 
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    d_file = os.path.join(curpath,'Testdata')
+    d_file = os.path.join(curpath,'default.ini')
     fext = os.path.splitext(fname)[-1]
     if fext =='.pickle':
         pickleFile = open(fname, 'wb')
@@ -375,8 +375,14 @@ def makeconfigfile(fname,beamlist,radarname,simparams):
 
         config.add_section('simparams')
         config.add_section('simparamsnames')
+        defitems = [i[0] for i in defaultparser.items('simparamsnotes')]
         for param in simparams:
-            paramnote = defaultparser.get('simparamsnotes',param.lower())
+            if param=='Beamlist':
+                continue
+            if param.lower() in defitems:
+                paramnote = defaultparser.get('simparamsnotes',param.lower())
+            else:
+                paramnote = 'Not in default parameters'
             config.set('simparams','; '+param +' '+paramnote)
             if isinstance(simparams[param],list):
                 data = ""
@@ -391,6 +397,13 @@ def makeconfigfile(fname,beamlist,radarname,simparams):
         cfgfile.close()
     else:
         raise ValueError('fname needs to have an extension of .pickle or .ini')
+def makedefaultfile(fname):
+    """ This function will copy the default configuration file to whatever file the users
+    specifies."""
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    d_file = os.path.join(curpath,'default.ini')
+    (sensdict,simparams)=readconfigfile(d_file)
+    makeconfigfile(fname,simparams['Beamlist'],sensdict['Name'],simparams)
 
 def readconfigfile(fname):
     """This funciton will read in the pickle files that are used for configuration.
@@ -407,6 +420,7 @@ def readconfigfile(fname):
         dictlist = pickle.load(pickleFile)
         pickleFile.close()
         angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
+        beamlist = [float(i) for i in dictlist[0]['beamlist']]
         ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
         sensdict = sensconst.getConst(dictlist[0]['radarname'],ang_data)
 
@@ -451,6 +465,7 @@ def readconfigfile(fname):
         sensdict['fs'] =1.0/simparams['t_s']
         sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
 #    pdb.set_trace()
+    simparams['Beamlist']=beamlist
     time_lim = simparams['TimeLim']
     (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
     simparams['Pulse'] = pulse
