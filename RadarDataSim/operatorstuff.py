@@ -4,16 +4,22 @@ Created on Tue Apr 14 11:10:40 2015
 
 @author: John Swoboda
 """
+import tables
 from const.physConstants import v_C_0, v_Boltz
+from utilFunctions import readconfigfile
 import scipy as sp
 
 def getOverlap(a, b):
     return max(0, min(a[1], b[1]) - max(a[0], b[0]))
-def makematPA(Sphere_Coords,timein,timeout,sensdict,simparams):
+
+
+def makematPA(Sphere_Coords,timein,configfile):
     """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc matrix. The output space will have range repeated first,
     then beams then time. The coordinates will be [t0,b0,r0],[t0,b0,r1],[t0,b0,r2],...
     [t0,b1,r0],[t0,b1,r1], ... [t1,b0,r0],[t1,b0,r1],...[t1,b1,r0]..."""
     #
+    (sensdict,simparams) = readconfigfile(configfile)
+    timeout = simparams['Timevec']
     fullmat = True
     rng_vec = simparams['Rangegates']
     rng_bin=sensdict['t_s']*v_C_0/1000.0
@@ -76,7 +82,17 @@ def makematPA(Sphere_Coords,timein,timeout,sensdict,simparams):
                 outmat[irow,icols] = weights_final
 
 
-    return(weights_final)
+    return(outmat)
 
+def saveoutmat(filename,Sphere_Coords,timein,configfile):
 
+    outmat = makematPA(Sphere_Coords,timein,configfile)
+    h5file = tables.openFile(filename, mode = "w", title = "Radar Matrix out.")
+    h5file.createArray('/','RadarMatrix',outmat,'Static array')
+    h5file.close()
 
+def readradarmat(filename):
+    h5file=tables.openFile(filename)
+    outmat = h5file.root.RadarMatrix.read()
+    h5file.close()
+    return outmat
