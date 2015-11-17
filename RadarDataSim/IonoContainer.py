@@ -78,11 +78,14 @@ class IonoContainer(object):
             Az_vec = coordlist[:,1]
             El_vec = coordlist[:,2]
 
-            X_vec = R_vec*np.cos(Az_vec*d2r)*np.cos(El_vec*d2r)
-            Y_vec = R_vec*np.sin(Az_vec*d2r)*np.cos(El_vec*d2r)
-            Z_vec = R_vec*np.sin(El_vec*d2r)
+            xvecmult = np.cos(Az_vec*d2r)*np.cos(El_vec*d2r)
+            yvecmult = np.sin(Az_vec*d2r)*np.cos(El_vec*d2r)
+            zvecmult = np.sin(El_vec*d2r)
+            X_vec = R_vec*xvecmult
+            Y_vec = R_vec*yvecmult
+            Z_vec = R_vec*zvecmult
 
-            self.Cart_Coords = sp.array([X_vec,Y_vec,Z_vec]).transpose()
+            self.Cart_Coords = sp.column_stack((X_vec,Y_vec,Z_vec))
             self.Sphere_Coords = coordlist
             if coordvecs is not None:
                 if set(coordvecs)!={'r','theta','phi'}:
@@ -103,7 +106,14 @@ class IonoContainer(object):
         if velocity is None:
             self.Velocity=sp.zeros((Nloc,Nt,3))
         else:
-            self.Velocity=velocity
+            # if in sperical coordinates and you have a velocity
+            if velocity.ndim ==2 and ver==1:
+                veltup = (velocity*sp.tile(xvecmult[:,sp.newaxis],(1,Nt)),
+                          velocity*sp.tile(yvecmult[:,sp.newaxis],(1,Nt)),
+                        velocity*sp.tile(zvecmult[:,sp.newaxis],(1,Nt)))
+                self.Velocity=  sp.dstack(veltup)
+            else:
+                self.Velocity=velocity
         # set up a params name
         if paramnames is None:
             partparam = paramlist.shape[2:]

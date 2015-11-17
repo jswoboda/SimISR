@@ -8,10 +8,10 @@ import os, inspect,glob
 import scipy as sp
 import scipy.fftpack as scfft
 
-from RadardataSim.utilFunctions import makedefaultfile
+from RadarDataSim.utilFunctions import makedefaultfile
 from RadarDataSim.operatorstuff import makematPA
 from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
-from RadarDataSim.runsim import runsim
+import RadarDataSim.runsim as runsim
 
 
 
@@ -54,14 +54,14 @@ def main():
     Icont1.saveh5(os.path.join(testpath,'startdata.h5'))
     funcnamelist=['spectrums']
     runsim.main(funcnamelist,testpath,configname,True)
-    Ispec = IonoContainer.readh5(os.path.join(testpath,'Spectrums','0 testiono spectrum'))
+    Ispec = IonoContainer.readh5(os.path.join(testpath,'Spectrums','0 testiono spectrum.h5'))
     Spec = Ispec.Param_List.real
     acflen = 14
 
     # get matrix
     outmat = makematPA(Ispec.Sphere_Coords,Ispec.Time_Vector,configname)
     (outn,inn) = outmat.shape
-    acfs = sp.ifft(scfft.ifftshift(Spec,axis=-1),axis=-1)[:,:,:acflen]
+    acfs = sp.ifft(scfft.ifftshift(Spec,axes=-1),axis=-1)[:,:,:acflen]
     acfout = sp.zeros((outn,acflen)).astype(acfs.dtype)
 
     acfs = sp.reshape(acfs,(inn,acflen),order='F')

@@ -20,6 +20,8 @@ def makematPA(Sphere_Coords,timein,configfile):
     #
     (sensdict,simparams) = readconfigfile(configfile)
     timeout = simparams['Timevec']
+    Tint = simparams['Tint']
+    timeout = sp.column_stack((timeout,timeout+Tint))
     fullmat = True
     rng_vec = simparams['Rangegates']
     rng_bin=sensdict['t_s']*v_C_0/1000.0
@@ -75,7 +77,7 @@ def makematPA(Sphere_Coords,timein,configfile):
                 weight_loc = sp.where(rangelog[:,0])[0]
 
                 w_loc_rep = sp.tile(weight_loc,len(itpnts))
-                t_loc_rep = sp.repeat(itpnts)
+                t_loc_rep = sp.repeat(itpnts,len(weight_loc))
                 icols = t_loc_rep*Nlocbeg+w_loc_rep
 
                 weights_final = weights_time[t_loc_rep]*weight_cur[w_loc_rep]*range_g**2/rho[w_loc_rep]**2
