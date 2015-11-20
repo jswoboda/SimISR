@@ -21,7 +21,6 @@ import RadarDataSim.specfunctions as specfuncs
 from RadarDataSim.specfunctions import ISRSfitfunction
 from RadarDataSim.fitterMethodGen import Fitterionoconainer
 from RadarDataSim.utilFunctions import readconfigfile
-
 #%% Make spectrums
 def makespectrums(basedir,configfile,remakealldata):
 

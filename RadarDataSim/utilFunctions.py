@@ -339,7 +339,48 @@ def TempProfile(z,T0=1000.,z0=100.):
 
 
 #%% Config files
+def makeparamdicts(beamlist,radarname,simparams):
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
+    angles = getangles(beamlist,radarname)
+    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+    sensdict = sensconst.getConst(radarname,ang_data)
+
+    if 't_s' in simparams.keys():
+        sensdict['t_s'] = simparams['t_s']
+        sensdict['fs'] =1.0/simparams['t_s']
+        sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
+#    pdb.set_trace()
+    simparams['Beamlist']=beamlist
+    time_lim = simparams['TimeLim']
+    (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+    simparams['Pulse'] = pulse
+#    pdb.set_trace()
+    simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
+        sensdict['t_s']*len(pulse),len(pulse),simparams['numpoints'])
+    simparams['angles']=angles
+    rng_lims = simparams['RangeLims']
+    rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
+    simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
+    simparams['Rangegates']=rng_gates
+    sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+    simparams['SUMRULE'] = sumrule
+    minrg = -sumrule[0].min()
+    maxrg = len(rng_gates)-sumrule[1].max()
+
+    simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
+    if 'startfile' in simparams.keys() and simparams['Pulsetype'].lower()!='barker':
+        relpath = simparams['startfile'][0] !=os.path.sep
+        if relpath:
+            fullfilepath = os.path.join(curpath,simparams['startfile'])
+            simparams['startfile'] = fullfilepath
+        stext = os.path.isfile(simparams['startfile'])
+        if not stext:
+            warnings.warn('The given start file does not exist',UserWarning)
+
+    elif simparams['Pulsetype'].lower()!='barker':
+        warnings.warn('No start file given',UserWarning)
+    return(sensdict,simparams)
 def makeconfigfile(fname,beamlist,radarname,simparams):
     """This will make the config file based off of the desired input parmeters.
     Inputs
