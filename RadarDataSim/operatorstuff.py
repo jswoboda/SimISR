@@ -98,3 +98,65 @@ def readradarmat(filename):
     outmat = h5file.root.RadarMatrix.read()
     h5file.close()
     return outmat
+
+def cgmat(A,x,b,M=None,max_it=100,tol=1e-8):
+
+    if M is None:
+        M= sp.diag(A)
+    bnrm2 = sp.linalg.norm(b)
+    r=b-sp.dot(A,x)
+    rho=sp.zeros(max_it)
+    for i in range(max_it):
+        z=sp.linalg.solve(M,r)
+        rho[i] = sp.dot(r,z)
+        if i==0:
+            p=z
+        else:
+            beta=rho/rho[i-1]
+            p=z+beta*p
+
+        q=sp.dot(A,p)
+        alpha=rho/sp.dot(p,q)
+        x = x+alpha*p
+        r = r-alpha*q
+        error = sp.linalg.norm( r ) / bnrm2
+        if error <tol:
+            return (x,error,i,False)
+
+    return (x,error,max_it,True)
+def diffmat(dims,order = 'C'):
+
+    xdim = dims[0]
+    ydim = dims[1]
+    dims[0]=ydim
+    dims[1]=xdim
+
+    if order.lower() == 'c':
+        dims = dims[::-1]
+
+    outD = []
+    for idimn, idim in enumerate(dims):
+        if idim==0:
+            outD.append(sp.array([]))
+            continue
+        e = sp.ones(idim)
+        dthing = sp.column_stack((-e,e))
+        D = sp.sparse.spdiags(dthing,[0,1],idim-1,idim)
+        D = sp.vstack((D,D[-1]))
+        if idimn>0:
+            E = sp.sparse.eye(sp.prod(dims[:idimn]))
+            D = sp.kron(D,E)
+
+        if idimn<len(dims)-1:
+            E = sp.sparse.eye(sp.prod(dims[idimn+1:]))
+            D = sp.kron(E,D)
+
+        outD.append(D)
+    if order.lower() == 'c':
+        outD=outD[::-1]
+    Dy=outD[0]
+    Dx = outD[1]
+    outD[0]=Dx
+    outD[1]=Dy
+
+    return tuple(outD)
