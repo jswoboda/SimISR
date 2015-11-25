@@ -5,13 +5,67 @@ Created on Tue Apr 14 11:10:40 2015
 @author: John Swoboda
 """
 import tables
-from const.physConstants import v_C_0, v_Boltz
+from const.physConstants import v_C_0
 from utilFunctions import readconfigfile
+from IonoContainer import IonoContainer
 import scipy as sp
 
 def getOverlap(a, b):
     return max(0, min(a[1], b[1]) - max(a[0], b[0]))
 
+class RadarSpaceTimeOperator(object):
+
+    def __init__(self,ionoin,configfile):
+        r2d = 180.0/sp.pi
+        d2r = sp.pi/180.0
+        (sensdict,simparams) = readconfigfile(configfile)
+        nt = ionoin.Time_Vector.shape[0]
+        nloc = ionoin.Sphere_Coords.shape[0]
+
+        #Input location
+        self.Cart_Coords_in = ionoin.Cart_Coords
+        self.Sphere_Coords_In = ionoin.Sphere_Coords,
+        self.Time_In = ionoin.Time_Vector
+        self.Cart_Coords_In_Rep = sp.tile(ionoin.Cart_Coords,(nt,1))
+        self.Sphere_Coords_In_Rep = sp.tile(ionoin.Sphere_Coords,(nt,1))
+        self.Time_In_Rep  = sp.repeat(ionoin.Time_Vector,nloc,axis=0)
+
+        #output locations
+        rng_vec2 = simparams['Rangegatesfinal']
+        nrgout = len(rng_vec2)
+
+        angles = simparams['angles']
+        nang =len(angles)
+
+        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+        rng_all = sp.tile(rng_vec2,(nang))
+        ang_all = sp.repeat(ang_data,nrgout,axis=0)
+        nlocout = nang*nrgout
+
+        ntout = len(simparams['Timevec'])
+        self.Sphere_Coords_Out = sp.column_stack((rng_all,ang_all))
+        (R_vec,Az_vec,El_vec) = (self.Sphere_Coords_Out[:,0],self.Sphere_Coords_Out[:,1],self.Sphere_Coords_Out[:,2])
+        xvecmult = sp.cos(Az_vec*d2r)*sp.cos(El_vec*d2r)
+        yvecmult = sp.sin(Az_vec*d2r)*sp.cos(El_vec*d2r)
+        zvecmult = sp.sin(El_vec*d2r)
+        X_vec = R_vec*xvecmult
+        Y_vec = R_vec*yvecmult
+        Z_vec = R_vec*zvecmult
+
+        self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
+        self.Time_Out = simparams['Timevec']
+        self.Time_Out_Rep =sp.repeat(simparams['Timevec'],nlocout,axis=0)
+        self.Sphere_Coords_Out_Rep =sp.tile(self.Sphere_Coords_Out,(ntout,1))
+        self.RSTMat = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector)
+
+    def mult_iono(self,ionoin):
+
+        return outiono
+    def invert(self,method,inputs):
+
+        return outRSTOp
+    def __mult__(self,ionoin):
+        return self.mult_iono(ionoin)
 
 def makematPA(Sphere_Coords,timein,configfile):
     """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc matrix. The output space will have range repeated first,
@@ -124,6 +178,8 @@ def cgmat(A,x,b,M=None,max_it=100,tol=1e-8):
             return (x,error,i,False)
 
     return (x,error,max_it,True)
+
+
 def diffmat(dims,order = 'C'):
 
     xdim = dims[0]
