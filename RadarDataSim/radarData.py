@@ -100,7 +100,8 @@ class RadarDataFile(object):
             for ifn, ifilet in enumerate(filetimes):
                 outdict = {}
                 ifile = Ionodict[ifilet]
-                print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),os.path.split(ifile)[1]))
+                print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),
+                      os.path.split(ifile)[1]))
                 curcontainer = IonoContainer.readh5(ifile)
                 pnts = pulsefile==ifn
                 pt =pulsetimes[pnts]
@@ -247,7 +248,12 @@ class RadarDataFile(object):
         N_samps = N_rg +Pulselen-1
         simdtype = self.simparams['dtype']
         Ntime=len(timevec)
-        Nbeams = len(self.simparams['angles'])
+
+        if 'outangles' in self.simparams.keys():
+            Nbeams = len(self.simparams['outangles'])
+        else:
+            Nbeams = len(self.simparams['angles'])
+
 
         # Choose type of processing
         if self.simparams['Pulsetype'].lower() == 'barker':
@@ -290,10 +296,10 @@ class RadarDataFile(object):
                 time_list.append(h5file.get_node('/Time').read())
                 file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
                 h5file.close()
-        pulsen = sp.hstack(pulsen_list).astype(int)
-        beamn = sp.hstack(beamn_list).astype(int)
-        ptimevec = sp.hstack(time_list).astype(int)
-        file_loc = sp.hstack(file_loclist).astype(int)
+        pulsen = sp.hstack(pulsen_list).astype(int)# pulse number
+        beamn = sp.hstack(beamn_list).astype(int)# beam numbers
+        ptimevec = sp.hstack(time_list).astype(int)# time of each pulse
+        file_loc = sp.hstack(file_loclist).astype(int)# location in the file
         firstfile = True
         # run the time loop
         print("Forming ACF estimates")
@@ -318,11 +324,13 @@ class RadarDataFile(object):
                 curfileloc = file_loc[pos_all]
             except:
                 pdb.set_trace()
+            # Find the needed files and beam numbers
             curfiles = set(curfileloc)
             beamlocs = beamn[pos_all]
 
             timemat[itn,0] = ptimevec[pos_all].min()
             timemat[itn,1]=ptimevec[pos_all].max()
+            # cur data pulls out all data from all of the beams and posisions
             curdata = sp.zeros((len(pos_all),N_samps),dtype = simdtype)
             curaddednoise = sp.zeros((len(pos_all),N_samps),dtype = simdtype)
             curnoise = sp.zeros((len(pos_all),NNs),dtype = simdtype)
@@ -345,17 +353,36 @@ class RadarDataFile(object):
                 curaddednoise[file_arlocs] = h5file.get_node('/AddedNoise').read().astype(simdtype)[curfileitvec].copy()
                 curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)[curfileitvec].copy()
                 h5file.close()
-            # After data is read in form lags for each beam
-            for ibeam in range(Nbeams):
-                print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
-                beamlocstmp = sp.where(beamlocs==ibeam)[0]
-                pulses[itn,ibeam] = len(beamlocstmp)
-                pulsesN[itn,ibeam] = len(beamlocstmp)
-                outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),numtype=self.simparams['dtype'], pulse=pulse)
-                outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),numtype=self.simparams['dtype'], pulse=pulse)
-                outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),numtype=self.simparams['dtype'], pulse=pulse)
+            # differentiate between phased arrays and dish antennas
+            if self.sensdict['Name'].lower() in ['risr','pfisr']:
+                # After data is read in form lags for each beam
+                for ibeam in range(Nbeams):
+                    print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
+                    beamlocstmp = sp.where(beamlocs==ibeam)[0]
+                    pulses[itn,ibeam] = len(beamlocstmp)
+                    pulsesN[itn,ibeam] = len(beamlocstmp)
+                    outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),
+                        numtype=self.simparams['dtype'], pulse=pulse)
+                    outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
+                        numtype=self.simparams['dtype'], pulse=pulse)
+                    outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
+                        numtype=self.simparams['dtype'], pulse=pulse)
+            else:
+                for ibeamlist in self.simparams['outangles']:
+                    print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
+                    beamlocstmp = sp.where(sp.in1d(beamlocs,ibeamlist))[0]
+                    pulses[itn,ibeam] = len(beamlocstmp)
+                    pulsesN[itn,ibeam] = len(beamlocstmp)
+                    outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),
+                        numtype=self.simparams['dtype'], pulse=pulse)
+                    outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
+                        numtype=self.simparams['dtype'], pulse=pulse)
+                    outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
+                        numtype=self.simparams['dtype'], pulse=pulse)
+
         # Create output dictionaries and output data
-        DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,'Time':timemat,'AddedNoiseACF':outaddednoise,'SpecsUsed':specsused}
+        DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,
+                    'Time':timemat,'AddedNoiseACF':outaddednoise,'SpecsUsed':specsused}
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
         return(DataLags,NoiseLags)
 
@@ -558,4 +585,4 @@ def main():
     print(t2-t1)
 if __name__== '__main__':
     main()
-    
+
