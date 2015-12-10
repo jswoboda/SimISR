@@ -9,12 +9,14 @@ The code also outputs a picture of the selected beam pattern.
 Updated by Greg Starr so it can be used as part of a larger GUI
 """
 
-from Tkinter import *
+import Tkinter
 import tkFileDialog
 import os, inspect
 import numpy as np
 import matplotlib.pyplot as plt
+import tables
 from beamfuncs import BeamSelector
+import pdb
 
 def rect(r, w, deg=1):
     # radian if deg=0; degree if deg=1
@@ -35,42 +37,44 @@ def polar(x, y, deg=1):
 class Gui():
     def __init__(self,parent,subgui=True):
          # get the current path
+
         curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        constpath = os.path.join(os.path.split(curpath)[0],'RadarDataSim','const')
         # set the root
         self.parent = parent
         self.subgui = subgui
         # set up frames for list
-        self.frame1 = Frame(self.parent)
+        self.frame1 = Tkinter.Frame(self.parent)
         self.frame1.grid(row=0,column=0)
-        self.frame2 = Frame(self.parent)
+        self.frame2 = Tkinter.Frame(self.parent)
         self.frame2.grid(row=0,column=1)
 
         self.output = []
         self.beamhandle = None
         if subgui:
             self.sizecanv = [500,500]
-            self.beamcodeent= Entry(self.frame1)
+            self.beamcodeent= Tkinter.Entry(self.frame1)
             self.beamcodeent.grid(row=1,column=1)
-            self.beamcodeentlabel = Label(self.frame1,text="Enter Beamcodes")
+            self.beamcodeentlabel = Tkinter.Label(self.frame1,text="Enter Beamcodes")
             self.beamcodeentlabel.grid(row=1,column=0,sticky='e')
-            self.beambuttex = Button(self.frame1, text="Read", command=self.readbcobar)
+            self.beambuttex = Tkinter.Button(self.frame1, text="Read", command=self.readbcobar)
             self.beambuttex.grid(row=1,column=2,sticky='w')
-            self.beambutt = Button(self.frame1, text="Import", command=self.beambuttonClick)
+            self.beambutt = Tkinter.Button(self.frame1, text="Import", command=self.beambuttonClick)
             self.beambutt.grid(row=2,column=2,sticky='w')
             canvrow = 3
         else:
             self.sizecanv = [1000,1000]
-            self.leb = Label(self.frame1, text="Beam Selector",font=("Helvetica", 16))
-            self.leb.grid(row=0, sticky=W+E+N+S,columnspan=2)
-            self.butt = Button(self.frame1, text="Finished", command=self.buttonClick)
+            self.leb = Tkinter.Label(self.frame1, text="Beam Selector",font=("Helvetica", 16))
+            self.leb.grid(row=0, sticky=Tkinter.W+Tkinter.E+Tkinter.N+Tkinter.S,columnspan=2)
+            self.butt = Tkinter.Button(self.frame1, text="Finished", command=self.buttonClick)
             self.butt.grid(row=1,column=1,sticky='w')
-            self.beamcodeent= Entry(self.frame1)
+            self.beamcodeent= Tkinter.Entry(self.frame1)
             self.beamcodeent.grid(row=2,column=1,sticky='w')
-            self.beamcodeentlabel = Label(self.frame1,text="Enter Beamcodes")
+            self.beamcodeentlabel = Tkinter.Label(self.frame1,text="Enter Beamcodes")
             self.beamcodeentlabel.grid(row=2,column = 0,sticky='e')
-            self.beambuttex = Button(self.frame1, text="Read", command=self.readbcobar)
+            self.beambuttex = Tkinter.Button(self.frame1, text="Read", command=self.readbcobar)
             self.beambuttex.grid(row=2,column=2,sticky='w')
-            self.beambutt = Button(self.frame1, text="Import", command=self.beambuttonClick)
+            self.beambutt = Tkinter.Button(self.frame1, text="Import", command=self.beambuttonClick)
             self.beambutt.grid(row=3,column=2,sticky='w')
 
             canvrow = 4
@@ -80,19 +84,21 @@ class Gui():
         self.lat = [80,70,60,50,40,30]
         self.angles = np.arange(0,180,30)
 
-        self.var = StringVar()
+        self.var = Tkinter.StringVar()
         self.var.set("PFISR")
-        self.choices = {"PFISR":os.path.join(curpath,'PFISRbeammap.txt'),
-                        "RISR-N":os.path.join(curpath,'RISRNbeammap.txt')}#, "RISR-S":'file3'}
-        self.option = OptionMenu(self.frame1, self.var, *self.choices)
+        self.choices = {"PFISR":os.path.join(constpath,'PFISR_PARAMS.h5'),
+                        "RISR-N":os.path.join(constpath,'RISR_PARAMS.h5'),
+                        "Sondrestrom":os.path.join(constpath,'Sondrestrom_PARAMS.h5'),
+                        "Millstone":os.path.join(constpath,'Millstone_PARAMS.h5')}#, "RISR-S":'file3'}
+        self.option = Tkinter.OptionMenu(self.frame1, self.var, *self.choices)
         self.option.grid(row=1,column=0,sticky='w')
-        self.lines = np.loadtxt(self.choices[self.var.get()])
-
-
-        self.readfile = StringVar()
+        hfile=tables.open_file(self.choices[self.var.get()])
+        self.lines = hfile.root.Params.Kmat.read()
+        hfile.close()
+        self.readfile = Tkinter.StringVar()
 
         # set up the canvas
-        self.canv = Canvas(self.frame1 , width=self.sizecanv[0], height=self.sizecanv[1],background='white')
+        self.canv = Tkinter.Canvas(self.frame1 , width=self.sizecanv[0], height=self.sizecanv[1],background='white')
         self.canv.grid(row=canvrow,column=0,columnspan=2)
 
         self.Drawlines()
@@ -104,18 +110,18 @@ class Gui():
         self.canv.update()
 
         # beam list
-        self.bidlabel = Label(self.frame2,text="Beam ID")
+        self.bidlabel = Tkinter.Label(self.frame2,text="Beam ID")
         self.bidlabel.grid(row=0,column=0)
-        self.azlabel = Label(self.frame2,text="Azimuth")
+        self.azlabel = Tkinter.Label(self.frame2,text="Azimuth")
         self.azlabel.grid(row=0,column=1)
-        self.ellabel = Label(self.frame2,text="Elevation")
+        self.ellabel = Tkinter.Label(self.frame2,text="Elevation")
         self.ellabel.grid(row=0,column=2)
 
-        self.scroll = Scrollbar(self.frame2)
+        self.scroll = Tkinter.Scrollbar(self.frame2)
         self.scroll.grid(row=1,column=3)
 
-        self.beamtext = Text(self.frame2,yscrollcommand=self.scroll.set)
-        self.beamtext.config(width=30,state=DISABLED)
+        self.beamtext = Tkinter.Text(self.frame2,yscrollcommand=self.scroll.set)
+        self.beamtext.config(width=30,state=Tkinter.DISABLED)
         self.beamtext.grid(row = 1,column = 0,columnspan=3)
         self.beamlines = []
         self.scroll.config(command=self.beamtext.yview)
@@ -123,13 +129,15 @@ class Gui():
     def Changefile(self,*args):
         """ This function will change the files to a different radar system."""
         filename= self.choices[self.var.get()]
-        self.beamtext.config(state=NORMAL)
+        self.beamtext.config(state=Tkinter.NORMAL)
         self.beamtext.delete(1.0,'end')
-        self.beamtext.config(state=DISABLED)
+        self.beamtext.config(state=Tkinter.DISABLED)
         self.readfile.set(filename)
-        self.lines = np.loadtxt(filename)
+        hfile=tables.open_file(filename)
+        self.lines = hfile.root.Params.Kmat.read()
+        hfile.close()
         self.output=[]
-        self.canv.delete(ALL)
+        self.canv.delete(Tkinter.ALL)
         self.Drawlines()
         self.Drawbeams()
 
@@ -236,12 +244,12 @@ class Gui():
         self.output.remove(closest[0])
         beamstr = "{:>9} {:>9} {:>9}\n".format(closest[0],closest[1],closest[2])
         self.beamlines.remove(beamstr)
-        self.beamtext.config(state=NORMAL)
+        self.beamtext.config(state=Tkinter.NORMAL)
         self.beamtext.delete(1.0,'end')
         for ibeam in self.beamlines:
-            self.beamtext.insert(INSERT,ibeam)
+            self.beamtext.insert(Tkinter.INSERT,ibeam)
 
-        self.beamtext.config(state=DISABLED)
+        self.beamtext.config(state=Tkinter.DISABLED)
         self.canv.update()
 
 
@@ -255,9 +263,9 @@ class Gui():
         self.canv.update()
 
         beamstr = "{:>9} {:>9} {:>9}\n".format(closest[0],closest[1],closest[2])
-        self.beamtext.config(state=NORMAL)
-        self.beamtext.insert(INSERT,beamstr)
-        self.beamtext.config(state=DISABLED)
+        self.beamtext.config(state=Tkinter.NORMAL)
+        self.beamtext.insert(Tkinter.INSERT,beamstr)
+        self.beamtext.config(state=Tkinter.DISABLED)
         self.beamlines.append(beamstr)
         bcolist = self.beamcodeent.get().split()
         bcolist = [int(i.strip(',')) for i in bcolist]
@@ -298,11 +306,11 @@ class Gui():
 
 def run_beam_gui():
     """Used to run the GUI as a function"""
-    root = Tk()
+    root = Tkinter.Tk()
     gui = Gui(root,False)
     root.mainloop()
 if __name__ == "__main__":
 
-    root = Tk()
+    root = Tkinter.Tk()
     gui = Gui(root,False)
     root.mainloop()

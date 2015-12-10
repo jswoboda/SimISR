@@ -6,16 +6,22 @@ Created on Tue Dec 31 10:58:18 2013
 """
 import os
 import inspect
+import tables
 def getangles(bcodes,radar='risr'):
-    ref_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    constpath = os.path.join(os.path.split(curpath)[0],'RadarDataSim','const')
     if radar.lower() == 'risr':
-        reffile = os.path.join(ref_path,'RISRNbeammap.txt')
+        reffile = os.path.join(constpath,'RISR_PARAMS.h5')
     elif radar.lower() == 'pfisr':
-        reffile = os.path.join(ref_path,'PFISRbeammap.txt')
+        reffile = os.path.join(constpath,'PFISR_PARAMS.h5')
+    elif radar.lower() == 'millstone':
+        reffile = os.path.join(constpath,'Millstone_PARAMS.h5')
+    elif radar.lower() == 'sondrestrom':
+        reffile = os.path.join(constpath,'Sondrestrom_PARAMS.h5')
 
-    ref_f = open(reffile)
-    all_ref = ref_f.readlines()
-    ref_f.close()
+    hfile=tables.open_file(reffile)
+    all_ref = hfile.root.Params.Kmat.read()
+    hfile.close()
 
     # make a beamcode to angle dictionary
     bco_dict = dict()
