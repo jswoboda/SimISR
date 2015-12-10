@@ -142,6 +142,12 @@ class App():
         self.fittypemenu = OptionMenu(self.frame, self.fittype,"Spectrum","ACF")
         self.fittypemenu.grid(row=rown,column=1,sticky='w')
         rown+=1
+                # Start file for set up
+        self.outangles = Entry(self.frame)
+        self.outangles.grid(row=rown,column=1)
+        self.outangleslabel = Label(self.frame,text="Beam int together, seperated by commas")
+        self.outangleslabel.grid(row=rown)
+        
         # Beam selector GUI
         self.frame2 = LabelFrame(self.root,text="Beam Selector",padx=5,pady=5)
         self.frame2.grid(row=1,column=1, sticky="e")
@@ -235,7 +241,8 @@ class App():
                     'species':newlist,
                     'numpoints':int(float(self.numpoints.get())),
                     'startfile':self.startfile.get(),
-                    'FitType': self.fittype.get()}
+                    'FitType': self.fittype.get(),
+                    'outangles':self.outangles.get()}
         makeconfigfile(fn,blist,radarname,simparams)
 
 

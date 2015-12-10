@@ -350,12 +350,12 @@ def makeparamdicts(beamlist,radarname,simparams):
         sensdict['t_s'] = simparams['t_s']
         sensdict['fs'] =1.0/simparams['t_s']
         sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
-#    pdb.set_trace()
+
     simparams['Beamlist']=beamlist
     time_lim = simparams['TimeLim']
     (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
     simparams['Pulse'] = pulse
-#    pdb.set_trace()
+
     simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
         sensdict['t_s']*len(pulse),len(pulse),simparams['numpoints'])
     simparams['angles']=angles
@@ -425,7 +425,24 @@ def makeconfigfile(fname,beamlist,radarname,simparams):
             else:
                 paramnote = 'Not in default parameters'
             config.set('simparams','; '+param +' '+paramnote)
-            if isinstance(simparams[param],list):
+            # for the output list of angles
+            if param.lower=='outangles':
+                outstr = ''
+                beamlistlist = simparams[param]
+                if beamlistlist=='':
+                    beamlistlist=beamlist
+                for ilist in beamlistlist:
+                    if isinstance(ilist,list):
+                        for inum in ilist:
+                            outstr=outstr+str(ilist)+' '
+                        
+                    else:
+                        outstr=outstr+str(ilist)
+                    outstr=outstr+', '
+                outstr=outstr[:-2]
+                config.set('simparams',param,outstr)
+                
+            elif isinstance(simparams[param],list):
                 data = ""
                 for a in simparams[param]:
                     data += str(a)
@@ -486,6 +503,9 @@ def readconfigfile(fname):
                 simparams[param]=sp.complex128
             elif simparams[param]=="<type 'numpy.complex64'>":
                 simparams[param]=sp.complex64
+            elif param=='outangles':
+                outlist1 = simparams[param].split(',')
+                simparams[param]=[[ float(j) for j in  i.lstrip().split(' ')] for i in outlist1]
             else:
                 simparams[param]=simparams[param].split(" ")
                 if len(simparams[param])==1:
@@ -505,12 +525,11 @@ def readconfigfile(fname):
         sensdict['t_s'] = simparams['t_s']
         sensdict['fs'] =1.0/simparams['t_s']
         sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
-#    pdb.set_trace()
+
     simparams['Beamlist']=beamlist
     time_lim = simparams['TimeLim']
     (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
     simparams['Pulse'] = pulse
-#    pdb.set_trace()
     simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
         sensdict['t_s']*len(pulse),len(pulse),simparams['numpoints'])
     simparams['angles']=angles
@@ -536,7 +555,7 @@ def readconfigfile(fname):
     elif simparams['Pulsetype'].lower()!='barker':
         warnings.warn('No start file given',UserWarning)
     return(sensdict,simparams)
-
+#%% Make pulse
 def makepulse(ptype,plen,ts):
 
     nsamps = sp.round_(plen/ts)
