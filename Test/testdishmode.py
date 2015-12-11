@@ -16,18 +16,21 @@ def configsetup(testpath):
     """This function will make a pickle file used to configure the simulation.
     Inputs
     testpath - A string for the path that this file will be saved."""
-    beamlist = [64094,64091,64088,64085,64082,64238,64286,64070,64061,64058,64055,64052,
-                64049,64046,64043,64067,64040,64037,64034] # list of beams in
-    radarname = 'pfisr'# name of radar for parameters can either be pfisr or risr
+    # list of beams that will give a line of points between 70 and 80 deg el with az of 20 deg
+    beamlist = [16626, 16987, 17348, 17709, 18070, 18431, 18792, 19153, 19514] # list of beams in
+    radarname = 'millstone'# name of radar for parameters can either be pfisr or risr
 
-    Tint=60.0 # integration time in seconds
-    time_lim = 4.0*Tint # simulation length in seconds
+
     fitter_int = 60.0 # time interval between fitted params
 #    pulse = sp.ones(14)# pulse
     rng_lims = [150,500]# limits of the range gates
     IPP = .0087 #interpulse period in seconds
     NNs = 28 # number of noise samples per pulse
     NNp = 100 # number of noise pulses
+    b_rate = 100
+    intrate = 2.
+    Tint=intrate*b_rate*IPP # integration time in seconds
+    time_lim = len(beamlist)*4.0*Tint # simulation length in seconds
     simparams =   {'IPP':IPP, #interpulse period
                    'TimeLim':time_lim, # length of simulation
                    'RangeLims':rng_lims, # range swath limit
@@ -44,11 +47,13 @@ def configsetup(testpath):
                    'ambupsamp':1, # up sampling factor for ambiguity function
                    'species':['O+','e-'], # type of ion species used in simulation
                    'numpoints':128, # number of points for each spectrum
-                   'startfile':os.path.join(testpath,'startdata.h5')}# file used for starting points
+                   'startfile':os.path.join(testpath,'startdata.h5'),# file used for starting points
+                   'beamrate':b_rate,# the number of pulses each beam will output until it moves
+                   'outangles':[sp.arange(i,i+intrate-1) for i in sp.arange(0,len(beamlist),intrate)]}
 #                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
 #                       ,[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])}
 
-    fname = os.path.join(testpath,'PFISRExample')
+    fname = os.path.join(testpath,'DishExample')
 
     makeconfigfile(fname+'.ini',beamlist,radarname,simparams)
 def makeinputh5(Iono,basedir):
@@ -87,7 +92,7 @@ def main():
     ionospheric parameters based off of a Chapman function. Then it will create configuration
     and start files followed by running the simulation."""
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Testdata','Long_Pulse')
+    testpath = os.path.join(os.path.split(curpath)[0],'Testdata','DishMode')
     origparamsdir = os.path.join(testpath,'Origparams')
     if not os.path.exists(testpath):
         os.mkdir(testpath)
@@ -109,8 +114,8 @@ def main():
     makeinputh5(MakeTestIonoclass(testv=True,testtemp=False),testpath)
     Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
     funcnamelist=['spectrums','radardata','fitting']
-    runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.ini'),True)
-    analysisdump(testpath,os.path.join(testpath,'PFISRExample.ini'))
+    runsim.main(funcnamelist,testpath,os.path.join(testpath,'DishExample.ini'),True)
+    analysisdump(testpath,os.path.join(testpath,'DishExample.ini'))
 if __name__== '__main__':
 
     main()

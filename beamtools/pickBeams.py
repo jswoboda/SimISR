@@ -121,11 +121,48 @@ class Gui():
         self.scroll.grid(row=1,column=3)
 
         self.beamtext = Tkinter.Text(self.frame2,yscrollcommand=self.scroll.set)
-        self.beamtext.config(width=30,state=Tkinter.DISABLED)
+        self.beamtext.config(width=50,state=Tkinter.DISABLED)
         self.beamtext.grid(row = 1,column = 0,columnspan=3)
         self.beamlines = []
         self.scroll.config(command=self.beamtext.yview)
+        
+        # bounding box
+        self.boxbutton= Tkinter.Button(self.frame2, text="Angle Box", command=self.boxbuttonClick)
+        self.boxbutton.grid(row=2,column=0,sticky='w')
+        
+        self.azminmaxlabel = Tkinter.Label(self.frame2,text="Az min and max")
+        self.azminmaxlabel.grid(row=3,column=0,sticky='e')
+        self.azmin= Tkinter.Entry(self.frame2)
+        self.azmin.grid(row=3,column=1,sticky='w')
+        self.azmax= Tkinter.Entry(self.frame2)
+        self.azmax.grid(row=3,column=2,sticky='w')
+        
+        self.elminmaxlabel = Tkinter.Label(self.frame2,text="El min and max")
+        self.elminmaxlabel.grid(row=4,column=0,sticky='e')
+        self.elmin= Tkinter.Entry(self.frame2)
+        self.elmin.grid(row=4,column=1,sticky='w')
+        self.elmax= Tkinter.Entry(self.frame2)
+        self.elmax.grid(row=4,column=2,sticky='w')
+        
+        # Az choice
+        self.azbutton=Tkinter.Button(self.frame2, text="Az Choice", command=self.azbuttonClick)
+        self.azbutton.grid(row=5,column=0,sticky='w')
+        self.azchoice= Tkinter.Entry(self.frame2)
+        self.azchoice.grid(row=5,column=1,sticky='w')
+        
+        # Az choice
+        self.elbutton=Tkinter.Button(self.frame2, text="El Choice", command=self.elbuttonClick)
+        self.elbutton.grid(row=6,column=0,sticky='w')
+        self.elchoice= Tkinter.Entry(self.frame2)
+        self.elchoice.grid(row=6,column=1,sticky='w')
+        
+        self.azsortbutton=Tkinter.Button(self.frame2, text="Az sort", command=self.azsortbuttonClick)
+        self.azsortbutton.grid(row=7,column=0,sticky='w')
+        self.elsortbutton=Tkinter.Button(self.frame2, text="El Sort", command=self.elsortbuttonClick)
+        self.elsortbutton.grid(row=7,column=1,sticky='w')
 
+    
+        
     def Changefile(self,*args):
         """ This function will change the files to a different radar system."""
         filename= self.choices[self.var.get()]
@@ -178,6 +215,7 @@ class Gui():
             if closest[0] not in self.output:
                 self.__addbeam__(closest,linesit)
     def addbeamlistbco(self,bcolist):
+        """ Adds a set of beams based off of the beam numbers"""
         allbco = self.lines[:,0]
         allbco = np.array([int(i) for i in allbco])
 
@@ -238,8 +276,58 @@ class Gui():
         closest = self.lines[linesit]
         if (closest[0] in self.output) and (dist[linesit]<self.div/5.0):
             self.__removebeam__(closest,linesit)
-
+    
+    def boxbuttonClick(self):
+        """This the call back for the bounding box button where all of the beams
+        at a certian elevation are selected."""
+        inputvec = []
+        inputvec.append(self.azmin.get().strip())
+        inputvec.append(self.azmax.get().strip())
+        inputvec.append(self.elmin.get().strip())
+        inputvec.append(self.elmax.get().strip())
+        maxmin = [0.,359.99,0.,90.]
+        
+        inputnums = []
+        for i,iin in enumerate(inputvec):
+            try:
+                inputnums.append(float(iin))
+            except:
+                inputnums.append(maxmin(i))
+               
+        
+        alldata = self.lines
+        azkeep = np.logical_and(alldata[:,1]>inputnums[0],alldata[:,1]<inputnums[1])
+        elkeep = np.logical_and(alldata[:,2]>inputnums[2],alldata[:,2]<inputnums[3])
+        allkeep = np.logical_and(azkeep,elkeep)        
+        bcolist = alldata[allkeep,0]
+        if (len(bcolist)!=0) and (len(bcolist)!=len(alldata)):        
+            self.addbeamlistbco(bcolist)
+        
+    def azbuttonClick(self):
+        """This the call back for the azimuth button where all of the beams
+        at a certian elevation are selected."""
+        azval = self.azchoice.get().strip()
+        try:
+            aznum = float(azval)
+            azkeep =np.in1d(self.lines[:,1],aznum)
+            bcoout = self.lines[azkeep,0]
+            self.addbeamlistbco(bcoout)
+        except:
+            print('Bad value for azimuth angle given')
+    def elbuttonClick(self):
+        """This the call back for the elevation button where all of the beams
+        at a certian elevation are selected."""
+        elval = self.elchoice.get().strip()
+        try:
+            elnum = float(elval)
+            elkeep =np.in1d(self.lines[:,2],elnum)
+            bcoout = self.lines[elkeep,0]
+            self.addbeamlistbco(bcoout)
+        except:
+            print('Bad value for elevation angle given')
+            
     def __removebeam__(self,closest,linesit):
+        """This removes a beam from the data"""
         self.canv.itemconfig(self.beamhandles[linesit], fill='blue')
         self.output.remove(closest[0])
         beamstr = "{:>9} {:>9} {:>9}\n".format(closest[0],closest[1],closest[2])
@@ -252,7 +340,22 @@ class Gui():
         self.beamtext.config(state=Tkinter.DISABLED)
         self.canv.update()
 
-
+    def azsortbuttonClick(self):
+        outlist = self.output
+        bmlist = self.lines
+        bcolist = bmlist[:,0]
+        azlist = bmlist[:,1]
+        azvals = [azlist[bcolist==i][0] for i in outlist ]
+        order = np.argsort(azvals)
+        self.updatelists(order)
+    def elsortbuttonClick(self):
+        outlist = self.output
+        bmlist = self.lines
+        bcolist = bmlist[:,0]
+        ellist = bmlist[:,2]
+        elvals = [ellist[bcolist==i][0] for i in outlist ]
+        order = np.argsort(elvals)
+        self.updatelists(order)
     def __addbeam__(self,closest,linesit):
         """This will add a beam"""
         textheader = 'Closest beam is # %s, Az: %s, El: %s' %(int(closest[0]),closest[1],closest[2])
@@ -276,9 +379,25 @@ class Gui():
             bcostr = ' '.join(bcoliststr)
             self.beamcodeent.delete(0,'end')
             self.beamcodeent.insert(0,bcostr)
+    
+    def removebeamlistbco(self,bcolist):
+        """ Removes a set of beams based off of the beam numbers"""
+        allbco = self.lines[:,0]
+        allbco = np.array([int(i) for i in allbco])
 
-
-
+        for ibco in bcolist:
+            ibco = int(ibco)
+            linesit =np.flatnonzero(allbco==ibco)
+            if len(linesit)==0:
+                continue
+            linesit = linesit[0]
+            closest= self.lines[linesit]
+            if closest[0] in self.output:
+                self.__removebeam__(closest,linesit)
+    def updatelists(self,order):
+        neworder =[self.output[i] for i in order]
+        self.removebeamlistbco(neworder)
+        self.addbeamlistbco(neworder)
     def buttonClick(self,fn=None):
         """This will output the beam list, create an image of the beams and close the program. """
         if fn is None:
