@@ -17,7 +17,7 @@ def configsetup(testpath):
     Inputs
     testpath - A string for the path that this file will be saved."""
     # list of beams that will give a line of points between 70 and 80 deg el with az of 20 deg
-    beamlist = [16626, 16987, 17348, 17709, 18070, 18431, 18792, 19153, 19514] # list of beams in
+    beamlist = [16626, 16987, 17348, 17709, 18070, 18431, 18792, 19153]#, 19514] # list of beams in
     radarname = 'millstone'# name of radar for parameters can either be pfisr or risr
 
 
@@ -49,7 +49,7 @@ def configsetup(testpath):
                    'numpoints':128, # number of points for each spectrum
                    'startfile':os.path.join(testpath,'startdata.h5'),# file used for starting points
                    'beamrate':b_rate,# the number of pulses each beam will output until it moves
-                   'outangles':[sp.arange(i,i+intrate-1) for i in sp.arange(0,len(beamlist),intrate)]}
+                   'outangles':[sp.arange(i,i+intrate) for i in sp.arange(0,len(beamlist),intrate)]}
 #                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
 #                       ,[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])}
 

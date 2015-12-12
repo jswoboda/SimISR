@@ -426,22 +426,22 @@ def makeconfigfile(fname,beamlist,radarname,simparams):
                 paramnote = 'Not in default parameters'
             config.set('simparams','; '+param +' '+paramnote)
             # for the output list of angles
-            if param.lower=='outangles':
+            if param.lower()=='outangles':
                 outstr = ''
                 beamlistlist = simparams[param]
                 if beamlistlist=='':
                     beamlistlist=beamlist
                 for ilist in beamlistlist:
-                    if isinstance(ilist,list):
+                    if isinstance(ilist,list) or isinstance(ilist,sp.ndarray):
                         for inum in ilist:
-                            outstr=outstr+str(ilist)+' '
-                        
+                            outstr=outstr+str(inum)+' '
+
                     else:
                         outstr=outstr+str(ilist)
                     outstr=outstr+', '
                 outstr=outstr[:-2]
                 config.set('simparams',param,outstr)
-                
+
             elif isinstance(simparams[param],list):
                 data = ""
                 for a in simparams[param]:
@@ -505,7 +505,7 @@ def readconfigfile(fname):
                 simparams[param]=sp.complex64
             elif param=='outangles':
                 outlist1 = simparams[param].split(',')
-                simparams[param]=[[ float(j) for j in  i.lstrip().split(' ')] for i in outlist1]
+                simparams[param]=[[ float(j) for j in  i.lstrip().rstrip().split(' ')] for i in outlist1]
             else:
                 simparams[param]=simparams[param].split(" ")
                 if len(simparams[param])==1:

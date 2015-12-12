@@ -26,9 +26,8 @@ def getangles(bcodes,radar='risr'):
     # make a beamcode to angle dictionary
     bco_dict = dict()
     for slin in all_ref:
-        split_str = slin.split()
-        bco_num = int(split_str[0])
-        bco_dict[bco_num] = (float(split_str[1]),float(split_str[2]))
+        bco_num=slin[0].astype(int)
+        bco_dict[bco_num] = (float(slin[1]),float(slin[2]))
 
     # Read in file
     #file_name = 'SelectedBeamCodes.txt'
