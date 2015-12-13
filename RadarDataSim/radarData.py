@@ -368,7 +368,7 @@ class RadarDataFile(object):
                     outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
                         numtype=self.simparams['dtype'], pulse=pulse)
             else:
-                for ibeamlist in self.simparams['outangles']:
+                for ibeam,ibeamlist in enumerate(self.simparams['outangles']):
                     print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(sp.in1d(beamlocs,ibeamlist))[0]
                     pulses[itn,ibeam] = len(beamlocstmp)
