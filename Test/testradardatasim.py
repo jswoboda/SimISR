@@ -111,8 +111,9 @@ def main():
     makeinputh5(MakeTestIonoclass(testv=True,testtemp=False),testpath)
     Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
     funcnamelist=['spectrums','radardata','fitting']
-    runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.ini'),True)
-    analysisdump(testpath,os.path.join(testpath,'PFISRExample.ini'))
+    failflag = runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.ini'),True)
+    if not failflag:
+        analysisdump(testpath,os.path.join(testpath,'PFISRExample.ini'))
 if __name__== '__main__':
 
     main()

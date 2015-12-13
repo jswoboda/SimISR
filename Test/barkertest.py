@@ -83,8 +83,10 @@ def main():
     makeinputh5(Icont1,testpath)
     Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
     funcnamelist=['spectrums','radardata','fitting']
-    runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.pickle'),True)
-    analysisdump(testpath,os.path.join(testpath,'PFISRExample.pickle'))
+
+    failflag=runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.pickle'),True)
+    if not failflag:
+        analysisdump(testpath,os.path.join(testpath,'PFISRExample.pickle'))
 if __name__== '__main__':
 
     main()

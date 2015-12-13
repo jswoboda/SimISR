@@ -185,7 +185,7 @@ def main(funcnamelist,basedir,configfile,remakealldata):
     dfullfilestr = os.path.join(basedir,dfilename)
     f= open(dfullfilestr,'a')
 
-
+    failure=False
     for curfuncn in funcnamelist:
         curfunc = funcdict[curfuncn]
         f.write(inputsep)
@@ -208,11 +208,13 @@ def main(funcnamelist,basedir,configfile,remakealldata):
             f.write('Base directory: {}\n'.format(basedir))
             traceback.print_exc(file=sys.stdout)
             traceback.print_exc(file = f)
+            failure=True
+            break
         #pdb.set_trace()
     f.write(inputsep)
     f.close()
 
-    return()
+    return failure
 if __name__ == "__main__":
 
     argv = sys.argv[1:]
@@ -246,4 +248,4 @@ if __name__ == "__main__":
     else:
         funcnamelist= funcname.split()
 
-    main(funcnamelist,basedir,configfile,remakealldata)
+    failflag = main(funcnamelist,basedir,configfile,remakealldata)
