@@ -75,12 +75,12 @@ class RadarDataFile(object):
 
        # differentiate between phased arrays and dish antennas
        if sensdict['Name'].lower() in ['risr','pfisr']:
-           beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
+            beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
        else:
-           # for dish arrays
+            # for dish arrays
             brate = simparams['beamrate']
             beams2 = sp.repeat(sp.arange(N_angles),brate)
-            beam3 = sp.concatenate((beams2,beams2[:-1,::-1]))
+            beam3 = sp.concatenate((beams2,beams2[::-1]))
             beams = sp.tile(beam3,Npall/len(beam3))
 
        pulsen = sp.repeat(sp.arange(Np),N_angles)
