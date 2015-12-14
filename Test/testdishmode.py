@@ -7,6 +7,8 @@ Created on Mon Nov  9 13:13:02 2015
 
 import os, inspect, glob,pdb
 import scipy as sp
+import matplotlib
+matplotlib.use('Agg')
 from RadarDataSim.utilFunctions import makeconfigfile
 from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
 import RadarDataSim.runsim as runsim

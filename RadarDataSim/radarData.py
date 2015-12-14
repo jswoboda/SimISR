@@ -269,7 +269,7 @@ class RadarDataFile(object):
         pulses = sp.zeros((Ntime,Nbeams))
         pulsesN = sp.zeros((Ntime,Nbeams))
         timemat = sp.zeros((Ntime,2))
-
+        Ksysvec = self.sensdict['Ksys']
         # set up arrays that hold the location of pulses that are to be processed together
         infoname = os.path.join(self.datadir,'INFO.h5')
         if os.path.isfile(infoname):
@@ -371,13 +371,22 @@ class RadarDataFile(object):
                 for ibeam,ibeamlist in enumerate(self.simparams['outangles']):
                     print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(sp.in1d(beamlocs,ibeamlist))[0]
+                    curbeams = beamlocs[beamlocstmp]
+                    ksysmat = Ksysvec[curbeams]
+                    ksysmean = Ksysvec[ibeamlist[0]]
+                    inputdata = curdata[beamlocstmp].copy()
+                    noisedata = curnoise[beamlocstmp].copy()
+                    noisedataadd=curaddednoise[beamlocstmp].copy()
+                    ksysmult = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,inputdata.shape[1]))
+                    ksysmultn = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,noisedata.shape[1]))
+                    ksysmultna = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,noisedataadd.shape[1]))
                     pulses[itn,ibeam] = len(beamlocstmp)
                     pulsesN[itn,ibeam] = len(beamlocstmp)
-                    outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),
+                    outdata[itn,ibeam] = lagfunc(inputdata *ksysmult,
                         numtype=self.simparams['dtype'], pulse=pulse)
-                    outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
+                    outnoise[itn,ibeam] = lagfunc(noisedata*ksysmultn,
                         numtype=self.simparams['dtype'], pulse=pulse)
-                    outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
+                    outaddednoise[itn,ibeam] = lagfunc(noisedataadd*ksysmultna,
                         numtype=self.simparams['dtype'], pulse=pulse)
 
         # Create output dictionaries and output data
@@ -399,18 +408,29 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # pull in other data
     pulsewidth = len(simparams['Pulse'])*sensdict['t_s']
     txpower = sensdict['Pt']
-    Ksysvec = sensdict['Ksys']
+    if sensdict['Name'].lower() in ['risr','pfisr']:
+        Ksysvec = sensdict['Ksys']
+    else:
+        beamlistlist = sp.array(simparams['outangles']).astype(int)
+        inplist = sp.array([i[0] for i in beamlistlist])
+        Ksysvec = sensdict['Ksys'][inplist]
+        ang_data_temp = ang_data.copy()    
+        ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist ])
+    
     sumrule = simparams['SUMRULE']
     rng_vec2 = simparams['Rangegatesfinal']
     minrg = -sumrule[0].min()
     maxrg = len(rng_vec)-sumrule[1].max()
     Nrng2 = len(rng_vec2)
     # Set up Coordinate list
+    
+        
+        
     angtile = sp.tile(ang_data,(Nrng2,1))
     rng_rep = sp.repeat(rng_vec2,ang_data.shape[0],axis=0)
     coordlist=sp.zeros((len(rng_rep),3))
     [coordlist[:,0],coordlist[:,1:]] = [rng_rep,angtile]
-    # set up the lags
+    # set up the constants lags
     lagsData= DataLags['ACF'].copy()
     (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
     rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags)) *1e3

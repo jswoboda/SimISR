@@ -7,6 +7,8 @@ problems.
 @author: John Swoboda
 """
 import os, glob
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import scipy as sp
@@ -592,6 +594,11 @@ def analysisdump(maindir,configfile,suptitle=None):
     (sensdict,simparams) = readconfigfile(configfile)
     angles = simparams['angles']
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+    if sensdict['Name'].lower() in ['risr','pfisr']:
+        ang_data_temp = ang_data.copy()
+        beamlistlist = sp.array(simparams['outangles']).astype(int)
+        ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist ])
+    
     zenang = ang_data[sp.argmax(ang_data[:,1])]
     rnggates = simparams['Rangegatesfinal']
     rngchoices = sp.linspace(sp.amin(rnggates),sp.amax(rnggates),4)
