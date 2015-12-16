@@ -50,6 +50,12 @@ class BeamSelector(object):
             self.xydict[xydata] = int(curlist[0])
             self.beamnumxydict[int(curlist[0])] = np.array(xydata)
     def updatebeamlist(self,beamlist,azvec,elvec):
+        """ This will update the objects beam list with a new one.
+            Inputs
+            beamlist - A list of beam numbers
+            azvec - The azimuth values in degrees
+            elvec - The elvation values in degrees
+        """
         assert len(azvec)==len(elvec)
         assert len(azvec)==len(beamlist)
 
@@ -68,7 +74,46 @@ class BeamSelector(object):
             self.xydict[xydata] = int(ib)
             self.beamnumxydict[int(ib)] = np.array(xydata)
 
+    def updatebeamlistangonly(self,azvec,elvec):
+        """ This will update the objects beam list with a new one but the beam numbers aren't needed
+            If the angles are not in the beammat they are not added.
+            Inputs
+
+            azvec - The azimuth values in degrees
+            elvec - The elvation values in degrees
+        """
+        azvec=np.array(azvec)
+        elvec= np.array(elvec)
+
+        beamlist = self.getbeamnums(azvec,elvec)
+        beamlist = np.array(beamlist)
+        blnan=np.isnan(beamlist)
+        self.updatebeamlist(beamlist[blnan],azvec[blnan],elvec[blnan])
+    def getbeamnums(self,azvec,elvec):
+        """ This will update the objects beam list with a new one.
+            Inputs
+            azvec - The azimuth values in degrees
+            elvec - The elvation values in degrees
+            Outputs
+            beamlist - A list of beam numbers
+        """
+        assert len(azvec)==len(elvec)
+
+        outlist = [np.nan]*len(azvec)
+
+        for iang, ang in enumerate(zip(azvec,elvec)):
+            try:
+                outlist[iang]=self.angledict[ang]
+            except:
+                print('Angle {0} is not in beam mat'.format(iang))
+        return outlist
     def shiftbeams(self,azoff=0.0,eloff=0.0):
+        """ This shifts all of the beam angles
+            inputs
+            azoff - The number of degrees in azimuth it will be shifted.
+            eloff - The number of degrees in elevation it will be shifted.
+        """
+
         beamnums = self.beamnumdict.keys()
         (azvec,elvec) = self.azelvecs()
 
@@ -81,6 +126,10 @@ class BeamSelector(object):
 
         self.updatebeamlist(beamnums,azvec,elvec)
     def switchzenith(self,report=False):
+        """ This switches the zenith angle and adjusts the el angle accordingly.
+            Input
+            report - A bool that will determine whether a print message is output.
+        """
         beamnums = self.beamnumdict.keys()
         (azvec,elvec) = self.azelvecs()
         if self.zenith==False:

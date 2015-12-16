@@ -251,6 +251,7 @@ class RadarDataFile(object):
 
         if 'outangles' in self.simparams.keys():
             Nbeams = len(self.simparams['outangles'])
+            inttime = Nbeams*inttime
         else:
             Nbeams = len(self.simparams['angles'])
 
@@ -414,18 +415,18 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
         beamlistlist = sp.array(simparams['outangles']).astype(int)
         inplist = sp.array([i[0] for i in beamlistlist])
         Ksysvec = sensdict['Ksys'][inplist]
-        ang_data_temp = ang_data.copy()    
+        ang_data_temp = ang_data.copy()
         ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist ])
-    
+
     sumrule = simparams['SUMRULE']
     rng_vec2 = simparams['Rangegatesfinal']
     minrg = -sumrule[0].min()
     maxrg = len(rng_vec)-sumrule[1].max()
     Nrng2 = len(rng_vec2)
     # Set up Coordinate list
-    
-        
-        
+
+
+
     angtile = sp.tile(ang_data,(Nrng2,1))
     rng_rep = sp.repeat(rng_vec2,ang_data.shape[0],axis=0)
     coordlist=sp.zeros((len(rng_rep),3))

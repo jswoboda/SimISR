@@ -5,7 +5,7 @@ Created on Mon Nov  9 13:13:02 2015
 @author: John Swoboda
 """
 
-import os, inspect, glob,pdb
+import os, inspect, glob,pdb,getopt,sys
 import scipy as sp
 import matplotlib
 matplotlib.use('Agg')
@@ -23,16 +23,17 @@ def configsetup(testpath):
     radarname = 'millstone'# name of radar for parameters can either be pfisr or risr
 
 
-    fitter_int = 60.0 # time interval between fitted params
+
 #    pulse = sp.ones(14)# pulse
     rng_lims = [150,500]# limits of the range gates
-    IPP = .0087 #interpulse period in seconds
+    IPP = 1e-2#8.7e-3 #interpulse period in seconds
     NNs = 28 # number of noise samples per pulse
     NNp = 100 # number of noise pulses
     b_rate = 100
     intrate = 2.
     Tint=intrate*b_rate*IPP # integration time in seconds
-    time_lim = len(beamlist)*4.0*Tint # simulation length in seconds
+    time_lim = len(beamlist)/intrate*4.0*Tint # simulation length in seconds
+    fitter_int = Tint*len(beamlist)/intrate # time interval between fitted params
     simparams =   {'IPP':IPP, #interpulse period
                    'TimeLim':time_lim, # length of simulation
                    'RangeLims':rng_lims, # range swath limit
@@ -89,7 +90,7 @@ def makeinputh5(Iono,basedir):
                             paramnames=Iono.Param_Names, species=Iono.Species,velocity=outvel)
     Ionoout.saveh5(os.path.join(basedir,'startdata.h5'))
 
-def main():
+def main(funcnamelist):
     """This function will run the test simulation buy first making a simple set of
     ionospheric parameters based off of a Chapman function. Then it will create configuration
     and start files followed by running the simulation."""
@@ -103,22 +104,57 @@ def main():
         os.mkdir(origparamsdir)
         print "Making a path for testdata at "+origparamsdir
 
+
+    if 'configupdate' in funcnamelist:
+        configsetup(testpath)
+        funcnamelist.remove('configupdate')
     # clear everything out
-    folderlist = ['Origparams','Spectrums','Radardata','ACF','Fitted']
+    folddict = {'origdata':['Origparams'], 'spectrums':['Spectrums'], 'radardata':['ACF','Radardata'], 'fitting':['Fitted']}
+    folderlist = []
+    for i in funcnamelist:
+        folderlist=folderlist+folddict[i]
+#    folderlist = ['Origparams','Spectrums','Radardata','ACF','Fitted']
     for ifl in folderlist:
         flist = glob.glob(os.path.join(testpath,ifl,'*.h5'))
         for ifile in flist:
             os.remove(ifile)
     # Now make stuff again
-    configsetup(testpath)
 
-    Icont1 = MakeTestIonoclass(testv=True,testtemp=True)
-    makeinputh5(MakeTestIonoclass(testv=True,testtemp=False),testpath)
-    Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
-    funcnamelist=['spectrums','radardata','fitting']
+
+    if 'origdata' in funcnamelist:
+
+        Icont1 = MakeTestIonoclass(testv=True,testtemp=True)
+        makeinputh5(MakeTestIonoclass(testv=True,testtemp=False),testpath)
+        Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
+        funcnamelist.remove('origdata')
+
+#    funcnamelist=['spectrums','radardata','fitting']
     failflag=runsim.main(funcnamelist,testpath,os.path.join(testpath,'DishExample.ini'),True)
     if not failflag:
         analysisdump(testpath,os.path.join(testpath,'DishExample.ini'))
 if __name__== '__main__':
 
-    main()
+    argv = sys.argv[1:]
+
+    outstr = 'Planeproc.py -f <function: configupdate, origdata, spectrums, radardata, fitting or all>'
+    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    try:
+        opts, args = getopt.gnu_getopt(argv,"hf:")
+    except getopt.GetoptError:
+        print(outstr)
+        sys.exit(2)
+
+    funcnamelist=[]
+    for opt, arg in opts:
+        if opt == '-h':
+            print(outstr)
+            sys.exit()
+        elif opt in ("-f", "--func"):
+            funcnamelist.append(arg)
+
+        elif opt in ('-r', "--re"):
+            if arg.lower() == 'y':
+                remakealldata = True
+    if len(funcnamelist)==0 or 'all' in funcnamelist:
+        funcnamelist=['configupdate','origdata','spectrums','radardata','fitting']
+    main(funcnamelist)
