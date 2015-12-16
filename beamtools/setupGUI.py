@@ -142,7 +142,7 @@ class App():
         self.fittypemenu = OptionMenu(self.frame, self.fittype,"Spectrum","ACF")
         self.fittypemenu.grid(row=rown,column=1,sticky='w')
         rown+=1
-                # Start file for set up
+                # outangles output
         self.outangles = Entry(self.frame)
         self.outangles.grid(row=rown,column=1)
         self.outangleslabel = Label(self.frame,text="Beam int together, seperated by commas")
@@ -225,7 +225,8 @@ class App():
         newlist =[x for x in posspec if x.lower() in specieslist]
 
         if 'e-' not in newlist:newlist.append('e-')
-
+        
+        
         simparams ={'IPP':float(self.ipp.get()),
                     'TimeLim':float(self.timelim.get()),
                     'RangeLims':[int(float(self.rangelimlow.get())),int(float(self.rangelimhigh.get()))],
@@ -241,8 +242,12 @@ class App():
                     'species':newlist,
                     'numpoints':int(float(self.numpoints.get())),
                     'startfile':self.startfile.get(),
-                    'FitType': self.fittype,
-                    'outangles':self.outangles.get()}
+                    'FitType': self.fittype}
+        
+        if len(self.outangles.get())>0:
+            outlist1 = self.outangles.get().split(',')
+            simparams['outangles']=[[ float(j) for j in  i.lstrip().rstrip().split(' ')] for i in outlist1]
+                    
         makeconfigfile(fn,blist,radarname,simparams)
 
 
