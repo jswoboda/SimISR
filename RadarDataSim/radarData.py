@@ -202,8 +202,12 @@ class RadarDataFile(object):
                     cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
                     pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*sensdict['t_s'] # based off new way of calculating
                     pow_den = range_m**2
-                    curdataloc = sp.where((pulse2spec==istn)&(beamcodes==ibn))[0]
+
+                    curdataloc = sp.where(sp.logical_and((pulse2spec==istn),(beamcodes==ibn)))[0]
                     # create data
+                    if len(curdataloc):
+                        print('\t\t No data for {0:d} of {1:d} in this time period'.format(ibn,Nbeams))
+                        continue
                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
