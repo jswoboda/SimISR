@@ -205,7 +205,7 @@ class RadarDataFile(object):
 
                     curdataloc = sp.where(sp.logical_and((pulse2spec==istn),(beamcodes==ibn)))[0]
                     # create data
-                    if len(curdataloc):
+                    if len(curdataloc)==0:
                         print('\t\t No data for {0:d} of {1:d} in this time period'.format(ibn,Nbeams))
                         continue
                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
