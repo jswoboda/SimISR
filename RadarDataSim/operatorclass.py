@@ -59,7 +59,18 @@ class RadarSpaceTimeOperator(object):
         self.RSTMat = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector)
 
     def mult_iono(self,ionoin):
+        if isinstance(ionoin,list):
+            ionolist = ionoin
+        else:
+            ionolist = [ionoin]
 
+        for iiono in ionolist:
+            if isinstance(iiono,str):
+                curiono = IonoContainer.readh5(iiono)
+            else:
+                curiono=iiono
+        ionodata = curiono.Param_List
+        ionotime =
         return outiono
     def invert(self,method,inputs):
 
