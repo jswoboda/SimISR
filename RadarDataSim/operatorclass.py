@@ -110,6 +110,7 @@ class RadarSpaceTimeOperator(object):
 
         outar= sp.dot(mainmat,ionodata)
         outar=outar.reshape((nlout,ntout,np),order='F')
+
         outiono = IonoContainer(self.Cart_Coords_Out,outar,Times=self.Time_Out,sensor_loc=curiono.Sensor_loc,
                                ver=0,paramnames=curiono.Param_Names,species=curiono.Species,
                                velocity=curiono.Velocity)
@@ -118,6 +119,35 @@ class RadarSpaceTimeOperator(object):
         outmat = method(self.RSTMat,inputs)
         outRSTOp = RadarSpaceTimeOperator(RSTOPinv=self,invmat=outmat)
         return outRSTOp
+
+    def invertregcg(self,ionoin,alpha,type=None,dims=None,order='C',max_it=100,tol=1e-2):
+        A =self.RSTMat
+        C = sp.dot(A.transpose(),A)
+        nlout = self.Cart_Coords_In.shape[0]
+        ntout = self.Time_In.shape[0]
+
+        #XXX For now assume that out data is the right shape
+        alldata = ionoin.Param_List
+        (nl,nt,np) = alldata.shape
+        alldata=alldata.reshape((nl*nt,np),order='F')
+        outdata = sp.zeros((nlout*ntout,np),dtype=alldata.dtype)
+        b_all = sp.dot(A.transpose,outdata)
+        if type is None or type.lower()=='i':
+            L=sp.sparse.eye(C.shape[0])
+        elif type.lower()=='d':
+            L=diffmat(dims,order)
+
+        Ctik=C+sp.power(alpha,2)*L
+        M=L*Ctik
+        xin = sp.ones(nl*nt,dtype=alldata.dtype)
+        for i in range(np):
+            (outdata[:,i], error, iter, flag) = cgmat(Ctik, xin, b_all[:,i], M, max_it, tol)
+        outdata=outdata.reshape((nlout,ntout,np),order='F')
+
+        outiono = IonoContainer(self.Cart_Coords_In,outdata,Times=self.Time_In,sensor_loc=ionoin.Sensor_loc,
+                               ver=0,paramnames=ionoin.Param_Names,species=ionoin.Species,
+                               velocity=ionoin.Velocity)
+        return outiono
     def __mult__(self,ionoin):
         return self.mult_iono(ionoin)
 
@@ -270,13 +300,3 @@ def diffmat(dims,order = 'C'):
     outD[1]=Dy
 
     return tuple(outD)
-def tikmat(A,alpha,type=None,dims=None,order='C'):
-    C = sp.dot(A.transpose(),A)
-
-    if type is None or type.lower()=='i':
-        L=sp.sparse.eye(C.shape[0])
-    elif type.lower()=='d':
-        L=diffmat(dims,order)
-
-    Ctik=C+sp.power(alpha,2)*L
-    M=L*Ctik
