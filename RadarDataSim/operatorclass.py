@@ -78,40 +78,49 @@ class RadarSpaceTimeOperator(object):
             self.Time_In_Rep  = self.Time_Out_Rep
 
     def mult_iono(self,ionoin):
+
+
+        ntout = self.Time_Out.shape[0]
+        nlout = self.Cart_Coords_Out.shape[0]
+
         if isinstance(ionoin,list):
             ionolist = ionoin
         else:
             ionolist = [ionoin]
 
-        for iiono in ionolist:
+        for ionon,iiono in enumerate(ionolist):
             if isinstance(iiono,str):
                 curiono = IonoContainer.readh5(iiono)
             else:
-                curiono=iiono[0]
+                curiono=iiono
 
 
-        ionodata = curiono.Param_List
-        ionotime = curiono.Time_Vector
-        ionocart = curiono.Cart_Coords
+            ionodata = curiono.Param_List
+            ionotime = curiono.Time_Vector
+            ionocart = curiono.Cart_Coords
 
-        assert sp.allclose(ionocart,self.Cart_Coords_in), "Spatial Coordinates need to be the same"
+            assert sp.allclose(ionocart,self.Cart_Coords_in), "Spatial Coordinates need to be the same"
 
-        ionosttimes = ionotime[:,0]
-        matsttimes = self.Time_In_Rep[:,0]
+            ionosttimes = ionotime[:,0]
+            matsttimes = self.Time_In_Rep[:,0]
 
-        keeptimes = sp.in1d(matsttimes,ionosttimes)
+            keeptimes = sp.in1d(matsttimes,ionosttimes)
 
-        mainmat = self.RSTMat[:,keeptimes]
-        (nl,nt,np) = ionodata.shape
-        ionodata = sp.reshape(ionodata,(nl*nt,np),order='F')
-        ntout = self.Time_Out.shape[0]
-        nlout = self.Cart_Coords_Out.shape[0]
-        outar = sp.zeros((nlout*ntout,np)).astype(ionodata.dtype)
+            mainmat = self.RSTMat[:,keeptimes]
+            (nl,nt,np) = ionodata.shape
+            ionodata = sp.reshape(ionodata,(nl*nt,np),order='F')
 
-        outar= sp.dot(mainmat,ionodata)
-        outar=outar.reshape((nlout,ntout,np),order='F')
+            outar = sp.zeros((nlout*ntout,np)).astype(ionodata.dtype)
 
-        outiono = IonoContainer(self.Cart_Coords_Out,outar,Times=self.Time_Out,sensor_loc=curiono.Sensor_loc,
+            outar= sp.dot(mainmat,ionodata)
+
+            if ionon==0:
+                outarall=outar.copy()
+            else:
+                outarall=outarall+outar
+
+        outarall=outarall.reshape((nlout,ntout,np),order='F')
+        outiono = IonoContainer(self.Cart_Coords_Out,outarall,Times=self.Time_Out,sensor_loc=curiono.Sensor_loc,
                                ver=0,paramnames=curiono.Param_Names,species=curiono.Species,
                                velocity=curiono.Velocity)
         return outiono
