@@ -15,48 +15,67 @@ def getOverlap(a, b):
 
 class RadarSpaceTimeOperator(object):
 
-    def __init__(self,ionoin,configfile):
+    def __init__(self,ionoin=None,configfile=None,RSTOPinv=None,invmat=None):
         r2d = 180.0/sp.pi
         d2r = sp.pi/180.0
-        (sensdict,simparams) = readconfigfile(configfile)
-        nt = ionoin.Time_Vector.shape[0]
-        nloc = ionoin.Sphere_Coords.shape[0]
+        if RSTOPinv is None:
+            (sensdict,simparams) = readconfigfile(configfile)
+            nt = ionoin.Time_Vector.shape[0]
+            nloc = ionoin.Sphere_Coords.shape[0]
 
-        #Input location
-        self.Cart_Coords_in = ionoin.Cart_Coords
-        self.Sphere_Coords_In = ionoin.Sphere_Coords,
-        self.Time_In = ionoin.Time_Vector
-        self.Cart_Coords_In_Rep = sp.tile(ionoin.Cart_Coords,(nt,1))
-        self.Sphere_Coords_In_Rep = sp.tile(ionoin.Sphere_Coords,(nt,1))
-        self.Time_In_Rep  = sp.repeat(ionoin.Time_Vector,nloc,axis=0)
+            #Input location
+            self.Cart_Coords_In = ionoin.Cart_Coords
+            self.Sphere_Coords_In = ionoin.Sphere_Coords,
+            self.Time_In = ionoin.Time_Vector
+            self.Cart_Coords_In_Rep = sp.tile(ionoin.Cart_Coords,(nt,1))
+            self.Sphere_Coords_In_Rep = sp.tile(ionoin.Sphere_Coords,(nt,1))
+            self.Time_In_Rep  = sp.repeat(ionoin.Time_Vector,nloc,axis=0)
 
-        #output locations
-        rng_vec2 = simparams['Rangegatesfinal']
-        nrgout = len(rng_vec2)
+            #output locations
+            rng_vec2 = simparams['Rangegatesfinal']
+            nrgout = len(rng_vec2)
 
-        angles = simparams['angles']
-        nang =len(angles)
+            angles = simparams['angles']
+            nang =len(angles)
 
-        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-        rng_all = sp.tile(rng_vec2,(nang))
-        ang_all = sp.repeat(ang_data,nrgout,axis=0)
-        nlocout = nang*nrgout
+            ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+            rng_all = sp.tile(rng_vec2,(nang))
+            ang_all = sp.repeat(ang_data,nrgout,axis=0)
+            nlocout = nang*nrgout
 
-        ntout = len(simparams['Timevec'])
-        self.Sphere_Coords_Out = sp.column_stack((rng_all,ang_all))
-        (R_vec,Az_vec,El_vec) = (self.Sphere_Coords_Out[:,0],self.Sphere_Coords_Out[:,1],self.Sphere_Coords_Out[:,2])
-        xvecmult = sp.cos(Az_vec*d2r)*sp.cos(El_vec*d2r)
-        yvecmult = sp.sin(Az_vec*d2r)*sp.cos(El_vec*d2r)
-        zvecmult = sp.sin(El_vec*d2r)
-        X_vec = R_vec*xvecmult
-        Y_vec = R_vec*yvecmult
-        Z_vec = R_vec*zvecmult
+            ntout = len(simparams['Timevec'])
+            self.Sphere_Coords_Out = sp.column_stack((rng_all,ang_all))
+            (R_vec,Az_vec,El_vec) = (self.Sphere_Coords_Out[:,0],self.Sphere_Coords_Out[:,1],
+                self.Sphere_Coords_Out[:,2])
+            xvecmult = sp.cos(Az_vec*d2r)*sp.cos(El_vec*d2r)
+            yvecmult = sp.sin(Az_vec*d2r)*sp.cos(El_vec*d2r)
+            zvecmult = sp.sin(El_vec*d2r)
+            X_vec = R_vec*xvecmult
+            Y_vec = R_vec*yvecmult
+            Z_vec = R_vec*zvecmult
 
-        self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
-        self.Time_Out = simparams['Timevec']
-        self.Time_Out_Rep =sp.repeat(simparams['Timevec'],nlocout,axis=0)
-        self.Sphere_Coords_Out_Rep =sp.tile(self.Sphere_Coords_Out,(ntout,1))
-        self.RSTMat = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector)
+            self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
+            self.Time_Out = simparams['Timevec']
+            self.Time_Out_Rep =sp.repeat(simparams['Timevec'],nlocout,axis=0)
+            self.Sphere_Coords_Out_Rep =sp.tile(self.Sphere_Coords_Out,(ntout,1))
+            self.Cart_Coords_Out_Rep =sp.tile(self.Cart_Coords_Out,(ntout,1))
+            self.RSTMat = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector)
+        elif configfile is None:
+
+            self.Cart_Coords_Out = RSTOPinv.Cart_Coords_In
+            self.Sphere_Coords_Out = RSTOPinv.Sphere_Coords_In
+            self.Time_Out =  RSTOPinv.Time_In
+            self.Time_Out_Rep =RSTOPinv.Time_In_Rep
+            self.Sphere_Coords_Out_Rep =RSTOPinv.Sphere_Coords_In_Rep
+            self.Cart_Coords_Out_Rep =RSTOPinv.Cart_Coords_In_Rep
+            self.RSTMat = invmat
+
+            self.Cart_Coords_In = self.Cart_Coords_Out
+            self.Sphere_Coords_In =self.Sphere_Coords_Out
+            self.Time_In = self.Time_Out
+            self.Cart_Coords_In_Rep = self.Cart_Coords_Out_Rep
+            self.Sphere_Coords_In_Rep = self.Sphere_Coords_Out_Rep
+            self.Time_In_Rep  = self.Time_Out_Rep
 
     def mult_iono(self,ionoin):
         if isinstance(ionoin,list):
@@ -68,12 +87,36 @@ class RadarSpaceTimeOperator(object):
             if isinstance(iiono,str):
                 curiono = IonoContainer.readh5(iiono)
             else:
-                curiono=iiono
+                curiono=iiono[0]
+
+
         ionodata = curiono.Param_List
-        ionotime =
+        ionotime = curiono.Time_Vector
+        ionocart = curiono.Cart_Coords
+
+        assert sp.allclose(ionocart,self.Cart_Coords_in), "Spatial Coordinates need to be the same"
+
+        ionosttimes = ionotime[:,0]
+        matsttimes = self.Time_In_Rep[:,0]
+
+        keeptimes = sp.in1d(matsttimes,ionosttimes)
+
+        mainmat = self.RSTMat[:,keeptimes]
+        (nl,nt,np) = ionodata.shape
+        ionodata = sp.reshape(ionodata,(nl*nt,np),order='F')
+        ntout = self.Time_Out.shape[0]
+        nlout = self.Cart_Coords_Out.shape[0]
+        outar = sp.zeros((nlout*ntout,np)).astype(ionodata.dtype)
+
+        outar= sp.dot(mainmat,ionodata)
+        outar=outar.reshape((nlout,ntout,np),order='F')
+        outiono = IonoContainer(self.Cart_Coords_Out,outar,Times=self.Time_Out,sensor_loc=curiono.Sensor_loc,
+                               ver=0,paramnames=curiono.Param_Names,species=curiono.Species,
+                               velocity=curiono.Velocity)
         return outiono
     def invert(self,method,inputs):
-
+        outmat = method(self.RSTMat,inputs)
+        outRSTOp = RadarSpaceTimeOperator(RSTOPinv=self,invmat=outmat)
         return outRSTOp
     def __mult__(self,ionoin):
         return self.mult_iono(ionoin)
@@ -227,3 +270,13 @@ def diffmat(dims,order = 'C'):
     outD[1]=Dy
 
     return tuple(outD)
+def tikmat(A,alpha,type=None,dims=None,order='C'):
+    C = sp.dot(A.transpose(),A)
+
+    if type is None or type.lower()=='i':
+        L=sp.sparse.eye(C.shape[0])
+    elif type.lower()=='d':
+        L=diffmat(dims,order)
+
+    Ctik=C+sp.power(alpha,2)*L
+    M=L*Ctik

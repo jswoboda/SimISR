@@ -222,7 +222,6 @@ class IonoContainer(object):
 
         return IonoContainer(new_coords,New_param,self.Time_Vector,sensor_loc,ver,self.Coord_Vecs,self.Param_Names)
 
-
      #%% Read and Write Methods
     def savemat(self,filename):
         """ This method will write out a structured mat file and save information
@@ -406,6 +405,42 @@ class IonoContainer(object):
     def __ne__(self,self2):
         '''This is the != operator. '''
         return not self.__eq__(self2)
+    # addition
+    def __add__(self,self2):
+
+
+        assert sp.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
+        a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
+        blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
+
+        assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+
+        assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
+
+
+        assert sp.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
+        assert self.Species== self2.Species, "Need to have the same species"
+
+        outiono = self.copy()
+        outiono.Param_List=outiono.Param_List+self2.Param_List
+        return outiono
+    def __sub__(self,self2):
+
+        assert sp.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
+        a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
+        blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
+
+        assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+
+        assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
+
+
+        assert sp.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
+        assert self.Species== self2.Species, "Need to have the same species"
+
+        outiono = self.copy()
+        outiono.Param_List=outiono.Param_List-self2.Param_List
+        return outiono
 
     #%% Spectrum methods
     def makeallspectrums(self,sensdict,npts):
