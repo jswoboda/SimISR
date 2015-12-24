@@ -59,7 +59,7 @@ class RadarSpaceTimeOperator(object):
             self.Time_Out_Rep =sp.repeat(simparams['Timevec'],nlocout,axis=0)
             self.Sphere_Coords_Out_Rep =sp.tile(self.Sphere_Coords_Out,(ntout,1))
             self.Cart_Coords_Out_Rep =sp.tile(self.Cart_Coords_Out,(ntout,1))
-            self.RSTMat = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector)
+            self.RSTMat = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector,configfile)
         elif configfile is None:
 
             self.Cart_Coords_Out = RSTOPinv.Cart_Coords_In
