@@ -99,7 +99,7 @@ class RadarSpaceTimeOperator(object):
             ionotime = curiono.Time_Vector
             ionocart = curiono.Cart_Coords
 
-            assert sp.allclose(ionocart,self.Cart_Coords_in), "Spatial Coordinates need to be the same"
+            assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
 
             ionosttimes = ionotime[:,0]
             matsttimes = self.Time_In_Rep[:,0]
