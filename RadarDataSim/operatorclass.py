@@ -169,7 +169,7 @@ def makematPA(Sphere_Coords,timein,configfile):
     timeout = simparams['Timevec']
     Tint = simparams['Tint']
     timeout = sp.column_stack((timeout,timeout+Tint))
-    fullmat = True
+
     rng_vec = simparams['Rangegates']
     rng_bin=sensdict['t_s']*v_C_0/1000.0
     sumrule = simparams['SUMRULE']
@@ -190,10 +190,17 @@ def makematPA(Sphere_Coords,timein,configfile):
     Nlocbeg = len(rho)
     Ntbeg = len(timein)
     Ntout = len(timeout)
+
+    # Test to see if the matrix is bigger than 5e8 points, if so use sparse matrix
+    if Ntout*Nbeams*nrgout*Nlocbeg*Ntbeg>5e8:
+        fullmat = False
+    else:
+        fullmat = True
+
     if fullmat:
         outmat = sp.matrix(sp.zeros((Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg)))
     else:
-        outmat = sp.sparse((Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg),dype =sp.float64)
+        outmat = sp.sparse.lil_matrix((Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg),dtype =sp.float64)
 
     weights = {ibn:sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
 
