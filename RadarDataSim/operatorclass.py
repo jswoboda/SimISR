@@ -112,7 +112,7 @@ class RadarSpaceTimeOperator(object):
 
             outar = sp.zeros((nlout*ntout,np)).astype(ionodata.dtype)
 
-            outar= sp.dot(mainmat,ionodata)
+            outar=sp.sparse.lil_matrix.dot(mainmat,ionodata)
 
             if ionon==0:
                 outarall=outar.copy()
