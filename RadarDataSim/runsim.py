@@ -76,8 +76,9 @@ def makeradardata(basedir,configfile,remakealldata):
     ionosig.saveh5(os.path.join(outputdir2,'00sigs.h5'))
     return ()
 #%% Fitt data
-def fitdata(basedir,configfile,optintputs):
-    dirio = ('ACF','Fitted')
+def fitdata(basedir,configfile,optinputs):
+    dirdict = {'fitting':('ACF','Fitted'),'fittingmat':('ACFMat','FittedMat'),'fittinginv':('ACFInv','FittedInv')}
+    dirio = dirdict[optinputs]
     inputdir = os.path.join(basedir,dirio[0])
     outputdir = os.path.join(basedir,dirio[1])
 
@@ -165,12 +166,13 @@ def main(funcnamelist,basedir,configfile,remakealldata):
 
     inputsep = '***************************************************************\n'
 
-    funcdict = {'spectrums':makespectrums, 'radardata':makeradardata, 'fitting':fitdata}
+    funcdict = {'spectrums':makespectrums, 'radardata':makeradardata, 'fitting':fitdata,'fittingmat':fitdata,
+                'fittinginv':fitdata}
     #inout = {'spectrums':('Origparams','Spectrums'),'radardata':('Spectrums','Radardata'),'fitting':('ACF','Fitted')}
     #pdb.set_trace()
 
     # check for the directories
-    dirnames = ['Origparams','Spectrums','Radardata','ACF','Fitted']
+    dirnames = ['Origparams','Spectrums','Radardata','ACF','Fitted','ACFOrig','ACFMat','ACFInv','FittedMat','FittedInv']
     for idir in dirnames:
         curdir = os.path.join(basedir,idir)
         if not os.path.exists(curdir):
@@ -191,9 +193,13 @@ def main(funcnamelist,basedir,configfile,remakealldata):
         f.write(inputsep)
         f.write(curfunc.__name__+'\n')
         f.write(time.asctime()+'\n')
+        if curfunc.__name__=='fitdata':
+            ex_inputs=curfuncn
+        else:
+            ex_inputs = remakealldata
         try:
             stime = datetime.now()
-            curfunc(basedir,configfile,remakealldata)
+            curfunc(basedir,configfile,ex_inputs)
             ftime = datetime.now()
             ptime = ftime-stime
             f.write('Success!\n')
