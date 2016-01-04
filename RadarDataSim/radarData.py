@@ -255,7 +255,7 @@ class RadarDataFile(object):
 
         if 'outangles' in self.simparams.keys():
             Nbeams = len(self.simparams['outangles'])
-            inttime = Nbeams*inttime
+            inttime = inttime
         else:
             Nbeams = len(self.simparams['angles'])
 
@@ -374,6 +374,7 @@ class RadarDataFile(object):
                         numtype=self.simparams['dtype'], pulse=pulse)
             else:
                 for ibeam,ibeamlist in enumerate(self.simparams['outangles']):
+                    pdb.set_trace()
                     print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(sp.in1d(beamlocs,ibeamlist))[0]
                     curbeams = beamlocs[beamlocstmp]

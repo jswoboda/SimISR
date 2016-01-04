@@ -131,6 +131,75 @@ class RadarSpaceTimeOperator(object):
                                ver=0,paramnames=curiono.Param_Names,species=curiono.Species,
                                velocity=curiono.Velocity)
         return outiono
+    def invertdata(self,ionoin):
+
+        ntin = self.Time_In.shape[0]
+        matsttimes = self.Time_In[:,0]
+        ntout = self.Time_Out.shape[0]
+        ntcounts =sp.zeros(ntout)
+        nlout = self.Cart_Coords_Out.shape[0]
+        blocklocs = self.blocklocs
+
+        firsttime = True
+        if isinstance(ionoin,list):
+            ionolist = ionoin
+        else:
+            ionolist = [ionoin]
+
+        for ionon,iiono in enumerate(ionolist):
+            if isinstance(iiono,str):
+                curiono = IonoContainer.readh5(iiono)
+            else:
+                curiono=iiono
+
+
+            ionodata = curiono.Param_List
+            ionotime = curiono.Time_Vector
+            ionocart = curiono.Cart_Coords
+
+            assert sp.allclose(ionocart,self.Cart_Coords_Out), "Spatial Coordinates need to be the same"
+
+            ionosttimes = ionotime[:,0]
+
+            keeptimes = sp.arange(ntin)[sp.in1d(matsttimes,ionosttimes)]
+
+            (nl,nt,np) = ionodata.shape
+            if firsttime:
+                outdata=sp.zeros((nlout,ntout,np))
+                firsttime==False
+
+
+
+
+            if len(self.RSTMat)==1:
+                mainmat = self.RSTMat[0]
+                for ibn,(iin,iout) in enumerate(b_locs):
+                    ntcounts[iout]=ntcounts[iout]+1
+                    for iparam in range(np):
+                        outdata[:,iout,iparam]=mainmat.dot(outdata[:,iin,iparam])
+
+            else:
+                for ibn,(iin,iout) in enumerate(b_locs):
+                    ntcounts[iout]=ntcounts[iout]+1
+                    mainmat=self.RSTMat[b_locsind[ibn]]
+                    for iparam in range(np):
+                        outdata[:,iout,iparam]=mainmat.dot(outdata[:,iin,iparam])
+
+
+
+            C = sp.dot(A.transpose(),A)
+
+            if type is None or type.lower()=='i':
+            L=sp.sparse.eye(C.shape[0])
+            elif type.lower()=='d':
+                L=diffmat(dims,order)
+
+            Ctik=C+sp.power(alpha,2)*L
+            M=L*Ctik
+            xin = sp.ones(nl*nt,dtype=alldata.dtype)
+            for i in range(np):
+                (outdata[:,i], error, iter, flag) = cgmat(Ctik, xin, b_all[:,i], M, max_it, tol)
+
 def makematPA(Sphere_Coords,timein,configfile,vel=None):
     """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc matrix. The output space will have range repeated first,
     then beams then time. The coordinates will be [t0,b0,r0],[t0,b0,r1],[t0,b0,r2],...
@@ -264,7 +333,7 @@ def cgmat(A,x,b,M=None,max_it=100,tol=1e-8):
     if M is None:
         M= sp.diag(A)
     bnrm2 = sp.linalg.norm(b)
-    r=b-sp.dot(A,x)
+    r=b-A.dot(x)
     rho=sp.zeros(max_it)
     for i in range(max_it):
         z=sp.linalg.solve(M,r)
@@ -275,7 +344,7 @@ def cgmat(A,x,b,M=None,max_it=100,tol=1e-8):
             beta=rho/rho[i-1]
             p=z+beta*p
 
-        q=sp.dot(A,p)
+        q=A.dot(p)
         alpha=rho/sp.dot(p,q)
         x = x+alpha*p
         r = r-alpha*q
