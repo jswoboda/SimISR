@@ -186,7 +186,7 @@ class RadarDataFile(object):
                     if sp.sum(rangelog)==0:
                         minrng = sp.argmin(sp.absolute(range_g-rho))
                         rangelog[minrng] = True
-                        #pdb.set_trace()
+
                     #create the weights and weight location based on the beams pattern.
                     weight_cur =weight[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
@@ -416,6 +416,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     if sensdict['Name'].lower() in ['risr','pfisr']:
         Ksysvec = sensdict['Ksys']
     else:
+
         beamlistlist = sp.array(simparams['outangles']).astype(int)
         inplist = sp.array([i[0] for i in beamlistlist])
         Ksysvec = sensdict['Ksys'][inplist]
