@@ -169,7 +169,6 @@ class RadarDataFile(object):
         simdtype = self.simparams['dtype']
         out_data = sp.zeros((Np,N_samps),dtype=simdtype)
         weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
-
         specsused = sp.zeros((Ndtime,Nbeams,N_rg,speclen),dtype=allspecs.dtype)
         for istn, ist in enumerate(spectime):
             for ibn in range(Nbeams):
