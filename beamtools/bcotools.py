@@ -2,12 +2,20 @@
 """
 Created on Tue Dec 31 10:58:18 2013
 
-@author: Bodangles
+@author: JohnSwoboda
 """
 import os
 import inspect
 import tables
 def getangles(bcodes,radar='risr'):
+    """ getangles: This function creates take a set of beam codes and determines
+        the angles that are associated with them.
+        Inputs
+        bcodes - A list of beam codes.
+        radar - A string that holds the radar name.
+        Outputs
+        angles - A list of tuples of the angles.
+    """
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     constpath = os.path.join(os.path.split(curpath)[0],'RadarDataSim','const')
     if radar.lower() == 'risr':
