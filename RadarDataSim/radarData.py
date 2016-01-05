@@ -72,7 +72,6 @@ class RadarDataFile(object):
        simdtype = self.simparams['dtype']
        pulsetimes = sp.arange(Npall)*self.simparams['IPP']
        pulsefile = sp.array([sp.where(itimes-ftimes>=0)[0][-1] for itimes in pulsetimes])
-
        # differentiate between phased arrays and dish antennas
        if sensdict['Name'].lower() in ['risr','pfisr']:
             beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
@@ -81,7 +80,13 @@ class RadarDataFile(object):
             brate = simparams['beamrate']
             beams2 = sp.repeat(sp.arange(N_angles),brate)
             beam3 = sp.concatenate((beams2,beams2[::-1]))
-            beams = sp.tile(beam3,Npall/len(beam3))
+            ntile = sp.ceil(Npall/len(beam3))
+            leftover = Npall-ntile(beam3)
+            if ntile>0:
+                beams = sp.tile(beam3,ntile)
+                beams=sp.concatenate((beams,beam3[:leftover]))
+            else:
+                beams=beam3[:leftover]
 
        pulsen = sp.repeat(sp.arange(Np),N_angles)
        pt_list = []
