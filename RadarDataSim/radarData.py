@@ -81,7 +81,7 @@ class RadarDataFile(object):
             beams2 = sp.repeat(sp.arange(N_angles),brate)
             beam3 = sp.concatenate((beams2,beams2[::-1]))
             ntile = sp.ceil(Npall/len(beam3))
-            leftover = Npall-ntile(beam3)
+            leftover = Npall-ntile*len(beam3)
             if ntile>0:
                 beams = sp.tile(beam3,ntile)
                 beams=sp.concatenate((beams,beam3[:leftover]))
