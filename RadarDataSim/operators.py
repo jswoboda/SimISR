@@ -190,7 +190,7 @@ class RadarSpaceTimeOperator(object):
             C = sp.dot(A.transpose(),A)
 
             if type is None or type.lower()=='i':
-            L=sp.sparse.eye(C.shape[0])
+                L=sp.sparse.eye(C.shape[0])
             elif type.lower()=='d':
                 L=diffmat(dims,order)
 

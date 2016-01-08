@@ -336,7 +336,6 @@ class RadarDataFile(object):
             # Find the needed files and beam numbers
             curfiles = set(curfileloc)
             beamlocs = beamn[pos_all]
-
             timemat[itn,0] = ptimevec[pos_all].min()
             timemat[itn,1]=ptimevec[pos_all].max()
             # cur data pulls out all data from all of the beams and posisions
