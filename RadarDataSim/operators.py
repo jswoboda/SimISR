@@ -131,12 +131,13 @@ class RadarSpaceTimeOperator(object):
                                ver=0,paramnames=curiono.Param_Names,species=curiono.Species,
                                velocity=curiono.Velocity)
         return outiono
-    def invertdata(self,ionoin):
+    def invertdata(self,ionoin,alpha,tik_type = 'i',type=None,dims=None,order='C',max_it=100,tol=1e-2):
 
         ntin = self.Time_In.shape[0]
-        matsttimes = self.Time_In[:,0]
+        matsttimes = self.Time_Out[:,0]
         ntout = self.Time_Out.shape[0]
         ntcounts =sp.zeros(ntout)
+        nlin = self.Cart_Coords_In.shape[0]
         nlout = self.Cart_Coords_Out.shape[0]
         blocklocs = self.blocklocs
 
@@ -165,7 +166,8 @@ class RadarSpaceTimeOperator(object):
 
             (nl,nt,np) = ionodata.shape
             if firsttime:
-                outdata=sp.zeros((nlout,ntout,np))
+                bdata = sp.zeros((nlin,ntin,np))
+                invdata=sp.zeros((nlin,ntin,np))
                 firsttime==False
 
 
@@ -176,14 +178,14 @@ class RadarSpaceTimeOperator(object):
                 for ibn,(iin,iout) in enumerate(b_locs):
                     ntcounts[iout]=ntcounts[iout]+1
                     for iparam in range(np):
-                        outdata[:,iout,iparam]=mainmat.dot(outdata[:,iin,iparam])
+                        bdata[:,iin,iparam]=mainmat.transpose().dot(ionodata[:,iout,iparam])
 
             else:
                 for ibn,(iin,iout) in enumerate(b_locs):
                     ntcounts[iout]=ntcounts[iout]+1
                     mainmat=self.RSTMat[b_locsind[ibn]]
                     for iparam in range(np):
-                        outdata[:,iout,iparam]=mainmat.dot(outdata[:,iin,iparam])
+                        bdata[:,iin,iparam]=mainmat.transpose().dot(ionodata[:,iin,iparam])
 
 
 
@@ -196,9 +198,9 @@ class RadarSpaceTimeOperator(object):
 
             Ctik=C+sp.power(alpha,2)*L
             M=L*Ctik
-            xin = sp.ones(nl*nt,dtype=alldata.dtype)
+            xin = sp.ones(nlin,dtype=ionodata.dtype)
             for i in range(np):
-                (outdata[:,i], error, iter, flag) = cgmat(Ctik, xin, b_all[:,i], M, max_it, tol)
+                (inv[:,i], error, iter, flag) = cgmat(Ctik, xin, b_all[:,i], M, max_it, tol)
 
 def makematPA(Sphere_Coords,timein,configfile,vel=None):
     """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc matrix. The output space will have range repeated first,
