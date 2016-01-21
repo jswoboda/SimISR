@@ -136,7 +136,7 @@ class RadarSpaceTimeOperator(object):
         ntin = self.Time_In.shape[0]
         matsttimes = self.Time_Out[:,0]
         ntout = self.Time_Out.shape[0]
-        ntcounts =sp.zeros(ntout)
+        ntcounts =sp.zeros(ntin)
         nlin = self.Cart_Coords_In.shape[0]
         nlout = self.Cart_Coords_Out.shape[0]
         blocklocs = self.blocklocs
@@ -170,37 +170,34 @@ class RadarSpaceTimeOperator(object):
                 invdata=sp.zeros((nlin,ntin,np))
                 firsttime==False
 
+            b_locsind = sp.arange(len(blocklocs))[sp.in1d(blocklocs[:,0],keeptimes)]
+            b_locs = blocklocs[b_locsind]
 
 
-
-            if len(self.RSTMat)==1:
-                mainmat = self.RSTMat[0]
-                for ibn,(iin,iout) in enumerate(b_locs):
-                    ntcounts[iout]=ntcounts[iout]+1
-                    for iparam in range(np):
-                        bdata[:,iin,iparam]=mainmat.transpose().dot(ionodata[:,iout,iparam])
-
-            else:
-                for ibn,(iin,iout) in enumerate(b_locs):
-                    ntcounts[iout]=ntcounts[iout]+1
-                    mainmat=self.RSTMat[b_locsind[ibn]]
-                    for iparam in range(np):
-                        bdata[:,iin,iparam]=mainmat.transpose().dot(ionodata[:,iin,iparam])
+            
+            for ibn,(iin,iout) in enumerate(b_locs):
+                if len(self.RSTMat)==1:
+                    A = self.RSTMat[0]
+                else:
+                    A=self.RSTMat[b_locsind[ibn]]
+                ntcounts[iin]=ntcounts[iin]+1
+                
+                for iparam in range(np):
+                    bdata[:,iin,iparam]=A.transpose().dot(ionodata[:,iout,iparam])
 
 
-
-            C = sp.dot(A.transpose(),A)
-
-            if type is None or type.lower()=='i':
-                L=sp.sparse.eye(C.shape[0])
-            elif type.lower()=='d':
-                L=diffmat(dims,order)
-
-            Ctik=C+sp.power(alpha,2)*L
-            M=L*Ctik
-            xin = sp.ones(nlin,dtype=ionodata.dtype)
-            for i in range(np):
-                (inv[:,i], error, iter, flag) = cgmat(Ctik, xin, b_all[:,i], M, max_it, tol)
+                C = sp.dot(A.transpose(),A)
+    
+                if type is None or type.lower()=='i':
+                    L=sp.sparse.eye(C.shape[0])
+                elif type.lower()=='d':
+                    L=diffmat(dims,order)
+    
+                Ctik=C+sp.power(alpha,2)*L
+                M=L*Ctik
+                xin = sp.ones(nlin,dtype=ionodata.dtype)
+                for i in range(np):
+                    (invdata[:,iin,i], error, iter, flag) = cgmat(Ctik, xin, bdata[:,iin,i], M, max_it, tol)
 
 def makematPA(Sphere_Coords,timein,configfile,vel=None):
     """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc matrix. The output space will have range repeated first,
