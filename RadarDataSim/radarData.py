@@ -73,7 +73,7 @@ class RadarDataFile(object):
        pulsetimes = sp.arange(Npall)*self.simparams['IPP']
        pulsefile = sp.array([sp.where(itimes-ftimes>=0)[0][-1] for itimes in pulsetimes])
        # differentiate between phased arrays and dish antennas
-       if sensdict['Name'].lower() in ['risr','pfisr']:
+       if sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
             beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
        else:
             # for dish arrays
@@ -96,20 +96,22 @@ class RadarDataFile(object):
        self.datadir = outdir
        self.maindir = os.path.dirname(os.path.abspath(outdir))
        self.procdir =os.path.join(self.maindir,'ACF')
-       self.procdir
        if outfilelist is None:
             print('\nData Now being created.')
 
             Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
             self.outfilelist = []
             for ifn, ifilet in enumerate(filetimes):
+                
                 outdict = {}
                 ifile = Ionodict[ifilet]
                 print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),
                       os.path.split(ifile)[1]))
                 curcontainer = IonoContainer.readh5(ifile)
+                if ifn==0:
+                    self.timeoffset=curcontainer.Time_Vector[0,0]
                 pnts = pulsefile==ifn
-                pt =pulsetimes[pnts]
+                pt =pulsetimes[pnts] +self.timeoffset
                 pb = beams[pnts]
                 pn = pulsen[pnts].astype(int)
                 (rawdata,outdict['SpecsUsed'])= self.__makeTime__(pt,curcontainer.Time_Vector,
@@ -244,7 +246,7 @@ class RadarDataFile(object):
         NoiseLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
         the numpy arrays of the data.
         """
-        timevec = self.simparams['Timevec']
+        timevec = self.simparams['Timevec'] +self.timeoffset
         inttime = self.simparams['Tint']
         # Get array sizes
 
@@ -362,7 +364,7 @@ class RadarDataFile(object):
                 curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)[curfileitvec].copy()
                 h5file.close()
             # differentiate between phased arrays and dish antennas
-            if self.sensdict['Name'].lower() in ['risr','pfisr']:
+            if self.sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
                 # After data is read in form lags for each beam
                 for ibeam in range(Nbeams):
                     print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
@@ -416,7 +418,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # pull in other data
     pulsewidth = len(simparams['Pulse'])*sensdict['t_s']
     txpower = sensdict['Pt']
-    if sensdict['Name'].lower() in ['risr','pfisr']:
+    if sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
         Ksysvec = sensdict['Ksys']
     else:
 
