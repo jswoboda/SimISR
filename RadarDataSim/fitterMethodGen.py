@@ -61,7 +61,8 @@ class Fitterionoconainer(object):
 
         print('\nData Now being fit.')
         first_lag = True
-        x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector,exinputs)
+        
+        x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector[:,0],exinputs)
         nparams=x_0all.shape[-1]+1
         for itime in range(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))

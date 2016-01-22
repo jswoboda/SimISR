@@ -315,12 +315,12 @@ class RadarDataFile(object):
         # run the time loop
         print("Forming ACF estimates")
         for itn,it in enumerate(timevec):
-            print("\tTime {0:d} of {0:d}".format(itn,Ntime))
+            print("\tTime {0:d} of {1:d}".format(itn,Ntime))
             # do the book keeping to determine locations of data within the files
             cur_tlim = (it,it+inttime)
             curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
             if  not sp.any(curcases):
-                print("\tNo pulses for time {0:d} of {0:d}, lagdata adjusted accordinly".format(itn,Ntime))
+                print("\tNo pulses for time {0:d} of {1:d}, lagdata adjusted accordinly".format(itn,Ntime))
                 outdata = outdata[:itn]
                 outnoise = outnoise[:itn]
                 pulses=pulses[:itn]
@@ -379,7 +379,7 @@ class RadarDataFile(object):
                         numtype=self.simparams['dtype'], pulse=pulse)
             else:
                 for ibeam,ibeamlist in enumerate(self.simparams['outangles']):
-                    print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
+                    print("\t\tBeam {0:d} of {1:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(sp.in1d(beamlocs,ibeamlist))[0]
                     curbeams = beamlocs[beamlocstmp]
                     ksysmat = Ksysvec[curbeams]
