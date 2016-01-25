@@ -93,7 +93,7 @@ class Fitterionoconainer(object):
                     acfvarmat = sp.diag(acfvar)
                     # calculate uncertianties by applying the FFT to the columns and the
                     # ifft to the rows. Then multiply by the constant to deal with the different size ffts
-                    specmat = sp.ifft(sp.fft(acfvarmat,n=Nspec,axis=0),n=Nspec,axis=1)*Nspec**2/Nlags
+                    specmat = sp.ifft(sp.fft(acfvarmat,n=int(Nspec),axis=0),n=int(Nspec),axis=1)*Nspec**2/Nlags
                     specsig = sp.sqrt(sp.diag(specmat.real))
                     d_func = d_func+(specsig,)
 
