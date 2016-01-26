@@ -22,7 +22,7 @@ def defaultparamsfunc(curlag,sensdict,simparams):
     return(curlag,sensdict,simparams)
 
 class Fitterionoconainer(object):
-    def __init__(self,Ionocont,Ionosig,inifile):
+    def __init__(self,Ionocont,Ionosig = None,inifile='default.ini'):
         """ The init function for the fitter take the inputs for the fitter programs.
 
             Inputs:
@@ -45,7 +45,10 @@ class Fitterionoconainer(object):
         of beams and Nrg is number of range gates."""
 
         Ne = sp.absolute(self.Iono.Param_List[:,:,0]*(1.0+Tratio))
-        Nesig = sp.absolute(self.sig.Param_List[:,:,0]*(1.0+Tratio))
+        if self.sig is None:
+            Nesig = None
+        else:                    
+            Nesig = sp.absolute(self.sig.Param_List[:,:,0]*(1.0+Tratio))
         return (Ne,Nesig)
     def fitdata(self,fitfunc,startvalfunc,d_funcfunc=defaultparamsfunc,exinputs=[]):
         """This funcition is used to fit data given in terms of lags """
@@ -53,7 +56,10 @@ class Fitterionoconainer(object):
         # get intial guess for NE
         Ne_start,Ne_sig =self.fitNE()
         if self.simparams['Pulsetype'].lower()=='barker':
-            return(Ne_start[:,:,sp.newaxis],Ne_sig[:,:,sp.newaxis])
+            if Ne_sig is None:
+                 return Ne_start[:,:,sp.newaxis]
+            else:
+                 return(Ne_start[:,:,sp.newaxis],Ne_sig[:,:,sp.newaxis])
         # get the data and noise lags
         lagsData= self.Iono.Param_List.copy()
         (Nloc,Nt,Nlags) = lagsData.shape
@@ -71,31 +77,28 @@ class Fitterionoconainer(object):
                 curlag = lagsData[iloc,itime]
                 d_func = d_funcfunc(curlag,self.sensdict,self.simparams)
                 x_0 = x_0all[iloc,itime]
-                #XXX Added random noise to start points
-                # add some random noise so we don't just go to the desired value right away
-                x_rand = sp.random.standard_normal(x_0.shape)*sp.sqrt(.1)*x_0
-#                x_0 =x_0+x_rand
-
+                
                 if first_lag:
                     first_lag = False
                     fittedarray = sp.zeros((Nloc,Nt,nparams))
                     fittederror = sp.zeros((Nloc,Nt,nparams,nparams))
                 # get uncertianties
-                if self.simparams['FitType'].lower()=='acf':
-                    # this is calculated from a formula
-                    d_func = d_func+(self.sig.Param_List[iloc,itime],)
-                elif self.simparams['FitType'].lower()=='spectrum':
-                    # these uncertianties are derived from the acf variances.
-                    acfvar = self.sig.Param_List[iloc,itime]**2
-                    Nspec = self.simparams['numpoints']
-                    #XXX when creating these variences I'm assuming the lags are independent
-                    # this isn't true and I should use the ambiguity function to fix this.
-                    acfvarmat = sp.diag(acfvar)
-                    # calculate uncertianties by applying the FFT to the columns and the
-                    # ifft to the rows. Then multiply by the constant to deal with the different size ffts
-                    specmat = sp.ifft(sp.fft(acfvarmat,n=int(Nspec),axis=0),n=int(Nspec),axis=1)*Nspec**2/Nlags
-                    specsig = sp.sqrt(sp.diag(specmat.real))
-                    d_func = d_func+(specsig,)
+                if not self.sig is None:
+                    if self.simparams['FitType'].lower()=='acf':
+                        # this is calculated from a formula
+                        d_func = d_func+(self.sig.Param_List[iloc,itime],)
+                    elif self.simparams['FitType'].lower()=='spectrum':
+                        # these uncertianties are derived from the acf variances.
+                        acfvar = self.sig.Param_List[iloc,itime]**2
+                        Nspec = self.simparams['numpoints']
+                        #XXX when creating these variences I'm assuming the lags are independent
+                        # this isn't true and I should use the ambiguity function to fix this.
+                        acfvarmat = sp.diag(acfvar)
+                        # calculate uncertianties by applying the FFT to the columns and the
+                        # ifft to the rows. Then multiply by the constant to deal with the different size ffts
+                        specmat = sp.ifft(sp.fft(acfvarmat,n=int(Nspec),axis=0),n=int(Nspec),axis=1)*Nspec**2/Nlags
+                        specsig = sp.sqrt(sp.diag(specmat.real))
+                        d_func = d_func+(specsig,)
 
                 (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
                     x0=x_0,args=d_func,full_output=True)
