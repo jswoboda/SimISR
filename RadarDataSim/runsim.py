@@ -186,7 +186,7 @@ def applymat(basedir,configfile,optinputs):
     filelist = [os.path.split(item)[1] for item in dirlist]
     timelist = sorted([int(item.partition(' ')[0]) for item in filelist])
     Ionolist = sorted(filelist,key=ke)
-    Ionolist = [os.path.join(inputdir,Ionolist)]
+    Ionolist = [os.path.join(inputdir,i) for i in Ionolist]
     
     RSTO = RadarSpaceTimeOperator(Ionolist,configfile,timelist)
     Ionoout = RSTO.mult_iono(Ionolist)
