@@ -1,8 +1,20 @@
 #!/usr/bin/env python
 """
-Created on Mon Mar 16 12:14:42 2015
 
-@author: John Swoboda
+runsim.py by John Swoboda 3/16/2015
+This script will run the RadarDataSim code. The user can run a number of different 
+aspects including making data, fitting applying matrix formulation of the 
+space-time ambuiguty operator and calling inversion methods. 
+
+
+Inputs 
+             -f These will be the possible functions that can be used
+                 spectrums :makespectrums, 
+                 radardata :makeradardata, 
+                 fitting :fitdata,'
+                 fittingmat :fitdata,
+                 fittinginv :fitdata,
+                 applymat applymat
 """
 from __future__ import print_function
 
@@ -99,7 +111,7 @@ def makeradardata(basedir,configfile,remakealldata):
 #%% Fit data
 def fitdata(basedir,configfile,optinputs):
     """ This function will run the fitter on the estimated ACFs saved in h5 files.
-    Inputs:
+        Inputs:
         basedir: A string for the directory that will hold all of the data for the simulation.
         configfile: The configuration file for the simulation.
         optinputs:A string that helps determine the what type of acfs will be fitted.
@@ -159,6 +171,12 @@ def fitdata(basedir,configfile,optinputs):
     Ionoout.saveh5(outfile)
 #%% apply the matrix for the data
 def applymat(basedir,configfile,optinputs):
+    """ This function apply the matrix version of the space time ambiugty function
+        to the ACFs and save the outcome in h5 files within the directory ACFMat.
+        Inputs:
+        basedir: A string for the directory that will hold all of the data for the simulation.
+        configfile: The configuration file for the simulation.
+         """
     dirio = ('Spectrums','Mat','ACFMat')
     inputdir = os.path.join(basedir,dirio[0])
     outputdir = os.path.join(basedir,dirio[1])
@@ -218,7 +236,42 @@ def ke(item):
 def main(funcnamelist,basedir,configfile,remakealldata):
     """ Main function for this module. The function will set up the directory 
     structure, create or update a diary file and run the simulation depending
-    on the user input. """
+    on the user input. 
+    Inputs 
+        funcnamelist: A list of strings that coorespond to specific functions. 
+                The stirng and function they correspond to, that will be shown.
+                 
+                 spectrums: makespectrums, This will create the ISR spectrums
+                 
+                 radardata :makeradardata, This will make the radar data and
+                     form the ACF estimates. If the raw radar data exists then 
+                     the user must use the -r option on the command line and set 
+                     it to y.
+                     
+                 fitting :fitdata, This will apply the fitter to the data in 
+                 the ACF folder of the base directory.
+                 
+                 fittingmat :fitdata,This will apply the fitter to the data in 
+                 the ACFMat folder of the base directory.
+                 
+                 fittinginv :fitdata,This will apply the fitter to the data in 
+                 the ACFInv folder of the base directory.
+                 
+                 applymat :applymat, This wil create and apply a matrix  
+                 formulation of thespace-time ambiguity function to ISR spectrums.
+        basedir: The base directory that will contain all of the data. This directory 
+                must contain a directory called Origparams with h5 files to run 
+                the full simulation. The user can also start with a directory 
+                from a later stage of the simulation instead though.
+        
+        configfile: The configuration used for the simulation. Can be an ini file or
+                a pickle file.
+                
+        remakealldata: A bool to determine if the raw radar data will be remade. If
+                this is False the radar data will only be made if it does
+                not exist in the file first.
+        
+    """
 
     inputsep = '***************************************************************\n'
 
@@ -281,11 +334,63 @@ if __name__ == "__main__":
 
     argv = sys.argv[1:]
 
-    outstr = ''' runsim.py This script will run 
-             runsim.py -f <function: spectrums, radardata, fitting or all> -i <basedir> -c <config> -r <type y to remake data>
+    outstr = ''' 
+             Usage: python runsim.py -f <function: spectrums, radardata, fitting or all> -i <basedir> -c <config> -r <type y to remake data>
+
+             or 
              
+             python runsim.py -h
+             
+             This script will run the RadarDataSim code. The user 
+             can run a number of different aspects including making data, fitting
+             applying matrix formulation sof the space-time operator and calling 
+             inversion methods. 
+             
+                          
+             Manditory Arguments to run code, for help just use the -h option. 
+             
+             -f These will be the possible strings for the argument and the  
+                function they correspond to, that will be used ish shown.
+                 
+                 spectrums: makespectrums, This will create the ISR spectrums
+                 
+                 radardata :makeradardata, This will make the radar data and
+                     form the ACF estimates. If the raw radar data exists then 
+                     the user must use the -r option on the command line and set 
+                     it to y.
+                     
+                 fitting :fitdata, This will apply the fitter to the data in 
+                 the ACF folder of the base directory.
+                 
+                 fittingmat :fitdata,This will apply the fitter to the data in 
+                 the ACFMat folder of the base directory.
+                 
+                 fittinginv :fitdata,This will apply the fitter to the data in 
+                 the ACFInv folder of the base directory.
+                 
+                 applymat :applymat, This wil create and apply a matrix  
+                 formulation of thespace-time ambiguity function to ISR spectrums.
+                 
+                 
+                 all - This will run the commands from using the spectrums, radardata, 
+                     and fitting
+                     
+            -i The base directory that will contain all of the data. This directory 
+                must contain a directory called Origparams with h5 files to run 
+                the full simulation. The user can also start with a directory 
+                from a later stage of the simulation instead though.
+                
+            -c The configuration used for the simulation. Can be an ini file or
+                a pickle file.
+                
+            Optional arguments
+            
+            -r If a y follows this then the raw radar data will be remade. If
+                this is not used the radar data will only be made if it does
+                not exist in the file first.
+            
              Example:
-             python runsim.py -f radardata -f fitting -i ~/DATA/ExampleLongPulse -c ~/DATA/Example'''
+             python runsim.py -f radardata -f fitting -i ~/DATA/ExampleLongPulse -c ~/DATA/Example -r y'''
 
     try:
         opts, args = getopt.getopt(argv,"hf:i:c:r:")
