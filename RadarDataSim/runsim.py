@@ -121,7 +121,10 @@ def fitdata(basedir,configfile,optinputs):
     dirlistsig = glob.glob(os.path.join(inputdir,'*sigs.h5'))
 
     Ionoin=IonoContainer.readh5(dirlist[0])
-    Ionoinsig=IonoContainer.readh5(dirlistsig[0])
+    if len(dirlistsig)==0:
+        Ionoinsig=None
+    else:
+        Ionoinsig=IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
     (fitteddata,fittederror) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']])
 
