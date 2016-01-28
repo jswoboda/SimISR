@@ -336,6 +336,36 @@ class IonoContainer(object):
         if 'coordlist2' in outdict.keys():
             del outdict['coordlist2']
         return IonoContainer(**outdict)
+    @staticmethod
+    def gettimes(ionocontlist):
+        """ 
+        This static method will take a list of files, or a single string, and 
+        deterimine the time ordering and give the sort order for the files to be in.
+        Inputs
+            ionocontlist- A list of IonoContainer h5 files. Can also be a single 
+            string of a file name.
+        Outputs
+            sortlist - A numpy array of integers that will chronilogically order 
+            the files
+            outtime - A Nt x 2 numpy array of all of the times.
+        """
+        if isinstance(ionocontlist,basestring):
+            ionocontlist=[ionocontlist]
+        timelist=[]
+        for ifile in ionocontlist:
+            h5file=tables.openFile(ifile)
+            times=h5file.root.Time_Vector.read()
+            h5file.close()
+            timelist.append(times)
+            
+        times_file =sp.array([i[:,0].min() for i in timelist])
+        sortlist = sp.argsort(times_file)
+        
+        timelist_s = [timelist[i] for i in sortlist]
+        timebeg = times_file[sortlist]
+        outime = sp.vstack(timelist_s)
+        return (sortlist,outime,timebeg)
+        
     #%% Reduce numbers
     def coordreduce(self,coorddict):
         assert type(coorddict)==dict, "Coorddict needs to be a dictionary"

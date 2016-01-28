@@ -10,7 +10,7 @@ from const.physConstants import v_C_0
 from utilFunctions import readconfigfile
 from IonoContainer import IonoContainer
 import scipy as sp
-
+import pdb
 class RadarSpaceTimeOperator(object):
 
     def __init__(self,ionoin=None,configfile=None,timein=None,RSTOPinv=None,invmat=None):
@@ -19,6 +19,14 @@ class RadarSpaceTimeOperator(object):
             (sensdict,simparams) = readconfigfile(configfile)
 
 
+            
+            if isinstance(ionoin,basestring):
+                ionoin = IonoContainer.readh5(ionoin)
+            elif isinstance(ionoin,list):
+                if isinstance(ionoin[0],basestring):
+                    ionoin = IonoContainer.readh5(ionoin[0])
+                else:
+                    ionoin=ionoin[0]
             #Input location
             self.Cart_Coords_In = ionoin.Cart_Coords
             self.Sphere_Coords_In = ionoin.Sphere_Coords,
