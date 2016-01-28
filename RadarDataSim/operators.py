@@ -116,16 +116,16 @@ class RadarSpaceTimeOperator(object):
             if len(self.RSTMat)==1:
                 mainmat = self.RSTMat[0]
                 for ibn,(iin,iout) in enumerate(b_locs):
-                    ntcounts[iout]=ntcounts[iout]+1
+                    ntcounts[iin]=ntcounts[iin]+1
                     for iparam in range(np):
-                        outdata[:,iout,iparam]=mainmat.dot(outdata[:,iin,iparam])
+                        outdata[:,iout,iparam]=mainmat.dot(ionodata[:,iin,iparam])
 
             else:
                 for ibn,(iin,iout) in enumerate(b_locs):
                     ntcounts[iout]=ntcounts[iout]+1
                     mainmat=self.RSTMat[b_locsind[ibn]]
                     for iparam in range(np):
-                        outdata[:,iout,iparam]=mainmat.dot(outdata[:,iin,iparam])
+                        outdata[:,iout,iparam]=mainmat.dot(ionodata[:,iin,iparam])
 
         # If any times had no returns remove them
         # divid out data that was added together
@@ -134,8 +134,8 @@ class RadarSpaceTimeOperator(object):
         ntcounts=ntcounts[outkeep]
         for itm in range(outdata.shape[1]):
             outdata[:,itm]=outdata[:,itm]/ntcounts[itm]
-
-        outiono = IonoContainer(self.Cart_Coords_Out,outdata,Times=self.Time_Out[outkeep],sensor_loc=curiono.Sensor_loc,
+        
+        outiono = IonoContainer(self.Cart_Coords_Out,outdata,times=self.Time_Out[outkeep],sensor_loc=curiono.Sensor_loc,
                                ver=0,paramnames=curiono.Param_Names,species=curiono.Species,
                                velocity=curiono.Velocity)
         return outiono
@@ -245,8 +245,12 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
     if vel is None:
 
         for iton,ito in enumerate(timeout):
-            overlaps = sp.array([getOverlap(ito,x) for x in timein])
-            tempover=sp.column_stack((sp.ones(len(overlaps))*iton,overlaps))
+            overlaps=[]
+            for ix, x in enumerate(timein):
+                if x[0]<ito[1] and x[1]>ito[0]:
+                    overlaps.append(sp.array([iton,ix]))
+            
+            tempover = sp.array(overlaps)
             if iton==0:
                 blocklocs = tempover.copy()
             else:
