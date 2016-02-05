@@ -111,7 +111,7 @@ class RadarDataFile(object):
                 if ifn==0:
                     self.timeoffset=curcontainer.Time_Vector[0,0]
                 pnts = pulsefile==ifn
-                pt =pulsetimes[pnts] +self.timeoffset
+                pt =pulsetimes[pnts]
                 pb = beams[pnts]
                 pn = pulsen[pnts].astype(int)
                 (rawdata,outdict['SpecsUsed'])= self.__makeTime__(pt,curcontainer.Time_Vector,
@@ -177,6 +177,7 @@ class RadarDataFile(object):
         out_data = sp.zeros((Np,N_samps),dtype=simdtype)
         weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
         specsused = sp.zeros((Ndtime,Nbeams,N_rg,speclen),dtype=allspecs.dtype)
+        
         for istn, ist in enumerate(spectime):
             for ibn in range(Nbeams):
                 print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
@@ -196,7 +197,6 @@ class RadarDataFile(object):
                     #create the weights and weight location based on the beams pattern.
                     weight_cur =weight[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
-
                     specsinrng = allspecs[rangelog]
                     if specsinrng.ndim==3:
                         specsinrng=specsinrng[:,istn]
@@ -208,7 +208,6 @@ class RadarDataFile(object):
                     cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
                     pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*sensdict['t_s'] # based off new way of calculating
                     pow_den = range_m**2
-
                     curdataloc = sp.where(sp.logical_and((pulse2spec==istn),(beamcodes==ibn)))[0]
                     # create data
                     if len(curdataloc)==0:
