@@ -67,7 +67,6 @@ class Fitterionoconainer(object):
 
         print('\nData Now being fit.')
         first_lag = True
-        
         x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector[:,0],exinputs)
         nparams=x_0all.shape[-1]+1
         for itime in range(Nt):
@@ -110,7 +109,8 @@ class Fitterionoconainer(object):
                     fittederror[iloc,itime,:-1,:-1] = sp.ones((len(x_0),len(x_0)))*float('nan')
                 else:
                     fittederror[iloc,itime,:-1,:-1] = sp.sqrt(sp.absolute(cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))))
-                fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
+                if not self.sig is None:
+                    fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
 
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror)

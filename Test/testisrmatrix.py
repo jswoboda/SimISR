@@ -6,7 +6,7 @@ Created on Tue Oct 20 13:20:27 2015
 """
 import os, inspect,glob
 import scipy as sp
-
+import shutil
 from RadarDataSim.utilFunctions import makedefaultfile
 from RadarDataSim.operatorstuff import makematPA
 from RadarDataSim.IonoContainer import MakeTestIonoclass
@@ -34,8 +34,10 @@ def main():
             os.remove(ifile)
     # Make Config file
     configname = os.path.join(testpath,'config.ini')
+    
     if ~os.path.isfile(configname):
-        makedefaultfile(configname)
+        srcfile =os.path.join( os.path.split(curpath)[0],'RadarDataSim','default.ini')
+        shutil.copy(srcfile,configname)
 
     # make the coordinates
     xvec = sp.zeros((1))

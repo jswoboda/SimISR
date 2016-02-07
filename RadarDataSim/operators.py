@@ -8,6 +8,7 @@ Created on Tue Dec 29 15:49:01 2015
 import tables
 from const.physConstants import v_C_0
 from utilFunctions import readconfigfile
+import scipy.fftpack as scfft
 from IonoContainer import IonoContainer
 import scipy as sp
 import pdb
@@ -56,10 +57,11 @@ class RadarSpaceTimeOperator(object):
             X_vec = R_vec*xvecmult
             Y_vec = R_vec*yvecmult
             Z_vec = R_vec*zvecmult
-
+            
             self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
-            self.Time_Out = simparams['Timevec']
-
+            self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))
+            self.simparams=simparams
+            self.sensdict=sensdict
             (self.RSTMat,self.blocks,self.blocksize,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector,configfile)
         elif configfile is None:
 
@@ -99,7 +101,8 @@ class RadarSpaceTimeOperator(object):
             ionodata = curiono.Param_List
             ionotime = curiono.Time_Vector
             ionocart = curiono.Cart_Coords
-
+            np = len(self.simparams['Pulse'])
+            ionodata=scfft.ifft(scfft.ifftshift(ionodata,axes=-1),axis=-1)[:,:,:np]
             assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
 
             ionosttimes = ionotime[:,0]
@@ -134,9 +137,9 @@ class RadarSpaceTimeOperator(object):
         ntcounts=ntcounts[outkeep]
         for itm in range(outdata.shape[1]):
             outdata[:,itm]=outdata[:,itm]/ntcounts[itm]
-        
-        outiono = IonoContainer(self.Cart_Coords_Out,outdata,times=self.Time_Out[outkeep],sensor_loc=curiono.Sensor_loc,
-                               ver=0,paramnames=curiono.Param_Names,species=curiono.Species,
+       
+        outiono = IonoContainer(self.Sphere_Coords_Out,outdata,times=self.Time_Out[outkeep],sensor_loc=curiono.Sensor_loc,
+                               ver=1,coordvecs = ['r','theta','phi'],paramnames=curiono.Param_Names,species=curiono.Species,
                                velocity=curiono.Velocity)
         return outiono
     def invertdata(self,ionoin,alpha,tik_type = 'i',type=None,dims=None,order='C',max_it=100,tol=1e-2):
