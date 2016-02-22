@@ -242,7 +242,7 @@ class App():
                     'species':newlist,
                     'numpoints':int(float(self.numpoints.get())),
                     'startfile':self.startfile.get(),
-                    'FitType': self.fittype}
+                    'FitType': self.fittype.get()}
         
         if len(self.outangles.get())>0:
             outlist1 = self.outangles.get().split(',')
