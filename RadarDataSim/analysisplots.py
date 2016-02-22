@@ -10,7 +10,7 @@ import os, glob
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
+import matplotlib.colors as colors
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.interpolate as spinterp
@@ -23,6 +23,83 @@ from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf,acf2spect
 from RadarDataSim.specfunctions import ISRspecmakeout,ISRSfitfunction,makefitsurf
 
+def beamvstime(times,configfile,maindir,params=['Ne'],filetemplate='BeamParams',suptitle = 'Parameter Comparison',werrors=False):
+    """ """
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+#    rc('text', usetex=True)
+    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
+    (sensdict,simparams) = readconfigfile(configfile)
+
+    paramslower = [ip.lower() for ip in params]
+    Np = len(params)
+
+    
+    Ionofit = IonoContainer.readh5(ffit)
+    times = Ionofit.Time_Vector
+    Nt = len(times)
+    dataloc = Ionofit.Sphere_Coords
+    pnames = Ionofit.Param_Names
+    pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
+    p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
+        
+    angles = dataloc[:,1:]
+    b = np.ascontiguousarray(angles).view(np.dtype((np.void, angles.dtype.itemsize * angles.shape[1])))
+    _, idx, invidx = np.unique(b, return_index=True,return_inverse=True)
+
+    beamlist = angles[idx]
+
+    Nb = beamlist.shape[0]
+
+    
+    nfig = int(sp.ceil(Nt*Nb*Np/9.0))
+    imcount = 0
+    for i_fig in range(nfig):
+        lines = [None]*2
+        labels = [None]*2
+        (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w')
+        axvec = axmat.flatten()
+        for iax,ax in enumerate(axvec):
+            if imcount>=Nb*Np:
+                break
+            iparam = int(sp.floor(imcount/Nb))
+            ibeam = int(imcount-iparam*Nb)
+
+            curbeam = beamlist[ibeam]
+            curparm = paramslower[iparam]
+            if curparm == 'nepow':
+                curparm = 'ne'
+            prmloc = sp.argwhere(curparm==pnameslowerin)
+            
+            indxkep = np.argwhere(invidx==ibeam)[:,0]
+            rng_fit= dataloc[indxkep,0]
+            rngargs = np.argsort(rng_fit)
+            rng_fit = rng_fit[rngargs]
+            alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
+            curfit = Ionofit.Param_List[indxkep,:,p2fit[iparam]]
+            curfit=curfit[rngargs]
+            Tmat, Amat =np.meshgrid(times[:,0],alt_fit)
+            image = ax.pcolor(Tmat,Amat,curfit,cmat='plasma')
+            if curparm=='ne':
+                image.set_norm(colors.LogNorm(vmin=1e9,vmax=1e11))
+                cbarstr = params[iparam] + ' m-3'
+            else:
+                image.set_norm(colors.PowerNorm(gamma=1.,vmin=500,vmax=3e3))
+                cbarstr = params[iparam] + ' K'
+            cbar = plt.colorbar()
+            cbar.set_label(cbarstr)
+            ax.set_xlabel("Time in s")
+            ax.set_ylabel('Alt km')
+            ax.set_title('{0} vs Altitude, Az: {1}$^o$ El: {2}$^o$'.format(params[iparam],*curbeam))
+            imcount=imcount+1
+
+        figmplf.suptitle(suptitle, fontsize=20)
+
+        plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
+        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
+        plt.savefig(fname)
+        plt.close(figmplf)
+    
 def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='fitsurfs',suptitle = 'Fit Surfaces'):
 
     (sensdict,simparams) = readconfigfile(configfile)
@@ -81,7 +158,7 @@ def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='f
         yvec = paramdict[ystr]
         [Xmat,Ymat]= sp.meshgrid(xvec,yvec)
 
-        iax.pcolor(Xmat,Ymat,Z1,norm=LogNorm(vmin=Z1.min(), vmax=Z1.max()))
+        iax.pcolor(Xmat,Ymat,Z1,norm=colors.LogNorm(vmin=Z1.min(), vmax=Z1.max()))
         iax.xlabel=xstr
         iax.ylabel=ystr
         iax.title('{0} at {0}'.format(setstr,setval))
