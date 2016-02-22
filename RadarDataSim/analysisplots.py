@@ -23,19 +23,19 @@ from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf,acf2spect
 from RadarDataSim.specfunctions import ISRspecmakeout,ISRSfitfunction,makefitsurf
 
-def beamvstime(times,configfile,maindir,params=['Ne'],filetemplate='BeamParams',suptitle = 'Parameter Comparison',werrors=False):
-    """ """
+def beamvstime(inputfile,configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs Time'):
+    """ This will create a altitude time image for the data for ionocontainer files
+    that are in sphereical coordinates."""
     sns.set_style("whitegrid")
     sns.set_context("notebook")
 #    rc('text', usetex=True)
-    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
     (sensdict,simparams) = readconfigfile(configfile)
 
     paramslower = [ip.lower() for ip in params]
     Np = len(params)
 
     
-    Ionofit = IonoContainer.readh5(ffit)
+    Ionofit = IonoContainer.readh5(inputfile)
     times = Ionofit.Time_Vector
     Nt = len(times)
     dataloc = Ionofit.Sphere_Coords
@@ -69,7 +69,6 @@ def beamvstime(times,configfile,maindir,params=['Ne'],filetemplate='BeamParams',
             curparm = paramslower[iparam]
             if curparm == 'nepow':
                 curparm = 'ne'
-            prmloc = sp.argwhere(curparm==pnameslowerin)
             
             indxkep = np.argwhere(invidx==ibeam)[:,0]
             rng_fit= dataloc[indxkep,0]
