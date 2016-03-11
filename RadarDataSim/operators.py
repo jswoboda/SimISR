@@ -30,7 +30,7 @@ class RadarSpaceTimeOperator(object):
                     ionoin=ionoin[0]
             #Input location
             self.Cart_Coords_In = ionoin.Cart_Coords
-            self.Sphere_Coords_In = ionoin.Sphere_Coords,
+            self.Sphere_Coords_In = ionoin.Sphere_Coords
             # time
             if timein is None:
                 self.Time_In = ionoin.Time_Vector
