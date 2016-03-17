@@ -51,19 +51,20 @@ def beamvstime(inputfile,configfile,maindir,params=['Ne'],filetemplate='AltvTime
 
     Nb = beamlist.shape[0]
 
-    
-    nfig = int(sp.ceil(Nt*Nb*Np/9.0))
-    imcount = 0
-    for i_fig in range(nfig):
-        lines = [None]*2
-        labels = [None]*2
-        (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w')
-        axvec = axmat.flatten()
-        for iax,ax in enumerate(axvec):
-            if imcount>=Nb*Np:
-                break
-            iparam = int(sp.floor(imcount/Nb))
-            ibeam = int(imcount-iparam*Nb)
+    newfig=True
+    imcount=0
+    ifig=-1
+    for iparam in range(Np):
+        for ibeam in range(Nb):
+            
+            if newfig:
+                (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w',sharex=True, sharey=True)
+                axvec = axmat.flatten()
+                newfig=False
+                ix=0
+                ifig+=1
+
+            ax=axvec[ix]
 
             curbeam = beamlist[ibeam]
             curparm = paramslower[iparam]
@@ -78,26 +79,33 @@ def beamvstime(inputfile,configfile,maindir,params=['Ne'],filetemplate='AltvTime
             curfit = Ionofit.Param_List[indxkep,:,p2fit[iparam]]
             curfit=curfit[rngargs]
             Tmat, Amat =np.meshgrid(times[:,0],alt_fit)
-            image = ax.pcolor(Tmat,Amat,curfit,cmat='plasma')
+            image = ax.pcolor(Tmat,Amat,curfit,cmap='jet')
             if curparm=='ne':
                 image.set_norm(colors.LogNorm(vmin=1e9,vmax=1e11))
                 cbarstr = params[iparam] + ' m-3'
             else:
                 image.set_norm(colors.PowerNorm(gamma=1.,vmin=500,vmax=3e3))
                 cbarstr = params[iparam] + ' K'
-            cbar = plt.colorbar()
-            cbar.set_label(cbarstr)
-            ax.set_xlabel("Time in s")
-            ax.set_ylabel('Alt km')
+            
+            if ix>5:
+                ax.set_xlabel("Time in s")
+            if sp.mod(ix,3)==0:
+                ax.set_ylabel('Alt km')
             ax.set_title('{0} vs Altitude, Az: {1}$^o$ El: {2}$^o$'.format(params[iparam],*curbeam))
             imcount=imcount+1
-
-        figmplf.suptitle(suptitle, fontsize=20)
-
-        plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
-        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
-        plt.savefig(fname)
-        plt.close(figmplf)
+    
+            ix+=1
+            if ix==9 or ibeam+1==Nb:
+                cbar_ax = figmplf.add_axes([.91, .3, .06, .4])
+                cbar = plt.colorbar(image,cax=cbar_ax)
+                cbar.set_label(cbarstr)
+                figmplf.suptitle(suptitle, fontsize=20)
+                figmplf.tight_layout(rect=[0, .05, .9, .95])
+                fname= filetemplate+'_{0:0>3}.png'.format(ifig)
+                plt.savefig(fname)
+                plt.close(figmplf)
+                newfig=True
+                
     
 def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='fitsurfs',suptitle = 'Fit Surfaces'):
 
