@@ -23,7 +23,7 @@ from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf,acf2spect
 from RadarDataSim.specfunctions import ISRspecmakeout,ISRSfitfunction,makefitsurf
 
-def beamvstime(inputfile,configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs Time'):
+def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs Time'):
     """ This will create a altitude time image for the data for ionocontainer files
     that are in sphereical coordinates."""
     sns.set_style("whitegrid")
@@ -33,6 +33,7 @@ def beamvstime(inputfile,configfile,maindir,params=['Ne'],filetemplate='AltvTime
 
     paramslower = [ip.lower() for ip in params]
     Np = len(params)
+    inputfile = os.path.join(maindir,'Fitted','fitteddata.h5')
 
     
     Ionofit = IonoContainer.readh5(inputfile)
@@ -666,7 +667,12 @@ def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png'
     plt.close(fig1)
 
 def analysisdump(maindir,configfile,suptitle=None):
-    """ """
+    """ This function will perform all of the plotting functions in this module
+    given the main directory that all of the files live. 
+    Inputs
+        maindir - The directory for the simulation. 
+        configfile - The name of the configuration file used.
+        suptitle - The supertitle used on the files. """
     plotdir = os.path.join(maindir,'AnalysisPlots')
     if not os.path.isdir(plotdir):
         os.mkdir(plotdir)
@@ -674,6 +680,7 @@ def analysisdump(maindir,configfile,suptitle=None):
     #plot spectrums
     filetemplate1 = os.path.join(maindir,'AnalysisPlots','Spec')
     filetemplate3 = os.path.join(maindir,'AnalysisPlots','ACF')
+    filetemplate4 = os.path.join(maindir,'AnalysisPlots','AltvTime')
 
     (sensdict,simparams) = readconfigfile(configfile)
     angles = simparams['angles']
@@ -693,16 +700,20 @@ def analysisdump(maindir,configfile,suptitle=None):
 
     filetemplate2= os.path.join(maindir,'AnalysisPlots','Params')
     if simparams['Pulsetype'].lower()=='barker':
+        params=['Ne']
         if suptitle is None:
-            plotbeamparameters(times,configfile,maindir,params=['Ne'],filetemplate=filetemplate2,werrors=True)
+            plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,werrors=True)
         else:
-            plotbeamparameters(times,configfile,maindir,params=['Ne'],filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
+            plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
     else:
+        params = ['Ne','Nepow','Te','Ti']
         if suptitle is None:
             plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
             plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3)
-            plotbeamparameters(times,configfile,maindir,params=['Ne','Nepow','Te','Ti'],filetemplate=filetemplate2,werrors=True)
+            plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,werrors=True)
+            beamvstime(configfile,maindir,params=params,filetemplate=filetemplate4)
         else:
             plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1,suptitle=suptitle)
             plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3,suptitle=suptitle)
-            plotbeamparameters(times,configfile,maindir,params=['Ne','Nepow','Te','Ti'],filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
+            plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
+            beamvstime(configfile,maindir,params=params,filetemplate=filetemplate4,suptitle = suptitle)
