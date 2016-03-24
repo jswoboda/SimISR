@@ -362,7 +362,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
 
     if indisp:
         dirlist = os.listdir(specsfiledir)
-        timelist = sp.array([int(i.split()[0]) for i in dirlist])
+        timelist = sp.array([int(float(i.split()[0])) for i in dirlist])
         for itn,itime in enumerate(times):
             filear = sp.argwhere(timelist>=itime)
             if len(filear)==0:
@@ -511,7 +511,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
     tau1 = sp.arange(pulse.shape[-1])*ts
     if indisp:
         dirlist = os.listdir(specsfiledir)
-        timelist = sp.array([int(i.split()[0]) for i in dirlist])
+        timelist = sp.array([int(float(i.split()[0])) for i in dirlist])
         for itn,itime in enumerate(times):
             filear = sp.argwhere(timelist>=itime)
             if len(filear)==0:
@@ -685,7 +685,7 @@ def analysisdump(maindir,configfile,suptitle=None):
     (sensdict,simparams) = readconfigfile(configfile)
     angles = simparams['angles']
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-    if sensdict['Name'].lower() in ['risr','pfisr']:
+    if not sensdict['Name'].lower() in ['risr','pfisr']:
         ang_data_temp = ang_data.copy()
         beamlistlist = sp.array(simparams['outangles']).astype(int)
         ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist ])
