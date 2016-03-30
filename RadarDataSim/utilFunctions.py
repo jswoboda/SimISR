@@ -542,7 +542,9 @@ def readconfigfile(fname):
     maxrg = len(rng_gates)-sumrule[1].max()
 
     simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
-    if 'startfile' in simparams.keys() and simparams['Pulsetype'].lower()!='barker':
+    
+    
+    if ('startfile' in simparams.keys() and len(simparams['startfile']) >0 )and simparams['Pulsetype'].lower()!='barker':
         relpath = simparams['startfile'][0] !=os.path.sep
         if relpath:
             fullfilepath = os.path.join(curpath,simparams['startfile'])
