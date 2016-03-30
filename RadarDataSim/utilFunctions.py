@@ -380,17 +380,23 @@ def makeparamdicts(beamlist,radarname,simparams):
     elif simparams['Pulsetype'].lower()!='barker':
         warnings.warn('No start file given',UserWarning)
     return(sensdict,simparams)
-def makeconfigfile(fname,beamlist,radarname,simparams):
+def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     """This will make the config file based off of the desired input parmeters.
     Inputs
         fname - Name of the file as a string.
         beamlist - A list of beams numbers used by the AMISRS
         radarname - A string that is the name of the radar being simulated.
-        simparams - A set of simulation parameters in a dictionary."""
+        simparams_orig - A set of simulation parameters in a dictionary."""
 
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     d_file = os.path.join(curpath,'default.ini')
     fext = os.path.splitext(fname)[-1]
+    # reduce the number of stuff needed to be saved and avoid problems with writing 
+    keys2save = ['IPP','TimeLim','RangeLims','Pulselength','t_s','Pulsetype','Tint',
+                    'Fitinter','NNs','NNp','dtype','ambupsamp','species', 'numpoints',
+                    'startfile','FitType']
+                    
+    simparams = {i:simparams_orig[i] for i in keys2save}
     if fext =='.pickle':
         pickleFile = open(fname, 'wb')
         pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
