@@ -4,7 +4,7 @@ Created on Wed Mar 30 13:01:31 2016
 This will create a set of data 
 @author: John Swoboda
 """
-import os,inspect
+import os,inspect,glob
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.interpolate as spinterp
@@ -12,46 +12,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pdb
 from RadarDataSim.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf,makeconfigfile
+from RadarDataSim.IonoContainer import IonoContainer
+import  RadarDataSim.runsim.main as runsim 
+from RadarDataSim.analysisplots import analysisdump
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 
-def configsetup(testpath):
-    """This function will make a pickle file used to configure the simulation.
-    Inputs
-    testpath - A string for the path that this file will be saved."""
-    beamlist = [64016] # list of beams in
-    radarname = 'pfisr'# name of radar for parameters can either be pfisr or risr
 
-    Tint=60.0 # integration time in seconds
-    time_lim = 4.0*Tint # simulation length in seconds
-    fitter_int = 60.0 # time interval between fitted params
-#    pulse = sp.ones(14)# pulse
-    rng_lims = [150,500]# limits of the range gates
-    IPP = .0087 #interpulse period in seconds
-    NNs = 28 # number of noise samples per pulse
-    NNp = 100 # number of noise pulses
-    simparams =   {'IPP':IPP, #interpulse period
-                   'TimeLim':time_lim, # length of simulation
-                   'RangeLims':rng_lims, # range swath limit
-#                   'Pulse':pulse, # pulse shape
-                   'Pulselength':280e-6,
-                   'FitType' :'acf',
-                   't_s': 20e-6,
-                   'Pulsetype':'long', # type of pulse can be long or barker,
-                   'Tint':Tint, #Integration time for each fitting
-                   'Fitinter':fitter_int, # time interval between fitted params
-                   'NNs': NNs,# number of noise samples per pulse
-                   'NNp':NNp, # number of noise pulses
-                   'dtype':sp.complex128, #type of numbers used for simulation
-                   'ambupsamp':1, # up sampling factor for ambiguity function
-                   'species':['O+','e-'], # type of ion species used in simulation
-                   'numpoints':128, # number of points for each spectrum
-                   'startfile':os.path.join(testpath,'startdata.h5')}# file used for starting points
-#                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
-#                       ,[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])}
-
-    fname = os.path.join(testpath,'PFISRExample')
-
-    makeconfigfile(fname+'.ini',beamlist,radarname,simparams)
 def configfilesetup(testpath,npulses):
     
     
@@ -68,3 +34,55 @@ def configfilesetup(testpath,npulses):
     simparams['startfile']='startfile.h5'
     makeconfigfile(os.path.join(testpath,'stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
     
+def makedata(testpath):
+    
+    finalpath = os.path.join(testpath,'Origparams')
+    if not os.path.isdir(finalpath):
+        os.mkdir(finalpath)
+    data = sp.array([1e12,2500.])
+    z = sp.linspace(50.,1e3,50)
+    nz = len(z)
+    params = sp.tile(data[sp.newaxis,sp.newaxis,sp.newaxis,:],(nz,1,2,1))
+    coords = sp.column_stack((sp.ones(nz),sp.ones(nz),z))
+    species=['O+','e-']
+    times = sp.array([[0,1e3]])
+    vel = sp.zeros((nz,1,3))
+    Icont1 = IonoContainer(coordlist=coords,paramlist=params,times = times,sensor_loc = sp.zeros(3),ver =0,coordvecs =
+        ['x','y','z'],paramnames=None,species=species,velocity=vel)
+        
+    finalfile = os.path.join(finalpath,'0 stats.h5')
+    Icont1.saveh5(finalfile)
+    Icont1.saveh5(os.path.join(testpath,'startfile.h5'))
+    
+def getinfo(curdir):
+    
+    origdataname = os.path.join(curdir,'Origparams','0 stats.h5')
+    specnam = glob.glob(os.path.join(curdir,'Spectrums','*.h5'))[0]
+    measredacf=glob.glob(os.path.join(curdir,'ACF','*.h5'))[0]
+    fittedname=glob.glob(os.path.join(curdir,'Fitted','*.h5'))[0]
+    
+    
+def main(plist = None,functlist = ['all']):
+
+    if plist is None:
+        sp.array([50,100,200,500,1000,2000,5000])
+        
+    curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    testpath = os.path.join(os.path.split(curloc)[0],'StatsTest')
+    
+    if not os.path.isdir(testpath):
+        os.mkdir(testpath)
+    
+    allfolds
+    for ip in plist:
+        foldname = 'Pulses_{:04d}'.format(ip)
+        curfold =os.path.join(testpath,foldname)
+        allfolds.append(curfold)
+        if not os.path.isdir(curfold):
+            os.mkdir(curfold)
+            makedata(curfold)
+            configfilesetup(curfold,ip)
+        runsim(functlist,curfold,os.path.join(curfold,'stats.ini'),True)
+        analysisdump(curfold,os.path.join(curfold,'stats.ini'))
+        
+    for 
