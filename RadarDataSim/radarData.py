@@ -177,7 +177,6 @@ class RadarDataFile(object):
         out_data = sp.zeros((Np,N_samps),dtype=simdtype)
         weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
         specsused = sp.zeros((Ndtime,Nbeams,N_rg,speclen),dtype=allspecs.dtype)
-        
         for istn, ist in enumerate(spectime):
             for ibn in range(Nbeams):
                 print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
@@ -308,11 +307,12 @@ class RadarDataFile(object):
                 h5file.close()
         pulsen = sp.hstack(pulsen_list).astype(int)# pulse number
         beamn = sp.hstack(beamn_list).astype(int)# beam numbers
-        ptimevec = sp.hstack(time_list).astype(int)# time of each pulse
+        ptimevec = sp.hstack(time_list).astype(float)# time of each pulse
         file_loc = sp.hstack(file_loclist).astype(int)# location in the file
         firstfile = True
         # run the time loop
         print("Forming ACF estimates")
+        
         for itn,it in enumerate(timevec):
             print("\tTime {0:d} of {1:d}".format(itn,Ntime))
             # do the book keeping to determine locations of data within the files

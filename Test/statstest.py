@@ -13,7 +13,7 @@ import seaborn as sns
 import pdb
 from RadarDataSim.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf,makeconfigfile
 from RadarDataSim.IonoContainer import IonoContainer
-import  RadarDataSim.runsim.main as runsim 
+from  RadarDataSim.runsim import main as runsim 
 from RadarDataSim.analysisplots import analysisdump
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 
@@ -57,23 +57,38 @@ def makedata(testpath):
 def getinfo(curdir):
     
     origdataname = os.path.join(curdir,'Origparams','0 stats.h5')
-    specnam = glob.glob(os.path.join(curdir,'Spectrums','*.h5'))[0]
-    measredacf=glob.glob(os.path.join(curdir,'ACF','*.h5'))[0]
     fittedname=glob.glob(os.path.join(curdir,'Fitted','*.h5'))[0]
     
+    # Get Parameters
+    Origparam = IonoContainer.readh5(origdataname)
+    fittedparam = IonoContainer.readh5(fittedname)
     
-def main(plist = None,functlist = ['all']):
+    Ne_real = Origparam.Param_List[0,0,1,0]
+    Te_real = Origparam.Param_List[0,0,1,1]
+    Ti_real = Origparam.Param_List[0,0,0,1]
+    
+    realdict = {'Ne':Ne_real,'Te':Te_real,'Ti':Ti_real,'Nepow':Ne_real}
+    paramnames = fittedparam.Param_Names
+    params = ['Ne','Te','Ti','Nepow']
+    params_loc = [sp.argwhere(i==sp.array(paramnames))[0][0] for i in params]
+    
+    datadict = {i:fittedparam.Param_List[:,:,j] for i,j in zip(params,params_loc)}
+    datavars = {i:sp.nanvar(datadict[i],axis=1) for i in params}
+    dataerror = {i:sp.nanmean((datadict[i]-realdict[i])**2,axis=1) for i in params}
+    
+    return (datadict,datavars,dataerror, realdict)
+def main(plist = None,functlist = ['spectrums','radardata','fitting']):
 
     if plist is None:
-        sp.array([50,100,200,500,1000,2000,5000])
+        plist = sp.array([50,100,200,500,1000,2000,5000])
         
     curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curloc)[0],'StatsTest')
+    testpath = os.path.join(os.path.split(curloc)[0],'Testdata','StatsTest')
     
     if not os.path.isdir(testpath):
         os.mkdir(testpath)
     
-    allfolds
+    allfolds = []
     for ip in plist:
         foldname = 'Pulses_{:04d}'.format(ip)
         curfold =os.path.join(testpath,foldname)
@@ -85,4 +100,4 @@ def main(plist = None,functlist = ['all']):
         runsim(functlist,curfold,os.path.join(curfold,'stats.ini'),True)
         analysisdump(curfold,os.path.join(curfold,'stats.ini'))
         
-    for 
+    
