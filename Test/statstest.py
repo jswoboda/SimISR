@@ -98,6 +98,6 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting']):
             makedata(curfold)
             configfilesetup(curfold,ip)
         runsim(functlist,curfold,os.path.join(curfold,'stats.ini'),True)
-        analysisdump(curfold,os.path.join(curfold,'stats.ini'))
+        #analysisdump(curfold,os.path.join(curfold,'stats.ini'))
         
     
