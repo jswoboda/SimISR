@@ -98,7 +98,6 @@ class Fitterionoconainer(object):
                         specmat = sp.ifft(sp.fft(acfvarmat,n=int(Nspec),axis=0),n=int(Nspec),axis=1)*Nspec**2/Nlags
                         specsig = sp.sqrt(sp.diag(specmat.real))
                         d_func = d_func+(specsig,)
-
                 (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
                     x0=x_0,args=d_func,full_output=True)
 

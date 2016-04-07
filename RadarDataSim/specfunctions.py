@@ -142,7 +142,7 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
         yout = y_acf-guess_acf
 
     if y_err is not None:
-        yout*1/y_err
+        yout = yout*1./y_err
     # Cannot make the output a complex array! To avoid this problem simply double
     # the size of the array and place the real and imaginary parts in alternating spots.
     if sp.iscomplexobj(yout):

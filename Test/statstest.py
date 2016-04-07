@@ -87,7 +87,10 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting']):
     
     if not os.path.isdir(testpath):
         os.mkdir(testpath)
-    
+    functlist_default = ['spectrums','radardata','fitting']
+    check_list = sp.array([i in functlist for i in functlist_default])
+    check_run =sp.any( check_list) 
+    functlist_red = sp.array(functlist_default)[check_list].tolist()
     allfolds = []
     for ip in plist:
         foldname = 'Pulses_{:04d}'.format(ip)
@@ -97,7 +100,11 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting']):
             os.mkdir(curfold)
             makedata(curfold)
             configfilesetup(curfold,ip)
-        runsim(functlist,curfold,os.path.join(curfold,'stats.ini'),True)
-        #analysisdump(curfold,os.path.join(curfold,'stats.ini'))
+        if check_run :
+            runsim(functlist_red,curfold,os.path.join(curfold,'stats.ini'),True)
+        if 'analysis' in functlist:
+            analysisdump(curfold,os.path.join(curfold,'stats.ini'))
+        if 'stats' in functlist:
+            datadict,datavars,dataerror,realdict = getinfo(curfold)
         
     
