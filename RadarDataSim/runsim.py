@@ -136,7 +136,7 @@ def fitdata(basedir,configfile,optinputs):
         (Nloc,Ntimes,nparams)=fitteddata.shape
         fittederronly = sp.sqrt(fittederror[:,:,range(nparams),range(nparams)])
 
-
+    
 
         paramnames = []
         species = fitterone.simparams['species']
@@ -149,11 +149,11 @@ def fitdata(basedir,configfile,optinputs):
 
         nNis = fittederronly[:,:,0:Nions*2:2]
         nTis = fittederronly[:,:,1:Nions*2:2]
-        nNisum = sp.sqrt(sp.nansum(Nis*nNis**2,axis=2))[:,:,sp.newaxis]/Nisum
-        nTisum = sp.sqrt(sp.nansum(Nis*nTis**2,axis=2))[:,:,sp.newaxis]
-        nTi = nTisum/Nisum
-
-        paramlist = sp.concatenate((fitteddata,Nisum,Ti,fittederronly,nNisum,nTi),axis=2)
+        nNisum = sp.nansum(Nis*nNis**2,axis=2)[:,:,sp.newaxis]
+        nNi = sp.sqrt(nNisum/Nisum)
+        nTisum = sp.nansum(Nis*nTis**2,axis=2)[:,:,sp.newaxis]
+        nTi = sp.sqrt(nTisum/Nisum)
+        paramlist = sp.concatenate((fitteddata,Nisum,Ti,fittederronly,nNi,nTi),axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)

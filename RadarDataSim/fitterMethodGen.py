@@ -122,7 +122,7 @@ class Fitterionoconainer(object):
                     x,fittederror[iloc,itime,:-1,:-1] = minimizer2x(out)
                     fittedarray[iloc,itime]=sp.append(x,Ne_start[iloc,itime])
                     if not self.sig is None:
-                        fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
+                        fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]**2
                     
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror)
