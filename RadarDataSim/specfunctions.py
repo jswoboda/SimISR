@@ -153,6 +153,88 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
 
     penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
     return yout+penadd
+    
+    
+    
+def ISRSfitfunction_lmfit(x_p,y_acf,sensdict,simparams,y_err = None):
+    """
+    This is the fit fucntion that is used with scipy.optimize.leastsquares. It will
+    take a set parameter values construct a spectrum/acf based on those values, apply
+    the ambiguity function and take the difference between the two. Since the ACFs are
+    complex the arrays split up and the size doubled as it is output.
+    Inputs
+    x - A Np array of parameter values used
+    y_acf - This is the esitmated ACF/spectrum represented as a complex numpy array
+    sensdict - This is a dictionary that holds many of the sensor parameters.
+    simparams - This is a dictionary that holds info on the simulation parameters.
+    y_err -  default None - A numpy array of size Nd that holds the standard deviations of the data.
+    Output
+    y_diff - A Nd or 2Nd array if input data is complex that is the difference
+    between the data and the fitted model"""
+    npts = simparams['numpoints']
+    specs = simparams['species']
+    amb_dict = simparams['amb_dict']
+    numtype = simparams['dtype']
+    if 'FitType' in simparams.keys():
+        fitspec = simparams['FitType']
+    else:
+        fitspec ='Spectrum'
+    nspecs = len(specs)
+    xpvals = x_p.valuesdict()
+    
+    datablock = sp.zeros((nspecs,2))
+    datablock[-1] = [xpvals['Ne'],xpvals['Te']]
+    for i in range(nspecs-1):
+        datablock[i] = [xpvals['Ni{}'.format(i)],xpvals['Ti{}'.format(i)]]
+    
+    v_i = xpvals['Vi']
+
+    # determine if you've gone beyond the bounds
+    # penalty for being less then zero
+    grt0 = sp.exp(-datablock)
+    pentsum = sp.zeros(grt0.size+1)
+    pentsum[:-1] = grt0.flatten()
+
+    #penalties for densities not being equal
+#    nis = datablock[:-1,0]
+#    ne = datablock[-1,0]
+#    nisum = nis.sum()
+#    pentsum[-1] = sp.exp(-sp.absolute(ne-nisum)**2)
+
+    specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
+    (omeg,cur_spec,rcs) = specobj.getspecsep(datablock,specs,v_i,rcsflag=True)
+    cur_spec.astype(numtype)
+    # Create spectrum guess
+    (tau,acf) = spect2acf(omeg,cur_spec)
+
+    if amb_dict['WttMatrix'].shape[-1]!=acf.shape[0]:
+        pdb.set_trace()
+    guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
+    # apply ambiguity function
+
+    guess_acf = guess_acf*rcs/guess_acf[0].real
+    if fitspec.lower()=='spectrum':
+        # fit to spectrums
+        spec_interm = scfft.fft(guess_acf,n=len(cur_spec))
+        spec_final = spec_interm.real
+        y_interm = scfft.fft(y_acf,n=len(spec_final))
+        y = y_interm.real
+        yout = (y-spec_final)
+    elif fitspec.lower() =='acf':
+        yout = y_acf-guess_acf
+
+    if y_err is not None:
+        yout = yout*1./y_err
+    # Cannot make the output a complex array! To avoid this problem simply double
+    # the size of the array and place the real and imaginary parts in alternating spots.
+    if sp.iscomplexobj(yout):
+        youttmp=yout.copy()
+        yout=sp.zeros(2*len(youttmp)).astype(youttmp.real.dtype)
+        yout[::2]=youttmp.real
+        yout[1::2] = youttmp.imag
+
+    penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
+    return yout+penadd
 
 def fitsurface(errfunc,paramlists,inputs):
     """This function will create a fit surface using an error function given by the user

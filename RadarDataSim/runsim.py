@@ -30,7 +30,7 @@ import tables
 from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.radarData import RadarDataFile
 import RadarDataSim.specfunctions as specfuncs
-from RadarDataSim.specfunctions import ISRSfitfunction
+from RadarDataSim.specfunctions import ISRSfitfunction, ISRSfitfunction_lmfit
 from RadarDataSim.fitterMethodGen import Fitterionoconainer
 from RadarDataSim.utilFunctions import readconfigfile
 from operators import RadarSpaceTimeOperator
@@ -125,7 +125,7 @@ def fitdata(basedir,configfile,optinputs):
     else:
         Ionoinsig=IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
-    (fitteddata,fittederror) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']])
+    (fitteddata,fittederror) = fitterone.fitdata(ISRSfitfunction_lmfit,startvalfunc,exinputs=[fitterone.simparams['startfile']])
 
 
     if fitterone.simparams['Pulsetype'].lower() == 'barker':
@@ -134,7 +134,7 @@ def fitdata(basedir,configfile,optinputs):
         paranamsf=['Ne']
     else:
         (Nloc,Ntimes,nparams)=fitteddata.shape
-        fittederronly = fittederror[:,:,range(nparams),range(nparams)]
+        fittederronly = sp.sqrt(fittederror[:,:,range(nparams),range(nparams)])
 
 
 

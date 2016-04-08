@@ -13,12 +13,14 @@ From there the data can be processed like ISR data. The following flow diagram r
 ![Diagram2](https://raw.github.com/jswoboda/RadarDataSim/master/Images/datastackchain.png)
 # Requirements
 This runs on Python 2.7.9. The packages required include
+
 * six
 * numpy
 * scipy
 * pytables
 * numba
 * matplotlib
+* [LMFIT](https://lmfit.github.io/lmfit-py)
 * [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum)
 
 #Installation

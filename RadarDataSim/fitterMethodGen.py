@@ -15,8 +15,8 @@ import scipy.optimize
 # My modules
 from IonoContainer import IonoContainer
 from utilFunctions import readconfigfile
-from RadarDataSim.specfunctions import ISRSfitfunction
-
+from RadarDataSim.specfunctions import ISRSfitfunction,ISRSfitfunction_lmfit
+from lmfit import Parameters, Minimizer
 
 def defaultparamsfunc(curlag,sensdict,simparams):
     return(curlag,sensdict,simparams)
@@ -69,6 +69,9 @@ class Fitterionoconainer(object):
         first_lag = True
         x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector[:,0],exinputs)
         nparams=x_0all.shape[-1]+1
+        
+        
+            
         for itime in range(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
@@ -98,24 +101,81 @@ class Fitterionoconainer(object):
                         specmat = sp.ifft(sp.fft(acfvarmat,n=int(Nspec),axis=0),n=int(Nspec),axis=1)*Nspec**2/Nlags
                         specsig = sp.sqrt(sp.diag(specmat.real))
                         d_func = d_func+(specsig,)
-                (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
-                    x0=x_0,args=d_func,full_output=True)
+                        
+                if fitfunc==ISRSfitfunction:
+                    (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
+                        x0=x_0,args=d_func,full_output=True)
 
 
-                fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
-                if cov_x is None:
-
-                    fittederror[iloc,itime,:-1,:-1] = sp.ones((len(x_0),len(x_0)))*float('nan')
-                else:
-                    fittederror[iloc,itime,:-1,:-1] = sp.sqrt(sp.absolute(cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))))
-                if not self.sig is None:
-                    fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
-
+                    fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
+                    if cov_x is None:
+    
+                        fittederror[iloc,itime,:-1,:-1] = sp.ones((len(x_0),len(x_0)))*float('nan')
+                    else:
+                        fittederror[iloc,itime,:-1,:-1] = cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))
+                    if not self.sig is None:
+                        fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
+                elif fitfunc == ISRSfitfunction_lmfit:
+                    pset = x2params(x_0)
+                    M1 = Minimizer(ISRSfitfunction_lmfit,pset,d_func)
+                    out = M1.minimize()
+                    x,fittederror[iloc,itime,:-1,:-1] = minimizer2x(out)
+                    fittedarray[iloc,itime]=sp.append(x,Ne_start[iloc,itime])
+                    
+                    
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror)
 
+def x2params(xvec):
+    p1 = Parameters()
+    nx = xvec.shape[0]
+    ni = (nx-1)/2-1
+    plist = []
+    nestr = 'Ni0'
+    for i1 in range(ni):
+        plist.append(('Ni{}'.format(i1),xvec[i1*2],True,0.,1e15,None))
+        plist.append(('Ti{}'.format(i1),xvec[i1*2+1],True,0.,1e5,None))
+        if i1>0:
+            nestr = nestr+'+Ni{}'.format(i1)
+    plist.append(('Ne',xvec[-3],True,0.,1e15,nestr))
+    plist.append(('Te',xvec[-2],True,0.,1e5,None))
+    plist.append(('Vi',xvec[-1],True,-1e6,1e6,None))
 
-
+    p1.add_many(*plist)
+    return p1
+    
+def minimizer2x(out):
+    p1 = out.params
+    nx = len(p1.keys())
+    ni = (nx-1)/2-1
+    varnames = sp.array(out.var_names)
+    xvec = sp.zeros(nx)
+    new_order = sp.zeros(nx)
+    for i1 in range(ni):
+        niname = 'Ni{}'.format(i1)
+        tiname = 'Ti{}'.format(i1)
+        xvec[2*i1]=p1.get(niname).value
+        xvec[2*i1+1]=p1.get(tiname).value
+        
+        new_order[2*i1]=sp.argwhere(niname==varnames)[0][0]
+        new_order[2*i1+1]=sp.argwhere(tiname==varnames)[0][0]
+    xvec[2*ni] = p1.get('Ne').value
+    xvec[2*ni+1] = p1.get('Te').value
+    xvec[2*ni+2] = p1.get('Vi').value
+    covx = out.covar
+    
+    new_order[2*ni]=nx-1
+    new_order[2*ni+1]=sp.argwhere('Te'==varnames)[0][0]
+    new_order[2*ni+2]=sp.argwhere('Vi'==varnames)[0][0]
+    
+    if covx is None:
+        return (xvec,sp.ones((len(xvec),len(xvec)))*float('nan'))
+    covx2 = sp.zeros((nx,nx))
+    covx2[:nx-1,:nx-1]
+    Neerr = out.params.get('Ne').stderr
+    covf = sp.array([[covx2[i][j] for j in new_order] for i in new_order])
+    covf[2*ni,2*ni]=Neerr*Neerr
+    return (xvec,covf)
 #%% fit function stuff
 def simpstart(Ne_init, loc,time,exinputs):
     """ """

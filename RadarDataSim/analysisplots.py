@@ -82,7 +82,7 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
             Tmat, Amat =np.meshgrid(times[:,0],alt_fit)
             image = ax.pcolor(Tmat,Amat,curfit,cmap='jet')
             if curparm=='ne':
-                image.set_norm(colors.LogNorm(vmin=1e9,vmax=1e11))
+                image.set_norm(colors.LogNorm(vmin=1e9,vmax=5e12))
                 cbarstr = params[iparam] + ' m-3'
             else:
                 image.set_norm(colors.PowerNorm(gamma=1.,vmin=500,vmax=3e3))
@@ -314,7 +314,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
                 labels[0] = 'Input Parameters'
                 if curparm!='ne':
-                    ax.set(xlim=[0.25*sp.amin(curdata),2.5*sp.amax(curdata)])
+                    ax.set(xlim=[0.75*sp.amin(curdata),1.25*sp.amax(curdata)])
             if curparm=='ne':
                 ax.set_xscale('log')
 
@@ -602,7 +602,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
             if fitdisp:
                 curinfit = specfit[iloc,itime]
                 (taufit,acffit) = spect2acf(omegfit,curinfit)
-                rcsfit=acffit[0].real
+                rcsfit=curinfit.sum()
                 guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
                 guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
 
