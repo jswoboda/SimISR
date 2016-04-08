@@ -121,7 +121,8 @@ class Fitterionoconainer(object):
                     out = M1.minimize()
                     x,fittederror[iloc,itime,:-1,:-1] = minimizer2x(out)
                     fittedarray[iloc,itime]=sp.append(x,Ne_start[iloc,itime])
-                    
+                    if not self.sig is None:
+                        fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
                     
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror)
@@ -171,7 +172,7 @@ def minimizer2x(out):
     if covx is None:
         return (xvec,sp.ones((len(xvec),len(xvec)))*float('nan'))
     covx2 = sp.zeros((nx,nx))
-    covx2[:nx-1,:nx-1]
+    covx2[:nx-1,:nx-1] = covx
     Neerr = out.params.get('Ne').stderr
     covf = sp.array([[covx2[i][j] for j in new_order] for i in new_order])
     covf[2*ni,2*ni]=Neerr*Neerr
