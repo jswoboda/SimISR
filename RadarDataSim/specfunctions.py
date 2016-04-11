@@ -102,9 +102,14 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
     else:
         fitspec ='Spectrum'
     nspecs = len(specs)
+    ni = nspecs-1
+    xnew = sp.zeros(nspecs*2+1)
+    xnew[:2*ni] = x[:2*ni]
+    xnew[2*ni] = sp.nansum(x[sp.arange(0,ni*2,2)])
+    xnew[-2:] = x[-2:]
     datablock = sp.zeros((nspecs,2),dtype=x.dtype)
-    datablock[:,0] = x[sp.arange(0,nspecs*2,2)]
-    datablock[:,1] = x[sp.arange(1,nspecs*2,2)]
+    datablock[:,0] = xnew[sp.arange(0,nspecs*2,2)]
+    datablock[:,1] = xnew[sp.arange(1,nspecs*2,2)]
     v_i = x[-1]
 
     # determine if you've gone beyond the bounds

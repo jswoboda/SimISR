@@ -7,7 +7,7 @@ Holds class that applies the fitter.
 """
 
 #imported basic modules
-import os, inspect, time
+import os, inspect, time,sys,traceback
 import pdb
 # Imported scipy modules
 import scipy as sp
@@ -69,9 +69,14 @@ class Fitterionoconainer(object):
         first_lag = True
         x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector[:,0],exinputs)
         nparams=x_0all.shape[-1]+1
-        
-        
-            
+        nx=nparams-1
+        x_0_red = sp.zeros(nx-1)
+        specs = self.simparams['species']
+        nspecs = len(specs)
+        ni = nspecs-1
+        new_order = sp.arange(nx)
+        new_order[2*ni] = nx-1
+        new_order[-2:]=new_order[-2:]-1
         for itime in range(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
@@ -101,25 +106,58 @@ class Fitterionoconainer(object):
                         specmat = sp.ifft(sp.fft(acfvarmat,n=int(Nspec),axis=0),n=int(Nspec),axis=1)*Nspec**2/Nlags
                         specsig = sp.sqrt(sp.diag(specmat.real))
                         d_func = d_func+(specsig,)
-                        
+                      
                 if fitfunc==ISRSfitfunction:
+                    
+                  #  try:
+                        
+                    x_0_red[:2*ni] = x_0[:2*ni]
+                    x_0_red[-2:] = x_0[-2:]
                     (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
-                        x0=x_0,args=d_func,full_output=True)
+                        x0=x_0_red,args=d_func,full_output=True)
+                            
+                            
 
-
-                    fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
+                    #except:
+#                        x=sp.ones_like(x_0)*sp.nan
+#                        cov_x=None
+                    xnew = sp.zeros_like(x_0)
+                    
+                    xnew[:2*ni] = x[:2*ni]
+                    xnew[2*ni] = sp.nansum(x[sp.arange(0,ni*2,2)])
+                    xnew[-2:] = x[-2:]
+                    fittedarray[iloc,itime] = sp.append(xnew,Ne_start[iloc,itime])
+                    
+                    
                     if cov_x is None:
     
                         fittederror[iloc,itime,:-1,:-1] = sp.ones((len(x_0),len(x_0)))*float('nan')
                     else:
-                        fittederror[iloc,itime,:-1,:-1] = cov_x*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))
+                        covx2 = sp.zeros((nx,nx))
+                        covx2[:nx-1,:nx-1] = cov_x
+                        errdiag = sp.diag(cov_x)
+                        
+                        Neerr = sp.nansum(errdiag[sp.arange(0,ni*2,2)])
+                        covf = sp.array([[covx2[i][j] for j in new_order] for i in new_order])
+                        covf[2*ni,2*ni]=Neerr
+                        fittederror[iloc,itime,:-1,:-1] = covf*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))
                     if not self.sig is None:
                         fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
+                
                 elif fitfunc == ISRSfitfunction_lmfit:
+                    failedfit=False
                     pset = x2params(x_0)
-                    M1 = Minimizer(ISRSfitfunction_lmfit,pset,d_func)
-                    out = M1.minimize()
-                    x,fittederror[iloc,itime,:-1,:-1] = minimizer2x(out)
+                    try:
+                        M1 = Minimizer(ISRSfitfunction_lmfit,pset,d_func)
+                        out = M1.minimize()
+                    except Exception, e:
+                        failedfit=True
+                        traceback.print_exc(file=sys.stdout)
+                    if failedfit:
+                        x=sp.ones_like(x_0)*sp.nan
+                        fittederror[iloc,itime,:-1,:-1]=sp.ones((len(x_0),len(x_0)))*float('nan')
+                    else:
+                        x,fittederror[iloc,itime,:-1,:-1] = minimizer2x(out)
                     fittedarray[iloc,itime]=sp.append(x,Ne_start[iloc,itime])
                     if not self.sig is None:
                         fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]**2
