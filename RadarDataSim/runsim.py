@@ -134,7 +134,7 @@ def fitdata(basedir,configfile,optinputs):
         paranamsf=['Ne']
     else:
         (Nloc,Ntimes,nparams)=fitteddata.shape
-        fittederronly = sp.sqrt(fittederror[:,:,range(nparams),range(nparams)])
+        fittederronly = sp.sqrt(fittederror)
 
     
 
@@ -146,6 +146,8 @@ def fitdata(basedir,configfile,optinputs):
         Nisum = sp.nansum(Nis,axis=2)[:,:,sp.newaxis]
         Tisum = sp.nansum(Nis*Tis,axis=2)[:,:,sp.newaxis]
         Ti = Tisum/Nisum
+        ionstuff= fitteddata[:,:,:Nions*2]
+        tenvi=fitteddata[:,:,Nions*2:]
 
         nNis = fittederronly[:,:,0:Nions*2:2]
         nTis = fittederronly[:,:,1:Nions*2:2]
@@ -153,11 +155,15 @@ def fitdata(basedir,configfile,optinputs):
         nNi = sp.sqrt(nNisum/Nisum)
         nTisum = sp.nansum(Nis*nTis**2,axis=2)[:,:,sp.newaxis]
         nTi = sp.sqrt(nTisum/Nisum)
-        paramlist = sp.concatenate((fitteddata,Nisum,Ti,fittederronly,nNi,nTi),axis=2)
+        nionstuff= fittederronly[:,:,:Nions*2]
+        ntenvi=fittederronly[:,:,Nions*2:]        
+        
+        
+        paramlist = sp.concatenate((ionstuff,Nisum,tenvi,Ti,nionstuff,nNi,ntenvi,nTi),axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)
-        paramnames = paramnames+['Ne','Te','Vi','Nepow','Ni','Ti']
+        paramnames = paramnames+['Ne','Te','Vi','Nepow','Ti']
         paramnamese = ['n'+ip for ip in paramnames]
         paranamsf = sp.array(paramnames+paramnamese)
 

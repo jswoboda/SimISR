@@ -77,6 +77,7 @@ class Fitterionoconainer(object):
         new_order = sp.arange(nx)
         new_order[2*ni] = nx-1
         new_order[-2:]=new_order[-2:]-1
+        firstparam=True
         for itime in range(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
@@ -87,8 +88,8 @@ class Fitterionoconainer(object):
                 
                 if first_lag:
                     first_lag = False
-                    fittedarray = sp.zeros((Nloc,Nt,nparams))
-                    fittederror = sp.zeros((Nloc,Nt,nparams,nparams))
+                    fittedarray = sp.zeros((Nloc,Nt,nparams-1))
+                    fittederror = sp.zeros((Nloc,Nt,nparams))
                 # get uncertianties
                 if not self.sig is None:
                     if self.simparams['FitType'].lower()=='acf':
@@ -115,38 +116,26 @@ class Fitterionoconainer(object):
                     x_0_red[-2:] = x_0[-2:]
                     (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
                         x0=x_0_red,args=d_func,full_output=True)
-                            
-                            
-
-                    #except:
-#                        x=sp.ones_like(x_0)*sp.nan
-#                        cov_x=None
-                    xnew = sp.zeros_like(x_0)
-                    
-                    xnew[:2*ni] = x[:2*ni]
-                    xnew[2*ni] = sp.nansum(x[sp.arange(0,ni*2,2)])
-                    xnew[-2:] = x[-2:]
-                    fittedarray[iloc,itime] = sp.append(xnew,Ne_start[iloc,itime])
+                 
+                    fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
                     
                     
                     if cov_x is None:
-    
-                        fittederror[iloc,itime,:-1,:-1] = sp.ones((len(x_0),len(x_0)))*float('nan')
+                        fittederror[iloc,itime,:-1] = sp.ones(nparams-2)*float('nan')
                     else:
-                        covx2 = sp.zeros((nx,nx))
-                        covx2[:nx-1,:nx-1] = cov_x
-                        errdiag = sp.diag(cov_x)
-                        
-                        Neerr = sp.nansum(errdiag[sp.arange(0,ni*2,2)])
-                        covf = sp.array([[covx2[i][j] for j in new_order] for i in new_order])
-                        covf[2*ni,2*ni]=Neerr
-                        fittederror[iloc,itime,:-1,:-1] = covf*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-len(x_0))
+                        covf = sp.diag(cov_x)
+                        fittederror[iloc,itime,:-1,:-1] = covf*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-(nx-1))
                     if not self.sig is None:
                         fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
                 
                 elif fitfunc == ISRSfitfunction_lmfit:
                     failedfit=False
-                    pset = x2params(x_0)
+                    if firstparam:
+                        pset = x2params(x_0)
+                        firstparam=False
+                    else:
+                        for it1,i in enumerate(x_0):
+                            pset.values()[it1].value =i
                     try:
                         M1 = Minimizer(ISRSfitfunction_lmfit,pset,d_func)
                         out = M1.minimize()
@@ -154,13 +143,15 @@ class Fitterionoconainer(object):
                         failedfit=True
                         traceback.print_exc(file=sys.stdout)
                     if failedfit:
-                        x=sp.ones_like(x_0)*sp.nan
-                        fittederror[iloc,itime,:-1,:-1]=sp.ones((len(x_0),len(x_0)))*float('nan')
+                        x=sp.ones(nparams-2)*float('nan')
+                        fittederror[iloc,itime,:-1,:-1]=sp.ones(nparams-2)*float('nan')
                     else:
-                        x,fittederror[iloc,itime,:-1,:-1] = minimizer2x(out)
+                        x,fittederror[iloc,itime,:-1] = minimizer2x(out)
                     fittedarray[iloc,itime]=sp.append(x,Ne_start[iloc,itime])
-                    if not self.sig is None:
-                        fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]**2
+                    
+                    
+                if not self.sig is None:
+                    fittederror[iloc,itime,-1] = Ne_sig[iloc,itime]**2
                     
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror)
@@ -187,33 +178,16 @@ def minimizer2x(out):
     p1 = out.params
     nx = len(p1.keys())
     ni = (nx-1)/2-1
-    varnames = sp.array(out.var_names)
-    xvec = sp.zeros(nx)
-    new_order = sp.zeros(nx)
+    xvec = sp.zeros(nx-1)
     for i1 in range(ni):
         niname = 'Ni{}'.format(i1)
         tiname = 'Ti{}'.format(i1)
         xvec[2*i1]=p1.get(niname).value
         xvec[2*i1+1]=p1.get(tiname).value
         
-        new_order[2*i1]=sp.argwhere(niname==varnames)[0][0]
-        new_order[2*i1+1]=sp.argwhere(tiname==varnames)[0][0]
-    xvec[2*ni] = p1.get('Ne').value
-    xvec[2*ni+1] = p1.get('Te').value
-    xvec[2*ni+2] = p1.get('Vi').value
-    covx = out.covar
-    
-    new_order[2*ni]=nx-1
-    new_order[2*ni+1]=sp.argwhere('Te'==varnames)[0][0]
-    new_order[2*ni+2]=sp.argwhere('Vi'==varnames)[0][0]
-    
-    if covx is None:
-        return (xvec,sp.ones((len(xvec),len(xvec)))*float('nan'))
-    covx2 = sp.zeros((nx,nx))
-    covx2[:nx-1,:nx-1] = covx
-    Neerr = out.params.get('Ne').stderr
-    covf = sp.array([[covx2[i][j] for j in new_order] for i in new_order])
-    covf[2*ni,2*ni]=Neerr*Neerr
+    xvec[2*ni] = p1.get('Te').value
+    xvec[2*ni] = p1.get('Vi').value
+    covf=sp.diag(out.covar)
     return (xvec,covf)
 #%% fit function stuff
 def simpstart(Ne_init, loc,time,exinputs):
