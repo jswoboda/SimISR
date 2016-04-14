@@ -18,7 +18,7 @@ config = {
     'download_url': 'https://github.com/jswoboda/RadarDataSim.git',
     'author_email': 'swoboj@bu.edu',
     'version': '1',
-    'install_requires': ['numpy', 'scipy', 'tables','ISRSpectrum','numba'],
+    'install_requires': ['numpy', 'scipy', 'tables','ISRSpectrum','numba','lmfit'],
     'packages': ['RadarDataSim','beamtools','radarsystools'],
     'scripts': [],
     'name': 'RadarDataSim'

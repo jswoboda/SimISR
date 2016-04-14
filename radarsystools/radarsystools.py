@@ -88,9 +88,8 @@ class RadarSys(object):
 
         printtable(lstoflst)
 
-
-    def printrms(self,ne = np.array([1e11]),te=np.array([1e3]),ti=np.array([1e3])):
-        '''This function will print out the variances esimtates of ISR data
+    def rms(self,ne = np.array([1e11]),te=np.array([1e3]),ti=np.array([1e3])):
+        '''This function calculate the rms error of the  ISR data
         with the input plasma parameters and system prameters. The inputs are
         the basic plasma parameters the impact the variance, the electron density and
         the electron and ion tempretures.
@@ -102,21 +101,29 @@ class RadarSys(object):
         assert type(te) is np.ndarray, "te is not an numpy array."
         assert type(ne) is np.ndarray, "ne is not an numpy array."
         assert type(ti) is np.ndarray,  "ti is not an numpy array."
-        #%% Get parameters from class
-        rng= self.rng
-        Kpulse = self.Kpulse
         #%% Do the SNR calculation
         powdata = self.powcalc(ne,te,ti)
         vardata = (powdata+self.noisepow)**2/self.Kpulse
         rmsdata = np.sqrt(vardata)
+        return rmsdata
+    def printrms(self,ne = np.array([1e11]),te=np.array([1e3]),ti=np.array([1e3])):
+        '''This function will print out the rms esimtates of ISR data
+        with the input plasma parameters and system prameters. The inputs are
+        the basic plasma parameters the impact the variance, the electron density and
+        the electron and ion tempretures.
+        Inputs
+        ne - A one dimensional array of electron densities.
+        te = A one dimensional array of electron tempretures.
+        ti = A one dimensional array of ion tempretures.'''
+        rmsdata = self.rms(ne,te,ti)
         #%% Set up and Make print out
-        print "RMS for the follwing Ne with Number of pulses = {0:d}".format(Kpulse)
+        print "RMS for the follwing Ne with Number of pulses = {0:d}".format(self.Kpulse)
         # make strings for each Ne
         nestrs = ['{:.2g}m^-3 '.format(i) for i in ne]
         nestrs.insert(0,'Range ')
         lstoflst = [nestrs]
         # make a list of lists for each SNR
-        for irng,vrng in enumerate(rng):
+        for irng,vrng in enumerate(self.rng):
             rngstr = "{0:.2e}km ".format(vrng)
             rmsliststr = ['{:.2e}W '.format(i) for i in rmsdata[irng]]
             rmsliststr.insert(0,rngstr)
@@ -179,8 +186,7 @@ class RadarSys(object):
         sysdict = self.sysdict
 
         Pt =sysdict['Pt']
-        G = sysdict['G']
-        taup = sysdict['tau']
+        taup = sysdict['t_s']*sysdict['taurg']
         k = sysdict['k']
         antconst = 0.4;
 
@@ -193,6 +199,7 @@ class RadarSys(object):
         pt2 = Pt*taup/RNG**2
 
         if sysdict['Ksys'] == None:
+            G = sysdict['G']
             pt1 = antconst*v_C_0*G/(8*k**2)
             rcs =v_electron_rcs* NE/((1.0+k**2*debyel**2)*(1.0+k**2*debyel**2+Tr))
         else:

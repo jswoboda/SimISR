@@ -15,11 +15,11 @@ from RadarDataSim.utilFunctions import MakePulseDataRep,CenteredLagProduct,readc
 from RadarDataSim.IonoContainer import IonoContainer
 from  RadarDataSim.runsim import main as runsim 
 from RadarDataSim.analysisplots import analysisdump
-from ISRSpectrum.ISRSpectrum import ISRSpectrum
+from radarsystools.radarsystools import RadarSys
 
 
 def configfilesetup(testpath,npulses):
-    
+    """ """
     
     curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     defcon = os.path.join(curloc,'statsbase.ini')
@@ -35,7 +35,7 @@ def configfilesetup(testpath,npulses):
     makeconfigfile(os.path.join(testpath,'stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
     
 def makedata(testpath):
-    
+    """ """
     finalpath = os.path.join(testpath,'Origparams')
     if not os.path.isdir(finalpath):
         os.mkdir(finalpath)
@@ -55,7 +55,7 @@ def makedata(testpath):
     Icont1.saveh5(os.path.join(testpath,'startfile.h5'))
     
 def getinfo(curdir):
-    
+    """ """
     origdataname = os.path.join(curdir,'Origparams','0 stats.h5')
     fittedname=glob.glob(os.path.join(curdir,'Fitted','*.h5'))[0]
     
@@ -85,6 +85,7 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting']):
     curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     testpath = os.path.join(os.path.split(curloc)[0],'Testdata','StatsTest')
     
+    
     if not os.path.isdir(testpath):
         os.mkdir(testpath)
     functlist_default = ['spectrums','radardata','fitting']
@@ -92,6 +93,7 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting']):
     check_run =sp.any( check_list) 
     functlist_red = sp.array(functlist_default)[check_list].tolist()
     allfolds = []
+    rsystools = []
     for ip in plist:
         foldname = 'Pulses_{:04d}'.format(ip)
         curfold =os.path.join(testpath,foldname)
@@ -100,11 +102,16 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting']):
             os.mkdir(curfold)
             makedata(curfold)
             configfilesetup(curfold,ip)
+        config = os.path.join(curfold,'stats.ini')
+        (sensdict,simparams) = readconfigfile(config)
+        rtemp = RadarSys(sensdict,simparams['Rangegatesfinal'],ip)
+        rsystools.append(rtemp.rms(sp.array([1e12]),sp.array([2.5e3]),sp.array([2.5e3])))
         if check_run :
             runsim(functlist_red,curfold,os.path.join(curfold,'stats.ini'),True)
         if 'analysis' in functlist:
-            analysisdump(curfold,os.path.join(curfold,'stats.ini'))
+            analysisdump(curfold,)
         if 'stats' in functlist:
             datadict,datavars,dataerror,realdict = getinfo(curfold)
+            
         
     
