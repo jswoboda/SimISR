@@ -68,9 +68,9 @@ class Fitterionoconainer(object):
         print('\nData Now being fit.')
         first_lag = True
         x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector[:,0],exinputs)
-        nparams=x_0all.shape[-1]+1
+        nparams=x_0all.shape[-1]
         nx=nparams-1
-        x_0_red = sp.zeros(nx-1)
+        x_0_red = sp.zeros(nx)
         specs = self.simparams['species']
         nspecs = len(specs)
         ni = nspecs-1
@@ -167,7 +167,7 @@ def x2params(xvec):
         plist.append(('Ti{}'.format(i1),xvec[i1*2+1],True,0.,1e5,None))
         if i1>0:
             nestr = nestr+'+Ni{}'.format(i1)
-    plist.append(('Ne',xvec[-3],True,0.,1e15,nestr))
+    plist.append(('Ne',xvec[-3],False,0.,1e15,nestr))
     plist.append(('Te',xvec[-2],True,0.,1e5,None))
     plist.append(('Vi',xvec[-1],True,-1e6,1e6,None))
 
