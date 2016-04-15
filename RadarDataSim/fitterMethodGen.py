@@ -78,6 +78,10 @@ class Fitterionoconainer(object):
         new_order[2*ni] = nx-1
         new_order[-2:]=new_order[-2:]-1
         firstparam=True
+        L = self.sensdict['taurg']*2
+        dof = L-nx
+        if dof<=0:
+            dof=1
         for itime in range(Nt):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
@@ -88,8 +92,8 @@ class Fitterionoconainer(object):
                 
                 if first_lag:
                     first_lag = False
-                    fittedarray = sp.zeros((Nloc,Nt,nparams-1))
-                    fittederror = sp.zeros((Nloc,Nt,nparams))
+                    fittedarray = sp.zeros((Nloc,Nt,nx+1))
+                    fittederror = sp.zeros((Nloc,Nt,nx+1))
                 # get uncertianties
                 if not self.sig is None:
                     if self.simparams['FitType'].lower()=='acf':
@@ -114,19 +118,24 @@ class Fitterionoconainer(object):
                         
                     x_0_red[:2*ni] = x_0[:2*ni]
                     x_0_red[-2:] = x_0[-2:]
-                    (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
-                        x0=x_0_red,args=d_func,full_output=True)
-                 
-                    fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
+#                    (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
+#                        x0=x_0_red,args=d_func,full_output=True)
                     
+                    optresults = scipy.optimize.least_squares(fun=ISRSfitfunction,x0=x_0_red,method='lm',verbose=0,args=d_func)
+                    fittedarray[iloc,itime] = sp.append(optresults.x,Ne_start[iloc,itime])
+                    resid = optresults.cost
+                    jac=optresults.jac
                     
-                    if cov_x is None:
-                        fittederror[iloc,itime,:-1] = sp.ones(nparams-2)*float('nan')
-                    else:
-                        covf = sp.diag(cov_x)
-                        fittederror[iloc,itime,:-1,:-1] = covf*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-(nx-1))
+                    try:
+                        covf = sp.linalg.inv(sp.dot(jac.transpose(),jac))*resid/dof
+                        vars_vec = sp.diag(covf)
+                    except:
+                        vars_vec = sp.ones(nparams-2)*float('nan')
+                    fittederror[iloc,itime,:-1]=vars_vec 
+                    
+#                        fittederror[iloc,itime,:-1] = covf*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-(nx-1))
                     if not self.sig is None:
-                        fittederror[iloc,itime,-1,-1] = Ne_sig[iloc,itime]
+                        fittederror[iloc,itime,-1] = Ne_sig[iloc,itime]
                 
                 elif fitfunc == ISRSfitfunction_lmfit:
                     failedfit=False
