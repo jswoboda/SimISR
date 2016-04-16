@@ -118,19 +118,28 @@ class Fitterionoconainer(object):
                         
                     x_0_red[:2*ni] = x_0[:2*ni]
                     x_0_red[-2:] = x_0[-2:]
-#                    (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
-#                        x0=x_0_red,args=d_func,full_output=True)
+                    (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
+                        x0=x_0_red,args=d_func,full_output=True)
                     
-                    optresults = scipy.optimize.least_squares(fun=ISRSfitfunction,x0=x_0_red,method='lm',verbose=0,args=d_func)
-                    fittedarray[iloc,itime] = sp.append(optresults.x,Ne_start[iloc,itime])
-                    resid = optresults.cost
-                    jac=optresults.jac
+#                    optresults = scipy.optimize.least_squares(fun=ISRSfitfunction,x0=x_0_red,method='lm',verbose=0,args=d_func)
+#                    fittedarray[iloc,itime] = sp.append(optresults.x,Ne_start[iloc,itime])
+#                    resid = optresults.cost
+#                    jac=optresults.jac
+#                    
+#                    try:
+#                        covf = sp.linalg.inv(sp.dot(jac.transpose(),jac))*resid/dof
+#                        vars_vec = sp.diag(covf)
+#                    except:
+#                        vars_vec = sp.ones(nparams-2)*float('nan')
                     
-                    try:
-                        covf = sp.linalg.inv(sp.dot(jac.transpose(),jac))*resid/dof
-                        vars_vec = sp.diag(covf)
-                    except:
+                    fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
+                    if cov_x is None:
                         vars_vec = sp.ones(nparams-2)*float('nan')
+                    else:
+                        
+                        vars_vec = sp.diag(cov_x)*(infodict['fvec']**2).sum()/dof
+                    if len(vars_vec)<fittederror.shape[-1]-1:
+                        pdb.set_trace()
                     fittederror[iloc,itime,:-1]=vars_vec 
                     
 #                        fittederror[iloc,itime,:-1] = covf*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-(nx-1))
