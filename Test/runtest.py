@@ -49,16 +49,17 @@ def makedata(testpath,tint):
     if not os.path.isdir(finalpath):
         os.mkdir(finalpath)
     data = sp.array([1e11,2000.])
-    z = sp.linspace(50.,1e3,50)
+    z = (50.+sp.arange(50)*10.)
     nz = len(z)
     params = sp.tile(data[sp.newaxis,sp.newaxis,sp.newaxis,:],(nz,1,2,1))
+    epnt = 20
     p2 = sp.tile(params,(1,4,1,1))
     #enhancement in Ne
-    p2[25,1,:,0]=5e11
+    p2[epnt,1,:,0]=5e11
     #enhancement in Ti
-    p2[25,2,0,1]=3000.
+    p2[epnt,2,0,1]=3000.
     #enhancement in Te
-    p2[25,3,1,1]=3000.
+    p2[epnt,3,1,1]=3000.
     coords = sp.column_stack((sp.ones(nz),sp.ones(nz),z))
     species=['O+','e-']
     times = sp.array([[0,1e3]])
