@@ -262,7 +262,6 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
             itime = int(sp.floor(imcount/Nb/Np))
             iparam = int(imcount/Nb-Np*itime)
             ibeam = int(imcount-(itime*Np*Nb+iparam*Nb))
-
             curbeam = beamlist[ibeam]
 
             altlist = sp.sin(curbeam[1]*sp.pi/180.)*rng
@@ -307,7 +306,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 curdata = sp.zeros(len(rng))
                 for irngn, irng in enumerate(rng):
                     curcoord[0] = irng
-                    tempin = Ionoin.getclosestsphere(curcoord,times)[0]
+                    tempin = Ionoin.getclosestsphere(curcoord,[times[itime]])[0]
                     Ntloc = tempin.shape[0]
                     tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
                     curdata[irngn] = tempin[0,curprm]

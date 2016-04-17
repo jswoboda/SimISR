@@ -134,7 +134,7 @@ class Fitterionoconainer(object):
                     
                     fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
                     if cov_x is None:
-                        vars_vec = sp.ones(nparams-2)*float('nan')
+                        vars_vec = sp.ones(nx)*float('nan')
                     else:
                         
                         vars_vec = sp.diag(cov_x)*(infodict['fvec']**2).sum()/dof
