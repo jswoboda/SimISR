@@ -140,6 +140,9 @@ class RadarDataFile(object):
             dict2h5(os.path.join(outdir,'INFO.h5'),infodict)
 
        else:
+           ifile = Ionodict[filetimes[0]]
+           curcontainer = IonoContainer.readh5(ifile)
+           self.timeoffset=curcontainer.Time_Vector[0,0]
            self.outfilelist=outfilelist
 
 
@@ -521,7 +524,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsData = lagsData-lagsNoise
     # Use a basic formula to find the std of the lagss
     sigS = (sp.absolute(lagsData)+sp.absolute(lagsNoise))/sp.sqrt(pulses)
-    sigS = sp.sqrt(varacf(lagsData)+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
+#    sigS = sp.sqrt(varacf(lagsData)+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
     # multiply the data and the sigma by inverse of the scaling from the radar
     lagsData = lagsData*radar2acfmult
     sigS = sigS*radar2acfmult

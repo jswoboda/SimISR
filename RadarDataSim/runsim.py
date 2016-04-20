@@ -89,8 +89,8 @@ def makeradardata(basedir,configfile,remakealldata):
     # Find all of the raw data files
     radardatalist = glob.glob(os.path.join(outputdir,'*RawData.h5'))
     if radardatalist and (not remakealldata):
-        (listorderr,timevectorr,timebegr) = IonoContainer.gettimes(radardatalist)
-        outlist2 = [radardatalist[ikey] for ikey in listorderr]
+        # XXX need to work on time stuff
+        outlist2 = radardatalist
     else:
         outlist2 = None
         
