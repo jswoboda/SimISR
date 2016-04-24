@@ -126,7 +126,7 @@ The power spectrum of the thermal fluctuation for each species $s$ can be determ
 
 \begin{equation}
 \label{eq:thermalfl}
-\frac{\langle|n_{ts}(\mathbf{k},\omega)|^2\rangle}{N_0} = 2\text{Re}\{J_s(\omega_s)\},
+\frac{\langle|n_{ts}(\mathbf{k},\omega)|^2\rangle}{N_s} = 2\text{Re}\{J_s(\omega_s)\},
 \end{equation}
 
 \noindent where $N_s$ is the average density for the species.  Also the conductance for each species $s$ can be determine from the following,
@@ -254,6 +254,13 @@ Also, to avoid having to more calculations then necessary the $j\omega\epsilon_0
 \begin{equation}
 \label{eq:sumspeceqfinal}
 \displaystyle \langle \left|n_e(\mathbf{k},\omega)\right|^2\rangle =  \frac{\left|1 +  \sum_k^K\frac{\sigma_{ik}}{j\omega\epsilon_0} \right|^2 \langle |n_{te}(\mathbf{k},\omega)|^2\rangle}{\left|1 +\frac{\sigma_e+ \sum_k^K\sigma_{ik}}{j\omega\epsilon_0} \right|^2} + \frac{\left| \frac{\sigma_e}{j\omega\epsilon_0} \right|^2\left \langle \left|\sum_k^Kn_{tik}(\mathbf{k},\omega)\right|^2\right\rangle}{\left|1 +\frac{\sigma_e+ \sum_k^K\sigma_{ik}}{j\omega\epsilon_0} \right|^2}.
+\end{equation}
+
+\noindent If the Gordeyeve integrals are substitute in Equation \ref{eq:sumspeceqfinal} it becomes the following.
+
+\begin{equation}
+\label{eq:sumspeceqactual}
+\displaystyle \langle \left|n_e(\mathbf{k},\omega)\right|^2\rangle =  \frac{\left|1 + \sum_s^K  \frac{1-j\omega_s J_s(\omega_s)}{k^2\lambda_e^2} \left(\frac{q_sT_eN_s}{q_eT_sN_e}\right) \right|^2 2N_e\text{Re}\{J_e(\omega_e)\}}{\left|1 + \frac{1-j\omega_e J_e(\omega_e)}{k^2\lambda_e^2}  +\sum_s^K  \frac{1-j\omega_s J_s(\omega_s)}{k^2\lambda_e^2} \left(\frac{q_sT_eN_s}{q_eT_sN_e}\right) \right|^2}       +                 \frac{\left| \frac{1-j\omega_s J_e(\omega_e)}{k^2\lambda_e^2} \right|^2\sum_s^K  2N_s\text{Re}\{J_s(\omega_s)\}}{\left|1 + \frac{1-j\omega_e J_e(\omega_e)}{k^2\lambda_e^2}  +\sum_s^K  \frac{1-j\omega_s J_s(\omega_s)}{k^2\lambda_e^2} \left(\frac{q_sT_eN_s}{q_eT_sN_e}\right) \right|^2}.
 \end{equation}
 
 \section*{Examples}
