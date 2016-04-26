@@ -23,7 +23,7 @@ from beamtools.bcotools import getangles
 
 
 # utility functions
-def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
+def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     """ Make the ambiguity function dictionary that holds the lag ambiguity and
     range ambiguity. Uses a sinc function weighted by a blackman window. Currently
     only set up for an uncoded pulse.
@@ -41,7 +41,8 @@ def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
         for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity
         function on a pulses.
     """
-
+    
+    nlags = len(pulse)
     # make the sinc
     nsamps = sp.floor(8.5*m_up)
     nsamps = nsamps-(1-sp.mod(nsamps,2))
@@ -64,8 +65,10 @@ def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
     outsincpad  = sp.pad(outsinc,(numback,numfront),mode='constant',constant_values=(0.0,0.0))
     (srng,d2d)=sp.meshgrid(t_rng,Delay)
     # envelop function
-    envfunc = sp.zeros(d2d.shape)
-    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
+    t_p = sp.arange(nlags)/Fsorg
+    envfunc = sp.interp(sp.ravel(d2d-t_rng)+plen-Delay.min(),t_p,pulse,left=0.,right=0.).reshape(d2d.shape)
+#    envfunc = sp.zeros(d2d.shape)
+#    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
     envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
     Wtt = sp.zeros((nlags,d2d.shape[0],d2d.shape[1]))
@@ -362,7 +365,7 @@ def makeparamdicts(beamlist,radarname,simparams):
     simparams['Pulse'] = pulse
 
     simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
-        sensdict['t_s']*len(pulse),len(pulse),simparams['numpoints'])
+        sensdict['t_s']*len(pulse),pulse,simparams['numpoints'])
     simparams['angles']=angles
     rng_lims = simparams['RangeLims']
     rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
@@ -542,7 +545,7 @@ def readconfigfile(fname):
     (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
     simparams['Pulse'] = pulse
     simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
-        sensdict['t_s']*len(pulse),len(pulse),simparams['numpoints'])
+        sensdict['t_s']*len(pulse),pulse,simparams['numpoints'])
     simparams['angles']=angles
     rng_lims = simparams['RangeLims']
     rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
