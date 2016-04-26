@@ -52,10 +52,16 @@ def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
     outsinc = curwin*sp.sinc(nvec/m_up)
     outsinc = outsinc/sp.sum(outsinc)
     dt = 1/(Fsorg*m_up)
-    Delay = sp.arange(-(len(nvec)-1),m_up*(nlags+5))*dt
+    #make delay vector
+    Delay_num = sp.arange(-(len(nvec)-1),m_up*(nlags+5))
+    Delay = Delay_num*dt
+    
     t_rng = sp.arange(0,1.5*plen,dt)
     numdiff = len(Delay)-len(outsinc)
-    outsincpad  = sp.pad(outsinc,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
+    numback= int(nvec.min()*m_up-Delay_num.min())
+    numfront = numdiff-numback
+#    outsincpad  = sp.pad(outsinc,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
+    outsincpad  = sp.pad(outsinc,(numback,numfront),mode='constant',constant_values=(0.0,0.0))
     (srng,d2d)=sp.meshgrid(t_rng,Delay)
     # envelop function
     envfunc = sp.zeros(d2d.shape)
@@ -64,7 +70,7 @@ def make_amb(Fsorg,m_up,plen,nlags,nspec=128,winname = 'boxcar'):
     #create the ambiguity function for everything
     Wtt = sp.zeros((nlags,d2d.shape[0],d2d.shape[1]))
     cursincrep = sp.tile(outsincpad[:,sp.newaxis],(1,d2d.shape[1]))
-    Wt0 = Wta = cursincrep*envfunc
+    Wt0 = cursincrep*envfunc
     Wt0fft = sp.fft(Wt0,axis=0)
     for ilag in sp.arange(nlags):
         cursinc = sp.roll(outsincpad,ilag*m_up)
