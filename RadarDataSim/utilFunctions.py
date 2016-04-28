@@ -63,29 +63,27 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     numfront = numdiff-numback
 #    outsincpad  = sp.pad(outsinc,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
     outsincpad  = sp.pad(outsinc,(numback,numfront),mode='constant',constant_values=(0.0,0.0))
-    (srng,d2d)=sp.meshgrid(t_rng,Delay)
+    (d2d,srng)=sp.meshgrid(Delay,t_rng)
     # envelop function
     t_p = sp.arange(nlags)/Fsorg
-    envfunc = sp.interp(sp.ravel(d2d-t_rng)+plen-Delay.min(),t_p,pulse,left=0.,right=0.).reshape(d2d.shape)
+    envfunc = sp.interp(sp.ravel(srng-d2d),t_p,pulse,left=0.,right=0.).reshape(d2d.shape)
 #    envfunc = sp.zeros(d2d.shape)
 #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
     envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
     Wtt = sp.zeros((nlags,d2d.shape[0],d2d.shape[1]))
-    cursincrep = sp.tile(outsincpad[:,sp.newaxis],(1,d2d.shape[1]))
+    cursincrep = sp.tile(outsincpad[sp.newaxis,:],(len(t_rng),1))
     Wt0 = cursincrep*envfunc
-    Wt0fft = sp.fft(Wt0,axis=0)
+    Wt0fft = sp.fft(Wt0,axis=1)
     for ilag in sp.arange(nlags):
         cursinc = sp.roll(outsincpad,ilag*m_up)
-        cursincrep = sp.tile(cursinc[:,sp.newaxis],(1,d2d.shape[1]))
+        cursincrep = sp.tile(cursinc[sp.newaxis,:],(len(t_rng),1))
         Wta = cursincrep*envfunc
         #do fft based convolution, probably best method given sizes
-        Wtafft = scfft.fft(Wta,axis=0)
-        if ilag==0:
-            nmove = len(nvec)-1
-        else:
-            nmove = len(nvec)
-        Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft),axis=0).real,nmove,axis=0)
+        Wtafft = scfft.fft(Wta,axis=1)
+
+        nmove = len(nvec)-1
+        Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft),axis=1).real,nmove,axis=1)
 
     # make matrix to take
 #    imat = sp.eye(nspec)
