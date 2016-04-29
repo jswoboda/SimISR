@@ -57,9 +57,9 @@ class Fitterionoconainer(object):
         Ne_start,Ne_sig =self.fitNE()
         if self.simparams['Pulsetype'].lower()=='barker':
             if Ne_sig is None:
-                 return Ne_start[:,:,sp.newaxis]
+                 return (Ne_start[:,:,sp.newaxis],None,None)
             else:
-                 return(Ne_start[:,:,sp.newaxis],Ne_sig[:,:,sp.newaxis])
+                 return(Ne_start[:,:,sp.newaxis],Ne_sig[:,:,sp.newaxis],None)
         # get the data and noise lags
         lagsData= self.Iono.Param_List.copy()
         (Nloc,Nt,Nlags) = lagsData.shape
@@ -94,6 +94,7 @@ class Fitterionoconainer(object):
                     first_lag = False
                     fittedarray = sp.zeros((Nloc,Nt,nx+1))
                     fittederror = sp.zeros((Nloc,Nt,nx+1))
+                    funcevals = sp.zeros((Nloc,Nt))
                 # get uncertianties
                 if not self.sig is None:
                     if self.simparams['FitType'].lower()=='acf':
@@ -131,7 +132,7 @@ class Fitterionoconainer(object):
 #                        vars_vec = sp.diag(covf)
 #                    except:
 #                        vars_vec = sp.ones(nparams-2)*float('nan')
-                    
+                    funcevals[iloc,itime] = infodict['nfev']
                     fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
                     if cov_x is None:
                         vars_vec = sp.ones(nx)*float('nan')
@@ -172,7 +173,7 @@ class Fitterionoconainer(object):
                     fittederror[iloc,itime,-1] = Ne_sig[iloc,itime]**2
                     
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
-        return(fittedarray,fittederror)
+        return(fittedarray,fittederror,funcevals)
 
 def x2params(xvec):
     p1 = Parameters()

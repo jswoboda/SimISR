@@ -125,7 +125,7 @@ def fitdata(basedir,configfile,optinputs):
     else:
         Ionoinsig=IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
-    (fitteddata,fittederror) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']])
+    (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']])
 
 
     if fitterone.simparams['Pulsetype'].lower() == 'barker':
@@ -158,14 +158,13 @@ def fitdata(basedir,configfile,optinputs):
         nionstuff= fittederronly[:,:,:Nions*2]
         ntenvi=fittederronly[:,:,Nions*2:]        
         
-        
-        paramlist = sp.concatenate((ionstuff,Nisum,tenvi,Ti,nionstuff,nNi,ntenvi,nTi),axis=2)
+        paramlist = sp.concatenate((ionstuff,Nisum,tenvi,Ti,nionstuff,nNi,ntenvi,nTi,funcevals[:,:,sp.newaxis]),axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)
         paramnames = paramnames+['Ne','Te','Vi','Nepow','Ti']
         paramnamese = ['n'+ip for ip in paramnames]
-        paranamsf = sp.array(paramnames+paramnamese)
+        paranamsf = sp.array(paramnames+paramnamese+['FuncEvals'])
 
 
     Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,Ionoin.Time_Vector,ver =1,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
