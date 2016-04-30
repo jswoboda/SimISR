@@ -523,7 +523,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # subtract out noise lags
     lagsData = lagsData-lagsNoise
     # Use a basic formula to find the std of the lagss
-    sigS = (sp.absolute(lagsData)+sp.absolute(lagsNoise))/sp.sqrt(pulses)
+    sigS = sp.sqrt(sp.absolute(lagsData)**2+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
 #    sigS = sp.sqrt(varacf(lagsData)+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
     # multiply the data and the sigma by inverse of the scaling from the radar
     lagsData = lagsData*radar2acfmult
