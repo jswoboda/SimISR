@@ -109,7 +109,23 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
                 
     
 def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='fitsurfs',suptitle = 'Fit Surfaces'):
-
+    """ This will create a fit surface plot. 
+        Inputs
+        paramdict - A dictionary with the followign key value pairs.
+            Ne - Array of possible electron density values.
+            Te - Array of possible electron tempreture values.
+            Ti - Array of possible ion tempreture values.
+            frac - Array of possible fraction shares of the ion make up.
+        plotvals - A dictionary with key value pars. 
+            setparam - A string that describes he parameter thats set.
+            xparam - The parameter that's varied along the x axis of the image.
+            yparam - The parameter that's varied along the y axis of the image.  
+            indx - The index from the paramdict for the set variable. 
+        configfile - The file thats used for the simulation.
+        y_acf - the complex ACF used to create the errors.
+        yerr - The standard deviation of the acf measurement.
+        filetemplate - The template on how the file will be named.
+        suptitle - The super title for the plots. """
     (sensdict,simparams) = readconfigfile(configfile)
     specs = simparams['species']
     nspecs = len(specs)
