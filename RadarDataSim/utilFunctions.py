@@ -92,7 +92,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
 #    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
 #    lagmat = sp.dot(Wtt.sum(axis=2),interpmat)
 #    # triangle window
-    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
+    tau = sp.arange(-sp.ceil((nspec-1.0)/2.0),sp.floor((nspec-1.0)/2.0+1))/Fsorg
     amb1d = plen-tau
     amb1d[amb1d<0]=0.
     amb1d[tau<0]=0.
@@ -114,14 +114,14 @@ def spect2acf(omeg,spec,n=None):
     tau: The time sampling array.
     acf: The acf from the original spectrum."""
     if n is None:
-        n=len(spec)
+        n=float(len(spec))
 #    padnum = sp.floor(len(spec)/2)
     df = omeg[1]-omeg[0]
 
 #    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
-    acf = scfft.ifftshift(scfft.ifft(scfft.fftshift(spec)))
+    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec)))
     dt = 1/(df*n)
-    tau = sp.arange(-sp.ceil((len(acf)-1.0)/2),sp.floor((len(acf)-1.0)/2+1))*dt
+    tau = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*dt
     return tau, acf
 
 def acf2spect(tau,acf,n=None):
@@ -136,12 +136,12 @@ def acf2spect(tau,acf,n=None):
     """
 
     if n is None:
-        n=len(acf)
+        n=float(len(acf))
     dt = tau[1]-tau[0]
 
     spec = scfft.fftshift(scfft.fft(acf,n=n))
     fs = 1/dt
-    omeg = sp.arange(-sp.ceil((n-1.0)/2.0),sp.floor((n-1.0)/2.0+1))*(fs/(2*sp.ceil((n-1.0)/2.0)))
+    omeg = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*fs
     return omeg, spec
 #%% making pulse data
 def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex128):

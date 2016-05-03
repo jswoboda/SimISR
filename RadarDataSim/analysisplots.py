@@ -201,12 +201,12 @@ def maketi(Ionoin):
     (Nloc,Nt,Nion,Nppi) = Ionoin.Param_List.shape
     Paramlist = Ionoin.Param_List[:,:,:-1,:]
     Vi = Ionoin.getDoppler()
-    Vi = Vi[:,:,sp.newaxis]
+ 
     Nisum = sp.sum(Paramlist[:,:,:,0],axis=2)
     Tisum = sp.sum(Paramlist[:,:,:,0]*Paramlist[:,:,:,1],axis=2)
     Tiave = Tisum/Nisum
     Newpl = sp.zeros((Nloc,Nt,Nion+2,Nppi))
-    Newpl[:,:,:-1,:] = Ionoin.Param_List
+    Newpl[:,:,:-2,:] = Ionoin.Param_List
     Newpl[:,:,-2,0] = Nisum
     Newpl[:,:,-2,1] = Tiave
     Newpl[:,:,-1,0] = Vi
@@ -358,6 +358,8 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 # set the limit for the parameter
                 if curparm!='ne':
                     ax.set(xlim=[0.75*sp.amin(curdata),1.25*sp.amax(curdata)])
+            if curparm =='vi' and fitdisp:
+                 ax.set(xlim=[-1.25*sp.amax(sp.absolute(curfit)),1.25*sp.amax(sp.absolute(curfit))])
             if curparm=='ne':
                 ax.set_xscale('log')
 
@@ -432,7 +434,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         Ionoacf = IonoContainer.readh5(acfname)
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
         ts = sensdict['t_s']
-        omeg = sp.arange(-sp.ceil((npts+1)/2),sp.floor((npts+1)/2))/ts/npts
+        omeg = sp.arange(-sp.ceil((npts-1.)/2.),sp.floor((npts-1.)/2.)+1)/ts/npts
         for icn, ic in enumerate(coords):
             if cartcoordsys:
                 tempin = Ionoacf.getclosest(ic,times)[0]
