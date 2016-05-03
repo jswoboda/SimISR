@@ -169,7 +169,7 @@ class IonoContainer(object):
             velout=velout[timeindx]
         sphereout = self.Sphere_Coords[minidx]
         cartout = self.Cart_Coords[minidx]
-        return (paramout,velout,sphereout,cartout,np.sqrt(distall[minidx]))
+        return (paramout,velout,sphereout,cartout,np.sqrt(distall[minidx]),minidx)
     #%% Interpolation methods
     def interp(self,new_coords,ver=0,sensor_loc = None,method='linear',fill_value=np.nan):
         """This method will take the parameters in the Param_List variable and spatially.
@@ -519,6 +519,11 @@ class IonoContainer(object):
 
         return (omeg,outspecs,npts)
     def makeallspectrumsopen(self,func,sensdict,npts):
+        """ This function will make all of the spectrums given a functions.
+            Inputs
+                func - A function that will create all of the spectrums.
+                sensdict = A dictionary will information on the sensor.
+                npts - The number of points """
         return func(self,sensdict,npts)
 
     def combinetimes(self,self2):
@@ -558,6 +563,12 @@ class IonoContainer(object):
         (omeg,outspecs,npts) = self.makeallspectrumsopen(func,sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
     def getDoppler(self,sensorloc=sp.zeros(3)):
+        """ This will return the line of sight velocity.
+            Inputs
+                sensorloc - The location of the sensor in local Cartisian coordinates.
+            Outputs
+                Vi - A numpy array Nlocation by Ntimes in m/s of the line of sight velocities.
+        """
         ncoords = self.Cart_Coords.shape[0]
         ntimes = len(self.Time_Vector)
         if not sp.alltrue(sensorloc == sp.zeros(3)):

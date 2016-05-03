@@ -194,26 +194,46 @@ def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='f
             i_fig+=1
 
 
-
-
 def maketi(Ionoin):
+    """ This makes the ion densities, tempretures and velocities and places 
+        them in the Param_List variable in the ionocontainer object.
+    """
     (Nloc,Nt,Nion,Nppi) = Ionoin.Param_List.shape
     Paramlist = Ionoin.Param_List[:,:,:-1,:]
+    Vi = Ionoin.getDoppler()
+    Vi = Vi[:,:,sp.newaxis]
     Nisum = sp.sum(Paramlist[:,:,:,0],axis=2)
     Tisum = sp.sum(Paramlist[:,:,:,0]*Paramlist[:,:,:,1],axis=2)
     Tiave = Tisum/Nisum
-    Newpl = sp.zeros((Nloc,Nt,Nion+1,Nppi))
+    Newpl = sp.zeros((Nloc,Nt,Nion+2,Nppi))
     Newpl[:,:,:-1,:] = Ionoin.Param_List
-    Newpl[:,:,-1,0] = Nisum
-    Newpl[:,:,-1,1] = Tiave
-    newrow = sp.array(['Ni','Ti'])
+    Newpl[:,:,-2,0] = Nisum
+    Newpl[:,:,-2,1] = Tiave
+    Newpl[:,:,-1,0] = Vi
+    newrow = sp.array([['Ni','Ti'],['Vi','xx']])
     newpn = sp.vstack((Ionoin.Param_Names,newrow))
     Ionoin.Param_List = Newpl
     Ionoin.Param_Names = newpn
     return Ionoin
 
+
 def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdisp = True,filetemplate='params',suptitle = 'Parameter Comparison',werrors=False):
-    """ """
+    """ This function will plot the desired parameters for each beam along range.
+        The values of the input and measured parameters will be plotted
+        Inputs 
+            Times - A list of times that will be plotted.
+            configfile - The INI file with the simulation parameters that will be useds.
+            maindir - The directory the images will be saved in.
+            params - List of Parameter names that will be ploted. These need to match
+                in the ionocontainer names.
+            indisp - A bool that determines if the input parameters will be displayed.
+                default is True.
+            fitdisp - A bool that determines if the fitted parameters will be displayed.
+                default is True.
+            filetemplate - The first part of a the file names.
+            suptitle - The supertitle for the plots.
+            werrors - A bools that determines if the errors will be plotted.
+    """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
 #    rc('text', usetex=True)
@@ -224,7 +244,8 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
     paramslower = [ip.lower() for ip in params]
     Nt = len(times)
     Np = len(params)
-
+ 
+    #Read in fitted data
     if fitdisp:
         Ionofit = IonoContainer.readh5(ffit)
         dataloc = Ionofit.Sphere_Coords
@@ -239,7 +260,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
             else:
                 filenum = filear[0][0]
             time2fit[itn] = filenum
-
+    # determine the beams
     angles = dataloc[:,1:]
     rng = sp.unique(dataloc[:,0])
     b = np.ascontiguousarray(angles).view(np.dtype((np.void, angles.dtype.itemsize * angles.shape[1])))
@@ -248,7 +269,8 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
     beamlist = angles[idx]
 
     Nb = beamlist.shape[0]
-
+    
+    # Determine which imput files are to be used.
     if indisp:
         dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
         filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
@@ -267,11 +289,14 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
     nfig = int(sp.ceil(Nt*Nb*Np/9.0))
     imcount = 0
     curfilenum = -1
+    # Loop for the figures
     for i_fig in range(nfig):
         lines = [None]*2
         labels = [None]*2
         (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
+        # loop that goes through each axis loops through each parameter, beam 
+        # then time.
         for iax,ax in enumerate(axvec):
             if imcount>=Nt*Nb*Np:
                 break
@@ -282,10 +307,9 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
 
             altlist = sp.sin(curbeam[1]*sp.pi/180.)*rng
 
+            # Plot fitted data for the axis
             if fitdisp:
-
                 indxkep = np.argwhere(invidx==ibeam)[:,0]
-
                 curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
                 rng_fit= dataloc[indxkep,0]
                 alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
@@ -297,19 +321,20 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 else:
                     lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
                 labels[1] = 'Fitted Parameters'
-
+            # get and plot the input data
             if indisp:
                 filenum = time2file[itime]
                 if curfilenum!=filenum:
                     curfilenum=filenum
                     datafilename = dirlist[filenum]
                     Ionoin = IonoContainer.readh5(datafilename)
-                    if 'ti' in paramslower:
+                    if ('ti' in paramslower) or ('vi' in paramslower):
                         Ionoin = maketi(Ionoin)
                     pnames = Ionoin.Param_Names
                     pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
 
                 curparm = paramslower[iparam]
+                # Use Ne from input to compare the ne derived from the power.
                 if curparm == 'nepow':
                     curparm = 'ne'
                 prmloc = sp.argwhere(curparm==pnameslowerin)
@@ -320,14 +345,17 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
                 curcoord = sp.zeros(3)
                 curcoord[1:] = curbeam
                 curdata = sp.zeros(len(rng))
+                # build up parameter vector bs the range values by finding the closest point in space in the input
                 for irngn, irng in enumerate(rng):
                     curcoord[0] = irng
                     tempin = Ionoin.getclosestsphere(curcoord,[times[itime]])[0]
                     Ntloc = tempin.shape[0]
                     tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
                     curdata[irngn] = tempin[0,curprm]
+                #actual plotting of the input data
                 lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
                 labels[0] = 'Input Parameters'
+                # set the limit for the parameter
                 if curparm!='ne':
                     ax.set(xlim=[0.75*sp.amin(curdata),1.25*sp.amax(curdata)])
             if curparm=='ne':
@@ -337,7 +365,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
             ax.set_ylabel('Alt km')
             ax.set_title('{0} vs Altitude, Time: {1}s Az: {2}$^o$ El: {3}$^o$'.format(params[iparam],times[itime],*curbeam))
             imcount=imcount+1
-
+        # save figure
         figmplf.suptitle(suptitle, fontsize=20)
         if None in labels:
             labels.remove(None)
@@ -721,7 +749,7 @@ def analysisdump(maindir,configfile,suptitle=None):
         else:
             plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
     else:
-        params = ['Ne','Nepow','Te','Ti']
+        params = ['Ne','Nepow','Te','Ti','Vi']
         if suptitle is None:
             plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
             plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3)

@@ -532,12 +532,16 @@ def readconfigfile(fname):
                             simparams[param][a]=float(simparams[param][a])
                         except:
                             pass
-
+    
     if 't_s' in simparams.keys():
         sensdict['t_s'] = simparams['t_s']
         sensdict['fs'] =1.0/simparams['t_s']
         sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
 
+    for ikey in sensdict.keys():
+        if ikey  in simparams.keys():
+            sensdict[ikey]=simparams[ikey]
+#            del simparams[ikey]
     simparams['Beamlist']=beamlist
     time_lim = simparams['TimeLim']
     (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
