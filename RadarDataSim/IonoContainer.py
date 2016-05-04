@@ -348,6 +348,7 @@ class IonoContainer(object):
             sortlist - A numpy array of integers that will chronilogically order 
             the files
             outtime - A Nt x 2 numpy array of all of the times.
+            timebeg - A list of beginning times
         """
         if isinstance(ionocontlist,basestring):
             ionocontlist=[ionocontlist]
@@ -364,7 +365,7 @@ class IonoContainer(object):
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
         outime = sp.vstack(timelist_s)
-        return (sortlist,outime,timebeg)
+        return (sortlist,outime,timebeg,timelist_s)
         
     #%% Reduce numbers
     def coordreduce(self,coorddict):

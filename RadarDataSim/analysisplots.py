@@ -244,7 +244,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
     paramslower = [ip.lower() for ip in params]
     Nt = len(times)
     Np = len(params)
- 
+    
     #Read in fitted data
     if fitdisp:
         Ionofit = IonoContainer.readh5(ffit)
@@ -253,6 +253,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
         pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
         p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
         time2fit = [None]*Nt
+        
         for itn,itime in enumerate(times):
             filear = sp.argwhere(Ionofit.Time_Vector>=itime)
             if len(filear)==0:
@@ -260,6 +261,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
             else:
                 filenum = filear[0][0]
             time2fit[itn] = filenum
+        times_int = [Ionofit.Time_Vector[i] for i in time2fit]
     # determine the beams
     angles = dataloc[:,1:]
     rng = sp.unique(dataloc[:,0])
@@ -274,10 +276,12 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
     if indisp:
         dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
         filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
-
+        sortlist,outime,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
         timelist = sp.array([int(i.split()[0]) for i in filesonly])
         time2file = [None]*Nt
+        
         for itn,itime in enumerate(times):
+            
             filear = sp.argwhere(timelist>=itime)
             if len(filear)==0:
                 filenum = len(timelist)-1
@@ -377,6 +381,181 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
         plt.savefig(fname)
         plt.close(figmplf)
 
+def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='params',suptitle = 'Parameter Comparison',werrors=False):
+    """ This function will plot the desired parameters for each beam along range.
+        The values of the input and measured parameters will be plotted
+        Inputs 
+            Times - A list of times that will be plotted.
+            configfile - The INI file with the simulation parameters that will be useds.
+            maindir - The directory the images will be saved in.
+            params - List of Parameter names that will be ploted. These need to match
+                in the ionocontainer names.
+            indisp - A bool that determines if the input parameters will be displayed.
+                default is True.
+            fitdisp - A bool that determines if the fitted parameters will be displayed.
+                default is True.
+            filetemplate - The first part of a the file names.
+            suptitle - The supertitle for the plots.
+            werrors - A bools that determines if the errors will be plotted.
+    """
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+#    rc('text', usetex=True)
+    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
+    inputfiledir = os.path.join(maindir,'Origparams')
+    (sensdict,simparams) = readconfigfile(configfile)
+
+    paramslower = [ip.lower() for ip in params]
+    Nt = len(times)
+    Np = len(params)
+    
+    #Read in fitted data
+    
+    Ionofit = IonoContainer.readh5(ffit)
+    dataloc = Ionofit.Sphere_Coords
+    pnames = Ionofit.Param_Names
+    pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
+    p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
+    time2fit = [None]*Nt
+    
+    for itn,itime in enumerate(times):
+        filear = sp.argwhere(Ionofit.Time_Vector>=itime)
+        if len(filear)==0:
+            filenum = len(Ionofit.Time_Vector)-1
+        else:
+            filenum = filear[0][0]
+        time2fit[itn] = filenum
+    times_int = [Ionofit.Time_Vector[i] for i in time2fit]
+    
+    # determine the beams
+    angles = dataloc[:,1:]
+    rng = sp.unique(dataloc[:,0])
+    b = np.ascontiguousarray(angles).view(np.dtype((np.void, angles.dtype.itemsize * angles.shape[1])))
+    _, idx, invidx = np.unique(b, return_index=True,return_inverse=True)
+
+    beamlist = angles[idx]
+
+    Nb = beamlist.shape[0]
+    
+    # Determine which imput files are to be used.
+    
+    dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
+    filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
+    sortlist,outime,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
+    timelist = sp.array([int(i.split()[0]) for i in filesonly])
+    time2file = [None]*Nt
+    
+    time2intime = [None]*Nt
+    # go through times find files and then times in files
+    for itn,itime in enumerate(times):
+        
+        filear = sp.argwhere(timelist>=itime)
+        if len(filear)==0:
+            filenum = [len(timelist)-1]
+        else:
+            filenum = filear[0]
+        
+        flist1 = []
+        timeinflist = []
+        for ifile in filenum:
+            filetimes= timelist_s[ifile][:,0]
+            
+            curtimes1 = sp.where((filetimes>=times_int[itn,0]) & (filetimes<times_int[itn,1]))[0].tolist()
+            flist1=flist1+ [ifile]*len(curtimes1)
+            timeinflist = timeinflist+curtimes1
+        time2intime[itn] = timeinflist
+        time2file[itn] = flist1
+    nfig = int(sp.ceil(Nt*Nb*Np/9.0))
+    imcount = 0
+    curfilenum = -1
+    # Loop for the figures
+    for i_fig in range(nfig):
+        lines = [None]*2
+        labels = [None]*2
+        (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w')
+        axvec = axmat.flatten()
+        # loop that goes through each axis loops through each parameter, beam 
+        # then time.
+        for iax,ax in enumerate(axvec):
+            if imcount>=Nt*Nb*Np:
+                break
+            itime = int(sp.floor(imcount/Nb/Np))
+            iparam = int(imcount/Nb-Np*itime)
+            ibeam = int(imcount-(itime*Np*Nb+iparam*Nb))
+            curbeam = beamlist[ibeam]
+
+            altlist = sp.sin(curbeam[1]*sp.pi/180.)*rng
+
+            # Plot fitted data for the axis
+            
+            indxkep = np.argwhere(invidx==ibeam)[:,0]
+            curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
+            rng_fit= dataloc[indxkep,0]
+            alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
+            errorexist = 'n'+paramslower[iparam] in pnameslower
+            if errorexist and werrors:
+                eparam = sp.argwhere( 'n'+paramslower[iparam]==pnameslower)[0][0]
+                curerror = Ionofit.Param_List[indxkep,time2fit[itime],eparam]
+                lines[1]=ax.errorbar(curfit, alt_fit, xerr=curerror,fmt='-.',c='g')[0]
+            else:
+                lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
+            labels[1] = 'Fitted Parameters'
+            # get and plot the input data
+            
+            numplots = len(time2file[itime])
+                
+            curparm = paramslower[iparam]
+            # Use Ne from input to compare the ne derived from the power.
+            if curparm == 'nepow':
+                curparm = 'ne'
+
+            curcoord = sp.zeros(3)
+            curcoord[1:] = curbeam
+            curdata = [sp.zeros(len(rng))]*numplots
+            for iplot,filenum in enumerate(time2file[itime]):
+                if curfilenum!=filenum:
+                    curfilenum=filenum
+                    datafilename = dirlist[filenum]
+                    Ionoin = IonoContainer.readh5(datafilename)
+                    if ('ti' in paramslower) or ('vi' in paramslower):
+                        Ionoin = maketi(Ionoin)
+                    pnames = Ionoin.Param_Names
+                    pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
+                prmloc = sp.argwhere(curparm==pnameslowerin)
+                if prmloc.size !=0:
+                    curprm = prmloc[0][0]
+                # build up parameter vector bs the range values by finding the closest point in space in the input
+                for irngn, irng in enumerate(rng):
+                    curcoord[0] = irng
+                    tempin = Ionoin.getclosestsphere(curcoord)[0][time2intime[iplot]]
+                    Ntloc = tempin.shape[0]
+                    tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
+                    curdata[iplot][irngn] = tempin[0,curprm]
+                #actual plotting of the input data
+                lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
+                labels[0] = 'Input Parameters'
+            # set the limit for the parameter
+            if curparm!='ne':
+                ax.set(xlim=[0.75*sp.amin(curdata),1.25*sp.amax(curdata)])
+            if curparm =='vi':
+                 ax.set(xlim=[-1.25*sp.amax(sp.absolute(curfit)),1.25*sp.amax(sp.absolute(curfit))])
+            if curparm=='ne':
+                ax.set_xscale('log')
+
+            ax.set_xlabel(params[iparam])
+            ax.set_ylabel('Alt km')
+            ax.set_title('{0} vs Altitude, Time: {1}s Az: {2}$^o$ El: {3}$^o$'.format(params[iparam],times[itime],*curbeam))
+            imcount=imcount+1
+        # save figure
+        figmplf.suptitle(suptitle, fontsize=20)
+        if None in labels:
+            labels.remove(None)
+            lines.remove(None)
+        plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
+        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
+        plt.savefig(fname)
+        plt.close(figmplf)
+        
 def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
               fitdisp=True,filetemplate='spec',suptitle = 'Spectrum Comparison'):
     """ This will create a set of images that compare the input ISR spectrum to the
@@ -760,5 +939,5 @@ def analysisdump(maindir,configfile,suptitle=None):
         else:
             plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1,suptitle=suptitle)
             plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3,suptitle=suptitle)
-            plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
+            plotbeamparametersv2(times,configfile,maindir,params=params,filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
             beamvstime(configfile,maindir,params=params,filetemplate=filetemplate4,suptitle = suptitle)
