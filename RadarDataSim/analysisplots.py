@@ -458,9 +458,9 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
         flist1 = []
         timeinflist = []
         for ifile in filenum:
-            filetimes= timelist_s[ifile][:,0]
+            filetimes= timelist_s[ifile]
             
-            curtimes1 = sp.where((filetimes>=times_int[itn,0]) & (filetimes<times_int[itn,1]))[0].tolist()
+            curtimes1 = sp.where((filetimes[:,0]<=times_int[itn][0]) & (filetimes[:,1]>times_int[itn][1]))[0].tolist()
             flist1=flist1+ [ifile]*len(curtimes1)
             timeinflist = timeinflist+curtimes1
         time2intime[itn] = timeinflist
@@ -511,8 +511,10 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
 
             curcoord = sp.zeros(3)
             curcoord[1:] = curbeam
-            curdata = [sp.zeros(len(rng))]*numplots
+            
+    
             for iplot,filenum in enumerate(time2file[itime]):
+                
                 if curfilenum!=filenum:
                     curfilenum=filenum
                     datafilename = dirlist[filenum]
@@ -525,18 +527,19 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
                 if prmloc.size !=0:
                     curprm = prmloc[0][0]
                 # build up parameter vector bs the range values by finding the closest point in space in the input
+                curdata = sp.zeros(len(rng))
                 for irngn, irng in enumerate(rng):
                     curcoord[0] = irng
-                    tempin = Ionoin.getclosestsphere(curcoord)[0][time2intime[iplot]]
+                    tempin = Ionoin.getclosestsphere(curcoord)[0][time2intime[itime]]
                     Ntloc = tempin.shape[0]
                     tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
-                    curdata[iplot][irngn] = tempin[0,curprm]
+                    curdata[irngn] = tempin[0,curprm]
                 #actual plotting of the input data
                 lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
                 labels[0] = 'Input Parameters'
             # set the limit for the parameter
             if curparm!='ne':
-                ax.set(xlim=[0.75*sp.amin(curdata),1.25*sp.amax(curdata)])
+                ax.set(xlim=[0.75*sp.amin(curfit),1.25*sp.amax(curfit)])
             if curparm =='vi':
                  ax.set(xlim=[-1.25*sp.amax(sp.absolute(curfit)),1.25*sp.amax(sp.absolute(curfit))])
             if curparm=='ne':
@@ -934,7 +937,7 @@ def analysisdump(maindir,configfile,suptitle=None):
         if suptitle is None:
             plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1)
             plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3)
-            plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,werrors=True)
+            plotbeamparametersv2(times,configfile,maindir,params=params,filetemplate=filetemplate2,werrors=True)
             beamvstime(configfile,maindir,params=params,filetemplate=filetemplate4)
         else:
             plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1,suptitle=suptitle)
