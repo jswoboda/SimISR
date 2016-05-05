@@ -146,6 +146,10 @@ class IonoContainer(object):
         paramout - A NtxNp array from the closes output params
         sphereout - A Nc length array The sphereical coordinates of the closest point.
         cartout -  Cartisian coordinates of the closes point.
+        distance - The spatial distance between the returned location and the 
+            desired location.
+        minidx - The spatial index point.
+        tvec - The times of the returned data. 
         """
         X_vec = self.Cart_Coords[:,0]
         Y_vec = self.Cart_Coords[:,1]
@@ -159,17 +163,30 @@ class IonoContainer(object):
         paramout = self.Param_List[minidx]
         velout = self.Velocity[minidx]
         datatime = self.Time_Vector
+        tvec = self.Time_Vector
         if sp.ndim(self.Time_Vector)>1:
             datatime = datatime[:,0]
+            
+        if isinstance(timelist,list):
+            timelist=sp.array(timelist)
         if timelist is not None:
             timeindx = []
             for itime in timelist:
-                timeindx.append(sp.argmin(sp.absolute(itime-datatime)))
+                if len(itime)==1:
+                    timeindx.append(sp.argmin(sp.absolute(itime-datatime)))
+                else:
+                    # look for overlap
+                    log1 = (tvec[:,0]>=itime[0]) & (tvec[:,0]<itime[1])
+                    log2 = (tvec[:,1]>itime[0]) & (tvec[:,1]<=itime[1])
+                    tempindx = sp.where(log1|log2)[0]
+                    
+                    timeindx = timeindx +tempindx.tolist()
             paramout=paramout[timeindx]
             velout=velout[timeindx]
+            tvec = tvec[timeindx]
         sphereout = self.Sphere_Coords[minidx]
         cartout = self.Cart_Coords[minidx]
-        return (paramout,velout,sphereout,cartout,np.sqrt(distall[minidx]),minidx)
+        return (paramout,velout,sphereout,cartout,np.sqrt(distall[minidx]),minidx,tvec)
     #%% Interpolation methods
     def interp(self,new_coords,ver=0,sensor_loc = None,method='linear',fill_value=np.nan):
         """This method will take the parameters in the Param_List variable and spatially.
