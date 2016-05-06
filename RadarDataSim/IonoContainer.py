@@ -370,19 +370,23 @@ class IonoContainer(object):
         if isinstance(ionocontlist,basestring):
             ionocontlist=[ionocontlist]
         timelist=[]
-        for ifile in ionocontlist:
+        fileslist = []
+        for ifilenum,ifile in enumerate(ionocontlist):
+            
             h5file=tables.openFile(ifile)
             times=h5file.root.Time_Vector.read()
             h5file.close()
             timelist.append(times)
+            fileslist.append([ifilenum]*len(times))
             
         times_file =sp.array([i[:,0].min() for i in timelist])
         sortlist = sp.argsort(times_file)
         
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
+        fileslist = sp.vstack(fileslist[sortlist])
         outime = sp.vstack(timelist_s)
-        return (sortlist,outime,timebeg,timelist_s)
+        return (sortlist,outime,fileslist,timebeg,timelist_s)
         
     #%% Reduce numbers
     def coordreduce(self,coorddict):

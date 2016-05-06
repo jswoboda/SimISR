@@ -276,7 +276,7 @@ def plotbeamparameters(times,configfile,maindir,params=['Ne'],indisp=True,fitdis
     if indisp:
         dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
         filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
-        sortlist,outime,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
+        sortlist,outime,outfileslist,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
         timelist = sp.array([int(i.split()[0]) for i in filesonly])
         time2file = [None]*Nt
         
@@ -441,7 +441,7 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
     
     dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
     filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
-    sortlist,outime,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
+    sortlist,outime,outfilelist,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
     timelist = sp.array([int(i.split()[0]) for i in filesonly])
     time2file = [None]*Nt
     

@@ -51,7 +51,7 @@ def makespectrums(basedir,configfile,remakealldata):
     # determine the list of h5 files in Origparams directory
     dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
     # Make the lists of numbers and file names for the dictionary
-    (listorder,timevector,timebeg) = IonoContainer.gettimes(dirlist)
+    (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     slist = [dirlist[ikey] for ikey in listorder]
     (sensdict,simparams) = readconfigfile(configfile)
     for inum, curfile in zip(timebeg,slist):
@@ -82,7 +82,7 @@ def makeradardata(basedir,configfile,remakealldata):
     # determine the list of h5 files in Origparams directory
     dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
     # Make the lists of numbers and file names for the dictionary
-    (listorder,timevector,timebeg) = IonoContainer.gettimes(dirlist)
+    (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
 
     Ionodict = {timebeg[itn]:dirlist[it] for itn, it in enumerate(listorder)}
     
@@ -181,11 +181,10 @@ def applymat(basedir,configfile,optinputs):
          """
     dirio = ('Spectrums','Mat','ACFMat')
     inputdir = os.path.join(basedir,dirio[0])
-    outputdir = os.path.join(basedir,dirio[1])
     outputdir2 = os.path.join(basedir,dirio[2])
     
     dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
-    (listorder,timevector,timebeg) = IonoContainer.gettimes(dirlist)
+    (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     Ionolist = [dirlist[ikey] for ikey in listorder]
     RSTO = RadarSpaceTimeOperator(Ionolist,configfile,timevector)
     Ionoout = RSTO.mult_iono(Ionolist)

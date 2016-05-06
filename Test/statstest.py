@@ -6,17 +6,106 @@ This will create a set of data
 """
 import os,inspect,glob
 import scipy as sp
-import scipy.fftpack as scfft
-import scipy.interpolate as spinterp
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pdb
 from RadarDataSim.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf,makeconfigfile
 from RadarDataSim.IonoContainer import IonoContainer
 from  RadarDataSim.runsim import main as runsim 
-from RadarDataSim.analysisplots import analysisdump
+from RadarDataSim.analysisplots import analysisdump,maketi
 from radarsystools.radarsystools import RadarSys
 
+def makehist(testpath,npulses):
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+    params = ['Ne','Nepow','Te','Ti','Vi'] 
+    errdict = makehistdata(params,testpath)
+    ernames = ['Data','Error','Error Percent']
+    filetemplate= os.path.join(testpath,'AnalysisPlots')
+    
+    for ierr, iername in enumerate(ernames):
+        (figmplf, axmat) = plt.subplots(3, 2,figsize=(20, 15), facecolor='w')
+        axvec = axmat.flatten()
+        for ipn, iparam in enumerate(params):
+            plt.scs(axvec[ipn])
+            histhand = sns.distplot(errdict[iparam], bins=50, kde=False, rug=False)
+            axvec[ipn].set_title(iparam)
+        figmplf.suptitle(iername, fontsize=20)
+        fname= filetemplate+ierr+'_{0:0>5}Pulses.png'.format(npulses)
+        plt.savefig(fname)
+        plt.close(figmplf)
+def makehistdata(params,maindir):
+    
+    
+    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
+    inputfiledir = os.path.join(maindir,'Origparams')
+
+    paramslower = [ip.lower() for ip in params]
+    
+    # set up data dictionary
+    
+    errordict = {ip:[] for ip in params}
+    errordictrel = {ip:[] for ip in params}
+    #Read in fitted data
+    
+    Ionofit = IonoContainer.readh5(ffit)
+    times=Ionofit.Time_Vector
+    
+    dataloc = Ionofit.Sphere_Coords
+    pnames = Ionofit.Param_Names
+    pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
+    p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
+    
+    datadict = {ip:Ionofit.Param_List[:,:,p2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
+    
+    
+    # Determine which imput files are to be used.
+    
+    dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
+    sortlist,outime,filelisting,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
+    time2files = []
+    for itn,itime in enumerate(times):
+        log1 = (outime[:,0]>=itime[0]) & (outime[:,0]<itime[1])
+        log2 = (outime[:,1]>itime[0]) & (outime[:,1]<=itime[1])
+        tempindx = sp.where(log1|log2)[0]
+        time2files.append(filelisting[tempindx])
+    
+    
+    curfilenum=-1
+    for iparam,pname in enumerate(params):            
+        curparm = paramslower[iparam]
+        # Use Ne from input to compare the ne derived from the power.
+        if curparm == 'nepow':
+            curparm = 'ne'
+        datalist = []
+        for itn,itime in enumerate(times):
+            for iplot,filenum in enumerate(time2files[itime]):
+                        
+                if curfilenum!=filenum:
+                    curfilenum=filenum
+                    datafilename = dirlist[filenum]
+                    Ionoin = IonoContainer.readh5(datafilename)
+                    if ('ti' in paramslower) or ('vi' in paramslower):
+                        Ionoin = maketi(Ionoin)
+                    pnames = Ionoin.Param_Names
+                    pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
+                prmloc = sp.argwhere(curparm==pnameslowerin)
+                if prmloc.size !=0:
+                    curprm = prmloc[0][0]
+                # build up parameter vector bs the range values by finding the closest point in space in the input
+                curdata = sp.zeros(len(dataloc))
+                
+                for irngn, curcoord in enumerate(dataloc):
+                    
+                    tempin = Ionoin.getclosestsphere(curcoord,[times[itime]])[0]
+                    Ntloc = tempin.shape[0]
+                    tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
+                    curdata[irngn] = tempin[0,curprm]
+                datalist.append(curdata)
+        errordict[pname] = datadict[pname]-sp.vstack(datalist)  
+        errordictrel[pname] = 100.*errordict[pname]/sp.absolute(sp.vstack(datalist))
+    return datadict,errordict,errordictrel
 
 def configfilesetup(testpath,npulses):
     """ """
