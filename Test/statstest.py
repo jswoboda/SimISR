@@ -226,9 +226,10 @@ if __name__== '__main__':
             '''
     p = ArgumentParser(description=descr)
     
-    p.add_argument("-p", "--npulses",help='Number of pulses.',nargs='+',default=[50,100,200,500,1000,2000,5000])
+    p.add_argument("-p", "--npulses",help='Number of pulses.',nargs='+',type=int,default=[50,100,200,500,1000,2000,5000])
     p.add_argument('-f','--funclist',help='Functions to be uses',nargs='+',default=['spectrums','radardata','fitting','analysis','stats'])#action='append',dest='collection',default=['spectrums','radardata','fitting','analysis'])
     
     p = p.parse_args()
+    
     main(p.npulses,p.funclist)     
     
