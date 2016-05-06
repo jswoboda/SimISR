@@ -14,25 +14,43 @@ from RadarDataSim.utilFunctions import MakePulseDataRep,CenteredLagProduct,readc
 from RadarDataSim.IonoContainer import IonoContainer
 from  RadarDataSim.runsim import main as runsim 
 from RadarDataSim.analysisplots import analysisdump,maketi
-from radarsystools.radarsystools import RadarSys
+#from radarsystools.radarsystools import RadarSys
 
 def makehist(testpath,npulses):
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     params = ['Ne','Nepow','Te','Ti','Vi'] 
+    pvals = [1e11,1e11,2e3,2e3,0]
     errdict = makehistdata(params,testpath)
     ernames = ['Data','Error','Error Percent']
-    filetemplate= os.path.join(testpath,'AnalysisPlots')
+    sig1 = sp.sqrt(1./npulses)
+    
     
     for ierr, iername in enumerate(ernames):
+        filetemplate= os.path.join(testpath,'AnalysisPlots',iername)
         (figmplf, axmat) = plt.subplots(3, 2,figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         for ipn, iparam in enumerate(params):
-            plt.scs(axvec[ipn])
-            histhand = sns.distplot(errdict[iparam], bins=50, kde=False, rug=False)
+            plt.sca(axvec[ipn])
+            if sp.any(sp.isinf(errdict[ierr][iparam])):
+                continue
+            histhand = sns.distplot(errdict[ierr][iparam], bins=50, kde=True, rug=False)
+            xlim = histhand.get_xlim()
+            if ierr==0:
+                x0=pvals[ipn]
+            else:
+                x0=0
+            if ierr==2:
+                sig=sig1*100.
+            else:
+                sig=sig1*pvals[ipn]
+            x = sp.linspace(xlim[0],xlim[1],100)
+            den1 = sp.stats.norm(x0,sig).pdf(x)
+            plt.plot(x,den1,'g--')
+            
             axvec[ipn].set_title(iparam)
-        figmplf.suptitle(iername, fontsize=20)
-        fname= filetemplate+ierr+'_{0:0>5}Pulses.png'.format(npulses)
+        figmplf.suptitle(iername +' Pulses: {0}'.format(npulses), fontsize=20)
+        fname= filetemplate+'_{0:0>5}Pulses.png'.format(npulses)
         plt.savefig(fname)
         plt.close(figmplf)
 def makehistdata(params,maindir):
@@ -68,7 +86,8 @@ def makehistdata(params,maindir):
     for itn,itime in enumerate(times):
         log1 = (outime[:,0]>=itime[0]) & (outime[:,0]<itime[1])
         log2 = (outime[:,1]>itime[0]) & (outime[:,1]<=itime[1])
-        tempindx = sp.where(log1|log2)[0]
+        log3 = (outime[:,0]<=itime[0]) & (outime[:,1]>itime[1])
+        tempindx = sp.where(log1|log2|log3)[0]
         time2files.append(filelisting[tempindx])
     
     
@@ -80,8 +99,8 @@ def makehistdata(params,maindir):
             curparm = 'ne'
         datalist = []
         for itn,itime in enumerate(times):
-            for iplot,filenum in enumerate(time2files[itime]):
-                        
+            for iplot,filenum in enumerate(time2files[itn]):
+                filenum = int(filenum)
                 if curfilenum!=filenum:
                     curfilenum=filenum
                     datafilename = dirlist[filenum]
@@ -98,17 +117,23 @@ def makehistdata(params,maindir):
                 
                 for irngn, curcoord in enumerate(dataloc):
                     
-                    tempin = Ionoin.getclosestsphere(curcoord,[times[itime]])[0]
+                    tempin = Ionoin.getclosestsphere(curcoord,[itime])[0]
                     Ntloc = tempin.shape[0]
                     tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
                     curdata[irngn] = tempin[0,curprm]
                 datalist.append(curdata)
-        errordict[pname] = datadict[pname]-sp.vstack(datalist)  
-        errordictrel[pname] = 100.*errordict[pname]/sp.absolute(sp.vstack(datalist))
+        errordict[pname] = datadict[pname]-sp.hstack(datalist)  
+        errordictrel[pname] = 100.*errordict[pname]/sp.absolute(sp.hstack(datalist))
     return datadict,errordict,errordictrel
 
 def configfilesetup(testpath,npulses):
-    """ """
+    """ This will create the configureation file given the number of pulses for 
+        the test. This will make it so that there will be 12 integration periods 
+        for a given number of pulses.
+        Input
+            testpath - The location of the data.
+            npulses - The number of pulses. 
+    """
     
     curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     defcon = os.path.join(curloc,'statsbase.ini')
@@ -124,7 +149,12 @@ def configfilesetup(testpath,npulses):
     makeconfigfile(os.path.join(testpath,'stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
     
 def makedata(testpath):
-    """ """
+    """ This will make the input data for the test case. The data will have the 
+        default set of parameters Ne=Ne=1e11 and Te=Ti=2000.
+        Inputs
+            testpath - Directory that will hold the data.
+            
+    """
     finalpath = os.path.join(testpath,'Origparams')
     if not os.path.isdir(finalpath):
         os.mkdir(finalpath)
@@ -143,34 +173,21 @@ def makedata(testpath):
     Icont1.saveh5(finalfile)
     Icont1.saveh5(os.path.join(testpath,'startfile.h5'))
     
-def getinfo(curdir):
-    """ """
-    origdataname = os.path.join(curdir,'Origparams','0 stats.h5')
-    fittedname=glob.glob(os.path.join(curdir,'Fitted','*.h5'))[0]
-    
-    # Get Parameters
-    Origparam = IonoContainer.readh5(origdataname)
-    fittedparam = IonoContainer.readh5(fittedname)
-    
-    Ne_real = Origparam.Param_List[0,0,1,0]
-    Te_real = Origparam.Param_List[0,0,1,1]
-    Ti_real = Origparam.Param_List[0,0,0,1]
-    
-    realdict = {'Ne':Ne_real,'Te':Te_real,'Ti':Ti_real,'Nepow':Ne_real}
-    paramnames = fittedparam.Param_Names
-    params = ['Ne','Te','Ti','Nepow']
-    params_loc = [sp.argwhere(i==sp.array(paramnames))[0][0] for i in params]
-    
-    datadict = {i:fittedparam.Param_List[:,:,j] for i,j in zip(params,params_loc)}
-    datavars = {i:sp.nanvar(datadict[i],axis=1) for i in params}
-    dataerror = {i:sp.nanmean((datadict[i]-realdict[i])**2,axis=1) for i in params}
-    
-    return (datadict,datavars,dataerror, realdict)
-def main(plist = None,functlist = ['spectrums','radardata','fitting']):
 
+def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis','stats']):
+    """ This function will call other functions to create the input data, config
+        file and run the radar data sim. The path for the simulation will be 
+        created in the Testdata directory in the RadarDataSim module. The new
+        folder will be called BasicTest. The simulation is a long pulse simulation
+        will the desired number of pulses from the user.
+        Inputs
+            npulse - Number of pulses for the integration period, default==100.
+            functlist - The list of functions for the RadarDataSim to do.
+    """
     if plist is None:
         plist = sp.array([50,100,200,500,1000,2000,5000])
-        
+    if isinstance(plist,list):
+        plist=sp.array(plist)
     curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     testpath = os.path.join(os.path.split(curloc)[0],'Testdata','StatsTest')
     
@@ -182,7 +199,7 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting']):
     check_run =sp.any( check_list) 
     functlist_red = sp.array(functlist_default)[check_list].tolist()
     allfolds = []
-    rsystools = []
+#    rsystools = []
     for ip in plist:
         foldname = 'Pulses_{:04d}'.format(ip)
         curfold =os.path.join(testpath,foldname)
@@ -193,14 +210,25 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting']):
             configfilesetup(curfold,ip)
         config = os.path.join(curfold,'stats.ini')
         (sensdict,simparams) = readconfigfile(config)
-        rtemp = RadarSys(sensdict,simparams['Rangegatesfinal'],ip)
-        rsystools.append(rtemp.rms(sp.array([1e12]),sp.array([2.5e3]),sp.array([2.5e3])))
+#        rtemp = RadarSys(sensdict,simparams['Rangegatesfinal'],ip)
+#        rsystools.append(rtemp.rms(sp.array([1e12]),sp.array([2.5e3]),sp.array([2.5e3])))
         if check_run :
             runsim(functlist_red,curfold,os.path.join(curfold,'stats.ini'),True)
         if 'analysis' in functlist:
             analysisdump(curfold,)
         if 'stats' in functlist:
-            datadict,datavars,dataerror,realdict = getinfo(curfold)
+            makehist(curfold,ip)
             
-        
+if __name__== '__main__':
+    from argparse import ArgumentParser
+    descr = '''
+             This script will perform the basic run est for ISR sim.
+            '''
+    p = ArgumentParser(description=descr)
+    
+    p.add_argument("-p", "--npulses",help='Number of pulses.',nargs='+',default=[50,100,200,500,1000,2000,5000])
+    p.add_argument('-f','--funclist',help='Functions to be uses',nargs='+',default=['spectrums','radardata','fitting','analysis','stats'])#action='append',dest='collection',default=['spectrums','radardata','fitting','analysis'])
+    
+    p = p.parse_args()
+    main(p.npulses,p.funclist)     
     

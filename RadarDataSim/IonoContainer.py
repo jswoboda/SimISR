@@ -172,13 +172,14 @@ class IonoContainer(object):
         if timelist is not None:
             timeindx = []
             for itime in timelist:
-                if len(itime)==1:
+                if sp.isscalar(itime):
                     timeindx.append(sp.argmin(sp.absolute(itime-datatime)))
                 else:
                     # look for overlap
                     log1 = (tvec[:,0]>=itime[0]) & (tvec[:,0]<itime[1])
                     log2 = (tvec[:,1]>itime[0]) & (tvec[:,1]<=itime[1])
-                    tempindx = sp.where(log1|log2)[0]
+                    log3 = (tvec[:,0]<=itime[0]) & (tvec[:,1]>itime[1])
+                    tempindx = sp.where(log1|log2|log3)[0]
                     
                     timeindx = timeindx +tempindx.tolist()
             paramout=paramout[timeindx]
@@ -377,15 +378,15 @@ class IonoContainer(object):
             times=h5file.root.Time_Vector.read()
             h5file.close()
             timelist.append(times)
-            fileslist.append([ifilenum]*len(times))
+            fileslist.append(ifilenum*sp.ones(len(times)))
             
         times_file =sp.array([i[:,0].min() for i in timelist])
         sortlist = sp.argsort(times_file)
         
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
-        fileslist = sp.vstack(fileslist[sortlist])
-        outime = sp.vstack(timelist_s)
+        fileslist = sp.vstack([fileslist[i] for i in sortlist]).flatten()
+        outime = sp.hstack(timelist_s)
         return (sortlist,outime,fileslist,timebeg,timelist_s)
         
     #%% Reduce numbers
