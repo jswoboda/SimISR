@@ -179,7 +179,8 @@ class IonoContainer(object):
                     log1 = (tvec[:,0]>=itime[0]) & (tvec[:,0]<itime[1])
                     log2 = (tvec[:,1]>itime[0]) & (tvec[:,1]<=itime[1])
                     log3 = (tvec[:,0]<=itime[0]) & (tvec[:,1]>itime[1])
-                    tempindx = sp.where(log1|log2|log3)[0]
+                    log4 = (tvec[:,0]>itime[0]) & (tvec[:,1]<itime[1])
+                    tempindx = sp.where(log1|log2|log3|log4)[0]
                     
                     timeindx = timeindx +tempindx.tolist()
             paramout=paramout[timeindx]

@@ -461,7 +461,9 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
             filetimes= timelist_s[ifile]
             log1 = (filetimes[:,0]>=times_int[itn][0]) & (filetimes[:,0]<times_int[itn][1])
             log2 = (filetimes[:,1]>times_int[itn][0]) & (filetimes[:,1]<=times_int[itn][1])
-            curtimes1 = sp.where(log1|log2)[0].tolist()
+            log3 = (filetimes[:,0]<=times_int[itn][0]) & (filetimes[:,1]>times_int[itn][1])
+            log4 = (filetimes[:,0]>times_int[itn][0]) & (filetimes[:,1]<times_int[itn][1])
+            curtimes1 = sp.where(log1|log2|log3|log4)[0].tolist()
             flist1=flist1+ [ifile]*len(curtimes1)
             timeinflist = timeinflist+curtimes1
         time2intime[itn] = timeinflist

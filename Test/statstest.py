@@ -20,7 +20,7 @@ def makehist(testpath,npulses):
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     params = ['Ne','Nepow','Te','Ti','Vi'] 
-    pvals = [1e11,1e11,2e3,2e3,0]
+    pvals = [1e12,1e12,2.5e3,2.5e3,0]
     errdict = makehistdata(params,testpath)
     ernames = ['Data','Error','Error Percent']
     sig1 = sp.sqrt(1./npulses)

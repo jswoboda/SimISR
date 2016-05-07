@@ -166,6 +166,12 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
             axis are colored using the filter and multiplied by the pulse shape.
     """
     npts = len(filt_freq)
+    multforimag = sp.ones_like(filt_freq)
+    hpnt = int(sp.ceil(npts/2.))
+    multforimag[hpnt:]=-1
+    tmp = scfft.ifft(filt_freq)
+    tmp[hpnt:]=0.
+    comp_filt = scfft.fft(tmp)*sp.sqrt(2.)
     filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
     shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
     noisereal = sp.random.randn(rep,npts).astype(numtype)
