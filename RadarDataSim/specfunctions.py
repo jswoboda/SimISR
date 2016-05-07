@@ -54,7 +54,19 @@ def ISRSspecmake(ionocont,sensdict,npts):
     return (omeg,outspecs,npts)
 
 def ISRspecmakeout(paramvals,fc,fs,species,npts):
-
+    """ This will make a spectra for a set a param values. This is mainly used 
+        in the plotting functions to get spectra for given parameters.
+        Input
+            paramvals - A N_x x N_t x 2Nsp+1 numpy array that holds the parameter 
+                values. Nx is number of spatial locations, N_t is number of 
+                times and Nsp is number of ion and electron species.
+            fc - The carrier frequency of the ISR.
+            fs - The sampling frequency of the ISR.
+            species - A list of species.
+            npts - The number of points for each spectrum
+        Output
+            omeg - Frequency vector in Hz.
+            outspecs - the spectra to be output."""
 
     if paramvals.ndim==2:
         paramvals=paramvals[sp.newaxis]
