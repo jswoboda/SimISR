@@ -13,12 +13,19 @@ from utilFunctions import  spect2acf
 
 
 def ISRSspecmake(ionocont,sensdict,npts):
-    """This function will take an ionocontainer instance of plasma parameters and create
-    ISR spectra for each object.
+    """ This function will take an ionocontainer instance of plasma parameters and create
+        ISR spectra for each object.
 
-    Inputs
-    ionocont - An instance of the ionocontainer class with plasma parameters. Its param list
-    must an array of [Nl,Nt,Ni,2]."""
+        Inputs
+            ionocont - An instance of the ionocontainer class with plasma parameters. Its param list
+                must an array of [Nl,Nt,Ni,2].
+            sensdict - A dictionary with sensort information.
+            npts - The number of points for the spectra.
+        Outputs
+            omeg - The frequency vector in Hz.
+            outspects - The spectra which have been weighted using the RCS. The
+                weighting is npts^2 *rcs.
+    """
     Vi = ionocont.getDoppler()
     specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
 
@@ -51,7 +58,7 @@ def ISRSspecmake(ionocont,sensdict,npts):
             outspecsorig[i_x,i_t] = cur_spec
             outrcs[i_x,i_t] = rcs
             outspecs[i_x,i_t] = cur_spec_weighted
-    return (omeg,outspecs,npts)
+    return (omeg,outspecs)
 
 def ISRspecmakeout(paramvals,fc,fs,species,npts):
     """ This will make a spectra for a set a param values. This is mainly used 

@@ -573,7 +573,7 @@ class IonoContainer(object):
         Output:
         Iono1 - An instance of the IonoContainer class with the spectrums as the
         param vectors and the param names will be the the frequency points """
-        (omeg,outspecs,npts) = self.makeallspectrums(sensdict,npts)
+        (omeg,outspecs) = self.makeallspectrums(sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
     def makespectruminstanceopen(self,func,sensdict,npts):
         """This will create another instance of the Ionocont class
@@ -584,7 +584,7 @@ class IonoContainer(object):
         Output:
         Iono1 - An instance of the IonoContainer class with the spectrums as the
         param vectors and the param names will be the the frequency points """
-        (omeg,outspecs,npts) = self.makeallspectrumsopen(func,sensdict,npts)
+        (omeg,outspecs) = self.makeallspectrumsopen(func,sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
     def getDoppler(self,sensorloc=sp.zeros(3)):
         """ This will return the line of sight velocity.

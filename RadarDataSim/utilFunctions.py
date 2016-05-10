@@ -155,9 +155,11 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
         Inputs:
             pulse_shape: A numpy array that holds the shape of the single pulse.
             filt_freq - a numpy array that holds the complex frequency response of the filter
-            that will be used to shape the noise data.
+                that will be used to shape the noise data. It is assumed that the 
+                filter has been correctly scaled so the noise will have the 
+                desired energy/variance.
             delay - The number of samples that the pulse will be delayed into the
-            array of noise data to avoid any problems with filter overlap.
+                array of noise data to avoid any problems with filter overlap.
             rep - Number of indepent samples/pulses shaped by the filter.
             numtype - The type of numbers used for the output.
         Output
