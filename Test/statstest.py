@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """
 Created on Wed Mar 30 13:01:31 2016
-This will create a set of data 
+This will create a number of data sets for statistical analysis. It'll then make
+statistics and histograms of the output parameters.
 @author: John Swoboda
 """
 import os,inspect,glob
@@ -17,6 +18,11 @@ from RadarDataSim.analysisplots import analysisdump,maketi
 #from radarsystools.radarsystools import RadarSys
 
 def makehist(testpath,npulses):
+    """ This functions are will create histogram from data made in the testpath.
+        Inputs
+            testpath - The path that the data is located.
+            npulses - The number of pulses in the sim.
+    """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     params = ['Ne','Nepow','Te','Ti','Vi'] 
@@ -53,9 +59,17 @@ def makehist(testpath,npulses):
         fname= filetemplate+'_{0:0>5}Pulses.png'.format(npulses)
         plt.savefig(fname)
         plt.close(figmplf)
+        
 def makehistdata(params,maindir):
-    
-    
+    """ This will make the histogram data for the statistics.
+        Inputs
+            params -  A list of parameters that will have statistics created
+            maindir - The directory that the simulation data is held.
+        Outputs
+            datadict - A dictionary with the data values in numpy arrays. The keys are param names.
+            errordict - A dictionary with the data values in numpy arrays. The keys are param names.
+            errdictrel -  A dictionary with the error values in numpy arrays, normalized by the correct value. The keys are param names.
+    """
     ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
     inputfiledir = os.path.join(maindir,'Origparams')
 
