@@ -166,7 +166,6 @@ class RadarDataFile(object):
         Np = len(pulse2spec)
         lp_pnts = len(pulse)
         samp_num = sp.arange(lp_pnts)
-        isamp = 0
         N_rg = len(range_gates)# take the size
         N_samps = N_rg +lp_pnts-1
         angles = self.simparams['angles']

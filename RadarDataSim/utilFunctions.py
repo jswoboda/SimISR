@@ -160,7 +160,7 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
                 desired energy/variance.
             delay - The number of samples that the pulse will be delayed into the
                 array of noise data to avoid any problems with filter overlap.
-            rep - Number of indepent samples/pulses shaped by the filter.
+            rep - Number of independent samples/pulses shaped by the filter.
             numtype - The type of numbers used for the output.
         Output
             data_out - A repxLp of data that has been shaped by the filter. Points along
@@ -229,9 +229,9 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14)):
 #    wearr = (1./(N-sp.tile((arfor-arback)[:,sp.newaxis],(1,Np)))).astype(numtype)
     #acf_cent = sp.zeros((ep-ap,N))*(1+1j)
     acf_cent = sp.zeros((ep-ap,N),dtype=numtype)
-    for irng in  sp.arange(len(rng_ar_all)):
-        rng_ar1 =sp.int_(rng_ar_all[irng]) + arback
-        rng_ar2 = sp.int_(rng_ar_all[irng]) + arfor
+    for irng, curange in  enumerate(rng_ar_all):
+        rng_ar1 = int(curange) + arback
+        rng_ar2 = int(curange) + arfor
         # get all of the acfs across pulses # sum along the pulses
         acf_tmp = sp.conj(rawbeams[rng_ar1,:])*rawbeams[rng_ar2,:]#*wearr
         acf_ave = sp.sum(acf_tmp,1)
