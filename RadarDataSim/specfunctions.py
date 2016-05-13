@@ -137,11 +137,6 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
     pentsum = sp.zeros(grt0.size+1)
     pentsum[:-1] = grt0.flatten()
 
-    #penalties for densities not being equal
-#    nis = datablock[:-1,0]
-#    ne = datablock[-1,0]
-#    nisum = nis.sum()
-#    pentsum[-1] = sp.exp(-sp.absolute(ne-nisum)**2)
 
     specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
     (omeg,cur_spec,rcs) = specobj.getspecsep(datablock,specs,v_i,rcsflag=True)

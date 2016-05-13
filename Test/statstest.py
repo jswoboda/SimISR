@@ -229,7 +229,7 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis',
         if check_run :
             runsim(functlist_red,curfold,os.path.join(curfold,'stats.ini'),True)
         if 'analysis' in functlist:
-            analysisdump(curfold,)
+            analysisdump(curfold,config)
         if 'stats' in functlist:
             makehist(curfold,ip)
             

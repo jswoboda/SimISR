@@ -184,6 +184,36 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     data = scfft.ifft(mult_freq,axis=-1)
     data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]
     return data_out
+
+def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
+    """ This will make data by assuming the data is an autoregressive process. 
+        Inputs
+            spec - The properly weighted spectrum.
+            N - The size of the ar process used to model the filter.
+            pulse - The pulse shape.
+            rep1 - The number of repeats of the process.
+        Outputs
+            outdata - A numpy Array with the shape of the """
+    
+    lp = len(pulse)
+    r1 = scfft.ifft(scfft.ifftshift(spec))
+    rp1 = r1[:N]
+    rp2 = r1[1:N+1]
+    # Use Levinson recursion to find the coefs for the data
+    xr1 = sp.linalg.solve_toeplitz(rp1,rp2)
+    lpc = sp.r_[sp.ones(1),-xr1]
+    # The Gain  term.
+    G = sp.sqrt(sp.sum(sp.conjugate(r1[:N+1])*lpc))
+    Gvec= sp.r_[G,sp.zeros(N)]
+    Npnt = (N+1)*3
+    # Create the noise vector and normalize
+    xin = sp.random.randn(rep1,Npnt)+1j*sp.random.randn(rep1,Npnt)
+    xinsum = sp.tile(sp.sqrt(sp.sum(xin.real**2+xin.imag**2,axis=1))[:,sp.newaxis],(1,Npnt))
+    xin = xin/xinsum/sp.sqrt(2.)
+    outdata = sp.signal.lfilter(Gvec,lpc,xin,axis=1)
+    outpulse = sp.tile(pulse[sp.newaxis],(rep1,1))
+    outdata = outpulse*outdata[:,N:N+lp]
+    return outdata
 #%% Pulse shapes
 def GenBarker(blen):
     """This function will output a barker code pulse.

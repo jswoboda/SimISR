@@ -14,7 +14,7 @@ import pdb
 # My modules
 from IonoContainer import IonoContainer
 from const.physConstants import v_C_0, v_Boltz
-from utilFunctions import CenteredLagProduct,MakePulseDataRep, dict2h5,h52dict,readconfigfile, BarkerLag
+from utilFunctions import CenteredLagProduct,MakePulseDataRep, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag
 import specfunctions
 from analysisplots import plotspecsgen
 class RadarDataFile(object):
@@ -214,7 +214,8 @@ class RadarDataFile(object):
                     if len(curdataloc)==0:
                         print('\t\t No data for {0:d} of {1:d} in this time period'.format(ibn,Nbeams))
                         continue
-                    cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
+#                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
+                    cur_pulse_data = MakePulseDataRepLPC(pulse,cur_spec,20,len(curdataloc),numtype = simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
                     for idatn,idat in enumerate(curdataloc):
