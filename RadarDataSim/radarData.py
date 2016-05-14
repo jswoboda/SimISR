@@ -435,24 +435,24 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     minrg = -sumrule[0].min()
     maxrg = len(rng_vec)-sumrule[1].max()
     Nrng2 = len(rng_vec2)
-    # Set up Coordinate list
 
-
-
+    # Copy the lags
+    lagsData= DataLags['ACF'].copy()
+    # Set up the constants for the lags so they are now
+    # in terms of density fluxtuations. 
     angtile = sp.tile(ang_data,(Nrng2,1))
     rng_rep = sp.repeat(rng_vec2,ang_data.shape[0],axis=0)
     coordlist=sp.zeros((len(rng_rep),3))
     [coordlist[:,0],coordlist[:,1:]] = [rng_rep,angtile]
-    # set up the constants lags
-    lagsData= DataLags['ACF'].copy()
     (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
     rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags)) *1e3
     ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
     radar2acfmult = rng3d*rng3d/(pulsewidth*txpower*ksys3d)
     pulses = sp.tile(DataLags['Pulses'][:,:,sp.newaxis,sp.newaxis],(1,1,Nrng,Nlags))
     time_vec = time_vec[:Nt]
-    # average by the number of pulses
+    # Divid lags by number of pulses
     lagsData = lagsData/pulses
+    # Set up the noise lags and divid out the noise.
     lagsNoise=NoiseLags['ACF'].copy()
     lagsNoise = sp.mean(lagsNoise,axis=2)
     pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
