@@ -25,8 +25,8 @@ def makehist(testpath,npulses):
     """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-    params = ['Ne','Nepow','Te','Ti','Vi'] 
-    pvals = [1e12,1e12,2.5e3,2.5e3,0]
+    params = ['Ne','Te','Ti','Vi'] 
+    pvals = [1e11,1e11,2.5e3,2.5e3,0.]
     errdict = makehistdata(params,testpath)
     ernames = ['Data','Error','Error Percent']
     sig1 = sp.sqrt(1./npulses)
@@ -34,7 +34,7 @@ def makehist(testpath,npulses):
     
     for ierr, iername in enumerate(ernames):
         filetemplate= os.path.join(testpath,'AnalysisPlots',iername)
-        (figmplf, axmat) = plt.subplots(3, 2,figsize=(20, 15), facecolor='w')
+        (figmplf, axmat) = plt.subplots(2, 2,figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         for ipn, iparam in enumerate(params):
             plt.sca(axvec[ipn])
@@ -52,7 +52,7 @@ def makehist(testpath,npulses):
                 sig=sig1*pvals[ipn]
             x = sp.linspace(xlim[0],xlim[1],100)
             den1 = sp.stats.norm(x0,sig).pdf(x)
-            plt.plot(x,den1,'g--')
+            #plt.plot(x,den1,'g--')
             
             axvec[ipn].set_title(iparam)
         figmplf.suptitle(iername +' Pulses: {0}'.format(npulses), fontsize=20)
@@ -172,7 +172,7 @@ def makedata(testpath):
     finalpath = os.path.join(testpath,'Origparams')
     if not os.path.isdir(finalpath):
         os.mkdir(finalpath)
-    data = sp.array([1e12,2500.])
+    data = sp.array([1e11,2500.])
     z = sp.linspace(50.,1e3,50)
     nz = len(z)
     params = sp.tile(data[sp.newaxis,sp.newaxis,sp.newaxis,:],(nz,1,2,1))
@@ -220,8 +220,9 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis',
         allfolds.append(curfold)
         if not os.path.isdir(curfold):
             os.mkdir(curfold)
-            makedata(curfold)
+            
             configfilesetup(curfold,ip)
+        makedata(curfold)
         config = os.path.join(curfold,'stats.ini')
         (sensdict,simparams) = readconfigfile(config)
 #        rtemp = RadarSys(sensdict,simparams['Rangegatesfinal'],ip)

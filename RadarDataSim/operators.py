@@ -13,14 +13,25 @@ from IonoContainer import IonoContainer
 import scipy as sp
 import pdb
 class RadarSpaceTimeOperator(object):
-
+    """ This is a class to hold the operator methods for the ISR simulator."""
     def __init__(self,ionoin=None,configfile=None,timein=None,RSTOPinv=None,invmat=None):
-        d2r = sp.pi/180.0
-        if RSTOPinv is None:
-            (sensdict,simparams) = readconfigfile(configfile)
-
-
+        """ This will create the RadarSpaceTimeOperator object.
+            Inputs
+                ionoin - The input ionocontainer. This can be either an string that is a ionocontainer file,
+                    a list of ionocontainer objects or a list a strings to ionocontainer files
+                config  - The ini file that used to set up the simulation.
+                timein - A Ntx2 numpy array of times.
+                RSTOPinv - The inverse operator object.
+                invmat - The inverse matrix to the original operator.
+        """
             
+        d2r = sp.pi/180.0
+
+        # First determine if this will be an inverse operator. If not build up the object.
+        if RSTOPinv is None:
+
+            (sensdict,simparams) = readconfigfile(configfile)
+            # determine if the input ionocontainer is a string, a list of strings or a list of ionocontainers.
             if isinstance(ionoin,basestring):
                 ionoin = IonoContainer.readh5(ionoin)
             elif isinstance(ionoin,list):
@@ -31,13 +42,14 @@ class RadarSpaceTimeOperator(object):
             #Input location
             self.Cart_Coords_In = ionoin.Cart_Coords
             self.Sphere_Coords_In = ionoin.Sphere_Coords
-            # time
+
+            # Set the input times
             if timein is None:
                 self.Time_In = ionoin.Time_Vector
             else:
                 self.Time_In = timein
 
-            #output locations
+            #Create an array of output location based off of the inputs
             rng_vec2 = simparams['Rangegatesfinal']
             nrgout = len(rng_vec2)
 
@@ -62,6 +74,7 @@ class RadarSpaceTimeOperator(object):
             self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))
             self.simparams=simparams
             self.sensdict=sensdict
+            # create the matrix
             (self.RSTMat,self.blocks,self.blocksize,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector,configfile)
         elif configfile is None:
 
@@ -142,6 +155,8 @@ class RadarSpaceTimeOperator(object):
                                ver=1,coordvecs = ['r','theta','phi'],paramnames=curiono.Param_Names,species=curiono.Species,
                                velocity=curiono.Velocity)
         return outiono
+
+    
     def invertdata(self,ionoin,alpha,tik_type = 'i',type=None,dims=None,order='C',max_it=100,tol=1e-2):
 
         ntin = self.Time_In.shape[0]
