@@ -25,7 +25,16 @@ from RadarDataSim.specfunctions import ISRspecmakeout,ISRSfitfunction,makefitsur
 
 def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs Time'):
     """ This will create a altitude time image for the data for ionocontainer files
-    that are in sphereical coordinates."""
+        that are in sphereical coordinates.
+        Inputs 
+            Times - A list of times that will be plotted.
+            configfile - The INI file with the simulation parameters that will be useds.
+            maindir - The directory the images will be saved in.
+            params - List of Parameter names that will be ploted. These need to match
+                in the ionocontainer names.
+            filetemplate - The first part of a the file names.
+            suptitle - The supertitle for the plots.
+    """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
 #    rc('text', usetex=True)
@@ -125,7 +134,8 @@ def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='f
         y_acf - the complex ACF used to create the errors.
         yerr - The standard deviation of the acf measurement.
         filetemplate - The template on how the file will be named.
-        suptitle - The super title for the plots. """
+        suptitle - The super title for the plots. 
+    """
     (sensdict,simparams) = readconfigfile(configfile)
     specs = simparams['species']
     nspecs = len(specs)
@@ -226,10 +236,6 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
             maindir - The directory the images will be saved in.
             params - List of Parameter names that will be ploted. These need to match
                 in the ionocontainer names.
-            indisp - A bool that determines if the input parameters will be displayed.
-                default is True.
-            fitdisp - A bool that determines if the fitted parameters will be displayed.
-                default is True.
             filetemplate - The first part of a the file names.
             suptitle - The supertitle for the plots.
             werrors - A bools that determines if the errors will be plotted.
@@ -401,16 +407,17 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
 def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
               fitdisp=True,filetemplate='spec',suptitle = 'Spectrum Comparison'):
     """ This will create a set of images that compare the input ISR spectrum to the
-    output ISR spectrum from the simulator.
-    Inputs
-    coords - An Nx3 numpy array that holds the coordinates of the desired points.
-    times - A numpy list of times in seconds.
-    configfile - The name of the configuration file used.
-    cartcoordsys - (default True)A bool, if true then the coordinates are given in cartisian if
-    false then it is assumed that the coords are given in sphereical coordinates.
-    specsfilename - (default None) The name of the file holding the input spectrum.
-    acfname - (default None) The name of the file holding the estimated ACFs.
-    filetemplate (default 'spec') This is the beginning string used to save the images."""
+        output ISR spectrum from the simulator.
+        Inputs
+        coords - An Nx3 numpy array that holds the coordinates of the desired points.
+        times - A numpy list of times in seconds.
+        configfile - The name of the configuration file used.
+        cartcoordsys - (default True)A bool, if true then the coordinates are given in cartisian if
+        false then it is assumed that the coords are given in sphereical coordinates.
+        specsfilename - (default None) The name of the file holding the input spectrum.
+        acfname - (default None) The name of the file holding the estimated ACFs.
+        filetemplate (default 'spec') This is the beginning string used to save the images.
+    """
 
     acfname = os.path.join(maindir,'ACF','00lags.h5')
     ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
@@ -543,18 +550,18 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
 
 def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
              fitdisp=True, filetemplate='acf',suptitle = 'ACF Comparison'):
-
     """ This will create a set of images that compare the input ISR acf to the
-    output ISR acfs from the simulator.
-    Inputs
-    coords - An Nx3 numpy array that holds the coordinates of the desired points.
-    times - A numpy list of times in seconds.
-    configfile - The name of the configuration file used.
-    cartcoordsys - (default True)A bool, if true then the coordinates are given in cartisian if
-    false then it is assumed that the coords are given in sphereical coordinates.
-    specsfilename - (default None) The name of the file holding the input spectrum.
-    acfname - (default None) The name of the file holding the estimated ACFs.
-    filetemplate (default 'spec') This is the beginning string used to save the images."""
+        output ISR acfs from the simulator.
+        Inputs
+        coords - An Nx3 numpy array that holds the coordinates of the desired points.
+            times - A numpy list of times in seconds.
+            configfile - The name of the configuration file used.
+            cartcoordsys - (default True)A bool, if true then the coordinates are given in cartisian if
+            false then it is assumed that the coords are given in sphereical coordinates.
+            specsfilename - (default None) The name of the file holding the input spectrum.
+            acfname - (default None) The name of the file holding the estimated ACFs.
+            filetemplate (default 'spec') This is the beginning string used to save the images.
+    """
 #    indisp = specsfilename is not None
 #    acfdisp = acfname is not None
 
@@ -734,11 +741,12 @@ def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png'
 
 def analysisdump(maindir,configfile,suptitle=None):
     """ This function will perform all of the plotting functions in this module
-    given the main directory that all of the files live. 
-    Inputs
-        maindir - The directory for the simulation. 
-        configfile - The name of the configuration file used.
-        suptitle - The supertitle used on the files. """
+        given the main directory that all of the files live. 
+        Inputs
+            maindir - The directory for the simulation. 
+            configfile - The name of the configuration file used.
+            suptitle - The supertitle used on the files. 
+    """
     plotdir = os.path.join(maindir,'AnalysisPlots')
     if not os.path.isdir(plotdir):
         os.mkdir(plotdir)
