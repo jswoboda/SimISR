@@ -13,7 +13,21 @@ from IonoContainer import IonoContainer
 import scipy as sp
 import pdb
 class RadarSpaceTimeOperator(object):
-    """ This is a class to hold the operator methods for the ISR simulator."""
+    """ This is a class to hold the operator methods for the ISR simulator.
+    
+        Variables:
+           Cart_Cords_In - Ntbegx3 array of cartisian coordinates for the input space.
+           Sphere_Cords_In - Ntbegx3 array of spherical coordinates for the input space.
+           Cart_Cords_Out - Ntoutx3 array of cartisian coordinates for the output space.
+           Sphere_Cords_Out - Ntoutx3 array of spherical coordinates for the output space.
+           Time_In - A Ntbegx2 numpy array with the start and stop times of the input data.
+           Time_Out - A Ntoutx2 numpy array with the start and stop times of the output data.
+           RSTMat - A list of matricies or a single matrix that is the forward between physical space
+               to the discrete samples space of the radar.
+           blocks - A tuple that holds the number of block matricies in overall forward operator.
+           blocksize - A tuple that holds the shape of the outmatrix size.
+           blockloc - An Ntout x Ntbeg array that holds the corresponding spatial forward model.
+    """
     def __init__(self,ionoin=None,configfile=None,timein=None,RSTOPinv=None,invmat=None):
         """ This will create the RadarSpaceTimeOperator object.
             Inputs
@@ -90,7 +104,8 @@ class RadarSpaceTimeOperator(object):
 
 
     def mult_iono(self,ionoin):
-
+        """ This will apply the forward model to the contents of an ionocontainer object.
+        """
         ntin = self.Time_In.shape[0]
         matsttimes = self.Time_In[:,0]
         ntout = self.Time_Out.shape[0]
@@ -158,7 +173,8 @@ class RadarSpaceTimeOperator(object):
 
     
     def invertdata(self,ionoin,alpha,tik_type = 'i',type=None,dims=None,order='C',max_it=100,tol=1e-2):
-
+        """ This will invert the matrix and create a new operator object.
+        """
         ntin = self.Time_In.shape[0]
         matsttimes = self.Time_Out[:,0]
         ntout = self.Time_Out.shape[0]
@@ -226,9 +242,22 @@ class RadarSpaceTimeOperator(object):
                     (invdata[:,iin,i], error, iter, flag) = cgmat(Ctik, xin, bdata[:,iin,i], M, max_it, tol)
 
 def makematPA(Sphere_Coords,timein,configfile,vel=None):
-    """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc matrix. The output space will have range repeated first,
-    then beams then time. The coordinates will be [t0,b0,r0],[t0,b0,r1],[t0,b0,r2],...
-    [t0,b1,r0],[t0,b1,r1], ... [t1,b0,r0],[t1,b0,r1],...[t1,b1,r0]..."""
+    """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc sparse matrix for the space time operator. 
+       The output space will have range repeated first, then beams then time. 
+       The coordinates will be [t0,b0,r0],[t0,b0,r1],[t0,b0,r2],...
+       [t0,b1,r0],[t0,b1,r1], ... [t1,b0,r0],[t1,b0,r1],...[t1,b1,r0]...
+       Inputs
+           Sphere_Coords - A Nlocx3 array of the spherical coordinates of the input data.
+           timein - A Ntbegx2 numpy array with the start and stop times of the input data.
+           configfile - The ini file used for the simulation configuration.
+           vel - A NlocxNtx3 numpy array of velocity.
+       Outputs
+           outmat - A list of matricies or a single matrix that is the forward between physical space
+               to the discrete samples space of the radar.
+           blocks - A tuple that holds the number of block matricies in overall forward operator.
+           blocksize - A tuple that holds the shape of the outmatrix size.
+           blockloc - An Ntout x Ntbeg array that holds the corresponding spatial forward model.
+    """
     #
     (sensdict,simparams) = readconfigfile(configfile)
     timeout = simparams['Timevec']
@@ -341,13 +370,16 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
 
 
 def saveoutmat(filename,Sphere_Coords,timein,configfile):
-
+    """ This will save the outmatrix into an h5 file.
+    """
     outmat = makematPA(Sphere_Coords,timein,configfile)
     h5file = tables.openFile(filename, mode = "w", title = "Radar Matrix out.")
     h5file.createArray('/','RadarMatrix',outmat,'Static array')
     h5file.close()
 
 def readradarmat(filename):
+    """ This will read in a precomuted matrix form an h5 file.
+    """
     h5file=tables.openFile(filename)
     outmat = h5file.root.RadarMatrix.read()
     h5file.close()
@@ -358,7 +390,9 @@ def getOverlap(a, b):
 
 #%% Math Functions
 def cgmat(A,x,b,M=None,max_it=100,tol=1e-8):
-
+    """ This function will performa conjuguate gradient search to find the inverse of
+        an operator A, given a starting point x, and data b.
+    """
     if M is None:
         M= sp.diag(A)
     bnrm2 = sp.linalg.norm(b)
@@ -385,7 +419,10 @@ def cgmat(A,x,b,M=None,max_it=100,tol=1e-8):
 
 
 def diffmat(dims,order = 'C'):
-
+    """ This function will return a tuple of difference matricies for data from an 
+        Nd array that has been rasterized. The order parameter determines whether 
+        the array was rasterized in a C style (python) of FORTRAN style (MATLAB).
+    """
     xdim = dims[0]
     ydim = dims[1]
     dims[0]=ydim
