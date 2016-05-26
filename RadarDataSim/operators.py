@@ -112,7 +112,9 @@ class RadarSpaceTimeOperator(object):
         ntcounts =sp.zeros(ntout)
         nlout = self.Cart_Coords_Out.shape[0]
         blocklocs = self.blocklocs
-
+        amb_dict = self.simparams['amb_dict']
+        ambmat = amb_dict['WttMatrix']
+        
         firsttime = True
         if isinstance(ionoin,list):
             ionolist = ionoin
@@ -150,6 +152,9 @@ class RadarSpaceTimeOperator(object):
                     ntcounts[iin]=ntcounts[iin]+1
                     for iparam in range(np):
                         outdata[:,iout,iparam]=mainmat.dot(ionodata[:,iin,iparam])
+                    # HACK apply ambiugity function using matrix.
+                    tempdata = outdata[:,iout].transpose()
+                    outdata[:,iout] = sp.transpose(sp.dot(ambmat,tempdata))
 
             else:
                 for ibn,(iin,iout) in enumerate(b_locs):
@@ -157,7 +162,9 @@ class RadarSpaceTimeOperator(object):
                     mainmat=self.RSTMat[b_locsind[ibn]]
                     for iparam in range(np):
                         outdata[:,iout,iparam]=mainmat.dot(ionodata[:,iin,iparam])
-
+                     # HACK apply ambiugity function using matrix.
+                    tempdata = outdata[:,iout].transpose()
+                    outdata[:,iout] = sp.transpose(sp.dot(ambmat,tempdata))
         # If any times had no returns remove them
         # divid out data that was added together
         outkeep = ntcounts>0

@@ -136,6 +136,8 @@ def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='f
         filetemplate - The template on how the file will be named.
         suptitle - The super title for the plots. 
     """
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
     (sensdict,simparams) = readconfigfile(configfile)
     specs = simparams['species']
     nspecs = len(specs)
@@ -419,6 +421,8 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         filetemplate (default 'spec') This is the beginning string used to save the images.
     """
 
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
     acfname = os.path.join(maindir,'ACF','00lags.h5')
     ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
     specsfiledir = os.path.join(maindir,'Spectrums')
@@ -565,6 +569,8 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
 #    indisp = specsfilename is not None
 #    acfdisp = acfname is not None
 
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
     acfname = os.path.join(maindir,'ACF','00lags.h5')
     ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
 
@@ -755,7 +761,7 @@ def analysisdump(maindir,configfile,suptitle=None):
     filetemplate1 = os.path.join(maindir,'AnalysisPlots','Spec')
     filetemplate3 = os.path.join(maindir,'AnalysisPlots','ACF')
     filetemplate4 = os.path.join(maindir,'AnalysisPlots','AltvTime')
-
+Ne
     (sensdict,simparams) = readconfigfile(configfile)
     angles = simparams['angles']
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
