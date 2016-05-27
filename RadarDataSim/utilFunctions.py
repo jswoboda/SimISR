@@ -41,7 +41,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
         for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity
         function on a pulses.
     """
-    
+    nspec = int(nspec)
     nlags = len(pulse)
     # make the sinc
     nsamps = sp.floor(8.5*m_up)

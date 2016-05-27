@@ -8,7 +8,7 @@ import os, inspect,glob
 import scipy as sp
 import shutil
 from RadarDataSim.utilFunctions import makedefaultfile
-from RadarDataSim.operatorstuff import makematPA
+from RadarDataSim.operators import makematPA
 from RadarDataSim.IonoContainer import MakeTestIonoclass
 import RadarDataSim.runsim as runsim
 

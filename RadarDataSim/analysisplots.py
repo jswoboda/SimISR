@@ -761,7 +761,6 @@ def analysisdump(maindir,configfile,suptitle=None):
     filetemplate1 = os.path.join(maindir,'AnalysisPlots','Spec')
     filetemplate3 = os.path.join(maindir,'AnalysisPlots','ACF')
     filetemplate4 = os.path.join(maindir,'AnalysisPlots','AltvTime')
-Ne
     (sensdict,simparams) = readconfigfile(configfile)
     angles = simparams['angles']
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])

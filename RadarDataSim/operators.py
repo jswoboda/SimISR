@@ -131,8 +131,7 @@ class RadarSpaceTimeOperator(object):
             ionodata = curiono.Param_List
             ionotime = curiono.Time_Vector
             ionocart = curiono.Cart_Coords
-            np = len(self.simparams['Pulse'])
-            ionodata=scfft.ifft(scfft.ifftshift(ionodata,axes=-1),axis=-1)[:,:,:np]
+            ionodata=scfft.fftshift(scfft.ifft(scfft.ifftshift(ionodata,axes=-1),axis=-1),axes=-1)
             assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
 
             ionosttimes = ionotime[:,0]
@@ -140,8 +139,10 @@ class RadarSpaceTimeOperator(object):
             keeptimes = sp.arange(ntin)[sp.in1d(matsttimes,ionosttimes)]
 
             (nl,nt,np) = ionodata.shape
+            
+            npout = len(self.simparams['Pulse'])
             if firsttime:
-                outdata=sp.zeros((nlout,ntout,np))
+                outdata=sp.zeros((nlout,ntout,npout))
                 firsttime==False
 
             b_locsind = sp.arange(len(blocklocs))[sp.in1d(blocklocs[:,0],keeptimes)]
@@ -150,20 +151,22 @@ class RadarSpaceTimeOperator(object):
                 mainmat = self.RSTMat[0]
                 for ibn,(iin,iout) in enumerate(b_locs):
                     ntcounts[iin]=ntcounts[iin]+1
+                    tempdata = sp.zeros((np,nlout))
                     for iparam in range(np):
-                        outdata[:,iout,iparam]=mainmat.dot(ionodata[:,iin,iparam])
+                        tempdata[iparam]=mainmat.dot(ionodata[:,iin,iparam])
                     # HACK apply ambiugity function using matrix.
-                    tempdata = outdata[:,iout].transpose()
+                   
                     outdata[:,iout] = sp.transpose(sp.dot(ambmat,tempdata))
 
             else:
                 for ibn,(iin,iout) in enumerate(b_locs):
+                    tempdata = sp.zeros((np,nlout))
                     ntcounts[iout]=ntcounts[iout]+1
                     mainmat=self.RSTMat[b_locsind[ibn]]
                     for iparam in range(np):
-                        outdata[:,iout,iparam]=mainmat.dot(ionodata[:,iin,iparam])
+                        tempdata[iparam]=mainmat.dot(ionodata[:,iin,iparam])
                      # HACK apply ambiugity function using matrix.
-                    tempdata = outdata[:,iout].transpose()
+                    
                     outdata[:,iout] = sp.transpose(sp.dot(ambmat,tempdata))
         # If any times had no returns remove them
         # divid out data that was added together
