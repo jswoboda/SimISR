@@ -374,11 +374,11 @@ class RadarDataFile(object):
                     pulses[itn,ibeam] = len(beamlocstmp)
                     pulsesN[itn,ibeam] = len(beamlocstmp)
                     outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),
-                        numtype=self.simparams['dtype'], pulse=pulse)
+                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
                     outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
-                        numtype=self.simparams['dtype'], pulse=pulse)
+                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
                     outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
-                        numtype=self.simparams['dtype'], pulse=pulse)
+                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
             else:
                 for ibeam,ibeamlist in enumerate(self.simparams['outangles']):
                     print("\t\tBeam {0:d} of {1:d}".format(ibeam,Nbeams))
@@ -395,11 +395,11 @@ class RadarDataFile(object):
                     pulses[itn,ibeam] = len(beamlocstmp)
                     pulsesN[itn,ibeam] = len(beamlocstmp)
                     outdata[itn,ibeam] = lagfunc(inputdata *ksysmult,
-                        numtype=self.simparams['dtype'], pulse=pulse)
+                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
                     outnoise[itn,ibeam] = lagfunc(noisedata*ksysmultn,
-                        numtype=self.simparams['dtype'], pulse=pulse)
+                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
                     outaddednoise[itn,ibeam] = lagfunc(noisedataadd*ksysmultna,
-                        numtype=self.simparams['dtype'], pulse=pulse)
+                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
 
         # Create output dictionaries and output data
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,

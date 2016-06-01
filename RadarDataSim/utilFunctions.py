@@ -229,7 +229,7 @@ def GenBarker(blen):
     outar.astype(sp.float64)
     return outar
 #%% Lag Functions
-def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14)):
+def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14),lagtype='centered'):
     """ This function will create a centered lag product for each range using the
     raw IQ given to it.  It will form each lag for each pulse and then integrate
     all of the pulses.
@@ -238,6 +238,7 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14)):
         samples per pulse and Npu is number of pulses
         N - The number of lags that will be created, default is 14.
         numtype - The type of numbers used to create the data. Default is sp.complex128
+        lagtype - Can be centered forward or backward.
     Output:
         acf_cent - This is a NrxNl complex numpy array where Nr is number of
         range gate and Nl is number of lags.
@@ -248,9 +249,17 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14)):
     (Nr,Np) = rawbeams.shape
 
     # Make masks for each piece of data
-    arex = sp.arange(0,N/2.0,0.5);
-    arback = sp.array([-sp.int_(sp.floor(k)) for k in arex]);
-    arfor = sp.array([sp.int_(sp.ceil(k)) for k in arex]) ;
+    if lagtype=='forward':
+        arback = sp.zeros(N,dtype=int)
+        arfor = sp.arange(N,dtype=int)
+        
+    elif lagtype=='backward':
+        arback = sp.arange(N,dtype=int)
+        arfor = sp.zeros(N,dtype=int)
+    else:
+        arex = sp.arange(0,N/2.0,0.5);
+        arback = -sp.floor(sp.arange(0,nlags/2.0,0.5)).astype(int)
+        arfor = sp.ceil(sp.arange(0,nlags/2.0,0.5)).astype(int)
 
     # figure out how much range space will be kept
     ap = sp.nanmax(abs(arback));
@@ -269,7 +278,7 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14)):
     return acf_cent
 
 
-def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13)):
+def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13),lagtype=None):
     """This will process barker code data by filtering it with a barker code pulse and
     then sum up the pulses.
     Inputs
@@ -293,6 +302,61 @@ def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13)):
     outdata = sp.sum(outdata,axis=-1)
     #increase the number of axes
     return outdata[len(pulse)-1:,sp.newaxis]
+
+def makesumrule(ptype,plen,ts,lagtype='centered'):
+    """ This function will return the sum rule.
+        Inputs
+            ptype - The type of pulse.
+            plen - Length of the pulse in seconds.
+            ts - Sample time in seconds.
+            lagtype -  Can be centered forward or backward.
+        Output
+            sumrule - A 2 x nlags numpy array that holds the summation rule.
+    """
+    nlags = sp.round_(plen/ts)
+    if ptype.lower()=='long':
+        if lagtype=='forward':
+            arback=-sp.arange(nlags,dtype=int)
+            arforward = sp.zeros(nlags,dtype=int)
+        elif lagtype=='backward':
+            arback = sp.zeros(nlags,dtype=int)
+            arforward=sp.arange(nlags,dtype=int)
+        else:
+            arback = -sp.ceil(sp.arange(0,nlags/2.0,0.5)).astype(int)
+            arforward = sp.floor(sp.arange(0,nlags/2.0,0.5)).astype(int)
+        sumrule = sp.array([arback,arforward])
+    elif ptype.lower()=='barker':
+        sumrule = sp.array([[0],[0]])
+    return sumrule
+
+#%% Make pulse
+def makepulse(ptype,plen,ts):
+    """ This will make the pulse array.
+        Inputs
+            ptype - The type of pulse used.
+            plen - The length of the pulse in seconds.
+            ts - The sampling rate of the pulse.
+        Output
+            pulse - The pulse array that will be used as the window in the data formation.
+            plen - The length of the pulse with the sampling time taken into account.
+    """
+    nsamps = sp.round_(plen/ts)
+
+    if ptype.lower()=='long':
+        pulse = sp.ones(nsamps)
+        plen = nsamps*ts
+
+    elif ptype.lower()=='barker':
+        blen = sp.array([1,2, 3, 4, 5, 7, 11,13])
+        nsampsarg = sp.argmin(sp.absolute(blen-nsamps))
+        nsamps = blen[nsampsarg]
+        pulse = GenBarker(nsamps)
+        plen = nsamps*ts
+#elif ptype.lower()=='ac':
+    else:
+        raise ValueError('The pulse type %s is not a valide pulse type.' % (ptype))
+
+    return (pulse,plen)
 
 
 #%% dictionary file
@@ -591,7 +655,9 @@ def readconfigfile(fname):
     rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
     simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
     simparams['Rangegates']=rng_gates
-    sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+    if not 'lagtype' in simparams.keys():
+        simparams['lagtype']='centered'
+    sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'],simparams['lagtype'])
     simparams['SUMRULE'] = sumrule
     minrg = -sumrule[0].min()
     maxrg = len(rng_gates)-sumrule[1].max()
@@ -611,33 +677,4 @@ def readconfigfile(fname):
     elif simparams['Pulsetype'].lower()!='barker':
         warnings.warn('No start file given',UserWarning)
     return(sensdict,simparams)
-#%% Make pulse
-def makepulse(ptype,plen,ts):
 
-    nsamps = sp.round_(plen/ts)
-
-    if ptype.lower()=='long':
-        pulse = sp.ones(nsamps)
-        plen = nsamps*ts
-
-    elif ptype.lower()=='barker':
-        blen = sp.array([1,2, 3, 4, 5, 7, 11,13])
-        nsampsarg = sp.argmin(sp.absolute(blen-nsamps))
-        nsamps = blen[nsampsarg]
-        pulse = GenBarker(nsamps)
-        plen = nsamps*ts
-#elif ptype.lower()=='ac':
-    else:
-        raise ValueError('The pulse type %s is not a valide pulse type.' % (ptype))
-
-    return (pulse,plen)
-
-def makesumrule(ptype,plen,ts):
-    nlags = sp.round_(plen/ts)
-    if ptype.lower()=='long':
-        arback = -sp.ceil(sp.arange(0,nlags/2.0,0.5)).astype(int)
-        arforward = sp.floor(sp.arange(0,nlags/2.0,0.5)).astype(int)
-        sumrule = sp.array([arback,arforward])
-    elif ptype.lower()=='barker':
-        sumrule = sp.array([[0],[0]])
-    return sumrule
