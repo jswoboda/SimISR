@@ -4,6 +4,7 @@ Holds the IonoContainer class that contains the ionospheric parameters.
 @author: John Swoboda
 """
 import os
+import glob
 import inspect
 import pdb
 import posixpath
@@ -386,7 +387,7 @@ class IonoContainer(object):
         
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
-        fileslist = sp.vstack([fileslist[i] for i in sortlist]).flatten()
+        fileslist = sp.vstack([fileslist[i] for i in sortlist]).flatten().astype('int64')
         outime = sp.hstack(timelist_s)
         return (sortlist,outime,fileslist,timebeg,timelist_s)
         
@@ -562,7 +563,7 @@ class IonoContainer(object):
         assert sp.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
         assert self.Species== self2.Species, "Need to have the same species"
 
-        self.Time_Vector = sp.concatenate((self.Time_Vector,self2.Time_Vector))
+        self.Time_Vector = sp.concatenate((self.Time_Vector,self2.Time_Vector),0)
         self.Velocity = sp.concatenate((self.Velocity,self2.Velocity),1)
         self.Param_List = sp.concatenate((self.Param_List,self2.Param_List),1)
     def makespectruminstance(self,sensdict,npts):
@@ -610,25 +611,38 @@ class IonoContainer(object):
     def copy(self):
         """This is the function to copy an instance of the class."""
         return copy.copy(self)
-#        vardict = vars(self)
-#        outdict = {}
-#        for ikey in vardict.keys():
-#            obj1 = vardict[ikey]
-#            if type(obj1)==str:
-#                outdict[ikey] = (obj1+'.')[:-1]
-#            else:
-#                outdict[ikey] = obj1.copy()
-#
-#        if 'coordvecs' in outdict.keys():
-#            if [str(x) for x in outdict['coordvecs']] == ['r','theta','phi']:
-#                outdict['ver']=1
-#                outdict['coordlist']=outdict['coordlist2']
-#        del outdict['coordlist2']
-#        return IonoContainer(**outdict)
 
     def deepcopy(self):
         return copy.deepcopy(self)
 #%%    utility functions
+def makeionocombined(datapath,ext='.h5'):
+    """ This function make an ionocontainer for all of the points in a folder or a list
+        Inputs
+            datapath - Can be a string containing the folder holding the ionocontaner files or can be 
+                list of file names.
+            ext - (default '.h5') The extention of the files that will be used.
+        Output 
+            outiono - The ionocontainer with of all the time points.
+
+        """
+    if isinstance(datapath,basestring):
+        ionocontlist = glob.glob(os.path.join(datapath,'*'+ext))
+    else:
+        ionocontlist = datapath
+
+    (sortlist,outime,fileslist,timebeg,timelist_s)=IonoContainer.gettimes(ionocontlist)
+    readlist = [ionocontlist[i] for i in fileslist]
+
+    for i,iname in enumerate(readlist):
+        if ext=='.h5':
+            curiono = IonoContainer.readh5(iname)
+        elif ext=='.mat':
+            curiono = IonoContainer.readmat(iname)
+        if i==0:
+            outiono=curiono.copy()
+        else:
+            outiono.combinetimes(curiono)
+    return outiono
 def pathparts(path):
     '''This will break up a path name into componenets using recursion
     Input - path a string seperated by a posix path seperator.
