@@ -258,8 +258,8 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14),lagtype
         arfor = sp.zeros(N,dtype=int)
     else:
         arex = sp.arange(0,N/2.0,0.5);
-        arback = -sp.floor(sp.arange(0,nlags/2.0,0.5)).astype(int)
-        arfor = sp.ceil(sp.arange(0,nlags/2.0,0.5)).astype(int)
+        arback = -sp.floor(sp.arange(0,N/2.0,0.5)).astype(int)
+        arfor = sp.ceil(sp.arange(0,N/2.0,0.5)).astype(int)
 
     # figure out how much range space will be kept
     ap = sp.nanmax(abs(arback));
