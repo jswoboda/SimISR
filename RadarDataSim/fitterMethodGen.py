@@ -74,9 +74,7 @@ class Fitterionoconainer(object):
         specs = self.simparams['species']
         nspecs = len(specs)
         ni = nspecs-1
-        new_order = sp.arange(nx)
-        new_order[2*ni] = nx-1
-        new_order[-2:]=new_order[-2:]-1
+
         firstparam=True
         L = self.sensdict['taurg']*2
         dof = L-nx
