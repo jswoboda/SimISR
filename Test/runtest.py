@@ -52,7 +52,7 @@ def makedata(testpath,tint):
     z = (50.+sp.arange(50)*10.)
     nz = len(z)
     params = sp.tile(data[sp.newaxis,sp.newaxis],(nz,1,1,1))
-    epnt = range(20,25)
+    epnt = range(20,22)
     p2 = sp.tile(params,(1,4,1,1))
     #enhancement in Ne
     p2[epnt,1,:,0]=5e11

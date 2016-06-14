@@ -538,7 +538,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
         for ilag in range(Nlags):
             lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
-            sigsSsum[irngnew,ilag] = sp.sqrt(sp.power(sigS[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag],2).mean(axis=0))
+            sigsSsum[irngnew,ilag] = (ilag+1.)*sp.sqrt(sp.power(sigS[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag],2).mean(axis=0))
     # Put everything in a parameter list
     Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=lagsData.dtype)
     # Put everything in a parameter list
