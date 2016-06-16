@@ -99,7 +99,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     # amb1d=amb1d/plen
     kvec = tau*Fsorg
     vol = 1.
-    amb1d = ((-kvec**2/(nlags*vol))+kvec*(nlags-vol)/(nlags*vol)+1)/(kvec+1)
+    amb1d = ((-kvec**2/(nlags*vol))+kvec*(nlags-vol)/(nlags*vol)+1.)#/(kvec+1)
     amb1d[kvec<0]=0.
     amb1d[kvec>=nlags]=0.
     kp = sp.argwhere(amb1d>sp.finfo(float).eps).flatten()

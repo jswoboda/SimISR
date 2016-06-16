@@ -50,7 +50,7 @@ class Fitterionoconainer(object):
         else:                    
             Nesig = sp.absolute(self.sig.Param_List[:,:,0]*(1.0+Tratio))
         return (Ne,Nesig)
-    def fitdata(self,fitfunc,startvalfunc,d_funcfunc=defaultparamsfunc,exinputs=[]):
+    def fitdata(self,fitfunc,startvalfunc,d_funcfunc=defaultparamsfunc,exinputs=[],fittimes=None):
         """This funcition is used to fit data given in terms of lags """
 
         # get intial guess for NE
@@ -63,6 +63,14 @@ class Fitterionoconainer(object):
         # get the data and noise lags
         lagsData= self.Iono.Param_List.copy()
         (Nloc,Nt,Nlags) = lagsData.shape
+        # Need list of times to save time
+        if fittimes is None:
+            fittimes = range(Nt)
+        else:
+            if len(fittimes)==0:
+                fittimes=range(Nt)
+            else:
+                Nt=len(fittimes)
 
 
         print('\nData Now being fit.')
@@ -80,7 +88,7 @@ class Fitterionoconainer(object):
         dof = L-nx
         if dof<=0:
             dof=1
-        for itime in range(Nt):
+        for itime in fittimes:
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
                 print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))

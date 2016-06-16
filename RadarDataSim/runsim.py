@@ -112,10 +112,10 @@ def fitdata(basedir,configfile,optinputs):
          """
     # determine the input folders which can be ACFs from the full simulation
     dirdict = {'fitting':('ACF','Fitted'),'fittingmat':('ACFMat','FittedMat'),'fittinginv':('ACFInv','FittedInv')}
-    dirio = dirdict[optinputs]
+    dirio = dirdict[optinputs[0]]
     inputdir = os.path.join(basedir,dirio[0])
     outputdir = os.path.join(basedir,dirio[1])
-
+    fitlist=optinputs[1]
     dirlist = glob.glob(os.path.join(inputdir,'*lags.h5'))
     dirlistsig = glob.glob(os.path.join(inputdir,'*sigs.h5'))
 
@@ -125,7 +125,7 @@ def fitdata(basedir,configfile,optinputs):
     else:
         Ionoinsig=IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
-    (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']])
+    (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']],fittimes=fitlist)
 
 
     if fitterone.simparams['Pulsetype'].lower() == 'barker':
@@ -166,8 +166,14 @@ def fitdata(basedir,configfile,optinputs):
         paramnamese = ['n'+ip for ip in paramnames]
         paranamsf = sp.array(paramnames+paramnamese+['FuncEvals'])
 
-
-    Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,Ionoin.Time_Vector,ver =1,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
+    if fitlist is None:
+        timevec = Ionoin.Time_Vector
+    else:
+        if len(fitlist)==0:
+            timevec = Ionoin.Time_Vector
+        else:
+            timevec = Ionoin.Time_Vector[fitlist]
+    Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,timevec,ver =1,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
 
     outfile = os.path.join(outputdir,'fitteddata.h5')
     Ionoout.saveh5(outfile)
@@ -231,7 +237,7 @@ def ke(item):
     else:
         return float('inf')
 #%% Main function
-def main(funcnamelist,basedir,configfile,remakealldata):
+def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None):
     """ Main function for this module. The function will set up the directory 
     structure, create or update a diary file and run the simulation depending
     on the user input. 
@@ -301,7 +307,7 @@ def main(funcnamelist,basedir,configfile,remakealldata):
         f.write(curfunc.__name__+'\n')
         f.write(time.asctime()+'\n')
         if curfunc.__name__=='fitdata':
-            ex_inputs=curfuncn
+            ex_inputs=[curfuncn,fitlist]
         else:
             ex_inputs = remakealldata
         try:
@@ -412,6 +418,7 @@ if __name__ == "__main__":
         elif opt in ('-r', "--re"):
             if arg.lower() == 'y':
                 remakealldata = True
+        
     if funcname.lower() == 'all':
         funcnamelist=['spectrums','radardata','fitting']
     else:

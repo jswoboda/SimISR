@@ -78,10 +78,10 @@ def fitcheck(repall=[100]):
     
     for i in range(ntypes):
         ax=axvec[i]                                  
-        ax.plot(lagv,acfamb[i].real,label='Orig')
+        ax.plot(lagv,acfamb[i].real,label='Input')
         ax.set_title(lablist[i])
         axs=axvecs[i]                                  
-        axs.plot(f*1e-3,specamb[i].real,label='Orig')
+        axs.plot(f*1e-3,specamb[i].real,label='Input',linewidth=4)
         axs.set_title(lablist[i])
         
 
@@ -103,7 +103,7 @@ def fitcheck(repall=[100]):
                 ax.legend()
             specest[i] = scfft.fftshift(scfft.fft(acfestsr[i,des_pnt],n=nspec))
             axs=axvecs[i]
-            axs.plot(f*1e-3,specest[i].real/l_p,label='Np = {0}'.format(rep1))
+            axs.plot(f*1e-3,specest[i].real/l_p,label='Np = {0}'.format(rep1),linewidth=4)
             if irep==len(repall)-1:
                 axs.legend()
         print('Parameters fitted after {0} pulses'.format(rep1))
