@@ -64,6 +64,7 @@ class Fitterionoconainer(object):
         lagsData= self.Iono.Param_List.copy()
         (Nloc,Nt,Nlags) = lagsData.shape
         # Need list of times to save time
+        
         if fittimes is None:
             fittimes = range(Nt)
         else:
@@ -88,7 +89,7 @@ class Fitterionoconainer(object):
         dof = L-nx
         if dof<=0:
             dof=1
-        for itime in fittimes:
+        for itn,itime in enumerate(fittimes):
             print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
                 print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
@@ -138,8 +139,8 @@ class Fitterionoconainer(object):
 #                        vars_vec = sp.diag(covf)
 #                    except:
 #                        vars_vec = sp.ones(nparams-2)*float('nan')
-                    funcevals[iloc,itime] = infodict['nfev']
-                    fittedarray[iloc,itime] = sp.append(x,Ne_start[iloc,itime])
+                    funcevals[iloc,itn] = infodict['nfev']
+                    fittedarray[iloc,itn] = sp.append(x,Ne_start[iloc,itime])
                     if cov_x is None:
                         vars_vec = sp.ones(nx)*float('nan')
                     else:
@@ -147,11 +148,11 @@ class Fitterionoconainer(object):
                         vars_vec = sp.diag(cov_x)*(infodict['fvec']**2).sum()/dof
                     if len(vars_vec)<fittederror.shape[-1]-1:
                         pdb.set_trace()
-                    fittederror[iloc,itime,:-1]=vars_vec 
+                    fittederror[iloc,itn,:-1]=vars_vec 
                     
-#                        fittederror[iloc,itime,:-1] = covf*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-(nx-1))
+#                        fittederror[iloc,itn,:-1] = covf*(infodict['fvec']**2).sum()/(len(infodict['fvec'])-(nx-1))
                     if not self.sig is None:
-                        fittederror[iloc,itime,-1] = Ne_sig[iloc,itime]
+                        fittederror[iloc,itn,-1] = Ne_sig[iloc,itime]
                 
                 elif fitfunc == ISRSfitfunction_lmfit:
                     failedfit=False
@@ -169,14 +170,14 @@ class Fitterionoconainer(object):
                         traceback.print_exc(file=sys.stdout)
                     if failedfit:
                         x=sp.ones(nparams-2)*float('nan')
-                        fittederror[iloc,itime,:-1,:-1]=sp.ones(nparams-2)*float('nan')
+                        fittederror[iloc,itn,:-1,:-1]=sp.ones(nparams-2)*float('nan')
                     else:
-                        x,fittederror[iloc,itime,:-1] = minimizer2x(out)
-                    fittedarray[iloc,itime]=sp.append(x,Ne_start[iloc,itime])
+                        x,fittederror[iloc,itn,:-1] = minimizer2x(out)
+                    fittedarray[iloc,itn]=sp.append(x,Ne_start[iloc,itime])
                     
                     
                 if not self.sig is None:
-                    fittederror[iloc,itime,-1] = Ne_sig[iloc,itime]**2
+                    fittederror[iloc,itn,-1] = Ne_sig[iloc,itime]**2
                     
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror,funcevals)

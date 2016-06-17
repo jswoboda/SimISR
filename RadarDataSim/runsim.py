@@ -125,6 +125,7 @@ def fitdata(basedir,configfile,optinputs):
     else:
         Ionoinsig=IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
+    
     (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']],fittimes=fitlist)
 
 
