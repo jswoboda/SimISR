@@ -20,8 +20,11 @@ from ISRSpectrum.ISRSpectrum import ISRSpectrum
 from utilFunctions import Chapmanfunc, TempProfile
 
 class IonoContainer(object):
-    """Holds the coordinates and parameters to create the ISR data.  Also will
-    make the spectrums for each point."""
+    """
+        Holds the coordinates and parameters to create the ISR data. This class can hold plasma parameters
+        spectra, or ACFs. If given plasma parameters the can call the ISR spectrum functions and for each 
+        point in time and space a spectra will be created.
+    """
     #%% Init function
     def __init__(self,coordlist,paramlist,times = None,sensor_loc = sp.zeros(3),ver =0,coordvecs =
             None,paramnames=None,species=None,velocity=None):
@@ -131,6 +134,20 @@ class IonoContainer(object):
 
     #%% Getting closest objects
     def getclosestsphere(self,coords,timelist=None):
+        """ 
+            This method will get the closest point in space to given spherical coordinates from the 
+            IonoContainer.
+            Input
+            coords - A list of r,az and phi coordinates.
+            Output
+            paramout - A NtxNp array from the closes output params
+            sphereout - A Nc length array The sphereical coordinates of the closest point.
+            cartout -  Cartisian coordinates of the closes point.
+            distance - The spatial distance between the returned location and the 
+                desired location.
+            minidx - The spatial index point.
+            tvec - The times of the returned data. 
+        """
         d2r = np.pi/180.0
         (R,Az,El) = coords
         x_coord = R*np.cos(Az*d2r)*np.cos(El*d2r)
@@ -139,7 +156,8 @@ class IonoContainer(object):
         cartcoord = np.array([x_coord,y_coord,z_coord])
         return self.getclosest(cartcoord,timelist)
     def getclosest(self,coords,timelist=None):
-        """This method will get the closest set of parameters in the coordinate space. It will return
+        """
+        This method will get the closest set of parameters in the coordinate space. It will return
         the parameters from all times.
         Input
         coords - A list of x,y and z coordinates.
@@ -192,7 +210,8 @@ class IonoContainer(object):
         return (paramout,velout,sphereout,cartout,np.sqrt(distall[minidx]),minidx,tvec)
     #%% Interpolation methods
     def interp(self,new_coords,ver=0,sensor_loc = None,method='linear',fill_value=np.nan):
-        """This method will take the parameters in the Param_List variable and spatially.
+        """
+        This method will take the parameters in the Param_List variable and spatially.
         interpolate the points given the new coordinates. The method will be
         determined by the method input.
         Input:
@@ -244,7 +263,8 @@ class IonoContainer(object):
 
      #%% Read and Write Methods
     def savemat(self,filename):
-        """ This method will write out a structured mat file and save information
+        """ 
+        This method will write out a structured mat file and save information
         from the class.
         inputs
         filename - A string for the file name.
@@ -259,9 +279,11 @@ class IonoContainer(object):
         sio.savemat(filename,mdict=outdict)
 
     def saveh5(self,filename):
-        """This method will save the instance of the class to a structured h5 file.
+        """
+        This method will save the instance of the class to a structured h5 file.
         Input:
-        filename - A string for the file name."""
+        filename - A string for the file name.
+        """
         h5file = tables.openFile(filename, mode = "w", title = "IonoContainer out.")
         vardict = vars(self)
         try:
@@ -288,9 +310,11 @@ class IonoContainer(object):
     @staticmethod
 
     def readmat(filename):
-        """This method will read an instance of the class from a mat file.
+        """
+        This method will read an instance of the class from a mat file.
         Input:
-        filename - A string for the file name."""
+        filename - A string for the file name.
+        """
         indata = sio.loadmat(filename,chars_as_strings=True)
         vardict = {'coordlist':'Cart_Coords','coordlist2':'Sphere_Coords','paramlist':'Param_List',\
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
@@ -312,9 +336,11 @@ class IonoContainer(object):
     @staticmethod
 
     def readh5(filename):
-        """This method will read an instance of the class from a structured h5 file.
+        """
+        This method will read an instance of the class from a structured h5 file.
         Input:
-        filename - A string for the file name."""
+        filename - A string for the file name.
+        """
 
         vardict = {'coordlist':'Cart_Coords','coordlist2':'Sphere_Coords','paramlist':'Param_List',\
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
@@ -393,6 +419,13 @@ class IonoContainer(object):
         
     #%% Reduce numbers
     def coordreduce(self,coorddict):
+        """
+        Given a dictionary of coordinates the location points in the IonoContainer 
+        object will be reduced. 
+        Inputs
+            corrddict - A dictionary with keys 'x','y','z','r','theta','phi'. The 
+                values in the dictionary are coordinate values that will be kept.
+        """
         assert type(coorddict)==dict, "Coorddict needs to be a dictionary"
         ncoords = self.Cart_Coords.shape[0]
         coordlist = ['x','y','z','r','theta','phi']
@@ -425,6 +458,14 @@ class IonoContainer(object):
         self.Velocity=self.Velocity[ckeep]
 
     def timereduce(self, timelims=None,timesselected=None):
+        """ 
+        Given set of time limits or list of times the data the IonoContainer will be 
+        pruned accordinly.
+        Input
+            timelims - A two point list with the desired time limits.
+            timesselected - A list of times that are desired from the overall group
+                times.
+        """
         assert (timelims is not None) or (timesselected is not None), "Need a set of limits or selected set of times"
 
         if timelims is not None:
@@ -462,7 +503,9 @@ class IonoContainer(object):
         return not self.__eq__(self2)
     # addition
     def __add__(self,self2):
-
+        """ This is the '-' operator. Assuming the locations, times and parameter types are the same,
+            the data will be added.
+        """
 
         assert sp.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
         a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
@@ -480,7 +523,9 @@ class IonoContainer(object):
         outiono.Param_List=outiono.Param_List+self2.Param_List
         return outiono
     def __sub__(self,self2):
-
+        """ This is the '-' operator. Assuming the locations, times and parameter types are the same,
+            the data will be subtracted.
+        """
         assert sp.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
         a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
         blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
@@ -498,51 +543,6 @@ class IonoContainer(object):
         return outiono
 
     #%% Spectrum methods
-    def makeallspectrums(self,sensdict,npts):
-        pmshape= self.Param_Names.shape
-        if pmshape==(7,):
-            return self.makeallspectrumsv1(sensdict,npts)
-        elif pmshape[1]==6:
-            return self.makeallspectrumsv2(sensdict,npts)
-
-
-    def makeallspectrumsv2(self,sensdict,npts):
-        """This will create a numpy array of all of the spectrums for the data in
-        the instance of the class.
-        inputs:
-        sensdict - The structured dictionary of for the sensor.
-        npts - The number of points the spectrum is to be evaluated at.
-        Output:
-        omeg - A npts length numpy array. The frequency points that the ISR spectrum
-        is evaluated over in Hz
-        outspecs - A NlocxNtxnpts numpy array. The power spectrums for the plasma
-        in the entire instance of the class. The spectrum will be the correct power
-        level for the plasma parameters
-        npts - The actual number of points that the spectrum is evaluated over."""
-
-        specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
-
-        paramshape = self.Param_List.shape
-        if self.Time_Vector is None:
-            outspecs = np.zeros((paramshape[0],1,npts))
-            full_grid = False
-        else:
-            outspecs = np.zeros((paramshape[0],paramshape[1],npts))
-            full_grid = True
-
-        (N_x,N_t) = outspecs.shape[:2]
-        #pdb.set_trace()
-        for i_x in np.arange(N_x):
-            for i_t in np.arange(N_t):
-                if full_grid:
-                    cur_params = self.Param_List[i_x,i_t]
-                else:
-                    cur_params = self.Param_List[i_x]
-                (omeg,cur_spec,rcs) = specobj.getspec(cur_params,rcsflag=True)
-                cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/cur_spec.sum()
-                outspecs[i_x,i_t] = cur_spec_weighted
-
-        return (omeg,outspecs,npts)
     def makeallspectrumsopen(self,func,sensdict,npts):
         """ This function will make all of the spectrums given a functions.
             Inputs
@@ -552,6 +552,8 @@ class IonoContainer(object):
         return func(self,sensdict,npts)
 
     def combinetimes(self,self2):
+        """ 
+        """
         a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
         blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
 
@@ -567,32 +569,37 @@ class IonoContainer(object):
         self.Velocity = sp.concatenate((self.Velocity,self2.Velocity),1)
         self.Param_List = sp.concatenate((self.Param_List,self2.Param_List),1)
     def makespectruminstance(self,sensdict,npts):
-        """This will create another instance of the Ionocont class
-        inputs:
-        sensdict - The structured dictionary of for the sensor.
-        npts - The number of points the spectrum is to be evaluated at.
+        """
+        This will create another instance of the Ionocont class
+        Inputs:
+            sensdict - The structured dictionary of for the sensor.
+            npts - The number of points the spectrum is to be evaluated at.
         Output:
-        Iono1 - An instance of the IonoContainer class with the spectrums as the
-        param vectors and the param names will be the the frequency points """
+            Iono1 - An instance of the IonoContainer class with the spectrums as the
+                param vectors and the param names will be the the frequency points. 
+        """
         (omeg,outspecs) = self.makeallspectrums(sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
     def makespectruminstanceopen(self,func,sensdict,npts):
-        """This will create another instance of the Ionocont class
-        inputs:
-        func - A function used to create the spectrums
-        sensdict - The structured dictionary of for the sensor.
-        npts - The number of points the spectrum is to be evaluated at.
+        """
+        This will create another instance of the Ionocont class
+        Inputs:
+            func - A function used to create the spectrums
+            sensdict - The structured dictionary of for the sensor.
+            npts - The number of points the spectrum is to be evaluated at.
         Output:
-        Iono1 - An instance of the IonoContainer class with the spectrums as the
-        param vectors and the param names will be the the frequency points """
+            Iono1 - An instance of the IonoContainer class with the spectrums as the
+                param vectors and the param names will be the the frequency points 
+        """
         (omeg,outspecs) = self.makeallspectrumsopen(func,sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
     def getDoppler(self,sensorloc=sp.zeros(3)):
-        """ This will return the line of sight velocity.
-            Inputs
-                sensorloc - The location of the sensor in local Cartisian coordinates.
-            Outputs
-                Vi - A numpy array Nlocation by Ntimes in m/s of the line of sight velocities.
+        """ 
+        This will return the line of sight velocity.
+        Inputs
+            sensorloc - The location of the sensor in local Cartisian coordinates.
+        Outputs
+            Vi - A numpy array Nlocation by Ntimes in m/s of the line of sight velocities.
         """
         ncoords = self.Cart_Coords.shape[0]
         ntimes = len(self.Time_Vector)
@@ -644,9 +651,11 @@ def makeionocombined(datapath,ext='.h5'):
             outiono.combinetimes(curiono)
     return outiono
 def pathparts(path):
-    '''This will break up a path name into componenets using recursion
+    '''
+    This will break up a path name into componenets using recursion
     Input - path a string seperated by a posix path seperator.
-    Output - A list of strings of the path parts.'''
+    Output - A list of strings of the path parts.
+    '''
     components = []
     while True:
         (path,tail) = posixpath.split(path)
@@ -656,8 +665,21 @@ def pathparts(path):
         components.append(tail)
 
 def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times =sp.array([[0,1e6]])):
-    """ This function will create a test ionoclass with an electron density that
-    follows a chapman function"""
+    """ 
+    This function will create a test ionoclass with an electron density that
+    follows a chapman function.
+    Inputs
+        testv - A bool to add velocities. If not then all of the velocity values will be zero.
+        testtemp - If true then a tempreture profile will be used. If not then there will be a set tempreture
+            of 2000 k for Te and Ti.
+        N_0 - The peak value of the chapman functions
+        z_0 - The peak altitude of the chapman function.
+        H_0 - The scale hight.
+        coords - A list of coordinates that the data will be created over.
+        times - A list of times the data will be created over.
+    Outputs 
+        Icont - A test ionocontainer.
+    """
     if coords is None:
         xvec = sp.arange(-250.0,250.0,20.0)
         yvec = sp.arange(-250.0,250.0,20.0)
@@ -705,6 +727,10 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coo
     return Icont1
 
 def main():
+    """ 
+    This is a test function that create an instance of the ionocontainer class and check if 
+    copies of it are equal.
+    """
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     testpath = os.path.join(os.path.split(curpath)[0],'testdata')
 

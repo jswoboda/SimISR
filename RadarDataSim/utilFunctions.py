@@ -441,7 +441,16 @@ def Chapmanfunc(z,H_0,Z_0,N_0):
 
 
 def TempProfile(z,T0=1000.,z0=100.):
-    """This function creates a tempreture profile for test purposes."""
+    """
+    This function creates a tempreture profile using arc tan functions for test purposes.
+    Inputs
+        z - The altitude locations in km.
+        T0 - The value of the lowest tempretures in K.
+        z0 - The middle value of the atan functions along alitutude. In km.
+    Outputs
+        Te - The electron density profile in K. 1700*(atan((z-z0)2*exp(1)/400-exp(1))+1)/2 +T0
+        Ti - The ion density profile in K. 500*(atan((z-z0)2*exp(1)/400-exp(1))+1)/2 +T0
+    """
     zall = (z-z0)*2.*sp.exp(1)/400. -sp.exp(1)
     atanshp = (sp.tanh(zall)+1.)/2
     Te = 1700*atanshp+T0
