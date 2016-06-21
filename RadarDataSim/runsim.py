@@ -54,9 +54,10 @@ def makespectrums(basedir,configfile,remakealldata):
     (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     slist = [dirlist[ikey] for ikey in listorder]
     (sensdict,simparams) = readconfigfile(configfile)
+    # Delete data 
     outfiles = glob.glob(os.path.join(outputdir,'*.h5'))
     for ifile in outfiles:
-        os.
+        os.remove(ifile)
                          
     for inum, curfile in zip(timebeg,slist):
 
