@@ -97,7 +97,7 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
             outrcs[i_x,i_t] = rcs
             outspecs[i_x,i_t] = cur_spec_weighted
     return (omeg,outspecs)
-def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
+def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     """
     This is the fit fucntion that is used with scipy.optimize.leastsquares. It will
     take a set parameter values construct a spectrum/acf based on those values, apply
@@ -121,15 +121,14 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,y_err = None):
     else:
         fitspec ='Spectrum'
     nspecs = len(specs)
-    ni = nspecs-1
-    xnew = sp.zeros(nspecs*2+1)
-    xnew[:2*ni] = x[:2*ni]
-    xnew[2*ni] = sp.nansum(x[sp.arange(0,ni*2,2)])
-    xnew[-2:] = x[-2:]
+
+    (Ti,Ne,Te,v_i) = x
+
     datablock = sp.zeros((nspecs,2),dtype=x.dtype)
-    datablock[:,0] = xnew[sp.arange(0,nspecs*2,2)]
-    datablock[:,1] = xnew[sp.arange(1,nspecs*2,2)]
-    v_i = x[-1]
+    datablock[:-1,0] = Ne*Niratios
+    datablock[:-1,1] = Ti
+    datablock[-1,0] = Ne
+    datablock[-1,1] = Te
 
     # determine if you've gone beyond the bounds
     # penalty for being less then zero

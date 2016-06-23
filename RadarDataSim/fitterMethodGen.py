@@ -79,7 +79,7 @@ class Fitterionoconainer(object):
         x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector[:,0],exinputs)
         nparams=x_0all.shape[-1]
         nx=nparams-1
-        x_0_red = sp.zeros(nx)
+        x_0_red = sp.zeros(4)
         specs = self.simparams['species']
         nspecs = len(specs)
         ni = nspecs-1
@@ -94,9 +94,12 @@ class Fitterionoconainer(object):
             for iloc in range(Nloc):
                 print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
                 curlag = lagsData[iloc,itime]
-                d_func = d_funcfunc(curlag,self.sensdict,self.simparams)
-                x_0 = x_0all[iloc,itime]
                 
+                x_0 = x_0all[iloc,itime]
+                Niratio = x_0[0:2*ni:2]/x_0[2*ni]
+                Ti = (Niratio*x_0[1:2*ni:2]).sum()
+                
+                d_func = (curlag,self.sensdict,self.simparams)
                 if first_lag:
                     first_lag = False
                     fittedarray = sp.zeros((Nloc,Nt,nx+1))
@@ -124,8 +127,8 @@ class Fitterionoconainer(object):
                     
                   #  try:
                         
-                    x_0_red[:2*ni] = x_0[:2*ni]
-                    x_0_red[-2:] = x_0[-2:]
+                    x_0_red[0]=Ti
+                    x_0_red[1:] = x_0[2*ni:]
                     (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
                         x0=x_0_red,args=d_func,full_output=True)
                     
