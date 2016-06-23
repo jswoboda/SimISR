@@ -86,7 +86,7 @@ class Fitterionoconainer(object):
 
         firstparam=True
         L = self.sensdict['taurg']*2
-        dof = L-nx
+        dof = L-4
         if dof<=0:
             dof=1
         for itn,itime in enumerate(fittimes):
@@ -102,8 +102,8 @@ class Fitterionoconainer(object):
                 d_func = (curlag,self.sensdict,self.simparams,Niratio)
                 if first_lag:
                     first_lag = False
-                    fittedarray = sp.zeros((Nloc,Nt,nx+1))
-                    fittederror = sp.zeros((Nloc,Nt,nx+1))
+                    fittedarray = sp.zeros((Nloc,Nt,nparams+1))
+                    fittederror = sp.zeros((Nloc,Nt,nparams+1))
                     funcevals = sp.zeros((Nloc,Nt))
                 # get uncertianties
                 if not self.sig is None:
@@ -143,12 +143,20 @@ class Fitterionoconainer(object):
 #                    except:
 #                        vars_vec = sp.ones(nparams-2)*float('nan')
                     funcevals[iloc,itn] = infodict['nfev']
-                    fittedarray[iloc,itn] = sp.append(x,Ne_start[iloc,itime])
+                    ionstuff = sp.zeros(ni*2-1)
+                    ionstuff[:2*ni:2]=x[1]*Niratio
+                    ionstuff[1:2*ni-1:2] = x[0]
+                    fittedarray[iloc,itn] = sp.append(ionstuff,sp.append(x,Ne_start[iloc,itime]))
                     if cov_x is None:
-                        vars_vec = sp.ones(nx)*float('nan')
+                        vars_vec = sp.ones(nparams)*float('nan')
                     else:
                         
                         vars_vec = sp.diag(cov_x)*(infodict['fvec']**2).sum()/dof
+                        ionstuff = sp.zeros(ni*2-1)
+                        ionstuff[:2*ni:2]=vars_vec[1]*Niratio
+                        ionstuff[1:2*ni-1:2] = vars_vec[0]
+                        vars_vec = sp.append(ionstuff,vars_vec)
+                        
                     if len(vars_vec)<fittederror.shape[-1]-1:
                         pdb.set_trace()
                     fittederror[iloc,itn,:-1]=vars_vec 
