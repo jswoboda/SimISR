@@ -99,7 +99,7 @@ class Fitterionoconainer(object):
                 Niratio = x_0[0:2*ni:2]/x_0[2*ni]
                 Ti = (Niratio*x_0[1:2*ni:2]).sum()
                 
-                d_func = (curlag,self.sensdict,self.simparams)
+                d_func = (curlag,self.sensdict,self.simparams,Niratio)
                 if first_lag:
                     first_lag = False
                     fittedarray = sp.zeros((Nloc,Nt,nx+1))

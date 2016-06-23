@@ -123,7 +123,6 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     nspecs = len(specs)
 
     (Ti,Ne,Te,v_i) = x
-
     datablock = sp.zeros((nspecs,2),dtype=x.dtype)
     datablock[:-1,0] = Ne*Niratios
     datablock[:-1,1] = Ti
