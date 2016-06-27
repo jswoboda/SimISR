@@ -25,12 +25,11 @@ import traceback
 import pdb
 # Imported scipy and matplotlib modules
 import scipy as sp
-import tables
 # My modules
 from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.radarData import RadarDataFile
 import RadarDataSim.specfunctions as specfuncs
-from RadarDataSim.specfunctions import ISRSfitfunction, ISRSfitfunction_lmfit
+from RadarDataSim.specfunctions import ISRSfitfunction
 from RadarDataSim.fitterMethodGen import Fitterionoconainer
 from RadarDataSim.utilFunctions import readconfigfile
 from operators import RadarSpaceTimeOperator
@@ -131,7 +130,7 @@ def fitdata(basedir,configfile,optinputs):
         Ionoinsig=IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
     
-    (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,startvalfunc,exinputs=[fitterone.simparams['startfile']],fittimes=fitlist)
+    (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,fitterone.simparams['startfile'],fittimes=fitlist)
 
 
     if fitterone.simparams['Pulsetype'].lower() == 'barker':
@@ -199,36 +198,7 @@ def applymat(basedir,configfile,optinputs):
     Ionoout = RSTO.mult_iono(Ionolist)
     outfile=os.path.join(outputdir2,'00lags.h5')
     Ionoout.saveh5(outfile)
-#%% start values for the fit function
-def startvalfunc(Ne_init, loc,time,exinputs):
-    """ This is a method to determine the start values for the fitter.
-    Inputs 
-        Ne_init - A nloc x nt numpy array of the initial estimate of electron density. Basically
-        the zeroth lag of the ACF.
-        loc - A nloc x 3 numpy array of cartisian coordinates.
-        time - A nt x 2 numpy array of times in seconds
-        exinputs - A list of extra inputs allowed for by the fitter class. It only
-            has one element and its the name of the ionocontainer file holding the 
-            rest of the start parameters.
-    Outputs
-        xarrya - This is a numpy arrya of starting values for the fitter parmaeters."""
 
-    Ionoin = IonoContainer.readh5(exinputs[0])
-
-    numel =sp.prod(Ionoin.Param_List.shape[-2:]) +1
-
-    xarray = sp.zeros((loc.shape[0],len(time),numel))
-    for ilocn, iloc in enumerate(loc):
-        (datast,vel)=Ionoin.getclosest(iloc,time)[:2]
-        datast[:,-1,0] = Ne_init[ilocn,:]
-        ionoden =datast[:,:-1,0]
-        ionodensum = sp.repeat(sp.sum(ionoden,axis=-1)[:,sp.newaxis],ionoden.shape[-1],axis=-1)
-        ionoden = sp.repeat(Ne_init[ilocn,:,sp.newaxis],ionoden.shape[-1],axis=-1)*ionoden/ionodensum
-        datast[:,:-1,0] = ionoden
-        xarray[ilocn,:,:-1]=sp.reshape(datast,(len(time),numel-1))
-        locmag = sp.sqrt(sp.sum(iloc*iloc))
-        ilocmat = sp.repeat(iloc[sp.newaxis,:],len(time),axis=0)
-        xarray[ilocn,:,-1] = sp.sum(vel*ilocmat)/locmag
 
 
     return xarray
