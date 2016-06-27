@@ -140,27 +140,15 @@ def fitdata(basedir,configfile,optinputs):
     else:
         (Nloc,Ntimes,nparams)=fitteddata.shape
         fittederronly = sp.sqrt(fittederror)
-
-    
-
         paramnames = []
         species = fitterone.simparams['species']
         Nions = len(species)-1
-        Nis = fitteddata[:,:,0:Nions*2:2]
-        Tis = fitteddata[:,:,1:Nions*2:2]
-        Nisum = sp.nansum(Nis,axis=2)[:,:,sp.newaxis]
-        Tisum = sp.nansum(Nis*Tis,axis=2)[:,:,sp.newaxis]
-        Ti = Tisum/Nisum
- 
+        # Seperate Ti and put it in as an element of the ionocontainer.
+        Ti = fitteddata[:,:,1]
 
-        nNis = fittederronly[:,:,0:Nions*2:2]
-        nTis = fittederronly[:,:,1:Nions*2:2]
-        nNisum = sp.nansum(Nis*nNis**2,axis=2)[:,:,sp.newaxis]
-        nNi = sp.sqrt(nNisum/Nisum)
-        nTisum = sp.nansum(Nis*nTis**2,axis=2)[:,:,sp.newaxis]
-        nTi = sp.sqrt(nTisum/Nisum)    
+        nTi =  fittederronly[:,:,1]  
         
-        paramlist = sp.concatenate((fitteddata,Ti,fittederronly,nTi,funcevals[:,:,sp.newaxis]),axis=2)
+        paramlist = sp.concatenate((fitteddata,Ti[:,:,sp.newaxis],fittederronly,nTi[:,:,sp.newaxis],funcevals[:,:,sp.newaxis]),axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)
