@@ -522,9 +522,10 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
             plotspecsgen(baslist,specacf,[False,True],['Input Spec','Spec Est'],specpltfname,simparams['numpoints'])
     # subtract out noise lags
     lagsData = lagsData-lagsNoise
-    # Use a basic formula to find the std of the lagss
-    sigS = sp.sqrt(sp.absolute(lagsData)**2+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
-#    sigS = sp.sqrt(varacf(lagsData)+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
+    # Calculate a variance using equation 2 from Hysell's 2008 paper. Done use full covariance matrix because assuming nearly diagonal.
+    lagsData0 = lagsData[:,:,:,0]
+    lagsData0 = sp.tile(lagsData0[:,:,:,sp.newaxis],(1,1,1,Nlags))
+    sigS = sp.sqrt(sp.absolute(lagsData)**2+sp.absolute(lagsData0)**2+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
     # multiply the data and the sigma by inverse of the scaling from the radar
     lagsData = lagsData*radar2acfmult
     sigS = sigS*radar2acfmult
@@ -538,7 +539,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
         for ilag in range(Nlags):
             lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
-            sigsSsum[irngnew,ilag] = (ilag+1.)*sp.sqrt(sp.power(sigS[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag],2).sum(axis=0))
+            sigsSsum[irngnew,ilag] =sp.sqrt(sp.power(sigS[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag],2).sum(axis=0))
     # Put everything in a parameter list
     Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=lagsData.dtype)
     # Put everything in a parameter list
@@ -556,66 +557,4 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     ionosigs = IonoContainer(coordlist,Paramdatasig,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
     return (ionodata,ionosigs)
 
-def varacf(acf):
-    """This calculates the variances of an ACF. """
-    axisvec =sp.roll( sp.arange(acf.ndim),1)
-    acftrans = sp.transpose(acf,tuple(axisvec))
-    acfvar = sp.zeros_like(acftrans)
-    axisvec = sp.roll(axisvec,-2)
-    N= acftrans.shape[0]
-
-    for l in range(N):
-        for m in range(-(N+l)+1,N-l-1):
-            constterm = (N-sp.absolute(m)+l)
-            # for r1, Rxx(m)
-            if sp.absolute(m)>=N-1:
-                r1=sp.zeros_like(acftrans[0])
-            elif m>=0:
-                r1 = acftrans[m]
-            elif m<0:
-                r1=acftrans[-m]
-
-            # for r2, Rxx(m+1)
-            m2=m+l
-            if sp.absolute(m2)>=N-1:
-                r2=sp.zeros_like(acftrans[0])
-            elif m2>=0:
-                r2 = acftrans[m2]
-            elif m2<0:
-                r2=acftrans[-m2]
-
-            # for r3, Rxx(m-1)
-            m3=m+l
-            if sp.absolute(m3)>=N-1:
-                r3=sp.zeros_like(acftrans[0])
-            elif m3>=0:
-                r3 = acftrans[m3]
-            elif m3<0:
-                r3=acftrans[-m3]
-
-            acfvar[l]=acfvar[l]+constterm*(sp.absolute(r1)**2+sp.absolute(r2*r3))
-
-    return sp.transpose(acfvar/N,tuple(axisvec))
-#%% Testing
-def main():
-    """Testing function"""
-    t1 = time.time()
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Testdata')
-    inifile = os.path.join(testpath,'PFISRExample.pickle')
-    (sensdict,simparams) = readconfigfile(inifile)
-    testh5 = os.path.join(testpath,'testiono.h5')
-    ioncont = IonoContainer.readh5(testh5)
-    outfile = os.path.join(testpath,'testionospec.h5')
-
-    ioncont.makespectruminstanceopen(specfunctions.ISRSspecmake,sensdict,
-                                     simparams['numpoints']).saveh5(outfile)
-    radardata = RadarDataFile({0.0:outfile},inifile,testpath)
-
-    ionoout = radardata.processdataiono()
-    ionoout.saveh5(os.path.join(testpath,'lags.h5'))
-    t2 = time.time()
-    print(t2-t1)
-if __name__== '__main__':
-    main()
 
