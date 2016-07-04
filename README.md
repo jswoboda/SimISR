@@ -1,6 +1,6 @@
 ##RadarDataSim
 by John Swoboda
-![alt text](https://raw.github.com/jswoboda/RadarDataSim/master/Images/logofig.png "RadarDataSim")
+![alt text](https://raw.github.com/jswoboda/RadarDataSim/master/Images/logofig2.png "RadarDataSim")
 
 #Overview
 This Python module can be used create synthetic incoherenent scatter radar. It does this by creating filters from ISR spectrums and applying them to CWGN. This is depicted below in the following flow diagram.
