@@ -20,7 +20,6 @@ This runs on Python 2.7.9. The packages required include
 * pytables
 * numba
 * matplotlib
-* [LMFIT](https://lmfit.github.io/lmfit-py)
 * [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum)
 
 #Installation
