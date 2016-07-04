@@ -72,8 +72,12 @@ Where \\( \Theta\\) is the plasma parameters \\( g(\Theta)\\) is a function that
 
 To run the simulation it is suggested that the user create a set of scripts outside of this directroy. This is so the user can create different types of experiments with different sensor parameters, different plasma parameters etc..
 
-First the user needs to decide on a beam pattern and what sensor they want to use. The user can use gui in beamtools/pickbeams.py to select a beam pattern for either RISR of PFISR which a screen shot is shown below.
-![Diagram2](https://raw.github.com/jswoboda/RadarDataSim/master/Images/pickbeams.png)
-With this set take the beam numbers recieve from this file and create two sets of dictionaries using the pattern found in makeConfigFiles.py. It is suggested that the user creates a .pickle file instead of an ini in the current iteration of the code.
+The user needs to create a configureation file. These ini files can be made a number of ways. The easiest is by using setupgui.py in the beamtools directory. The user can fill in the different parameters neccesary to run the simulation. They can also pick the beam pattern they desire.
 
-From there create a field of ionospheric parameters using the IonoContainer class. Create the spectrums using ISRSpectrum and then output a set of h5 files. At this point call the RadarDataFile class to create create radar data and lags. The RadarDataFile class can take a set of files of radar data and then form lag estimates using that. Once the lag estimates are formed they can be saved to an instance of the IonoContainer class. After which the Fitterionoconainer class can be called the data can be fit using the desired fitting methodolgy of the user. A final instance of the IonoContainer class can then be saved out and then send to other programs for processing.
+![Diagram2](https://raw.github.com/jswoboda/RadarDataSim/master/Images/seupgui.png)
+
+The user could also create the neccesary diectionaries and use makeConfigFiles.py. They can also save out the configuration file as pickle file but the ini files are augmentedable through a text editor and thus easier to use.
+
+Once the configuration file has been created the user can start setting up the simulation. The step is to create a field of ionospheric parameters using the IonoContainer class. Within this class there are methods to create the spectrums using ISRSpectrum and then output a set of h5 files. Once the spectrums are created  the RadarDataFile module to create create radar data and lags. The RadarDataFile class can take a set of files of radar data and then form lag estimates using that. Once the lag estimates are formed they can be saved to an instance of the IonoContainer class. After which the Fitterionoconainer class can be called the data can be fit using the desired fitting methodolgy of the user. A final instance of the IonoContainer class will be saved out.
+
+The submodule RadarDataSim/runsim.py can run the whole simulation after the configuration and plasma parameter files have been created. It can be run either through the command line or its main function can be embedded in other files. It is highly suggested that this submodule be used as it creates all of the neccesary folders to save the data properly.
