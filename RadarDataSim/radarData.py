@@ -59,7 +59,7 @@ class RadarDataFile(object):
        self.simparams = simparams
        N_angles = len(self.simparams['angles'])
 
-       NNs = self.simparams['NNs']
+       NNs = int(self.simparams['NNs'])
        self.sensdict = sensdict
        Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
        Npall = sp.floor(Npall/N_angles)*N_angles
@@ -122,7 +122,7 @@ class RadarDataFile(object):
                 outdict['RawData'] = rawdata+Noise
                 outdict['RawDatanonoise'] = rawdata
                 outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn),NNs).astype(simdtype)+
-                    1j*sp.random.randn(len(pn),NNs).astype(simdtype))
+                                                            1j*sp.random.randn(len(pn),NNs).astype(simdtype))
                 outdict['Pulses']=pn
                 outdict['Beams']=pb
                 outdict['Time'] = pt
@@ -251,7 +251,7 @@ class RadarDataFile(object):
         inttime = self.simparams['Tint']
         # Get array sizes
 
-        NNs = self.simparams['NNs']
+        NNs = int(self.simparams['NNs'])
         range_gates = self.simparams['Rangegates']
         N_rg = len(range_gates)# take the size
         pulse = self.simparams['Pulse']

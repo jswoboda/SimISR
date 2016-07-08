@@ -40,7 +40,7 @@ def makehist(testpath,npulses):
             plt.sca(axvec[ipn])
             if sp.any(sp.isinf(errdict[ierr][iparam])):
                 continue
-            histhand = sns.distplot(errdict[ierr][iparam], bins=50, kde=True, rug=False)
+            histhand = sns.distplot(errdict[ierr][iparam], bins=100, kde=True, rug=False)
             xlim = histhand.get_xlim()
             if ierr==0:
                 x0=pvals[ipn]
@@ -92,7 +92,7 @@ def makehistdata(params,maindir):
     datadict = {ip:Ionofit.Param_List[:,:,p2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
     
     
-    # Determine which imput files are to be used.
+    # Determine which input files are to be used.
     
     dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
     sortlist,outime,filelisting,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
@@ -172,10 +172,10 @@ def makedata(testpath):
     finalpath = os.path.join(testpath,'Origparams')
     if not os.path.isdir(finalpath):
         os.mkdir(finalpath)
-    data = sp.array([1e11,2500.])
+    data = sp.array([[1e11,1100.],[1e11,2100.]])
     z = sp.linspace(50.,1e3,50)
     nz = len(z)
-    params = sp.tile(data[sp.newaxis,sp.newaxis,sp.newaxis,:],(nz,1,2,1))
+    params = sp.tile(data[sp.newaxis,sp.newaxis,:,:],(nz,1,1,1))
     coords = sp.column_stack((sp.ones(nz),sp.ones(nz),z))
     species=['O+','e-']
     times = sp.array([[0,1e3]])
