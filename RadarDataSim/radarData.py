@@ -302,12 +302,11 @@ class RadarDataFile(object):
 
             # read in times
             for ifn, ifile in enumerate(file_list):
-                h5file=tables.openFile(ifile)
-                pulsen_list.append(h5file.get_node('/Pulses').read())
-                beamn_list.append(h5file.get_node('/Beams').read())
-                time_list.append(h5file.get_node('/Time').read())
+                infodict1 = h52dict(ifile)
+                pulsen_list.append(infodict1['Pulses'])
+                beamn_list.append(infodict1['Beams'])
+                time_list.append(infodict1['Time'])
                 file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
-                h5file.close()
         pulsen = sp.hstack(pulsen_list).astype(int)# pulse number
         beamn = sp.hstack(beamn_list).astype(int)# beam numbers
         ptimevec = sp.hstack(time_list).astype(float)# time of each pulse
@@ -352,19 +351,22 @@ class RadarDataFile(object):
                 curfileit =  [sp.where(pulsen_list[ifn]==item)[0] for item in pulseset ]
                 curfileitvec = sp.hstack(curfileit)
                 ifile = file_list[ifn]
-                h5file=tables.openFile(ifile)
+                curh5data = h52dict(ifile)
                 file_arlocs = sp.where(curfileloc==ifn)[0]
-                curdata[file_arlocs] = h5file.get_node('/RawData').read().astype(simdtype)[curfileitvec].copy()
+                curdata[file_arlocs] = curh5data['RawData'][curfileitvec].copy()
                 if firstfile:
-                    specsused = h5file.get_node('/SpecsUsed').read().astype(simdtype)
+                    specsused = curh5data['SpecsUsed'].astype(simdtype)
                     firstfile=False
                 else:
-                    specsusedtmp = h5file.get_node('/SpecsUsed').read().astype(simdtype)
+                    specsusedtmp = curh5data['SpecsUsed'].astype(simdtype)
                     specsused = sp.concatenate((specsused,specsusedtmp),axis=0)
 
-                curaddednoise[file_arlocs] = h5file.get_node('/AddedNoise').read().astype(simdtype)[curfileitvec].copy()
-                curnoise[file_arlocs] = h5file.get_node('/NoiseData').read().astype(simdtype)[curfileitvec].copy()
-                h5file.close()
+                curaddednoise[file_arlocs] = curh5data['AddedNoise'].astype(simdtype)[curfileitvec]
+                if 'NoiseDataACF'in curh5data.keys():
+                    realdata=True
+                else:
+                    realdata=False
+                    curnoise[file_arlocs] = curh5data['NoiseData'].astype(simdtype)[curfileitvec]
             # differentiate between phased arrays and dish antennas
             if self.sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
                 # After data is read in form lags for each beam
@@ -375,8 +377,11 @@ class RadarDataFile(object):
                     pulsesN[itn,ibeam] = len(beamlocstmp)
                     outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),
                         numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-                    outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
+                    if realdata:
+                        outnoise[itn,ibeam] = 
+                    else:
+                        outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
+                            numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
                     outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
                         numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
             else:
