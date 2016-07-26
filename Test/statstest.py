@@ -17,6 +17,37 @@ from  RadarDataSim.runsim import main as runsim
 from RadarDataSim.analysisplots import analysisdump,maketi
 #from radarsystools.radarsystools import RadarSys
 
+def makehistmult(testpathlist,npulseslist):
+    
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+    params = ['Ne','Te','Ti','Vi']
+    paramsLT = ['N_e','T_e','T_i','V_i']
+    pvals = [1e11,1e11,2.1e3,1.1e3,0.]
+    errdictlist =[ makehistdata(params,itest)[0] for itest in testpathlist] 
+    (figmplf, axmat) = plt.subplots(2, 2,figsize=(12,8), facecolor='w')
+    axvec = axmat.flatten()
+    histlims = [[4e10,2e11],[1200.,3000.],[300.,1900.],[-250.,250.]]
+    histvecs = [sp.linspace(ipm[0],ipm[1],100) for ipm in histlims]
+    linehand = []
+    lablist= ['J = {:d}'.format(i) for i in npulseslist]
+    
+    for iax,iparam in enumerate(params):
+        for idict,inpulse in zip(errdictlist,npulseslist):
+            curvals = idict[iparam]
+            curhist,binout = sp.histogram(curvals,bins=histvecs[iax])
+            curhist_norm = curhist.astype(float)/curvals.size
+            plthand = axvec[iax].plot(binout[:-1],curhist_norm,label='J = {:d}'.format(inpulse))[0]
+            linehand.append(plthand)
+            
+        axvec[iax].set_xlabel(r'$'+paramsLT[iax]+'$')
+        axvec[iax].set_title(r'Normalized Histogram for $'+paramsLT[iax]+'$')
+    leg = figmplf.legend(linehand[:len(npulseslist)],lablist)
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.85)
+    return (figmplf,axvec,linehand)
+
+    
 def makehist(testpath,npulses):
     """ This functions are will create histogram from data made in the testpath.
         Inputs
@@ -26,7 +57,7 @@ def makehist(testpath,npulses):
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     params = ['Ne','Te','Ti','Vi'] 
-    pvals = [1e11,1e11,2.5e3,2.5e3,0.]
+    pvals = [1e11,1e11,2.1e3,1.1e3,0.]
     errdict = makehistdata(params,testpath)
     ernames = ['Data','Error','Error Percent']
     sig1 = sp.sqrt(1./npulses)
@@ -40,7 +71,7 @@ def makehist(testpath,npulses):
             plt.sca(axvec[ipn])
             if sp.any(sp.isinf(errdict[ierr][iparam])):
                 continue
-            histhand = sns.distplot(errdict[ierr][iparam], bins=50, kde=True, rug=False)
+            histhand = sns.distplot(errdict[ierr][iparam], bins=100, kde=True, rug=False)
             xlim = histhand.get_xlim()
             if ierr==0:
                 x0=pvals[ipn]
@@ -92,7 +123,7 @@ def makehistdata(params,maindir):
     datadict = {ip:Ionofit.Param_List[:,:,p2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
     
     
-    # Determine which imput files are to be used.
+    # Determine which input files are to be used.
     
     dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
     sortlist,outime,filelisting,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
@@ -172,10 +203,10 @@ def makedata(testpath):
     finalpath = os.path.join(testpath,'Origparams')
     if not os.path.isdir(finalpath):
         os.mkdir(finalpath)
-    data = sp.array([1e11,2500.])
+    data = sp.array([[1e11,1100.],[1e11,2100.]])
     z = sp.linspace(50.,1e3,50)
     nz = len(z)
-    params = sp.tile(data[sp.newaxis,sp.newaxis,sp.newaxis,:],(nz,1,2,1))
+    params = sp.tile(data[sp.newaxis,sp.newaxis,:,:],(nz,1,1,1))
     coords = sp.column_stack((sp.ones(nz),sp.ones(nz),z))
     species=['O+','e-']
     times = sp.array([[0,1e3]])

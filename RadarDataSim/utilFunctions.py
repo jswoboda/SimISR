@@ -599,6 +599,8 @@ def readconfigfile(fname):
         sensdict - A dictionary that holds the sensor parameters.
         simparams - A dictionary that holds the simulation parameters."""
 
+    assert isinstance(fname,str), "fname is not a valid string  %r" % fname
+    assert os.path.isfile(fname), "fname is not a valid file %r" % fname
     ftype = os.path.splitext(fname)[-1]
     curpath = os.path.split(fname)[0]
     if ftype=='.pickle':
