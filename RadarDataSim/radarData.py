@@ -292,6 +292,12 @@ class RadarDataFile(object):
             beamn_list = infodict['Beams']
             time_list = infodict['Time']
             file_loclist = [ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(beamn_list)]
+            if 'NoiseTime'in infodict.keys():
+                sridata = True
+                tnoiselist=infodict['NoiseTime']
+                nfile_loclist=[ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(tnoiselist)]
+            else:
+                sridata=False
         else:
             file_list = self.outfilelist
             # initalize lists for stuff
@@ -299,10 +305,21 @@ class RadarDataFile(object):
             beamn_list = []
             time_list = []
             file_loclist = []
-
+            datacheck = True
             # read in times
             for ifn, ifile in enumerate(file_list):
                 infodict1 = h52dict(ifile)
+                if 'NoiseTime'in infodict1.keys():
+                    sridata=True
+                    if ifn==0:
+                        tnoiselist=[]
+                        nfile_loclist=[]
+                    else:
+                        tnoiselist.append(infodict1['NoiseTime'])
+                        nfile_loclist.append(ifn*sp.ones(len(tnoiselist[-1])))
+                else:
+                    sridata=False
+                    
                 pulsen_list.append(infodict1['Pulses'])
                 beamn_list.append(infodict1['Beams'])
                 time_list.append(infodict1['Time'])
@@ -311,15 +328,26 @@ class RadarDataFile(object):
         beamn = sp.hstack(beamn_list).astype(int)# beam numbers
         ptimevec = sp.hstack(time_list).astype(float)# time of each pulse
         file_loc = sp.hstack(file_loclist).astype(int)# location in the file
+        if sridata:
+            ntimevec = sp.hstack(tnoiselist).astype(float)
+            nfile_loc = sp.hstack(nfile_loclist).astype(int)
+            outnoise = sp.zeros((Ntime,Nbeams,NNs-Pulselen+1,Nlag),dtype=simdtype)
+            
         firstfile = True
         # run the time loop
         print("Forming ACF estimates")
-        
+
+        # For each time go through and read only the necisary files
         for itn,it in enumerate(timevec):
             print("\tTime {0:d} of {1:d}".format(itn,Ntime))
             # do the book keeping to determine locations of data within the files
             cur_tlim = (it,it+inttime)
             curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
+            # SRI data Hack
+            if sridata:
+                curcases_n=sp.logical_and(ntimevec[:,0]>=cur_tlim[0],ntimevec[:,0]<cur_tlim[1])
+                curfileloc_n = nfile_loc[curcases_n]
+                curfiles_n = set(curfileloc_n)
             if  not sp.any(curcases):
                 print("\tNo pulses for time {0:d} of {1:d}, lagdata adjusted accordinly".format(itn,Ntime))
                 outdata = outdata[:itn]
@@ -362,11 +390,18 @@ class RadarDataFile(object):
                     specsused = sp.concatenate((specsused,specsusedtmp),axis=0)
 
                 curaddednoise[file_arlocs] = curh5data['AddedNoise'].astype(simdtype)[curfileitvec]
-                if 'NoiseDataACF'in curh5data.keys():
-                    realdata=True
-                else:
-                    realdata=False
+                # Read in noise data when you have don't have ACFs
+                if not sridata:
                     curnoise[file_arlocs] = curh5data['NoiseData'].astype(simdtype)[curfileitvec]
+            #SRI data
+            if sridata:
+                for ifn in curfiles_n:
+                    curfileit_n = sp.where(sp.logical_and(tnoiselist[:,0][:,0]>=cur_tlim[0],tnoiselist[ifn][:,0]<cur_tlim[1]))[0]
+                    ifile=file_list[ifn]
+                    curh5data_n = h52dict(ifile)
+                    file_arlocs = sp.where(curfileloc_n==ifn)[0]
+                    curnoise[file_arlocs] = curh5data['NoiseDataACF'][curfileit_n]
+                    
             # differentiate between phased arrays and dish antennas
             if self.sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
                 # After data is read in form lags for each beam
@@ -374,12 +409,14 @@ class RadarDataFile(object):
                     print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(beamlocs==ibeam)[0]
                     pulses[itn,ibeam] = len(beamlocstmp)
-                    pulsesN[itn,ibeam] = len(beamlocstmp)
+                   
                     outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),
                         numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-                    if realdata:
-                        outnoise[itn,ibeam] = 
+                    if sridata:
+                        pulsesN[itn,ibeam] = len(curnoise)
+                        outnoise[itn,ibeam] = sp.nansum(curnoise[:,ibeam],axis=0)
                     else:
+                        pulsesN[itn,ibeam] = len(beamlocstmp)
                         outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
                             numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
                     outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
