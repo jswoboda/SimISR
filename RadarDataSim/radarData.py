@@ -114,7 +114,7 @@ class RadarDataFile(object):
                 pt =pulsetimes[pnts]
                 pb = beams[pnts]
                 pn = pulsen[pnts].astype(int)
-                (rawdata,outdict['SpecsUsed'])= self.__makeTime__(pt,curcontainer.Time_Vector,
+                rawdata= self.__makeTime__(pt,curcontainer.Time_Vector,
                     curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
                 Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(*rawdata.shape).astype(simdtype)+
                     1j*sp.random.randn(*rawdata.shape).astype(simdtype))
@@ -178,7 +178,6 @@ class RadarDataFile(object):
         simdtype = self.simparams['dtype']
         out_data = sp.zeros((Np,N_samps),dtype=simdtype)
         weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
-        specsused = sp.zeros((Ndtime,Nbeams,N_rg,speclen),dtype=allspecs.dtype)
         for istn, ist in enumerate(spectime):
             for ibn in range(Nbeams):
                 print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
@@ -205,7 +204,6 @@ class RadarDataFile(object):
                         specsinrng=specsinrng[istn]
                     specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
                     cur_spec = specsinrng.sum(0)
-                    specsused[istn,ibn,isamp] = cur_spec
                     cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
                     pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*sensdict['t_s'] # based off new way of calculating
                     pow_den = range_m**2
@@ -221,7 +219,7 @@ class RadarDataFile(object):
                     for idatn,idat in enumerate(curdataloc):
                         out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
 
-        return (out_data,specsused)
+        return out_data
         #%% Processing
     def processdataiono(self):
         """ This will perform the the data processing and create the ACF estimates
@@ -382,12 +380,7 @@ class RadarDataFile(object):
                 curh5data = h52dict(ifile)
                 file_arlocs = sp.where(curfileloc==ifn)[0]
                 curdata[file_arlocs] = curh5data['RawData'][curfileitvec].copy()
-                if firstfile:
-                    specsused = curh5data['SpecsUsed'].astype(simdtype)
-                    firstfile=False
-                else:
-                    specsusedtmp = curh5data['SpecsUsed'].astype(simdtype)
-                    specsused = sp.concatenate((specsused,specsusedtmp),axis=0)
+
 
                 curaddednoise[file_arlocs] = curh5data['AddedNoise'].astype(simdtype)[curfileitvec]
                 # Read in noise data when you have don't have ACFs
@@ -445,7 +438,7 @@ class RadarDataFile(object):
 
         # Create output dictionaries and output data
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,
-                    'Time':timemat,'AddedNoiseACF':outaddednoise,'SpecsUsed':specsused}
+                    'Time':timemat,'AddedNoiseACF':outaddednoise}
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
         return(DataLags,NoiseLags)
 
@@ -501,67 +494,8 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsNoise = lagsNoise/pulsesnoise
     lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
 
-    # output debug plots
 
-    if 'debug' in simparams.keys():
-        debuginfo = simparams['debug']
-        plotdir =debuginfo['plotdir']
-        if debuginfo['PlotNoise']:
-            addednoise = DataLags['AddedNoiseACF']/pulses
-            addednoise = sp.mean(addednoise,axis=2)
 
-            noiseacf = [addednoise[0,0],lagsNoise[0,0,0]]
-            taun = sp.arange(Nlags)*sensdict['t_s']
-            noisepltfname = os.path.join(plotdir,'NoiseACF.png')
-            plotspecsgen(taun,noiseacf,[True,True],['Actual Noise','Noise Est'],noisepltfname,simparams['numpoints'])
-        if debuginfo['PlotDatawon']:
-            addednoise = DataLags['AddedNoiseACF']/pulses
-            lagsDatapnt = lagsData-addednoise
-            lagsDatapnt = lagsDatapnt*radar2acfmult
-            beamnumn = debuginfo['beam']
-            rnggaten = debuginfo['range']
-            realspec = DataLags['SpecsUsed'].mean(0)
-            lagsDatapnt = sp.transpose(lagsDatapnt,axes=(2,3,0,1))
-            lagsDatasumpnt = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsData.dtype)
-
-            for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
-                for ilag in range(Nlags):
-                    lagsDatasumpnt[irngnew,ilag] = lagsDatapnt[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
-            lagsDatasumpnt = sp.transpose(lagsDatasumpnt,axes=(3,0,2,1))
-            n= simparams['numpoints']
-            fs = 1./sensdict['t_s']
-            omegn = sp.arange(-sp.ceil((n-1.0)/2.0),sp.floor((n-1.0)/2.0+1))*(fs/(2*sp.ceil((n-1.0)/2.0)))
-            taun = sp.arange(Nlags)*sensdict['t_s']
-            baslist = [omegn,taun]
-            acspec = realspec[beamnumn,rnggaten]
-            acspec = acspec*simparams['numpoints']*lagsDatasumpnt[beamnumn,rnggaten,0,0].real/acspec.real.sum()
-            specacf = [acspec,lagsDatasumpnt[beamnumn,rnggaten,0]]
-            specpltfname = os.path.join(plotdir,'Specacfwon.png')
-            plotspecsgen(baslist,specacf,[False,True],['Input Spec','Spec Est'],specpltfname,simparams['numpoints'])
-        if debuginfo['PlotDatawn']:
-
-            lagsDatapnt = lagsData.copy()
-            lagsDatapnt = lagsDatapnt*radar2acfmult
-            beamnumn = debuginfo['beam']
-            rnggaten = debuginfo['range']
-            realspec = DataLags['SpecsUsed'].mean(0)
-            lagsDatapnt = sp.transpose(lagsDatapnt,axes=(2,3,0,1))
-            lagsDatasumpnt = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsData.dtype)
-
-            for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
-                for ilag in range(Nlags):
-                    lagsDatasumpnt[irngnew,ilag] = lagsDatapnt[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].mean(axis=0)
-            lagsDatasumpnt = sp.transpose(lagsDatasumpnt,axes=(3,0,2,1))
-            n= simparams['numpoints']
-            fs = 1./sensdict['t_s']
-            omegn = sp.arange(-sp.ceil((n-1.0)/2.0),sp.floor((n-1.0)/2.0+1))*(fs/(2*sp.ceil((n-1.0)/2.0)))
-            taun = sp.arange(Nlags)*sensdict['t_s']
-            baslist = [omegn,taun]
-            acspec = realspec[beamnumn,rnggaten]
-            acspec = acspec*simparams['numpoints']*lagsDatasumpnt[beamnumn,rnggaten,0,0].real/acspec.real.sum()
-            specacf = [acspec,lagsDatasumpnt[beamnumn,rnggaten,0]]
-            specpltfname = os.path.join(plotdir,'Specacfon.png')
-            plotspecsgen(baslist,specacf,[False,True],['Input Spec','Spec Est'],specpltfname,simparams['numpoints'])
     # subtract out noise lags
     lagsData = lagsData-lagsNoise
     # Calculate a variance using equation 2 from Hysell's 2008 paper. Done use full covariance matrix because assuming nearly diagonal.
