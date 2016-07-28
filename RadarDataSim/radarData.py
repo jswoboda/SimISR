@@ -140,9 +140,9 @@ class RadarDataFile(object):
             dict2h5(os.path.join(outdir,'INFO.h5'),infodict)
 
        else:
-           ifile = Ionodict[filetimes[0]]
-           curcontainer = IonoContainer.readh5(ifile)
-           self.timeoffset=curcontainer.Time_Vector[0,0]
+           infodict= h52dict(os.path.join(outdir,'INFO.h5'))
+           alltime=sp.hstack(infodict['Time'])
+           self.timeoffset=alltime.min()
            self.outfilelist=outfilelist
 
 
@@ -204,7 +204,6 @@ class RadarDataFile(object):
                         specsinrng=specsinrng[istn]
                     specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
                     cur_spec = specsinrng.sum(0)
-                    cur_filt = sp.sqrt(scfft.ifftshift(cur_spec))
                     pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*sensdict['t_s'] # based off new way of calculating
                     pow_den = range_m**2
                     curdataloc = sp.where(sp.logical_and((pulse2spec==istn),(beamcodes==ibn)))[0]
@@ -282,56 +281,30 @@ class RadarDataFile(object):
         Ksysvec = self.sensdict['Ksys']
         # set up arrays that hold the location of pulses that are to be processed together
         infoname = os.path.join(self.datadir,'INFO.h5')
-        if os.path.isfile(infoname):
-            infodict =h52dict(infoname)
-            flist =  infodict['Files']
-            file_list = [os.path.join(self.datadir,i) for i in flist]
-            pulsen_list = infodict['Pulses']
-            beamn_list = infodict['Beams']
-            time_list = infodict['Time']
-            file_loclist = [ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(beamn_list)]
-            if 'NoiseTime'in infodict.keys():
-                sridata = True
-                tnoiselist=infodict['NoiseTime']
-                nfile_loclist=[ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(tnoiselist)]
-            else:
-                sridata=False
+        # Just going to assume that the info file is in the directory
+        infodict =h52dict(infoname)
+        flist =  infodict['Files']
+        file_list = [os.path.join(self.datadir,i) for i in flist]
+        pulsen_list = infodict['Pulses']
+        beamn_list = infodict['Beams']
+        time_list = infodict['Time']
+        file_loclist = [ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(beamn_list)]
+        if 'NoiseTime'in infodict.keys():
+            sridata = True
+            tnoiselist=infodict['NoiseTime']
+            nfile_loclist=[ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(tnoiselist)]
         else:
-            file_list = self.outfilelist
-            # initalize lists for stuff
-            pulsen_list = []
-            beamn_list = []
-            time_list = []
-            file_loclist = []
-            datacheck = True
-            # read in times
-            for ifn, ifile in enumerate(file_list):
-                infodict1 = h52dict(ifile)
-                if 'NoiseTime'in infodict1.keys():
-                    sridata=True
-                    if ifn==0:
-                        tnoiselist=[]
-                        nfile_loclist=[]
-                    else:
-                        tnoiselist.append(infodict1['NoiseTime'])
-                        nfile_loclist.append(ifn*sp.ones(len(tnoiselist[-1])))
-                else:
-                    sridata=False
-                    
-                pulsen_list.append(infodict1['Pulses'])
-                beamn_list.append(infodict1['Beams'])
-                time_list.append(infodict1['Time'])
-                file_loclist.append(ifn*sp.ones(len(pulsen_list[-1])))
+            sridata=False
+       
         pulsen = sp.hstack(pulsen_list).astype(int)# pulse number
         beamn = sp.hstack(beamn_list).astype(int)# beam numbers
         ptimevec = sp.hstack(time_list).astype(float)# time of each pulse
         file_loc = sp.hstack(file_loclist).astype(int)# location in the file
         if sridata:
-            ntimevec = sp.hstack(tnoiselist).astype(float)
+            ntimevec = sp.vstack(tnoiselist).astype(float)
             nfile_loc = sp.hstack(nfile_loclist).astype(int)
             outnoise = sp.zeros((Ntime,Nbeams,NNs-Pulselen+1,Nlag),dtype=simdtype)
             
-        firstfile = True
         # run the time loop
         print("Forming ACF estimates")
 
@@ -393,7 +366,7 @@ class RadarDataFile(object):
                     ifile=file_list[ifn]
                     curh5data_n = h52dict(ifile)
                     file_arlocs = sp.where(curfileloc_n==ifn)[0]
-                    curnoise[file_arlocs] = curh5data['NoiseDataACF'][curfileit_n]
+                    curnoise[file_arlocs] = curh5data_n['NoiseDataACF'][curfileit_n]
                     
             # differentiate between phased arrays and dish antennas
             if self.sensdict['Name'].lower() in ['risr','pfisr','risr-n']:

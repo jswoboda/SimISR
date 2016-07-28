@@ -86,10 +86,12 @@ def makeradardata(basedir,configfile,remakealldata):
     # determine the list of h5 files in Origparams directory
     dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
     # Make the lists of numbers and file names for the dictionary
-    (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
+    if len(dirlist)>0:
+        (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
 
-    Ionodict = {timebeg[itn]:dirlist[it] for itn, it in enumerate(listorder)}
-    
+        Ionodict = {timebeg[itn]:dirlist[it] for itn, it in enumerate(listorder)}
+    else:
+        Ionodict = {0:os.path.join(inputdir,'00.h5')}
     # Find all of the raw data files
     radardatalist = glob.glob(os.path.join(outputdir,'*RawData.h5'))
     if radardatalist and (not remakealldata):

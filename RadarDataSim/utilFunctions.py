@@ -102,7 +102,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     amb1d = ((-kvec**2/(nlags*vol))+kvec*(nlags-vol)/(nlags*vol)+1.)#/(kvec+1)
     amb1d[kvec<0]=0.
     amb1d[kvec>=nlags]=0.
-    kp = sp.argwhere(amb1d>sp.finfo(float).eps).flatten()
+    kp = sp.argwhere(amb1d>10*sp.finfo(float).eps).flatten()
     lagmat = sp.zeros((Wtt.shape[0],nspec))
     lagmat.flat[sp.ravel_multi_index((sp.arange(Wtt.shape[0]),kp),lagmat.shape)]=amb1d[kp]
     Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),
@@ -668,7 +668,7 @@ def readconfigfile(fname):
         sensdict['t_s']*len(pulse),pulse,simparams['numpoints'])
     simparams['angles']=angles
     rng_lims = simparams['RangeLims']
-    rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
+    rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3/2.)
     simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
     simparams['Rangegates']=rng_gates
     if not 'lagtype' in simparams.keys():
