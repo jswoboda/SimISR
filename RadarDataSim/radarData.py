@@ -352,7 +352,7 @@ class RadarDataFile(object):
                 ifile = file_list[ifn]
                 curh5data = h52dict(ifile)
                 file_arlocs = sp.where(curfileloc==ifn)[0]
-                curdata[file_arlocs] = curh5data['RawData'][curfileitvec].copy()
+                curdata[file_arlocs] = curh5data['RawData'][curfileitvec]
 
 
                 curaddednoise[file_arlocs] = curh5data['AddedNoise'].astype(simdtype)[curfileitvec]

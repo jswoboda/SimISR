@@ -318,7 +318,7 @@ def makesumrule(ptype,plen,ts,lagtype='centered'):
         Output
             sumrule - A 2 x nlags numpy array that holds the summation rule.
     """
-    nlags = sp.round_(plen/ts)
+    nlags = sp.floor(plen/ts)
     if ptype.lower()=='long':
         if lagtype=='forward':
             arback=-sp.arange(nlags,dtype=int)
@@ -345,7 +345,7 @@ def makepulse(ptype,plen,ts):
             pulse - The pulse array that will be used as the window in the data formation.
             plen - The length of the pulse with the sampling time taken into account.
     """
-    nsamps = sp.round_(plen/ts)
+    nsamps = sp.floor(plen/ts)
 
     if ptype.lower()=='long':
         pulse = sp.ones(nsamps)
