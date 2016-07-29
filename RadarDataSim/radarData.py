@@ -409,7 +409,6 @@ class RadarDataFile(object):
                         numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
                     outaddednoise[itn,ibeam] = lagfunc(noisedataadd*ksysmultna,
                         numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-
         # Create output dictionaries and output data
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,
                     'Time':timemat,'AddedNoiseACF':outaddednoise}
