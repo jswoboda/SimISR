@@ -361,8 +361,9 @@ class RadarDataFile(object):
                     curnoise[file_arlocs] = curh5data['NoiseData'].astype(simdtype)[curfileitvec]
             #SRI data
             if sridata:
+                curnoise = sp.zeros((len(curfileloc_n),Nbeams,NNs-Pulselen+1,Pulselen),dtype = simdtype)
                 for ifn in curfiles_n:
-                    curfileit_n = sp.where(sp.logical_and(tnoiselist[:,0][:,0]>=cur_tlim[0],tnoiselist[ifn][:,0]<cur_tlim[1]))[0]
+                    curfileit_n = sp.where(sp.logical_and(tnoiselist[ifn][:,0]>=cur_tlim[0],tnoiselist[ifn][:,0]<cur_tlim[1]))[0]
                     ifile=file_list[ifn]
                     curh5data_n = h52dict(ifile)
                     file_arlocs = sp.where(curfileloc_n==ifn)[0]
