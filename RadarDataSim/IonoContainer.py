@@ -15,6 +15,8 @@ import scipy as sp
 import scipy.io as sio
 import scipy.interpolate
 import tables
+import h5py
+from datetime import datetime
 # From my
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 from utilFunctions import Chapmanfunc, TempProfile
@@ -476,7 +478,17 @@ class IonoContainer(object):
         self.Time_Vector=self.Time_Vector[tkeep]
         self.Param_List=self.Param_List[:,tkeep]
         self.Velocity=self.Velocity[:,tkeep]
+    
+    def timelisting(self):
+        """ This will output a list of lists that contains the times in strings."""
 
+        curtimes = self.Time_Vector
+        timestrs = []
+        for (i,j) in curtimes:
+            curlist = [datetime.utcfromtimestamp(i).__str__(),datetime.utcfromtimestamp(j).__str__()]
+            timestrs.append(curlist)
+
+        return timestrs
     #%% Operator Methods
     def __eq__(self,self2):
         """This is the == operator """
