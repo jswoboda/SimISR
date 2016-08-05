@@ -131,7 +131,9 @@ class RadarSpaceTimeOperator(object):
             ionodata = curiono.Param_List
             ionotime = curiono.Time_Vector
             ionocart = curiono.Cart_Coords
+            n_f = ionodata.shape[-1]
             ionodata=scfft.fftshift(scfft.ifft(scfft.ifftshift(ionodata,axes=-1),axis=-1),axes=-1)
+            ionodata=ionodata/n_f
             assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
 
             ionosttimes = ionotime[:,0]
@@ -290,7 +292,8 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
 
     rng_vec2 = simparams['Rangegatesfinal']
     nrgout = len(rng_vec2)
-
+    
+    rng_len=sensdict['t_s']*v_C_0*1e-3/2.
     Nlocbeg = len(rho)
     Ntbeg = len(timein)
     Ntout = len(timeout)
@@ -324,21 +327,19 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
                 irow = isamp+ibn*nrgout
 
                 range_g = rng_vec2[isamp]
-                rnglims = [range_g-minrg,range_g+maxrg]
-                rangelog = sp.argwhere((rho>=rnglims[0])&(rho<rnglims[1]))
+                rnglims = [range_g-rng_len/2.,range_g+rng_len/2.]
+                rangelog = ((rho>=rnglims[0])&(rho<rnglims[1]))
 
                 # This is a nearest neighbors interpolation for the spectrums in the range domain
                 if sp.sum(rangelog)==0:
                     minrng = sp.argmin(sp.absolute(range_g-rho))
                     rangelog[minrng] = True
                 #create the weights and weight location based on the beams pattern.
-                weight_cur =weight[rangelog[:,0]]
+                weight_cur =weight[rangelog]
                 weight_cur = weight_cur/weight_cur.sum()
-                weight_loc = sp.where(rangelog[:,0])[0]
-
+                weight_loc = sp.where(rangelog)[0]
                 icols = weight_loc
-
-                weights_final = weight_cur[weight_loc]*range_g**2/rho[weight_loc]**2
+                weights_final = weight_cur*range_g**2/rho[rangelog]**2
                 outmat[irow,icols] = weights_final
         outmat=[outmat]
     else:
@@ -371,7 +372,7 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
                     w_loc_rep = sp.tile(weight_loc,len(itpnts))
                     t_loc_rep = sp.repeat(itpnts,len(weight_loc))
                     icols = t_loc_rep*Nlocbeg+w_loc_rep
-
+                   
                     weights_final = weights_time[t_loc_rep]*weight_cur[w_loc_rep]*range_g**2/rho[w_loc_rep]**2
                     outmat[irow,icols] = weights_final
 

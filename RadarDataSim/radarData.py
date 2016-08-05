@@ -173,7 +173,7 @@ class RadarDataFile(object):
         rho = Sphere_Coords[:,0]
         Az = Sphere_Coords[:,1]
         El = Sphere_Coords[:,2]
-        rng_len=self.sensdict['t_s']*v_C_0/1000.0
+        rng_len=self.sensdict['t_s']*v_C_0*1e-3/2.
         (Nloc,Ndtime,speclen) = allspecs.shape
         simdtype = self.simparams['dtype']
         out_data = sp.zeros((Np,N_samps),dtype=simdtype)

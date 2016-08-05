@@ -189,10 +189,6 @@ def applymat(basedir,configfile,optinputs):
     outfile=os.path.join(outputdir2,'00lags.h5')
     Ionoout.saveh5(outfile)
 
-
-
-    return xarray
-
 #%% For sorting
 def ke(item):
     if item[0].isdigit():
