@@ -10,6 +10,7 @@ from const.physConstants import v_C_0
 from utilFunctions import readconfigfile
 import scipy.fftpack as scfft
 from IonoContainer import IonoContainer
+from RadarDataSim.utilFunctions import spect2acf
 import scipy as sp
 import pdb
 class RadarSpaceTimeOperator(object):
@@ -88,6 +89,7 @@ class RadarSpaceTimeOperator(object):
             self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))
             self.simparams=simparams
             self.sensdict=sensdict
+            self.lagmat = self.simparams['amb_dict']['WttMatrix']
             # create the matrix
             (self.RSTMat,self.blocks,self.blocksize,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Time_Vector,configfile)
         elif configfile is None:
@@ -101,10 +103,12 @@ class RadarSpaceTimeOperator(object):
             self.Cart_Coords_In = self.Cart_Coords_Out
             self.Sphere_Coords_In =self.Sphere_Coords_Out
             self.Time_In = self.Time_Out
-
+            self.lagmat = sp.diag(sp.ones(14))
 
     def mult_iono(self,ionoin):
-        """ This will apply the forward model to the contents of an ionocontainer object.
+        """ 
+            This will apply the forward model to the contents of an ionocontainer object. It is assuming that 
+            this is an ionocontainer holding the spectra.
         """
         ntin = self.Time_In.shape[0]
         matsttimes = self.Time_In[:,0]
@@ -128,19 +132,18 @@ class RadarSpaceTimeOperator(object):
                 curiono=iiono
 
 
-            ionodata = curiono.Param_List
+            
             ionotime = curiono.Time_Vector
             ionocart = curiono.Cart_Coords
-            n_f = ionodata.shape[-1]
-            ionodata=scfft.fftshift(scfft.ifft(scfft.ifftshift(ionodata,axes=-1),axis=-1),axes=-1)
-            ionodata=ionodata/n_f
+           
+            tau,acf=spect2acf(curiono.Param_Names,curiono.Param_List)
             assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
 
             ionosttimes = ionotime[:,0]
 
             keeptimes = sp.arange(ntin)[sp.in1d(matsttimes,ionosttimes)]
 
-            (nl,nt,np) = ionodata.shape
+            (nl,nt,np) = acf.shape
             
             npout = len(self.simparams['Pulse'])
             if firsttime:
@@ -155,7 +158,7 @@ class RadarSpaceTimeOperator(object):
                     ntcounts[iin]=ntcounts[iin]+1
                     tempdata = sp.zeros((np,nlout))
                     for iparam in range(np):
-                        tempdata[iparam]=mainmat.dot(ionodata[:,iin,iparam])
+                        tempdata[iparam]=mainmat.dot(acf[:,iin,iparam])
                     # HACK apply ambiugity function using matrix.
                    
                     outdata[:,iout] = sp.transpose(sp.dot(ambmat,tempdata))
@@ -166,7 +169,7 @@ class RadarSpaceTimeOperator(object):
                     ntcounts[iout]=ntcounts[iout]+1
                     mainmat=self.RSTMat[b_locsind[ibn]]
                     for iparam in range(np):
-                        tempdata[iparam]=mainmat.dot(ionodata[:,iin,iparam])
+                        tempdata[iparam]=mainmat.dot(acf[:,iin,iparam])
                      # HACK apply ambiugity function using matrix.
                     
                     outdata[:,iout] = sp.transpose(sp.dot(ambmat,tempdata))
@@ -277,7 +280,7 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
     timeout = sp.column_stack((timeout,timeout+Tint))
 
     rng_vec = simparams['Rangegates']
-    rng_bin=sensdict['t_s']*v_C_0/1000.0
+    rng_bin=sensdict['t_s']*v_C_0*1e-3/2.
     sumrule = simparams['SUMRULE']
     #
     minrgbin = -sumrule[0].min()
@@ -292,8 +295,9 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
 
     rng_vec2 = simparams['Rangegatesfinal']
     nrgout = len(rng_vec2)
-    
-    rng_len=sensdict['t_s']*v_C_0*1e-3/2.
+    pulse=simparams['Pulse']
+    p_samps = pulse.shape[0]
+    rng_len=p_samps*sensdict['t_s']*v_C_0*1e-3/2.
     Nlocbeg = len(rho)
     Ntbeg = len(timein)
     Ntout = len(timeout)
@@ -301,7 +305,6 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
     # set up blocks
     blocksize = (Nbeams*nrgout,Nlocbeg)
     blocks = (Ntout,Ntbeg)
-
     if vel is None:
 
         for iton,ito in enumerate(timeout):
@@ -328,8 +331,8 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
 
                 range_g = rng_vec2[isamp]
                 rnglims = [range_g-rng_len/2.,range_g+rng_len/2.]
+                # assume centered lag product.
                 rangelog = ((rho>=rnglims[0])&(rho<rnglims[1]))
-
                 # This is a nearest neighbors interpolation for the spectrums in the range domain
                 if sp.sum(rangelog)==0:
                     minrng = sp.argmin(sp.absolute(range_g-rho))
@@ -341,6 +344,7 @@ def makematPA(Sphere_Coords,timein,configfile,vel=None):
                 icols = weight_loc
                 weights_final = weight_cur*range_g**2/rho[rangelog]**2
                 outmat[irow,icols] = weights_final
+                
         outmat=[outmat]
     else:
         for iton,ito in enumerate(timeout):

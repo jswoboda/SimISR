@@ -229,7 +229,7 @@ def maketi(Ionoin):
     return Ionoin
 
 
-def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='params',suptitle = 'Parameter Comparison',werrors=False):
+def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'],filetemplate='params',suptitle = 'Parameter Comparison',werrors=False,nelog=True):
     """ This function will plot the desired parameters for each beam along range.
         The values of the input and measured parameters will be plotted
         Inputs 
@@ -245,7 +245,7 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
     sns.set_style("whitegrid")
     sns.set_context("notebook")
 #    rc('text', usetex=True)
-    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
+    ffit = os.path.join(maindir,fitdir,'fitteddata.h5')
     inputfiledir = os.path.join(maindir,'Origparams')
     (sensdict,simparams) = readconfigfile(configfile)
 
@@ -332,34 +332,17 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
             curbeam = beamlist[ibeam]
 
             altlist = sp.sin(curbeam[1]*sp.pi/180.)*rng
-
-            # Plot fitted data for the axis
             
-            indxkep = np.argwhere(invidx==ibeam)[:,0]
-            curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
-            rng_fit= dataloc[indxkep,0]
-            alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
-            errorexist = 'n'+paramslower[iparam] in pnameslower
-            if errorexist and werrors:
-                eparam = sp.argwhere( 'n'+paramslower[iparam]==pnameslower)[0][0]
-                curerror = Ionofit.Param_List[indxkep,time2fit[itime],eparam]
-                lines[1]=ax.errorbar(curfit, alt_fit, xerr=curerror,fmt='-.',c='g')[0]
-            else:
-                lines[1]= ax.plot(curfit,alt_fit,marker='.',c='g')[0]
-            labels[1] = 'Fitted Parameters'
-            # get and plot the input data
-            
-            numplots = len(time2file[itime])
-                
             curparm = paramslower[iparam]
             # Use Ne from input to compare the ne derived from the power.
             if curparm == 'nepow':
-                curparm = 'ne'
+                curparm_in = 'ne'
+            else:
+                curparm_in=curparm
 
             curcoord = sp.zeros(3)
             curcoord[1:] = curbeam
             
-    
             for iplot,filenum in enumerate(time2file[itime]):
                 
                 if curfilenum!=filenum:
@@ -370,7 +353,7 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
                         Ionoin = maketi(Ionoin)
                     pnames = Ionoin.Param_Names
                     pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
-                prmloc = sp.argwhere(curparm==pnameslowerin)
+                prmloc = sp.argwhere(curparm_in==pnameslowerin)
                 if prmloc.size !=0:
                     curprm = prmloc[0][0]
                 # build up parameter vector bs the range values by finding the closest point in space in the input
@@ -382,14 +365,36 @@ def plotbeamparametersv2(times,configfile,maindir,params=['Ne'],filetemplate='pa
                     tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
                     curdata[irngn] = tempin[0,curprm]
                 #actual plotting of the input data
-                lines[0]= ax.plot(curdata,altlist,marker='o',c='b')[0]
+                lines[0]= ax.plot(curdata,altlist,marker='o',c='b',linewidth=2)[0]
                 labels[0] = 'Input Parameters'
+            # Plot fitted data for the axis
+            
+            indxkep = np.argwhere(invidx==ibeam)[:,0]
+            curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
+            rng_fit= dataloc[indxkep,0]
+            alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
+            errorexist = 'n'+paramslower[iparam] in pnameslower
+            if errorexist and werrors:
+                eparam = sp.argwhere( 'n'+paramslower[iparam]==pnameslower)[0][0]
+                curerror = Ionofit.Param_List[indxkep,time2fit[itime],eparam]
+                lines[1]=ax.errorbar(curfit, alt_fit, xerr=curerror,fmt='-.',c='g',linewidth=2)[0]
+            else:
+                lines[1]= ax.plot(curfit,alt_fit,marker='o',c='g',linewidth=2)[0]
+            labels[1] = 'Fitted Parameters'
+            # get and plot the input data
+            
+            numplots = len(time2file[itime])
+                
+
+            
+    
+
             # set the limit for the parameter
-            if curparm!='ne':
+            if curparm_in!='ne':
                 ax.set(xlim=[0.75*sp.amin(curfit),1.25*sp.amax(curfit)])
             if curparm =='vi':
                  ax.set(xlim=[-1.25*sp.amax(sp.absolute(curfit)),1.25*sp.amax(sp.absolute(curfit))])
-            if curparm=='ne':
+            if (curparm_in=='ne') and nelog:
                 ax.set_xscale('log')
 
             ax.set_xlabel(params[iparam])
@@ -781,9 +786,9 @@ def analysisdump(maindir,configfile,suptitle=None):
     if simparams['Pulsetype'].lower()=='barker':
         params=['Ne']
         if suptitle is None:
-            plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,werrors=True)
+            plotbeamparametersv2(times,configfile,maindir,params=params,filetemplate=filetemplate2,werrors=True)
         else:
-            plotbeamparameters(times,configfile,maindir,params=params,filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
+            plotbeamparametersv2(times,configfile,maindir,params=params,filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
     else:
         params = ['Ne','Nepow','Te','Ti','Vi']
         if suptitle is None:

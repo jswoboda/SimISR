@@ -90,28 +90,28 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
         Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft),axis=1).real,nmove,axis=1)
 
     # make matrix to take
-#    imat = sp.eye(nspec)
-#    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
-#    tauint = Delay
-#    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
-#    lagmat = sp.dot(Wtt.sum(axis=2),interpmat)
-#    W0=lagmat[0].sum()
-#    for ilag in range(nlags):
-#       lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
+    imat = sp.eye(nspec)
+    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
+    tauint = Delay
+    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
+    lagmat = sp.dot(Wtt.sum(axis=1),interpmat)
+    W0=lagmat[0].sum()
+    for ilag in range(nlags):
+       lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
 #    # triangle window
-    tau = sp.arange(-sp.ceil((nspec-1.0)/2.0),sp.floor((nspec-1.0)/2.0+1))/Fsorg
-    # amb1d = plen-tau
-    # amb1d[amb1d<0]=0.
-    # amb1d[tau<0]=0.
-    # amb1d=amb1d/plen
-    kvec = tau*Fsorg
-    
-    amb1d = ((-kvec**2/(nlags*vol))+kvec*(nlags-vol)/(nlags*vol)+1.)#/(kvec+1)
-    amb1d[kvec<0]=0.
-    amb1d[kvec>=nlags]=0.
-    kp = sp.argwhere(amb1d>10*sp.finfo(float).eps).flatten()
-    lagmat = sp.zeros((Wtt.shape[0],nspec))
-    lagmat.flat[sp.ravel_multi_index((sp.arange(Wtt.shape[0]),kp),lagmat.shape)]=amb1d[kp]
+#    tau = sp.arange(-sp.ceil((nspec-1.0)/2.0),sp.floor((nspec-1.0)/2.0+1))/Fsorg
+#    # amb1d = plen-tau
+#    # amb1d[amb1d<0]=0.
+#    # amb1d[tau<0]=0.
+#    # amb1d=amb1d/plen
+#    kvec = tau*Fsorg
+#    
+#    amb1d = ((-kvec**2/(nlags*vol))+kvec*(nlags-vol)/(nlags*vol)+1.)#/(kvec+1)
+#    amb1d[kvec<0]=0.
+#    amb1d[kvec>=nlags]=0.
+#    kp = sp.argwhere(amb1d>10*sp.finfo(float).eps).flatten()
+#    lagmat = sp.zeros((Wtt.shape[0],nspec))
+#    lagmat.flat[sp.ravel_multi_index((sp.arange(Wtt.shape[0]),kp),lagmat.shape)]=amb1d[kp]
     Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),
                'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
     return Wttdict
@@ -126,17 +126,18 @@ def spect2acf(omeg,spec,n=None):
     tau: The time sampling array.
     acf: The acf from the original spectrum."""
     if n is None:
-        n=float(len(spec))
+        n=float(spec.shape[-1])
 #    padnum = sp.floor(len(spec)/2)
     df = omeg[1]-omeg[0]
 
 #    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
-    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec)))
+    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec,axes=-1),n,axis=-1),axes=-1)
+    acf = acf/n
     dt = 1/(df*n)
     tau = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*dt
     return tau, acf
 
-def acf2spect(tau,acf,n=None):
+def acf2spect(tau,acf,n=None,initshift = False):
     """ Creates spectrum and frequency vector associated with the given time array and acf.
     Inputs:
     tau: The time sampling array.
@@ -148,10 +149,12 @@ def acf2spect(tau,acf,n=None):
     """
 
     if n is None:
-        n=float(len(acf))
+        n=float(acf.shape[-1])
     dt = tau[1]-tau[0]
 
-    spec = scfft.fftshift(scfft.fft(acf,n=n))
+    if initshift:
+        acf = scfft.iffthsift(acf,axes=-1)
+    spec = scfft.fftshift(scfft.fft(acf,n=n,axis=-1),axes=-1)
     fs = 1/dt
     omeg = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*fs
     return omeg, spec

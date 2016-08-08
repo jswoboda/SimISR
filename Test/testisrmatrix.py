@@ -10,6 +10,7 @@ import shutil
 from RadarDataSim.utilFunctions import makedefaultfile
 from RadarDataSim.operators import makematPA
 from RadarDataSim.IonoContainer import MakeTestIonoclass
+from RadarDataSim.analysisplots import plotbeamparametersv2
 import RadarDataSim.runsim as runsim
 
 
@@ -35,7 +36,7 @@ def main():
     # Make Config file
     configname = os.path.join(testpath,'config.ini')
     
-    if ~os.path.isfile(configname):
+    if not os.path.isfile(configname):
         srcfile =os.path.join( os.path.split(curpath)[0],'RadarDataSim','default.ini')
         shutil.copy(srcfile,configname)
 
@@ -49,13 +50,21 @@ def main():
     coords[:,0] = xx.flatten()
     coords[:,1] = yy.flatten()
     coords[:,2] = zz.flatten()
-
-    Icont1 = MakeTestIonoclass(testv=True,testtemp=True,coords=coords)
+    Z_0 = 250.
+    H_0=30.
+    N_0=6.5e11
+    Icont1 = MakeTestIonoclass(testv=True,testtemp=True,N_0=N_0,z_0=Z_0,H_0=H_0,coords=coords)
     Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
     Icont1.saveh5(os.path.join(testpath,'startdata.h5'))
     funcnamelist=['spectrums','applymat','fittingmat']
     runsim.main(funcnamelist,testpath,configname,True)
-
+    
+    plotdir = os.path.join(testpath,'AnalysisPlots')
+    if not os.path.isdir(plotdir):
+        os.mkdir(plotdir)
+    f_templ = os.path.join(plotdir,'params')
+    plotbeamparametersv2([0.],configname,testpath,fitdir = 'FittedMat',params=['Ne','Ti','Te'],filetemplate=f_templ,
+                         suptitle = 'With Mat',werrors=False,nelog=False)
 if __name__== '__main__':
 
     main()
