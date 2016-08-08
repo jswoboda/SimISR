@@ -46,10 +46,12 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     # make the sinc
     nsamps = sp.floor(8.5*m_up)
     nsamps = nsamps-(1-sp.mod(nsamps,2))
-
+    # need to incorporate summation rule
+    vol = 1.
     nvec = sp.arange(-sp.floor(nsamps/2.0),sp.floor(nsamps/2.0)+1)
     pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann']
     curwin = scisig.get_window(winname,nsamps)
+    # Apply window to the sinc function. This will act as the impulse respons of the filter
     outsinc = curwin*sp.sinc(nvec/m_up)
     outsinc = outsinc/sp.sum(outsinc)
     dt = 1/(Fsorg*m_up)
@@ -58,8 +60,10 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     Delay = Delay_num*dt
     
     t_rng = sp.arange(0,1.5*plen,dt)
+    if len(t_rng)>2e4:
+        raise ValueError('The time array is way too large. plen should be in seconds.')
     numdiff = len(Delay)-len(outsinc)
-    numback= int(nvec.min()*m_up-Delay_num.min())
+    numback= int(nvec.min()/m_up-Delay_num.min())
     numfront = numdiff-numback
 #    outsincpad  = sp.pad(outsinc,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
     outsincpad  = sp.pad(outsinc,(numback,numfront),mode='constant',constant_values=(0.0,0.0))
@@ -91,6 +95,9 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
 #    tauint = Delay
 #    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
 #    lagmat = sp.dot(Wtt.sum(axis=2),interpmat)
+#    W0=lagmat[0].sum()
+#    for ilag in range(nlags):
+#       lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
 #    # triangle window
     tau = sp.arange(-sp.ceil((nspec-1.0)/2.0),sp.floor((nspec-1.0)/2.0+1))/Fsorg
     # amb1d = plen-tau
@@ -98,7 +105,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     # amb1d[tau<0]=0.
     # amb1d=amb1d/plen
     kvec = tau*Fsorg
-    vol = 1.
+    
     amb1d = ((-kvec**2/(nlags*vol))+kvec*(nlags-vol)/(nlags*vol)+1.)#/(kvec+1)
     amb1d[kvec<0]=0.
     amb1d[kvec>=nlags]=0.
