@@ -645,7 +645,10 @@ def makeionocombined(datapath,ext='.h5'):
 
         """
     if isinstance(datapath,basestring):
-        ionocontlist = glob.glob(os.path.join(datapath,'*'+ext))
+        if os.path.splitext(datapath)[-1]==0:
+            ionocontlist=[datapath]
+        else:
+            ionocontlist = glob.glob(os.path.join(datapath,'*'+ext))
     else:
         ionocontlist = datapath
 

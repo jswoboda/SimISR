@@ -9,7 +9,7 @@ import tables
 from const.physConstants import v_C_0
 from utilFunctions import readconfigfile
 import scipy.fftpack as scfft
-from IonoContainer import IonoContainer
+from IonoContainer import IonoContainer,makeionocombined
 from RadarDataSim.utilFunctions import spect2acf
 import scipy as sp
 import pdb
@@ -91,7 +91,7 @@ class RadarSpaceTimeOperator(object):
             self.sensdict=sensdict
             self.lagmat = self.simparams['amb_dict']['WttMatrix']
             # create the matrix
-            (self.RSTMat,self.blocks,self.blocksize,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile)
+            (self.RSTMat,self.overlaps,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile)
         elif configfile is None:
 
             self.Cart_Coords_Out = RSTOPinv.Cart_Coords_In
@@ -105,85 +105,56 @@ class RadarSpaceTimeOperator(object):
             self.Time_In = self.Time_Out
             self.lagmat = sp.diag(sp.ones(14))
 
-    def mult_iono(self,ionoin):
+    def mult_iono(self,ionoin_list):
         """ 
             This will apply the forward model to the contents of an ionocontainer object. It is assuming that 
             this is an ionocontainer holding the spectra.
         """
-        ntin = self.Time_In.shape[0]
-        matsttimes = self.Time_In[:,0]
+
         ntout = self.Time_Out.shape[0]
-        ntcounts =sp.zeros(ntout)
         nlout = self.Cart_Coords_Out.shape[0]
-        blocklocs = self.blocklocs
+        blist_in,blist_out = self.blocklocs
         amb_dict = self.simparams['amb_dict']
         ambmat = amb_dict['WttMatrix']
+        overlaps = self.overlaps
+        np = ambmat.shape[0]
+        t_s = self.sensdict['t_s']
+        tau_out = t_s*sp.arange(np)
         
-        firsttime = True
-        if isinstance(ionoin,list):
-            ionolist = ionoin
+        if isinstance(ionoin_list,list)or isinstance(ionoin_list,str):
+            
+            Iono_in = makeionocombined(ionoin_list)
         else:
-            ionolist = [ionoin]
-
-        for ionon,iiono in enumerate(ionolist):
-            if isinstance(iiono,str):
-                curiono = IonoContainer.readh5(iiono)
-            else:
-                curiono=iiono
-
-
-            
-            ionotime = curiono.Time_Vector
-            ionocart = curiono.Cart_Coords
-           
-            tau,acf=spect2acf(curiono.Param_Names,curiono.Param_List)
-            assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
-
-            ionosttimes = ionotime[:,0]
-
-            keeptimes = sp.arange(ntin)[sp.in1d(matsttimes,ionosttimes)]
-
-            (nl,nt,np) = acf.shape
-            
-            npout = len(self.simparams['Pulse'])
-            if firsttime:
-                outdata=sp.zeros((nlout,ntout,npout))
-                firsttime==False
-
-            b_locsind = sp.arange(len(blocklocs))[sp.in1d(blocklocs[:,0],keeptimes)]
-            b_locs = blocklocs[b_locsind]
-            if len(self.RSTMat)==1:
-                mainmat = self.RSTMat[0]
-                for ibn,(iin,iout) in enumerate(b_locs):
-                    ntcounts[iin]=ntcounts[iin]+1
-                    tempdata = sp.zeros((np,nlout))
-                    for iparam in range(np):
-                        tempdata[iparam]=mainmat.dot(acf[:,iin,iparam])
-                    # HACK apply ambiugity function using matrix.
-                   
-                    outdata[:,iout] = sp.transpose(sp.dot(ambmat,tempdata))
-
-            else:
-                for ibn,(iin,iout) in enumerate(b_locs):
-                    tempdata = sp.zeros((np,nlout))
-                    ntcounts[iout]=ntcounts[iout]+1
-                    mainmat=self.RSTMat[b_locsind[ibn]]
-                    for iparam in range(np):
-                        tempdata[iparam]=mainmat.dot(acf[:,iin,iparam])
-                     # HACK apply ambiugity function using matrix.
-                    
-                    outdata[:,iout] = sp.transpose(sp.dot(ambmat,tempdata))
-        # If any times had no returns remove them
-        # divid out data that was added together
-        outkeep = ntcounts>0
-        outdata = outdata[:,outkeep]
-        ntcounts=ntcounts[outkeep]
-        for itm in range(outdata.shape[1]):
-            outdata[:,itm]=outdata[:,itm]/ntcounts[itm]
+            Iono_in=ionoin_list
+        
+        
+        ionocart = Iono_in.Cart_Coords
        
-        outiono = IonoContainer(self.Sphere_Coords_Out,outdata,times=self.Time_Out[outkeep],sensor_loc=curiono.Sensor_loc,
-                               ver=1,coordvecs = ['r','theta','phi'],paramnames=curiono.Param_Names,species=curiono.Species,
-                               velocity=curiono.Velocity)
+        tau,acf=spect2acf(Iono_in.Param_Names,Iono_in.Param_List)
+        np_in =acf.shape[-1]
+        
+        outdata = sp.zeros((nlout,ntout,np),dtype=acf.dtype)
+        assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
+
+        for it_out in range(ntout):
+            
+            overlists = overlaps[it_out]
+            irows = blist_out[it_out]
+            curintimes = [i[0] for i in overlists]
+            cur_outmat = self.RSTMat[irows[0]:irows[1],:]
+            
+            for it_in in curintimes:
+               icols=    blist_in[it_in]
+               cur_mat = cur_outmat[:,icols[0]:icols[1]]
+               tempdata=sp.zeros((np_in,nlout),dtype=acf.dtype)
+               for iparam in range(np_in):
+                   tempdata[iparam]=cur_mat.dot(acf[:,it_in,iparam])
+               
+               outdata[:,it_out] = sp.transpose(sp.dot(ambmat,tempdata)) + outdata[:,it_out]
+
+       
+        outiono = IonoContainer(self.Sphere_Coords_Out,outdata,times=self.Time_Out,sensor_loc=Iono_in.Sensor_loc,
+                               ver=1,coordvecs = ['r','theta','phi'],paramnames=tau_out)
         return outiono
 
     
@@ -256,6 +227,7 @@ class RadarSpaceTimeOperator(object):
                 for i in range(np):
                     (invdata[:,iin,i], error, iter, flag) = cgmat(Ctik, xin, bdata[:,iin,i], M, max_it, tol)
 
+
 def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
     """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc sparse matrix for the space time operator. 
        The output space will have range repeated first, then beams then time. 
@@ -285,155 +257,32 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
     #
     minrgbin = -sumrule[0].min()
     maxrgbin = len(rng_vec)-sumrule[1].max()
-    minrg = minrgbin*rng_bin
-    maxrg = maxrgbin*rng_bin
+    
     angles = simparams['angles']
     Nbeams = len(angles)
-    rho = Sphere_Coords[:,0]
-    Az = Sphere_Coords[:,1]
-    El = Sphere_Coords[:,2]
 
+    
     rng_vec2 = simparams['Rangegatesfinal']
     nrgout = len(rng_vec2)
     pulse=simparams['Pulse']
     p_samps = pulse.shape[0]
-    rng_len=p_samps*sensdict['t_s']*v_C_0*1e-3/2.
-    Nlocbeg = len(rho)
-    Ntbeg = len(timein)
-    Ntout = len(timeout)
-
-    # set up blocks
-    blocksize = (Nbeams*nrgout,Nlocbeg)
-    blocks = (Ntout,Ntbeg)
-    if vel is None:
-
-        for iton,ito in enumerate(timeout):
-            overlaps=[]
-            for ix, x in enumerate(timein):
-                if x[0]<ito[1] and x[1]>ito[0]:
-                    overlaps.append(sp.array([iton,ix]))
-            
-            tempover = sp.array(overlaps)
-            if iton==0:
-                blocklocs = tempover.copy()
-            else:
-                blocklocs=sp.vstack((blocklocs,tempover))
-        outmat = sp.sparse.lil_matrix(blocksize,dtype =sp.float64)
-
-        weights = {ibn:sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
-
-        for ibn in range(Nbeams):
-            print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
-            weight = weights[ibn]
-            for isamp in range(nrgout):
-                # make the row
-                irow = isamp+ibn*nrgout
-
-                range_g = rng_vec2[isamp]
-                rnglims = [range_g-rng_len/2.,range_g+rng_len/2.]
-                # assume centered lag product.
-                rangelog = ((rho>=rnglims[0])&(rho<rnglims[1]))
-                # This is a nearest neighbors interpolation for the spectrums in the range domain
-                if sp.sum(rangelog)==0:
-                    minrng = sp.argmin(sp.absolute(range_g-rho))
-                    rangelog[minrng] = True
-                #create the weights and weight location based on the beams pattern.
-                weight_cur =weight[rangelog]
-                weight_cur = weight_cur/weight_cur.sum()
-                weight_loc = sp.where(rangelog)[0]
-                icols = weight_loc
-                weights_final = weight_cur*range_g**2/rho[rangelog]**2
-                outmat[irow,icols] = weights_final
-                
-        outmat=[outmat]
-    else:
-        for iton,ito in enumerate(timeout):
-            overlaps = sp.array([getOverlap(ito,x) for x in timein])
-            weights_time = overlaps/overlaps.sum()
-            itpnts = sp.where(weights_time>0)[0]
-
-            # usually the matrix size is nbeamsxnrange
-            for ibn in range(Nbeams):
-                print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
-                weight = weights[ibn]
-                for isamp in range(nrgout):
-                    # make the row
-                    irow = isamp+ibn*nrgout+iton*nrgout*Nbeams
-
-                    range_g = rng_vec2[isamp]
-                    rnglims = [range_g-minrg,range_g+maxrg]
-                    rangelog = sp.argwhere((rho>=rnglims[0])&(rho<rnglims[1]))
-
-                    # This is a nearest neighbors interpolation for the spectrums in the range domain
-                    if sp.sum(rangelog)==0:
-                        minrng = sp.argmin(sp.absolute(range_g-rho))
-                        rangelog[minrng] = True
-                    #create the weights and weight location based on the beams pattern.
-                    weight_cur =weight[rangelog[:,0]]
-                    weight_cur = weight_cur/weight_cur.sum()
-                    weight_loc = sp.where(rangelog[:,0])[0]
-
-                    w_loc_rep = sp.tile(weight_loc,len(itpnts))
-                    t_loc_rep = sp.repeat(itpnts,len(weight_loc))
-                    icols = t_loc_rep*Nlocbeg+w_loc_rep
-                   
-                    weights_final = weights_time[t_loc_rep]*weight_cur[w_loc_rep]*range_g**2/rho[w_loc_rep]**2
-                    outmat[irow,icols] = weights_final
-
-
-    return(outmat,blocks,blocksize,blocklocs)
-def makematPAv2(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
-    """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc sparse matrix for the space time operator. 
-       The output space will have range repeated first, then beams then time. 
-       The coordinates will be [t0,b0,r0],[t0,b0,r1],[t0,b0,r2],...
-       [t0,b1,r0],[t0,b1,r1], ... [t1,b0,r0],[t1,b0,r1],...[t1,b1,r0]...
-       Inputs
-           Sphere_Coords - A Nlocx3 array of the spherical coordinates of the input data.
-           timein - A Ntbegx2 numpy array with the start and stop times of the input data.
-           configfile - The ini file used for the simulation configuration.
-           vel - A NlocxNtx3 numpy array of velocity.
-       Outputs
-           outmat - A list of matricies or a single matrix that is the forward between physical space
-               to the discrete samples space of the radar.
-           blocks - A tuple that holds the number of block matricies in overall forward operator.
-           blocksize - A tuple that holds the shape of the outmatrix size.
-           blockloc - An Ntout x Ntbeg array that holds the corresponding spatial forward model.
-    """
-    #
-    (sensdict,simparams) = readconfigfile(configfile)
-    timeout = simparams['Timevec']
-    Tint = simparams['Tint']
-    timeout = sp.column_stack((timeout,timeout+Tint))
-
-    rng_vec = simparams['Rangegates']
-    rng_bin=sensdict['t_s']*v_C_0*1e-3/2.
-    sumrule = simparams['SUMRULE']
-    #
-    minrgbin = -sumrule[0].min()
-    maxrgbin = len(rng_vec)-sumrule[1].max()
-    minrg = minrgbin*rng_bin
-    maxrg = maxrgbin*rng_bin
-    angles = simparams['angles']
-    Nbeams = len(angles)
-
-
-    rng_vec2 = simparams['Rangegatesfinal']
-    nrgout = len(rng_vec2)
-    pulse=simparams['Pulse']
-    p_samps = pulse.shape[0]
-    rng_len=p_samps*sensdict['t_s']*v_C_0*1e-3/2.
+    rng_len=p_samps*rng_bin
     Nlocbeg = Cart_Coords.shape[0]
+    Nlocout= Nbeams*nrgout
     Ntbeg = len(timein)
     Ntout = len(timeout)
-
+    if vel is None:
+        vel=sp.zeros((Nlocbeg,Ntbeg,3))
     # set up blocks
     blocksize = (Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg)
-    blocks = (Ntout,Ntbeg)
+
     
     # make the matrix
     outmat = sp.sparse.lil_matrix(blocksize,dtype =sp.float64)
-    # get the weights
     # determine the overlaps
+    blockloc_in = [[i*Nlocbeg,(i+1)*Nlocbeg] for i in range(Ntbeg)]
+    blockloc_out = [[i*Nlocout,(i+1)*Nlocout] for i in range(Ntout)]
+    blockloc = [blockloc_in,blockloc_out]
     overlaps={}
     for iton,ito in enumerate(timeout):
         overlaps[iton]=[]
@@ -442,7 +291,7 @@ def makematPAv2(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
                 
                 #find amount of time for overlap
                 stp = sp.maximum(x[0],ito[0])
-                enp = sp.minimum(x[1],ito[0])
+                enp = sp.minimum(x[1],ito[1])
                 ratio = float(enp-stp)/Tint
                 # need to find the start point
                 T_1 = float(stp-x[0])
@@ -452,61 +301,66 @@ def makematPAv2(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
                 newcoorsds1 = cart2sphere(newcartcoords1)
                 newcoorsds2 = cart2sphere(newcartcoords2)
                 overlaps[iton].append([ix,ratio,newcoorsds1,newcoorsds2])
-    #make the matrix
+    # make the matrix
     for iton,ito in enumerate(timeout):
-        cur_it,cur_ratio,Sp1,Sp2 = overlaps[iton]
-        rho1 = Sp1[:,0]
-        Az1 = Sp1[:,1]
-        El1 = Sp1[:,2]
-        rho2 = Sp2[:,0]
-        Az2 = Sp2[:,1]
-        El2 = Sp2[:,2]
-        # get the weights
-        weights1 = {ibn:sensdict['ArrayFunc'](Az1,El1,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
-        weights2 = {ibn:sensdict['ArrayFunc'](Az2,El2,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
-
-        for ibn in range(Nbeams):
-            print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
-            weight1 = weights1[ibn]
-            weight2 = weights2[ibn]
-            for isamp in range(nrgout):
-                # make the row
-                irow = isamp+ibn*nrgout + Nbeams*nrgout*iton
-                range_g = rng_vec2[isamp]
-                rnglims = [range_g-rng_len/2.,range_g+rng_len/2.]
-                # assume centered lag product.
-                rangelog = ((rho1>=rnglims[0])&(rho1<rnglims[1]))
-                # This is a nearest neighbors interpolation for the spectrums in the range domain
-                if sp.sum(rangelog)==0:
-                    minrng = sp.argmin(sp.absolute(range_g-rho1))
-                    rangelog[minrng] = True
-                #create the weights and weight location based on the beams pattern.
-                weight_cur =weight1[rangelog]
-                weight_cur = weight_cur/weight_cur.sum()
-                icols = sp.where(rangelog)[0] + Nlocbeg*cur_it
-                
-                weights_final = weight_cur*range_g**2/rho1[rangelog]**2
-                outmat[irow,icols] = weights_final*ratio*0.5
-                
-                # assume centered lag product.
-                rangelog = ((rho2>=rnglims[0])&(rho2<rnglims[1]))
-                # This is a nearest neighbors interpolation for the spectrums in the range domain
-                if sp.sum(rangelog)==0:
-                    minrng = sp.argmin(sp.absolute(range_g-rho2))
-                    rangelog[minrng] = True
-                #create the weights and weight location based on the beams pattern.
-                weight_cur =weight2[rangelog]
-                weight_cur = weight_cur/weight_cur.sum()
-                icols = sp.where(rangelog)[0]+ Nlocbeg*cur_it
-
-                weights_final = weight_cur*range_g**2/rho2[rangelog]**2
-                outmat[irow,icols] = weights_final*ratio*0.5
-                
+        cur_over = overlaps[iton]
+        for it_in,it_info in enumerate(cur_over):
+            
+            cur_it,cur_ratio,Sp1,Sp2 = it_info
+            rho1 = Sp1[:,0]
+            Az1 = Sp1[:,1]
+            El1 = Sp1[:,2]
+            rho2 = Sp2[:,0]
+            Az2 = Sp2[:,1]
+            El2 = Sp2[:,2]
+            # get the weights
+            weights1 = {ibn:sensdict['ArrayFunc'](Az1,El1,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
+            weights2 = {ibn:sensdict['ArrayFunc'](Az2,El2,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
+    
+            for ibn in range(Nbeams):
                 
 
+                print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
+                weight1 = weights1[ibn]
+                weight2 = weights2[ibn]
+                for isamp in range(nrgout):
+                    # make the row
+                    irow = isamp+ibn*nrgout + Nbeams*nrgout*iton
+                    range_g = rng_vec2[isamp]
+                    rnglims = [range_g-rng_len/2.,range_g+rng_len/2.]
+                    # assume centered lag product.
+                    rangelog = ((rho1>=rnglims[0])&(rho1<rnglims[1]))
+                    # This is a nearest neighbors interpolation for the spectrums in the range domain
+                    if sp.sum(rangelog)==0:
+                        minrng = sp.argmin(sp.absolute(range_g-rho1))
+                        rangelog[minrng] = True
+                    #create the weights and weight location based on the beams pattern.
+                    weight_cur =weight1[rangelog]
+                    weight_cur = weight_cur/weight_cur.sum()
+                    icols = sp.where(rangelog)[0] + Nlocbeg*cur_it
+                    
+                    weights_final = weight_cur*range_g**2/rho1[rangelog]**2
+                    outmat[irow,icols] = weights_final*ratio*0.5 +outmat[irow,icols]
+                    
+                    # assume centered lag product.
+                    rangelog = ((rho2>=rnglims[0])&(rho2<rnglims[1]))
+                    # This is a nearest neighbors interpolation for the spectrums in the range domain
+                    if sp.sum(rangelog)==0:
+                        minrng = sp.argmin(sp.absolute(range_g-rho2))
+                        rangelog[minrng] = True
+                    #create the weights and weight location based on the beams pattern.
+                    weight_cur =weight2[rangelog]
+                    weight_cur = weight_cur/weight_cur.sum()
+                    icols = sp.where(rangelog)[0]+ Nlocbeg*cur_it
+    
+                    weights_final = weight_cur*range_g**2/rho2[rangelog]**2
+                    outmat[irow,icols] = weights_final*ratio*0.5+outmat[irow,icols]
+                
+                
 
 
-    return(outmat,blocks,blocksize)
+
+    return(outmat,overlaps,blockloc)
 
 
 def saveoutmat(filename,Sphere_Coords,timein,configfile):
@@ -599,8 +453,8 @@ def diffmat(dims,order = 'C'):
     return tuple(outD)
 
 def cart2sphere(coordlist):
-    r2d = 180.0/np.pi
-    d2r = np.pi/180.0
+    r2d = 180.0/sp.pi
+    d2r = sp.pi/180.0
     
     X_vec = coordlist[:,0]
     Y_vec = coordlist[:,1]
@@ -610,3 +464,6 @@ def cart2sphere(coordlist):
     El_vec = sp.arcsin(Z_vec/R_vec)*r2d
     sp_coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
     return sp_coords
+    
+    
+    
