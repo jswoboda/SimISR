@@ -91,7 +91,7 @@ class RadarSpaceTimeOperator(object):
             self.sensdict=sensdict
             self.lagmat = self.simparams['amb_dict']['WttMatrix']
             # create the matrix
-            (self.RSTMat,self.overlaps,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile)
+            (self.RSTMat,self.overlaps,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile,ionoin.Velocity)
         elif configfile is None:
 
             self.Cart_Coords_Out = RSTOPinv.Cart_Coords_In
