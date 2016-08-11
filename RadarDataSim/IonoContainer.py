@@ -16,6 +16,7 @@ import scipy.io as sio
 import scipy.interpolate
 import tables
 import h5py
+import numbers
 from datetime import datetime
 # From my
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
@@ -513,6 +514,89 @@ class IonoContainer(object):
     def __ne__(self,self2):
         '''This is the != operator. '''
         return not self.__eq__(self2)
+    # multiplication operators
+    def __mul__(self,thingtomult):
+        """ 
+            This is the (*) multiplication. The thingtomult object can be a number, numpy array
+            thats the same size as Param_List or another ionocontainer.
+        """
+        pdb.set_trace()
+        # check if multiplying a number or numpy array
+        isnum = isinstance(thingtomult,numbers.Number)
+        isarray=isinstance(thingtomult,sp.ndarray)
+        isiono= isinstance(thingtomult,type(self))
+        if isarray:
+            assert thingtomult.shape==self.Param_List.shape, "Numpy array must same shape as Param_List"
+        if isnum or isarray:
+            newself=self.copy()
+            newself.Param_List=newself.Param_List*thingtomult
+            return newself
+        
+        # Now if you're multiplying two iono containers
+        if isiono:
+            assert sp.allclose(self.Time_Vector,thingtomult.Time_Vector),"Need to have the same times"
+            a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
+            blah = np.ma.array(thingtomult.Cart_Coords,mask=np.isnan(thingtomult.Cart_Coords))
+    
+            assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+    
+            assert type(self.Param_Names)==type(thingtomult.Param_Names),'Param_Names are different types, they need to be the same'
+    
+    
+            assert sp.all(self.Param_Names == thingtomult.Param_Names), "Need to have same parameter names"
+            assert self.Species== thingtomult.Species, "Need to have the same species"
+            
+            newself=self.copy()
+            newself.Param_List=newself.Param_List*thingtomult
+            return newself
+        raise ValueError('thing2mult must be a number, numpy array or ionoContainer.')
+    def __rmul__(self,thingtomult):
+        """ 
+            This is the reverse (*) multiplication operator. The thingtomult object can be a number, numpy array
+            thats the same size as Param_List or another ionocontainer.
+        """
+        return self.__mul__(thingtomult)
+        
+    def __div__(self, thing2div):
+        """ 
+            This is the (/) division. The thing2div object can be a number, numpy array
+            thats the same size as Param_List or another ionocontainer.
+        """
+        isnum = isinstance(thing2div,numbers.Number)
+        isarray=isinstance(thing2div,sp.ndarray)
+        isiono= isinstance(thing2div,type(self))
+        if isarray:
+            assert thing2div.shape==self.Param_List.shape, "Numpy array must same shape as Param_List"
+        if isnum or isarray:
+            newself=self.copy()
+            newself.Param_List=newself.Param_List/thing2div.Param_List
+            return newself
+        
+        # Now if you're multiplying two iono containers
+        if isiono:
+            assert sp.allclose(self.Time_Vector,thing2div.Time_Vector),"Need to have the same times"
+            a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
+            blah = np.ma.array(thing2div.Cart_Coords,mask=np.isnan(thing2div.Cart_Coords))
+    
+            assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+    
+            assert type(self.Param_Names)==type(thing2div.Param_Names),'Param_Names are different types, they need to be the same'
+    
+    
+            assert sp.all(self.Param_Names == thing2div.Param_Names), "Need to have same parameter names"
+            assert self.Species== thing2div.Species, "Need to have the same species"
+            
+            newself=self.copy()
+            newself.Param_List=newself.Param_List/thing2div.Param_List
+            return newself
+        raise ValueError('thing2div must be a number, numpy array or ionoContainer.')
+    def __truediv__(self,thing2div):
+        """ 
+            This is the (/) division operator but for python 3. This may not be implemented properly. 
+            The thing2div object can be a number, numpy arraythats the same 
+            size as Param_List or another ionocontainer.
+        """
+        return self.__div__(thing2div)
     # addition
     def __add__(self,self2):
         """ This is the '-' operator. Assuming the locations, times and parameter types are the same,
