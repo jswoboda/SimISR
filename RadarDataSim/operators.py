@@ -287,11 +287,14 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
     for iton,ito in enumerate(timeout):
         overlaps[iton]=[]
         for ix, x in enumerate(timein):
-            if x[0]<ito[1] and x[1]>ito[0]:
+            if ( x[0]<ito[1] or x==(Ntbeg-1)) and x[1]>ito[0]:
                 
                 #find amount of time for overlap
                 stp = sp.maximum(x[0],ito[0])
-                enp = sp.minimum(x[1],ito[1])
+                if x ==Ntbeg-1:
+                    enp=ito[0]
+                else:
+                    enp = sp.minimum(x[1],ito[1])
                 ratio = float(enp-stp)/Tint
                 # need to find the start point
                 T_1 = float(stp-x[0])
