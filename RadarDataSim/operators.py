@@ -291,7 +291,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
                 
                 #find amount of time for overlap
                 stp = sp.maximum(x[0],ito[0])
-                if x ==Ntbeg-1:
+                if ix ==Ntbeg-1:
                     enp=ito[0]
                 else:
                     enp = sp.minimum(x[1],ito[1])
