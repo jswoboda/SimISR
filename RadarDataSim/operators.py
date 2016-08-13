@@ -86,7 +86,7 @@ class RadarSpaceTimeOperator(object):
             Z_vec = R_vec*zvecmult
             
             self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
-            self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))
+            self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))+timein[0,0]
             self.simparams=simparams
             self.sensdict=sensdict
             self.lagmat = self.simparams['amb_dict']['WttMatrix']
@@ -249,7 +249,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
     (sensdict,simparams) = readconfigfile(configfile)
     timeout = simparams['Timevec']
     Tint = simparams['Tint']
-    timeout = sp.column_stack((timeout,timeout+Tint))
+    timeout = sp.column_stack((timeout,timeout+Tint)) +timein[0,0]
 
     rng_vec = simparams['Rangegates']
     rng_bin=sensdict['t_s']*v_C_0*1e-3/2.
