@@ -287,8 +287,12 @@ class IonoContainer(object):
         Input:
         filename - A string for the file name.
         """
+        
+        if os.path.isfile(filename):
+            os.remove(filename)
         h5file = tables.openFile(filename, mode = "w", title = "IonoContainer out.")
         vardict = vars(self)
+
         try:
             # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
             # Make group for each dictionary
