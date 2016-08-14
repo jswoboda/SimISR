@@ -86,7 +86,7 @@ class RadarSpaceTimeOperator(object):
             Z_vec = R_vec*zvecmult
             
             self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
-            self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))+timein[0,0]
+            self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))+self.Time_In[0,0]
             self.simparams=simparams
             self.sensdict=sensdict
             self.lagmat = self.simparams['amb_dict']['WttMatrix']
@@ -290,9 +290,10 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
             if ( x[0]<ito[1] or x==(Ntbeg-1)) and x[1]>ito[0]:
                 
                 #find amount of time for overlap
+
                 stp = sp.maximum(x[0],ito[0])
                 if ix ==Ntbeg-1:
-                    enp=ito[0]
+                    enp=ito[1]
                 else:
                     enp = sp.minimum(x[1],ito[1])
                 ratio = float(enp-stp)/Tint
