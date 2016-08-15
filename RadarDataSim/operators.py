@@ -72,8 +72,8 @@ class RadarSpaceTimeOperator(object):
             nang =len(angles)
 
             ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-            rng_all = sp.tile(rng_vec2,(nang))
-            ang_all = sp.repeat(ang_data,nrgout,axis=0)
+            rng_all = sp.repeat(rng_vec2,(nang),axis=0)
+            ang_all = sp.tile(ang_data,(nrgout))
 
             self.Sphere_Coords_Out = sp.column_stack((rng_all,ang_all))
             (R_vec,Az_vec,El_vec) = (self.Sphere_Coords_Out[:,0],self.Sphere_Coords_Out[:,1],
@@ -328,7 +328,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
                 weight2 = weights2[ibn]
                 for isamp in range(nrgout):
                     # make the row
-                    irow = isamp+ibn*nrgout + Nbeams*nrgout*iton
+                    irow = ibn + isamp*Nbeams + Nbeams*nrgout*iton
                     range_g = rng_vec2[isamp]
                     rnglims = [range_g-rng_len/2.,range_g+rng_len/2.]
                     # assume centered lag product.
