@@ -120,7 +120,6 @@ class RadarSpaceTimeOperator(object):
         np = ambmat.shape[0]
         t_s = self.sensdict['t_s']
         tau_out = t_s*sp.arange(np)
-        
         if isinstance(ionoin_list,list)or isinstance(ionoin_list,str):
             
             Iono_in = makeionocombined(ionoin_list)
