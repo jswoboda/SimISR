@@ -73,8 +73,7 @@ class RadarSpaceTimeOperator(object):
 
             ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
             rng_all = sp.repeat(rng_vec2,(nang),axis=0)
-            ang_all = sp.tile(ang_data,(nrgout))
-
+            ang_all = sp.tile(ang_data,(nrgout,1))
             self.Sphere_Coords_Out = sp.column_stack((rng_all,ang_all))
             (R_vec,Az_vec,El_vec) = (self.Sphere_Coords_Out[:,0],self.Sphere_Coords_Out[:,1],
                 self.Sphere_Coords_Out[:,2])
