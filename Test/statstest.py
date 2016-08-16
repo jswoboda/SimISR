@@ -16,7 +16,8 @@ from RadarDataSim.IonoContainer import IonoContainer
 from  RadarDataSim.runsim import main as runsim 
 from RadarDataSim.analysisplots import analysisdump,maketi
 #from radarsystools.radarsystools import RadarSys
-
+PVALS = [1e11,2.1e3,1.1e3,0.]
+SIMVALUES = sp.array([[PVALS[0],PVALS[2]],[PVALS[0],PVALS[1]]])
 def makehistmult(testpathlist,npulseslist):
     
     sns.set_style("whitegrid")
@@ -41,13 +42,41 @@ def makehistmult(testpathlist,npulseslist):
             linehand.append(plthand)
             
         axvec[iax].set_xlabel(r'$'+paramsLT[iax]+'$')
-        axvec[iax].set_title(r'Normalized Histogram for $'+paramsLT[iax]+'$')
+        axvec[iax].set_title(r'Histogram for $'+paramsLT[iax]+'$')
     leg = figmplf.legend(linehand[:len(npulseslist)],lablist)
     plt.tight_layout()
     plt.subplots_adjust(top=0.85)
     return (figmplf,axvec,linehand)
 
+def makehistsingle(testpath,npulses):
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+    params = ['Ne','Te','Ti','Vi']
+    paramsLT = ['N_e','T_e','T_i','V_i']
+    datadict,er1,er2,edatardict = makehistdata(params,testpath)
+    (figmplf, axmat) = plt.subplots(2, 2,figsize=(12,8), facecolor='w')
+    axvec = axmat.flatten()
+    histlims = [[4e10,2e11],[1200.,3000.],[300.,1900.],[-250.,250.]]
+    histvecs = [sp.linspace(ipm[0],ipm[1],100) for ipm in histlims]
+    linehand = []
     
+    for iax,iparam in enumerate(params):
+        
+            
+        curvals = datadict[iparam]
+        MSE = sp.nanmean(sp.power(er1[iparam],2))
+        Error_mean = sp.nanmean(sp.power(edatadict[iparam],2))
+        curhist,binout = sp.histogram(curvals,bins=histvecs[iax])
+        curhist_norm = curhist.astype(float)/curvals.size
+        plthand = axvec[iax].plot(binout[:-1],curhist_norm,label='J = {:d}'.format(npulses))[0]
+        linehand.append(plthand)
+            
+        axvec[iax].set_xlabel(r'$'+paramsLT[iax]+'$')
+        axvec[iax].set_title(r'Distributions for $'+paramsLT[iax]+'$')
+    leg = figmplf.legend(linehand[:len(npulseslist)],lablist)
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.85)
+    return (figmplf,axvec,linehand)
 def makehist(testpath,npulses):
     """ This functions are will create histogram from data made in the testpath.
         Inputs
@@ -58,7 +87,7 @@ def makehist(testpath,npulses):
     sns.set_context("notebook")
     params = ['Ne','Te','Ti','Vi'] 
     pvals = [1e11,1e11,2.1e3,1.1e3,0.]
-    errdict = makehistdata(params,testpath)
+    errdict = makehistdata(params,testpath)[:4]
     ernames = ['Data','Error','Error Percent']
     sig1 = sp.sqrt(1./npulses)
     
@@ -105,6 +134,7 @@ def makehistdata(params,maindir):
     inputfiledir = os.path.join(maindir,'Origparams')
 
     paramslower = [ip.lower() for ip in params]
+    eparamslower = ['n'+ip.lower() for ip in params]
     
     # set up data dictionary
     
@@ -122,7 +152,9 @@ def makehistdata(params,maindir):
     
     datadict = {ip:Ionofit.Param_List[:,:,p2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
     
+    ep2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in eparamslower]
     
+    edatadict = {ip:Ionofit.Param_List[:,:,ep2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
     # Determine which input files are to be used.
     
     dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
@@ -167,9 +199,9 @@ def makehistdata(params,maindir):
                     tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
                     curdata[irngn] = tempin[0,curprm]
                 datalist.append(curdata)
-        errordict[pname] = datadict[pname]-sp.hstack(datalist)  
+        errordict[pname] = datadict[pname]-sp.hstack(datalist)
         errordictrel[pname] = 100.*errordict[pname]/sp.absolute(sp.hstack(datalist))
-    return datadict,errordict,errordictrel
+    return datadict,errordict,errordictrel,edatadict
 
 def configfilesetup(testpath,npulses):
     """ This will create the configureation file given the number of pulses for 
@@ -203,7 +235,7 @@ def makedata(testpath):
     finalpath = os.path.join(testpath,'Origparams')
     if not os.path.isdir(finalpath):
         os.mkdir(finalpath)
-    data = sp.array([[1e11,1100.],[1e11,2100.]])
+    data=SIMVALUES
     z = sp.linspace(50.,1e3,50)
     nz = len(z)
     params = sp.tile(data[sp.newaxis,sp.newaxis,:,:],(nz,1,1,1))
