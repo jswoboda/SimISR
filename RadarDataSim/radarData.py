@@ -474,7 +474,10 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # Calculate a variance using equation 2 from Hysell's 2008 paper. Done use full covariance matrix because assuming nearly diagonal.
     lagsData0 = lagsData[:,:,:,0]
     lagsData0 = sp.tile(lagsData0[:,:,:,sp.newaxis],(1,1,1,Nlags))
-    sigS = sp.sqrt(sp.absolute(lagsData)**2+sp.absolute(lagsData0)**2+sp.absolute(lagsNoise)**2)/sp.sqrt(pulses)
+    
+    lagsNoise0 = lagsNoise[:,:,:,0]
+    lagsNoise0 = sp.tile(lagsNoise0[:,:,:,sp.newaxis],(1,1,1,Nlags))
+    sigS = sp.sqrt(sp.absolute(lagsData)**2+sp.absolute(lagsData0)**2+sp.absolute(lagsNoise)**2 + sp.absolute(lagsNoise0)**2)/sp.sqrt(pulses)
     # multiply the data and the sigma by inverse of the scaling from the radar
     lagsData = lagsData*radar2acfmult
     sigS = sigS*radar2acfmult
