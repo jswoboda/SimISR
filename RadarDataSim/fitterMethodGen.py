@@ -46,8 +46,11 @@ class Fitterionoconainer(object):
         Ne = sp.absolute(self.Iono.Param_List[:,:,0]*(1.0+Tratio))
         if self.sig is None:
             Nesig = None
-        else:                    
-            Nesig = sp.absolute(self.sig.Param_List[:,:,0]*(1.0+Tratio))
+        else:
+            if self.sig.Param_List.ndim==4:
+                Nesig = sp.absolute(self.sig.Param_List[:,:,0,0]*(1.0+Tratio)**2)
+            elif self.sig.Param_List.ndim==3:
+                Nesig = sp.absolute(self.sig.Param_List[:,:,0]*(1.0+Tratio)**2)
         return (Ne,Nesig)
     def fitdata(self,fitfunc,startinputs,fittimes=None):
         """This funcition is used to fit data given in terms of lags """
@@ -77,15 +80,13 @@ class Fitterionoconainer(object):
         first_lag = True
         x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector[:,0],startinputs)
         nparams=x_0all.shape[-1]
-        nx=nparams-1
         x_0_red = sp.zeros(4)
         specs = self.simparams['species']
         nspecs = len(specs)
         ni = nspecs-1
-
-        firstparam=True
+        sigexist = not self.sig is None
         L = self.sensdict['taurg']*2
-        dof = L-4
+        dof = 2*L-4
         if dof<=0:
             dof=1
         for itn,itime in enumerate(fittimes):
@@ -105,47 +106,54 @@ class Fitterionoconainer(object):
                     fittederror = sp.zeros((Nloc,Nt,nparams+1))
                     funcevals = sp.zeros((Nloc,Nt))
                 # get uncertianties
-                if not self.sig is None:
-                    if self.simparams['FitType'].lower()=='acf':
-                        # this is calculated from a formula
-                        d_func = d_func+(self.sig.Param_List[iloc,itime],)
-                    elif self.simparams['FitType'].lower()=='spectrum':
+                if sigexist:
+                    cursig = self.sig.Param_List[iloc,itime]
+                    if cursig.ndim<2:
+                        sigscov=sp.diag(cursig**2)
+                    else:
+                        sigscov=cursig
+                    if self.simparams['FitType'].lower()=='spectrum':
                         # these uncertianties are derived from the acf variances.
-                        acfvar = self.sig.Param_List[iloc,itime]**2
                         Nspec = self.simparams['numpoints']
                         #XXX when creating these variences I'm assuming the lags are independent
                         # this isn't true and I should use the ambiguity function to fix this.
-                        acfvarmat = sp.diag(acfvar)
+                        acfvarmat = sp.diag(sigscov)
                         # calculate uncertianties by applying the FFT to the columns and the
                         # ifft to the rows. Then multiply by the constant to deal with the different size ffts
-                        specmat = sp.ifft(sp.fft(acfvarmat,n=int(Nspec),axis=0),n=int(Nspec),axis=1)*Nspec**2/Nlags
-                        specsig = sp.sqrt(sp.diag(specmat.real))
-                        d_func = d_func+(specsig,)
+                        sigscov = sp.ifft(sp.fft(acfvarmat,n=int(Nspec),axis=0),n=int(Nspec),axis=1)*Nspec**2/Nlags
 
                 # Only fit Ti, Te, Ne and Vi
                 x_0_red[0]=Ti
                 x_0_red[1:] = x_0[2*ni:]
                 # Perform the fitting
-                (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
-                    x0=x_0_red,args=d_func,full_output=True)
-                
-                funcevals[iloc,itn] = infodict['nfev']
+                optresults = scipy.optimize.least_squares(fun=ISRSfitfunction,x0=x_0_red,method='lm',verbose=0,args=d_func)
+                x=optresults.x
                 # Derive data for the ions using output from the fitter and ion species ratios which are assumed to be given.
                 ionstuff = sp.zeros(ni*2-1)
                 ionstuff[:2*ni:2]=x[1]*Niratio
                 ionstuff[1:2*ni-1:2] = x[0]
                 fittedarray[iloc,itn] = sp.append(ionstuff,sp.append(x,Ne_start[iloc,itime]))
-                # Check to make sure you get a covariance matrix
-                if cov_x is None:
-                    vars_vec = sp.ones(nparams)*float('nan')
-                else:
-                     # Derive covariances for the ions using output from the fitter and ion species ratios which are assumed to be given.
-                    vars_vec = sp.diag(cov_x)*(infodict['fvec']**2).sum()/dof
+#                fittedarray[iloc,itime] = sp.append(optresults.x,Ne_start[iloc,itime])
+                resid = optresults.cost
+                jac=optresults.jac
+                jacc = jac[0::2]+jac[1::2]
+                try:
+                    # Derive covariances for the ions using output from the fitter and ion species ratios which are assumed to be given.
+                    #covf = sp.linalg.inv(sp.dot(jac.transpose(),jac))*resid/dof
+
+                    if sigexist:
+                        covf = sp.linalg.inv(sp.dot(sp.dot(jacc.transpose(),sp.linalg.inv(sigscov)),jacc))
+                    else:
+                        covf = sp.linalg.inv(sp.dot(jac.transpose(),jac))*resid/dof
+                    vars_vec = sp.diag(covf).real
                     ionstuff = sp.zeros(ni*2-1)
                     ionstuff[:2*ni:2]=vars_vec[1]*Niratio
                     ionstuff[1:2*ni-1:2] = vars_vec[0]
                     vars_vec = sp.append(ionstuff,vars_vec)
+                except:
+                    vars_vec = sp.ones(nparams)*float('nan')
 
+#
                 if len(vars_vec)<fittederror.shape[-1]-1:
                     pdb.set_trace()
                 fittederror[iloc,itn,:-1]=vars_vec 

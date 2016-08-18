@@ -466,47 +466,59 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
     lagsNoise = lagsNoise/pulsesnoise
     lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
-
+    
 
 
     # subtract out noise lags
     lagsData = lagsData-lagsNoise
     # Calculate a variance using equation 2 from Hysell's 2008 paper. Done use full covariance matrix because assuming nearly diagonal.
-    lagsData0 = lagsData[:,:,:,0]
-    lagsData0 = sp.tile(lagsData0[:,:,:,sp.newaxis],(1,1,1,Nlags))
-    
-    lagsNoise0 = lagsNoise[:,:,:,0]
-    lagsNoise0 = sp.tile(lagsNoise0[:,:,:,sp.newaxis],(1,1,1,Nlags))
-    sigS = sp.sqrt(sp.absolute(lagsData)**2+sp.absolute(lagsData0)**2+sp.absolute(lagsNoise)**2 + sp.absolute(lagsNoise0)**2)/sp.sqrt(pulses)
+
     # multiply the data and the sigma by inverse of the scaling from the radar
     lagsData = lagsData*radar2acfmult
-    sigS = sigS*radar2acfmult
+    lagsNoise = lagsNoise*radar2acfmult
 
     # Apply summation rule
     # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
     lagsData = sp.transpose(lagsData,axes=(2,3,0,1))
-    sigS = sp.transpose(sigS,axes=(2,3,0,1))
+    lagsNoise = sp.transpose(lagsNoise,axes=(2,3,0,1))
     lagsDatasum = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsData.dtype)
-    sigsSsum = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=sigS.dtype)
+    lagsNoisesum = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsNoise.dtype)
     for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
         for ilag in range(Nlags):
             lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
-            sigsSsum[irngnew,ilag] =sp.sqrt(sp.power(sigS[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag],2).sum(axis=0))
+            lagsNoisesum[irngnew,ilag] = lagsNoise[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
     # Put everything in a parameter list
     Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=lagsData.dtype)
     # Put everything in a parameter list
-    Paramdatasig = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=sigsSsum.dtype)
     # transpose from (range,lag,time,beams) to (beams,range,time,lag)
     lagsDataSum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
-    sigsSsum = sp.transpose(sigsSsum,axes=(3,0,2,1))
+    lagsNoiseSum = sp.transpose(lagsNoisesum,axes=(3,0,2,1))
+    # Get the covariance matrix
+    pulses_s=sp.transpose(pulses,axes=(1,2,0,3))[:,:Nrng2]
+    R=sp.transpose(lagsDataSum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
+    Rw=sp.transpose(lagsNoiseSum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
+    l=sp.arange(Nlags)
+    T1,T2=sp.meshgrid(l,l)
+    R0=R[sp.zeros_like(T1)]
+    Rw0=Rw[sp.zeros_like(T1)]
+    Td=sp.absolute(T1-T2)
+    Tl = T1>T2
+    R12 =R[Td]
+    R12[Tl]=sp.conjugate(R12[Tl])
+    Rw12 =Rw[Td]
+    Rw12[Tl]=sp.conjugate(Rw12[Tl])
+    Ctt=R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
+    Cttout = sp.transpose(Ctt,(2,3,4,0,1))
+    Paramdatasig = sp.zeros((Nbeams*Nrng2,Nt,Nlags,Nlags),dtype=Cttout.dtype)
+
     curloc = 0
     for irng in range(Nrng2):
         for ibeam in range(Nbeams):
             Paramdata[curloc] = lagsDataSum[ibeam,irng].copy()
-            Paramdatasig[curloc] = sigsSsum[ibeam,irng].copy()
+            Paramdatasig[curloc] = Cttout[ibeam,irng].copy()
             curloc+=1
     ionodata = IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
-    ionosigs = IonoContainer(coordlist,Paramdatasig,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
+    ionosigs = IonoContainer(coordlist,Paramdatasig,times = time_vec,ver =1, paramnames=sp.arange(Nlags*Nlags).reshape(Nlags,Nlags)*sensdict['t_s'])
     return (ionodata,ionosigs)
 
 

@@ -37,7 +37,8 @@ def makehistmult(testpathlist,npulseslist):
         for idict,inpulse in zip(errdictlist,npulseslist):
             curvals = idict[iparam]
             curhist,binout = sp.histogram(curvals,bins=histvecs[iax])
-            curhist_norm = curhist.astype(float)/curvals.size
+            dx=binout[1]-binout[0]
+            curhist_norm = curhist.astype(float)/(curvals.size*dx)
             plthand = axvec[iax].plot(binout[:-1],curhist_norm,label='J = {:d}'.format(inpulse))[0]
             linehand.append(plthand)
             
@@ -53,29 +54,37 @@ def makehistsingle(testpath,npulses):
     sns.set_context("notebook")
     params = ['Ne','Te','Ti','Vi']
     paramsLT = ['N_e','T_e','T_i','V_i']
-    datadict,er1,er2,edatardict = makehistdata(params,testpath)
+    datadict,er1,er2,edatadict = makehistdata(params,testpath)
     (figmplf, axmat) = plt.subplots(2, 2,figsize=(12,8), facecolor='w')
     axvec = axmat.flatten()
     histlims = [[4e10,2e11],[1200.,3000.],[300.,1900.],[-250.,250.]]
     histvecs = [sp.linspace(ipm[0],ipm[1],100) for ipm in histlims]
     linehand = []
     
+    lablist=['Histogram','RMSE','Error']
     for iax,iparam in enumerate(params):
         
-            
+        mu= PVALS[iax]
         curvals = datadict[iparam]
-        MSE = sp.nanmean(sp.power(er1[iparam],2))
-        Error_mean = sp.nanmean(sp.power(edatadict[iparam],2))
-        curhist,binout = sp.histogram(curvals,bins=histvecs[iax])
-        curhist_norm = curhist.astype(float)/curvals.size
-        plthand = axvec[iax].plot(binout[:-1],curhist_norm,label='J = {:d}'.format(npulses))[0]
+        RMSE = sp.sqrt(sp.nanmean(sp.power(er1[iparam].real,2)))
+        Error_mean = sp.sqrt(sp.nanmean(sp.power(edatadict[iparam],2)))
+        curhist,x = sp.histogram(curvals,bins=histvecs[iax])
+        dx=x[1]-x[0]
+        curhist_norm = curhist.astype(float)/(curvals.size*dx)
+        plthand = axvec[iax].plot(x[:-1],curhist_norm,label='Histogram'.format(npulses))[0]
         linehand.append(plthand)
-            
+        rmsedist = sp.stats.norm.pdf((x-mu)/RMSE)/RMSE
+        plthand = axvec[iax].plot(x,rmsedist,label='RMSE'.format(npulses))[0]
+        linehand.append(plthand)
+        emeandist = sp.stats.norm.pdf((x-mu)/Error_mean)/Error_mean
+        plthand = axvec[iax].plot(x,emeandist,label='Error'.format(npulses))[0]
+        linehand.append(plthand)
         axvec[iax].set_xlabel(r'$'+paramsLT[iax]+'$')
         axvec[iax].set_title(r'Distributions for $'+paramsLT[iax]+'$')
-    leg = figmplf.legend(linehand[:len(npulseslist)],lablist)
+    leg = figmplf.legend(linehand[:len(lablist)],lablist)
     plt.tight_layout()
-    plt.subplots_adjust(top=0.85)
+    plt.subplots_adjust(top=0.9)
+    spti = figmplf.suptitle('For Pulses J = {:d}'.format(npulses),fontsize=18)
     return (figmplf,axvec,linehand)
 def makehist(testpath,npulses):
     """ This functions are will create histogram from data made in the testpath.
