@@ -29,7 +29,7 @@ class RadarSpaceTimeOperator(object):
            blocksize - A tuple that holds the shape of the outmatrix size.
            blockloc - An Ntout x Ntbeg array that holds the corresponding spatial forward model.
     """
-    def __init__(self,ionoin=None,configfile=None,timein=None,RSTOPinv=None,invmat=None):
+    def __init__(self,ionoin=None,configfile=None,timein=None,RSTOPinv=None,invmat=None,mattype='matrix'):
         """ This will create the RadarSpaceTimeOperator object.
             Inputs
                 ionoin - The input ionocontainer. This can be either an string that is a ionocontainer file,
@@ -90,7 +90,7 @@ class RadarSpaceTimeOperator(object):
             self.sensdict=sensdict
             self.lagmat = self.simparams['amb_dict']['WttMatrix']
             # create the matrix
-            (self.RSTMat,self.overlaps,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile,ionoin.Velocity)
+            (self.RSTMat,self.overlaps,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile,ionoin.Velocity,mattype)
         elif configfile is None:
 
             self.Cart_Coords_Out = RSTOPinv.Cart_Coords_In
@@ -226,7 +226,7 @@ class RadarSpaceTimeOperator(object):
                     (invdata[:,iin,i], error, iter, flag) = cgmat(Ctik, xin, bdata[:,iin,i], M, max_it, tol)
 
 
-def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
+def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matrix'):
     """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc sparse matrix for the space time operator. 
        The output space will have range repeated first, then beams then time. 
        The coordinates will be [t0,b0,r0],[t0,b0,r1],[t0,b0,r2],...
@@ -296,12 +296,16 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None):
                     enp = sp.minimum(x[1],ito[1])
                 ratio = float(enp-stp)/Tint
                 # need to find the start point
-                T_1 = float(stp-x[0])
-                newcartcoords1 = Cart_Coords-T_1*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
-                T_2=float(enp-x[0])
-                newcartcoords2 = Cart_Coords-T_2*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
-                newcoorsds1 = cart2sphere(newcartcoords1)
-                newcoorsds2 = cart2sphere(newcartcoords2)
+                if mattype=='matrix':                
+                    T_1 = float(stp-x[0])
+                    newcartcoords1 = Cart_Coords-T_1*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
+                    T_2=float(enp-x[0])
+                    newcartcoords2 = Cart_Coords-T_2*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
+                    newcoorsds1 = cart2sphere(newcartcoords1)
+                    newcoorsds2 = cart2sphere(newcartcoords2)
+                elif mattype=='sim':
+                    newcoorsds1 = cart2sphere(Cart_Coords)
+                    newcoorsds2 = cart2sphere(Cart_Coords)
                 overlaps[iton].append([ix,ratio,newcoorsds1,newcoorsds2])
     # make the matrix
     for iton,ito in enumerate(timeout):
