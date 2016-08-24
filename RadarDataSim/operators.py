@@ -389,33 +389,7 @@ def getOverlap(a, b):
     return max(0, min(a[1], b[1]) - max(a[0], b[0]))
 
 #%% Math Functions
-def cgmat(A,x,b,M=None,max_it=100,tol=1e-8):
-    """ This function will performa conjuguate gradient search to find the inverse of
-        an operator A, given a starting point x, and data b.
-    """
-    if M is None:
-        M= sp.diag(A)
-    bnrm2 = sp.linalg.norm(b)
-    r=b-A.dot(x)
-    rho=sp.zeros(max_it)
-    for i in range(max_it):
-        z=sp.linalg.solve(M,r)
-        rho[i] = sp.dot(r,z)
-        if i==0:
-            p=z
-        else:
-            beta=rho/rho[i-1]
-            p=z+beta*p
 
-        q=A.dot(p)
-        alpha=rho/sp.dot(p,q)
-        x = x+alpha*p
-        r = r-alpha*q
-        error = sp.linalg.norm( r ) / bnrm2
-        if error <tol:
-            return (x,error,i,False)
-
-    return (x,error,max_it,True)
 
 
 
