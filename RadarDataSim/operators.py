@@ -418,45 +418,7 @@ def cgmat(A,x,b,M=None,max_it=100,tol=1e-8):
     return (x,error,max_it,True)
 
 
-def diffmat(dims,order = 'C'):
-    """ This function will return a tuple of difference matricies for data from an 
-        Nd array that has been rasterized. The order parameter determines whether 
-        the array was rasterized in a C style (python) of FORTRAN style (MATLAB).
-    """
-    xdim = dims[0]
-    ydim = dims[1]
-    dims[0]=ydim
-    dims[1]=xdim
 
-    if order.lower() == 'c':
-        dims = dims[::-1]
-
-    outD = []
-    for idimn, idim in enumerate(dims):
-        if idim==0:
-            outD.append(sp.array([]))
-            continue
-        e = sp.ones(idim)
-        dthing = sp.column_stack((-e,e))
-        D = sp.sparse.spdiags(dthing,[0,1],idim-1,idim)
-        D = sp.vstack((D,D[-1]))
-        if idimn>0:
-            E = sp.sparse.eye(sp.prod(dims[:idimn]))
-            D = sp.kron(D,E)
-
-        if idimn<len(dims)-1:
-            E = sp.sparse.eye(sp.prod(dims[idimn+1:]))
-            D = sp.kron(E,D)
-
-        outD.append(D)
-    if order.lower() == 'c':
-        outD=outD[::-1]
-    Dy=outD[0]
-    Dx = outD[1]
-    outD[0]=Dx
-    outD[1]=Dy
-
-    return tuple(outD)
 
 def cart2sphere(coordlist):
     r2d = 180.0/sp.pi
