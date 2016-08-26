@@ -102,8 +102,8 @@ class Fitterionoconainer(object):
                 d_func = (curlag,self.sensdict,self.simparams,Niratio)
                 if first_lag:
                     first_lag = False
-                    fittedarray = sp.zeros((Nloc,Nt,nparams+1))
-                    fittederror = sp.zeros((Nloc,Nt,nparams+1))
+                    fittedarray = sp.zeros((Nloc,Nt,nparams+1))*sp.nan
+                    fittederror = sp.zeros((Nloc,Nt,nparams+1))*sp.nan
                     funcevals = sp.zeros((Nloc,Nt))
                 # get uncertianties
                 if sigexist:

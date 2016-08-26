@@ -491,12 +491,12 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=lagsData.dtype)
     # Put everything in a parameter list
     # transpose from (range,lag,time,beams) to (beams,range,time,lag)
-    lagsDataSum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
-    lagsNoiseSum = sp.transpose(lagsNoisesum,axes=(3,0,2,1))
+    lagsDatasum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
+    lagsNoisesum = sp.transpose(lagsNoisesum,axes=(3,0,2,1))
     # Get the covariance matrix
     pulses_s=sp.transpose(pulses,axes=(1,2,0,3))[:,:Nrng2]
-    R=sp.transpose(lagsDataSum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
-    Rw=sp.transpose(lagsNoiseSum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
+    R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
+    Rw=sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
     l=sp.arange(Nlags)
     T1,T2=sp.meshgrid(l,l)
     R0=R[sp.zeros_like(T1)]
@@ -514,11 +514,30 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     curloc = 0
     for irng in range(Nrng2):
         for ibeam in range(Nbeams):
-            Paramdata[curloc] = lagsDataSum[ibeam,irng].copy()
+            Paramdata[curloc] = lagsDatasum[ibeam,irng].copy()
             Paramdatasig[curloc] = Cttout[ibeam,irng].copy()
             curloc+=1
     ionodata = IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
     ionosigs = IonoContainer(coordlist,Paramdatasig,times = time_vec,ver =1, paramnames=sp.arange(Nlags*Nlags).reshape(Nlags,Nlags)*sensdict['t_s'])
     return (ionodata,ionosigs)
 
-
+def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nrng2,Nlags):
+    
+    axvec=sp.roll(sp.arange(lagsDatasum.ndim))
+    # Get the covariance matrix
+    R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=axvec)
+    Rw=sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s),axes=axvec)
+    l=sp.arange(Nlags)
+    T1,T2=sp.meshgrid(l,l)
+    R0=R[sp.zeros_like(T1)]
+    Rw0=Rw[sp.zeros_like(T1)]
+    Td=sp.absolute(T1-T2)
+    Tl = T1>T2
+    R12 =R[Td]
+    R12[Tl]=sp.conjugate(R12[Tl])
+    Rw12 =Rw[Td]
+    Rw12[Tl]=sp.conjugate(Rw12[Tl])
+    Ctt=R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
+    avecback=sp.roll(sp.arange(Ctt.ndim),-2)
+    Cttout = sp.transpose(Ctt,avecback)
+    return Cttout

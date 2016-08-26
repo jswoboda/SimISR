@@ -98,20 +98,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     W0=lagmat[0].sum()
     for ilag in range(nlags):
        lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
-#    # triangle window
-#    tau = sp.arange(-sp.ceil((nspec-1.0)/2.0),sp.floor((nspec-1.0)/2.0+1))/Fsorg
-#    # amb1d = plen-tau
-#    # amb1d[amb1d<0]=0.
-#    # amb1d[tau<0]=0.
-#    # amb1d=amb1d/plen
-#    kvec = tau*Fsorg
-#    
-#    amb1d = ((-kvec**2/(nlags*vol))+kvec*(nlags-vol)/(nlags*vol)+1.)#/(kvec+1)
-#    amb1d[kvec<0]=0.
-#    amb1d[kvec>=nlags]=0.
-#    kp = sp.argwhere(amb1d>10*sp.finfo(float).eps).flatten()
-#    lagmat = sp.zeros((Wtt.shape[0],nspec))
-#    lagmat.flat[sp.ravel_multi_index((sp.arange(Wtt.shape[0]),kp),lagmat.shape)]=amb1d[kp]
+
     Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),
                'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
     return Wttdict
