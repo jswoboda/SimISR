@@ -495,20 +495,21 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsNoisesum = sp.transpose(lagsNoisesum,axes=(3,0,2,1))
     # Get the covariance matrix
     pulses_s=sp.transpose(pulses,axes=(1,2,0,3))[:,:Nrng2]
-    R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
-    Rw=sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
-    l=sp.arange(Nlags)
-    T1,T2=sp.meshgrid(l,l)
-    R0=R[sp.zeros_like(T1)]
-    Rw0=Rw[sp.zeros_like(T1)]
-    Td=sp.absolute(T1-T2)
-    Tl = T1>T2
-    R12 =R[Td]
-    R12[Tl]=sp.conjugate(R12[Tl])
-    Rw12 =Rw[Td]
-    Rw12[Tl]=sp.conjugate(Rw12[Tl])
-    Ctt=R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
-    Cttout = sp.transpose(Ctt,(2,3,4,0,1))
+    Cttout=makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags)
+#    R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
+#    Rw=sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
+#    l=sp.arange(Nlags)
+#    T1,T2=sp.meshgrid(l,l)
+#    R0=R[sp.zeros_like(T1)]
+#    Rw0=Rw[sp.zeros_like(T1)]
+#    Td=sp.absolute(T1-T2)
+#    Tl = T1>T2
+#    R12 =R[Td]
+#    R12[Tl]=sp.conjugate(R12[Tl])
+#    Rw12 =Rw[Td]
+#    Rw12[Tl]=sp.conjugate(Rw12[Tl])
+#    Ctt=R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
+#    Cttout = sp.transpose(Ctt,(2,3,4,0,1))
     Paramdatasig = sp.zeros((Nbeams*Nrng2,Nt,Nlags,Nlags),dtype=Cttout.dtype)
 
     curloc = 0
@@ -521,9 +522,9 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     ionosigs = IonoContainer(coordlist,Paramdatasig,times = time_vec,ver =1, paramnames=sp.arange(Nlags*Nlags).reshape(Nlags,Nlags)*sensdict['t_s'])
     return (ionodata,ionosigs)
 
-def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nrng2,Nlags):
+def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
     
-    axvec=sp.roll(sp.arange(lagsDatasum.ndim))
+    axvec=sp.roll(sp.arange(lagsDatasum.ndim),1)
     # Get the covariance matrix
     R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=axvec)
     Rw=sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s),axes=axvec)
