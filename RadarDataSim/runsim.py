@@ -144,7 +144,6 @@ def fitdata(basedir,configfile,optinputs):
         fittederronly = sp.sqrt(fittederror)
         paramnames = []
         species = fitterone.simparams['species']
-        Nions = len(species)-1
         # Seperate Ti and put it in as an element of the ionocontainer.
         Ti = fitteddata[:,:,1]
 
@@ -165,7 +164,12 @@ def fitdata(basedir,configfile,optinputs):
             timevec = Ionoin.Time_Vector
         else:
             timevec = Ionoin.Time_Vector[fitlist]
-    Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,timevec,ver =1,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
+    # This requires
+    if set(Ionoin.Coord_Vecs)=={'x','y','z'}:
+        newver=0
+    elif set(Ionoin.Coord_Vecs)=={'r','theta','phi'}:
+        newver=1
+    Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,timevec,ver =newver,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
 
     outfile = os.path.join(outputdir,'fitteddata.h5')
     Ionoout.saveh5(outfile)
