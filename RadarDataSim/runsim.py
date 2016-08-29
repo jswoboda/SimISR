@@ -167,9 +167,11 @@ def fitdata(basedir,configfile,optinputs):
     # This requires
     if set(Ionoin.Coord_Vecs)=={'x','y','z'}:
         newver=0
+        Ionoout=IonoContainer(Ionoin.Cart_Coords,paramlist,timevec,ver =newver,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
     elif set(Ionoin.Coord_Vecs)=={'r','theta','phi'}:
         newver=1
-    Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,timevec,ver =newver,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
+        Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,timevec,ver =newver,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
+    
 
     outfile = os.path.join(outputdir,'fitteddata.h5')
     Ionoout.saveh5(outfile)
