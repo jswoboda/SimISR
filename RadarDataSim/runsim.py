@@ -122,8 +122,12 @@ def fitdata(basedir,configfile,optinputs):
     inputdir = os.path.join(basedir,dirio[0])
     outputdir = os.path.join(basedir,dirio[1])
     fitlist=optinputs[1]
-    dirlist = glob.glob(os.path.join(inputdir,'*lags.h5'))
-    dirlistsig = glob.glob(os.path.join(inputdir,'*sigs.h5'))
+    if len(optinputs)>2:
+        exstr=optinputs[2]
+    else:
+        exstr=''
+    dirlist = glob.glob(os.path.join(inputdir,'*lags{0}.h5'.format(exstr)))
+    dirlistsig = glob.glob(os.path.join(inputdir,'*sigs{0}.h5'.format(exstr)))
 
     Ionoin=IonoContainer.readh5(dirlist[0])
     if len(dirlistsig)==0:
@@ -173,7 +177,7 @@ def fitdata(basedir,configfile,optinputs):
         Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,timevec,ver =newver,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
     
 
-    outfile = os.path.join(outputdir,'fitteddata.h5')
+    outfile = os.path.join(outputdir,'fitteddata{0}.h5'.format(exstr))
     Ionoout.saveh5(outfile)
 #%% apply the matrix for the data
 def applymat(basedir,configfile,optinputs):
@@ -202,7 +206,7 @@ def ke(item):
     else:
         return float('inf')
 #%% Main function
-def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None):
+def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
     """ Main function for this module. The function will set up the directory 
     structure, create or update a diary file and run the simulation depending
     on the user input. 
