@@ -29,7 +29,7 @@ class RadarSpaceTimeOperator(object):
            blocksize - A tuple that holds the shape of the outmatrix size.
            blockloc - An Ntout x Ntbeg array that holds the corresponding spatial forward model.
     """
-    def __init__(self,ionoin=None,configfile=None,timein=None,RSTOPinv=None,invmat=None,mattype='matrix'):
+    def __init__(self,ionoin,configfile,timein=None,mattype='matrix'):
         """ This will create the RadarSpaceTimeOperator object.
             Inputs
                 ionoin - The input ionocontainer. This can be either an string that is a ionocontainer file,
@@ -42,67 +42,55 @@ class RadarSpaceTimeOperator(object):
             
         d2r = sp.pi/180.0
 
-        # First determine if this will be an inverse operator. If not build up the object.
-        if RSTOPinv is None:
+       
 
-            (sensdict,simparams) = readconfigfile(configfile)
-            # determine if the input ionocontainer is a string, a list of strings or a list of ionocontainers.
-            if isinstance(ionoin,basestring):
-                ionoin = IonoContainer.readh5(ionoin)
-            elif isinstance(ionoin,list):
-                if isinstance(ionoin[0],basestring):
-                    ionoin = IonoContainer.readh5(ionoin[0])
-                else:
-                    ionoin=ionoin[0]
-            #Input location
-            self.Cart_Coords_In = ionoin.Cart_Coords
-            self.Sphere_Coords_In = ionoin.Sphere_Coords
-
-            # Set the input times
-            if timein is None:
-                self.Time_In = ionoin.Time_Vector
+        (sensdict,simparams) = readconfigfile(configfile)
+        # determine if the input ionocontainer is a string, a list of strings or a list of ionocontainers.
+        if isinstance(ionoin,basestring):
+            ionoin = IonoContainer.readh5(ionoin)
+        elif isinstance(ionoin,list):
+            if isinstance(ionoin[0],basestring):
+                ionoin = IonoContainer.readh5(ionoin[0])
             else:
-                self.Time_In = timein
+                ionoin=ionoin[0]
+        #Input location
+        self.Cart_Coords_In = ionoin.Cart_Coords
+        self.Sphere_Coords_In = ionoin.Sphere_Coords
 
-            #Create an array of output location based off of the inputs
-            rng_vec2 = simparams['Rangegatesfinal']
-            nrgout = len(rng_vec2)
+        # Set the input times
+        if timein is None:
+            self.Time_In = ionoin.Time_Vector
+        else:
+            self.Time_In = timein
 
-            angles = simparams['angles']
-            nang =len(angles)
+        #Create an array of output location based off of the inputs
+        rng_vec2 = simparams['Rangegatesfinal']
+        nrgout = len(rng_vec2)
 
-            ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-            rng_all = sp.repeat(rng_vec2,(nang),axis=0)
-            ang_all = sp.tile(ang_data,(nrgout,1))
-            self.Sphere_Coords_Out = sp.column_stack((rng_all,ang_all))
-            (R_vec,Az_vec,El_vec) = (self.Sphere_Coords_Out[:,0],self.Sphere_Coords_Out[:,1],
-                self.Sphere_Coords_Out[:,2])
-            xvecmult = sp.cos(Az_vec*d2r)*sp.cos(El_vec*d2r)
-            yvecmult = sp.sin(Az_vec*d2r)*sp.cos(El_vec*d2r)
-            zvecmult = sp.sin(El_vec*d2r)
-            X_vec = R_vec*xvecmult
-            Y_vec = R_vec*yvecmult
-            Z_vec = R_vec*zvecmult
-            
-            self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
-            self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))+self.Time_In[0,0]
-            self.simparams=simparams
-            self.sensdict=sensdict
-            self.lagmat = self.simparams['amb_dict']['WttMatrix']
-            # create the matrix
-            (self.RSTMat,self.overlaps,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile,ionoin.Velocity,mattype)
-        elif configfile is None:
+        angles = simparams['angles']
+        nang =len(angles)
 
-            self.Cart_Coords_Out = RSTOPinv.Cart_Coords_In
-            self.Sphere_Coords_Out = RSTOPinv.Sphere_Coords_In
-            self.Time_Out =  RSTOPinv.Time_In
+        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+        rng_all = sp.repeat(rng_vec2,(nang),axis=0)
+        ang_all = sp.tile(ang_data,(nrgout,1))
+        self.Sphere_Coords_Out = sp.column_stack((rng_all,ang_all))
+        (R_vec,Az_vec,El_vec) = (self.Sphere_Coords_Out[:,0],self.Sphere_Coords_Out[:,1],
+            self.Sphere_Coords_Out[:,2])
+        xvecmult = sp.cos(Az_vec*d2r)*sp.cos(El_vec*d2r)
+        yvecmult = sp.sin(Az_vec*d2r)*sp.cos(El_vec*d2r)
+        zvecmult = sp.sin(El_vec*d2r)
+        X_vec = R_vec*xvecmult
+        Y_vec = R_vec*yvecmult
+        Z_vec = R_vec*zvecmult
+        
+        self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
+        self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))+self.Time_In[0,0]
+        self.simparams=simparams
+        self.sensdict=sensdict
+        self.lagmat = self.simparams['amb_dict']['WttMatrix']
+        # create the matrix
+        (self.RSTMat,self.overlaps,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile,ionoin.Velocity,mattype)
 
-            self.RSTMat = invmat
-
-            self.Cart_Coords_In = self.Cart_Coords_Out
-            self.Sphere_Coords_In =self.Sphere_Coords_Out
-            self.Time_In = self.Time_Out
-            self.lagmat = sp.diag(sp.ones(14))
 
     def mult_iono(self,ionoin_list):
         """ 
@@ -156,75 +144,6 @@ class RadarSpaceTimeOperator(object):
         return outiono
 
     
-    def invertdata(self,ionoin,alpha,tik_type = 'i',type=None,dims=None,order='C',max_it=100,tol=1e-2):
-        """ This will invert the matrix and create a new operator object.
-        """
-        ntin = self.Time_In.shape[0]
-        matsttimes = self.Time_Out[:,0]
-        ntout = self.Time_Out.shape[0]
-        ntcounts =sp.zeros(ntin)
-        nlin = self.Cart_Coords_In.shape[0]
-        nlout = self.Cart_Coords_Out.shape[0]
-        blocklocs = self.blocklocs
-
-        firsttime = True
-        if isinstance(ionoin,list):
-            ionolist = ionoin
-        else:
-            ionolist = [ionoin]
-
-        for ionon,iiono in enumerate(ionolist):
-            if isinstance(iiono,str):
-                curiono = IonoContainer.readh5(iiono)
-            else:
-                curiono=iiono
-
-
-            ionodata = curiono.Param_List
-            ionotime = curiono.Time_Vector
-            ionocart = curiono.Cart_Coords
-
-            assert sp.allclose(ionocart,self.Cart_Coords_Out), "Spatial Coordinates need to be the same"
-
-            ionosttimes = ionotime[:,0]
-
-            keeptimes = sp.arange(ntin)[sp.in1d(matsttimes,ionosttimes)]
-
-            (nl,nt,np) = ionodata.shape
-            if firsttime:
-                bdata = sp.zeros((nlin,ntin,np))
-                invdata=sp.zeros((nlin,ntin,np))
-                firsttime==False
-
-            b_locsind = sp.arange(len(blocklocs))[sp.in1d(blocklocs[:,0],keeptimes)]
-            b_locs = blocklocs[b_locsind]
-
-
-            
-            for ibn,(iin,iout) in enumerate(b_locs):
-                if len(self.RSTMat)==1:
-                    A = self.RSTMat[0]
-                else:
-                    A=self.RSTMat[b_locsind[ibn]]
-                ntcounts[iin]=ntcounts[iin]+1
-                
-                for iparam in range(np):
-                    bdata[:,iin,iparam]=A.transpose().dot(ionodata[:,iout,iparam])
-
-
-                C = sp.dot(A.transpose(),A)
-    
-                if type is None or type.lower()=='i':
-                    L=sp.sparse.eye(C.shape[0])
-                elif type.lower()=='d':
-                    L=diffmat(dims,order)
-    
-                Ctik=C+sp.power(alpha,2)*L
-                M=L*Ctik
-                xin = sp.ones(nlin,dtype=ionodata.dtype)
-                for i in range(np):
-                    (invdata[:,iin,i], error, iter, flag) = cgmat(Ctik, xin, bdata[:,iin,i], M, max_it, tol)
-
 
 def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matrix'):
     """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc sparse matrix for the space time operator. 
@@ -253,8 +172,6 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     rng_bin=sensdict['t_s']*v_C_0*1e-3/2.
     sumrule = simparams['SUMRULE']
     #
-    minrgbin = -sumrule[0].min()
-    maxrgbin = len(rng_vec)-sumrule[1].max()
     
     angles = simparams['angles']
     Nbeams = len(angles)
