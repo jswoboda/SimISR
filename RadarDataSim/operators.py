@@ -46,13 +46,7 @@ class RadarSpaceTimeOperator(object):
 
         (sensdict,simparams) = readconfigfile(configfile)
         # determine if the input ionocontainer is a string, a list of strings or a list of ionocontainers.
-        if isinstance(ionoin,basestring):
-            ionoin = IonoContainer.readh5(ionoin)
-        elif isinstance(ionoin,list):
-            if isinstance(ionoin[0],basestring):
-                ionoin = IonoContainer.readh5(ionoin[0])
-            else:
-                ionoin=ionoin[0]
+        ionoin=makeionocombined(ionoin)
         #Input location
         self.Cart_Coords_In = ionoin.Cart_Coords
         self.Sphere_Coords_In = ionoin.Sphere_Coords
