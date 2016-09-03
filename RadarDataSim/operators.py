@@ -193,7 +193,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     for iton,ito in enumerate(timeout):
         overlaps[iton]=[]
         for ix, x in enumerate(timein):
-            if ( x[0]<ito[1] or x==(Ntbeg-1)) and x[1]>ito[0]:
+            if ( x[0]<ito[1] or ix==(Ntbeg-1)) and x[1]>ito[0]:
                 
                 #find amount of time for overlap
 

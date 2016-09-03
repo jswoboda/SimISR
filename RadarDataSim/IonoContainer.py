@@ -421,7 +421,7 @@ class IonoContainer(object):
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
         fileslist = sp.vstack([fileslist[i] for i in sortlist]).flatten().astype('int64')
-        outime = sp.hstack(timelist_s)
+        outime = sp.vstack(timelist_s)
         return (sortlist,outime,fileslist,timebeg,timelist_s)
         
     #%% Reduce numbers
