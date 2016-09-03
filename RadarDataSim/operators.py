@@ -307,10 +307,6 @@ def getOverlap(a, b):
 
 #%% Math Functions
 
-
-
-
-
 def cart2sphere(coordlist):
     r2d = 180.0/sp.pi
     d2r = sp.pi/180.0
