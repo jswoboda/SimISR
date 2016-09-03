@@ -162,10 +162,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     Tint = simparams['Tint']
     timeout = sp.column_stack((timeout,timeout+Tint)) +timein[0,0]
 
-    rng_vec = simparams['Rangegates']
     rng_bin=sensdict['t_s']*v_C_0*1e-3/2.
-    sumrule = simparams['SUMRULE']
-    #
     
     angles = simparams['angles']
     Nbeams = len(angles)
