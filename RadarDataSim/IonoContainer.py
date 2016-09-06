@@ -679,7 +679,8 @@ class IonoContainer(object):
                 param vectors and the param names will be the the frequency points. 
         """
         (omeg,outspecs) = self.makeallspectrums(sensdict,npts)
-        return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
+        # XXX velocity is from original parameters
+        return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
     def makespectruminstanceopen(self,func,sensdict,npts):
         """
         This will create another instance of the Ionocont class

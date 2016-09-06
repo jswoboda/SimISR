@@ -122,10 +122,10 @@ class RadarSpaceTimeOperator(object):
             irows = blist_out[it_out]
             curintimes = [i[0] for i in overlists]
             cur_outmat = self.RSTMat[irows[0]:irows[1],:]
-            
+            icols=    blist_in[it_out]
+            cur_mat = cur_outmat[:,icols[0]:icols[1]]
             for it_in in curintimes:
-               icols=    blist_in[it_in]
-               cur_mat = cur_outmat[:,icols[0]:icols[1]]
+
                tempdata=sp.zeros((np_in,nlout),dtype=acf.dtype)
                for iparam in range(np_in):
                    tempdata[iparam]=cur_mat.dot(acf[:,it_in,iparam])
@@ -180,40 +180,52 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     if vel is None:
         vel=sp.zeros((Nlocbeg,Ntbeg,3))
     # set up blocks
-    blocksize = (Ntout*Nbeams*nrgout,Nlocbeg*Ntbeg)
+    blocksize = (Ntout*Nbeams*nrgout,Nlocbeg*Ntout)
 
     
     # make the matrix
     outmat = sp.sparse.lil_matrix(blocksize,dtype =sp.float64)
     # determine the overlaps
-    blockloc_in = [[i*Nlocbeg,(i+1)*Nlocbeg] for i in range(Ntbeg)]
+    # change
+    blockloc_in = [[i*Nlocbeg,(i+1)*Nlocbeg] for i in range(Ntout)]
     blockloc_out = [[i*Nlocout,(i+1)*Nlocout] for i in range(Ntout)]
     blockloc = [blockloc_in,blockloc_out]
     overlaps={}
     for iton,ito in enumerate(timeout):
         overlaps[iton]=[]
+        firstone=True
         for ix, x in enumerate(timein):
             if ( x[0]+1<ito[1] or ix==(Ntbeg-1)) and x[1]-1>ito[0]:
                 
-                #find amount of time for overlap
-
-                stp = sp.maximum(x[0],ito[0])
+                # find the end of the data
                 if ix ==Ntbeg-1:
                     enp=ito[1]
                 else:
-                    enp = sp.minimum(x[1],ito[1])
+                    enp = ito[1]
+                
+                if firstone:
+                    firstone=False
+                    stp = sp.maximum(x[0],ito[0])
+                    curvel=vel[:,ix]*1e-3
+                    curdiff=sp.zeros_like(curvel)
+                else:
+                    T_1=float(x[0]-stp)      
+                    curdiff= curdiff+T_1*curvel
+                    curvel=vel[:,ix]*1e-3
+                #find amount of time for overlap
+                #stp = sp.maximum(x[0],ito[0])
                 ratio = float(enp-stp)/Tint
-                # need to find the start point
-                if mattype=='matrix':                
-                    T_1 = float(stp-x[0])
-                    newcartcoords1 = Cart_Coords-T_1*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
-                    T_2=float(enp-x[0])
-                    newcartcoords2 = Cart_Coords-T_2*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
-                    newcoorsds1 = cart2sphere(newcartcoords1)
-                    newcoorsds2 = cart2sphere(newcartcoords2)
-                elif mattype=='sim':
-                    newcoorsds1 = cart2sphere(Cart_Coords)
-                    newcoorsds2 = cart2sphere(Cart_Coords)
+#                # need to find the start point
+#                if mattype=='matrix':                
+#                    T_1 = float(stp-x[0])
+#                    newcartcoords1 = Cart_Coords-T_1*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
+#                    T_2=float(enp-x[0])
+#                    newcartcoords2 = Cart_Coords-T_2*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
+#                    newcoorsds1 = cart2sphere(newcartcoords1)
+#                    newcoorsds2 = cart2sphere(newcartcoords2)
+#                elif mattype=='sim':
+                newcoorsds1 = cart2sphere(Cart_Coords-curdiff)
+                newcoorsds2 = cart2sphere(Cart_Coords-curdiff)
                 overlaps[iton].append([ix,ratio,newcoorsds1,newcoorsds2])
     # make the matrix
     for iton,ito in enumerate(timeout):
@@ -251,8 +263,9 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     #create the weights and weight location based on the beams pattern.
                     weight_cur =weight1[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
-                    icols = sp.where(rangelog)[0] + Nlocbeg*cur_it
-                    
+                    icols = sp.where(rangelog)[0] + Nlocbeg*iton
+#                    icols = sp.where(rangelog)[0] + Nlocbeg*cur_it
+
                     weights_final = weight_cur*range_g**2/rho1[rangelog]**2
                     outmat[irow,icols] = weights_final*ratio*0.5 +outmat[irow,icols]
                     
@@ -265,8 +278,8 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     #create the weights and weight location based on the beams pattern.
                     weight_cur =weight2[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
-                    icols = sp.where(rangelog)[0]+ Nlocbeg*cur_it
-    
+#                    icols = sp.where(rangelog)[0]+ Nlocbeg*cur_it
+                    icols = sp.where(rangelog)[0]+ Nlocbeg*iton
                     weights_final = weight_cur*range_g**2/rho2[rangelog]**2
                     outmat[irow,icols] = weights_final*ratio*0.5+outmat[irow,icols]
                 
