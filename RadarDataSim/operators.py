@@ -201,15 +201,15 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                 if ix ==Ntbeg-1:
                     enp=ito[1]
                 else:
-                    enp = ito[1]
-                
+                    enp = sp.minimum(ito[1],x[1])
+                stp = sp.maximum(x[0],ito[0])
                 if firstone:
                     firstone=False
-                    stp = sp.maximum(x[0],ito[0])
+                    t_0 = stp.copy()
                     curvel=vel[:,ix]*1e-3
                     curdiff=sp.zeros_like(curvel)
                 else:
-                    T_1=float(x[0]-stp)      
+                    T_1=float(x[0]-t_0)      
                     curdiff= curdiff+T_1*curvel
                     curvel=vel[:,ix]*1e-3
                 #find amount of time for overlap
