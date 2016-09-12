@@ -117,7 +117,8 @@ def fitdata(basedir,configfile,optinputs):
         optinputs:A string that helps determine the what type of acfs will be fitted.
          """
     # determine the input folders which can be ACFs from the full simulation
-    dirdict = {'fitting':('ACF','Fitted'),'fittingmat':('ACFMat','FittedMat'),'fittinginv':('ACFInv','FittedInv')}
+    dirdict = {'fitting':('ACF','Fitted'),'fittingmat':('ACFMat','FittedMat'),
+               'fittinginv':('ACFInv','FittedInv'),'fittingmatinv':('ACFMatInv','FittedMatInv')}
     dirio = dirdict[optinputs[0]]
     inputdir = os.path.join(basedir,dirio[0])
     outputdir = os.path.join(basedir,dirio[1])
@@ -254,7 +255,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
     #pdb.set_trace()
 
     # check for the directories
-    dirnames = ['Origparams','Spectrums','Radardata','ACF','Fitted','ACFOrig','ACFMat','ACFInv','FittedMat','FittedInv']
+    dirnames = ['Origparams','Spectrums','Radardata','ACF','Fitted','ACFOrig','ACFMat','ACFInv','FittedMat','FittedInv','ACFMatInv','FittedMatInv']
     for idir in dirnames:
         curdir = os.path.join(basedir,idir)
         if not os.path.exists(curdir):
