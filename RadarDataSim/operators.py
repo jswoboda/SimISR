@@ -211,7 +211,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     curdiff2=curdiff+curvel*enp
                 else:
                     T_1=float(x[0]-t_0)   
-                    t_0=stp.copy
+                    t_0=stp.copy()
                     curdiff= curdiff+T_1*curvel
                     curvel=vel[:,ix]*1e-3
                     curdiff2=curdiff+enp*curvel
