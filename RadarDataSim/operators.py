@@ -208,24 +208,21 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     t_0 = stp.copy()
                     curvel=vel[:,ix]*1e-3
                     curdiff=sp.zeros_like(curvel)
+                    curdiff2=curdiff+curvel*enp
                 else:
-                    T_1=float(x[0]-t_0)      
+                    T_1=float(x[0]-t_0)   
+                    t_0=stp.copy
                     curdiff= curdiff+T_1*curvel
                     curvel=vel[:,ix]*1e-3
+                    curdiff2=curdiff+enp*curvel
                 #find amount of time for overlap
-                #stp = sp.maximum(x[0],ito[0])
                 ratio = float(enp-stp)/Tint
-#                # need to find the start point
-#                if mattype=='matrix':                
-#                    T_1 = float(stp-x[0])
-#                    newcartcoords1 = Cart_Coords-T_1*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
-#                    T_2=float(enp-x[0])
-#                    newcartcoords2 = Cart_Coords-T_2*vel[:,ix]*1e-3 # check velocity is in km/s or m/s
-#                    newcoorsds1 = cart2sphere(newcartcoords1)
-#                    newcoorsds2 = cart2sphere(newcartcoords2)
-#                elif mattype=='sim':
+                # set up new coordinate system
                 newcoorsds1 = cart2sphere(Cart_Coords-curdiff)
-                newcoorsds2 = cart2sphere(Cart_Coords-curdiff)
+                if mattype=='real':
+                    newcoorsds2 = cart2sphere(Cart_Coords-curdiff2)
+                else:
+                    newcoorsds2 = cart2sphere(Cart_Coords-curdiff)
                 overlaps[iton].append([ix,ratio,newcoorsds1,newcoorsds2])
     # make the matrix
     for iton,ito in enumerate(timeout):
