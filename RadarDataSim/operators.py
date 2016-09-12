@@ -124,13 +124,13 @@ class RadarSpaceTimeOperator(object):
             cur_outmat = self.RSTMat[irows[0]:irows[1],:]
             icols=    blist_in[it_out]
             cur_mat = cur_outmat[:,icols[0]:icols[1]]
+            
             for it_in in curintimes:
-
-               tempdata=sp.zeros((np_in,nlout),dtype=acf.dtype)
-               for iparam in range(np_in):
+                tempdata=sp.zeros((np_in,nlout),dtype=acf.dtype)
+                for iparam in range(np_in):
                    tempdata[iparam]=cur_mat.dot(acf[:,it_in,iparam])
                
-               outdata[:,it_out] = sp.transpose(sp.dot(ambmat,tempdata)) + outdata[:,it_out]
+            outdata[:,it_out] = sp.transpose(sp.dot(ambmat,tempdata)) + outdata[:,it_out]
 
        
         outiono = IonoContainer(self.Sphere_Coords_Out,outdata,times=self.Time_Out,sensor_loc=Iono_in.Sensor_loc,
@@ -267,7 +267,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
 #                    icols = sp.where(rangelog)[0] + Nlocbeg*cur_it
 
                     weights_final = weight_cur*range_g**2/rho1[rangelog]**2
-                    outmat[irow,icols] = weights_final*ratio*0.5 +outmat[irow,icols]
+                    outmat[irow,icols] = weights_final*cur_ratio*0.5 +outmat[irow,icols]
                     
                     # assume centered lag product.
                     rangelog = ((rho2>=rnglims[0])&(rho2<rnglims[1]))
@@ -281,7 +281,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
 #                    icols = sp.where(rangelog)[0]+ Nlocbeg*cur_it
                     icols = sp.where(rangelog)[0]+ Nlocbeg*iton
                     weights_final = weight_cur*range_g**2/rho2[rangelog]**2
-                    outmat[irow,icols] = weights_final*ratio*0.5+outmat[irow,icols]
+                    outmat[irow,icols] = weights_final*cur_ratio*0.5+outmat[irow,icols]
                 
                 
 
