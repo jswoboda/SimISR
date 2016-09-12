@@ -276,7 +276,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
         f.write(curfunc.__name__+'\n')
         f.write(time.asctime()+'\n')
         if curfunc.__name__=='fitdata':
-            ex_inputs=[curfuncn,fitlist]
+            ex_inputs=[curfuncn,fitlist,invtype]
         else:
             ex_inputs = remakealldata
         try:
