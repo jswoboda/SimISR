@@ -94,13 +94,16 @@ class Fitterionoconainer(object):
             for iloc in range(Nloc):
                 print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
                 curlag = lagsData[iloc,itime]
-                if sp.all(sp.isnan(curlag)):
+                if sp.any(sp.isnan(curlag)) or sp.all(curlag==0):
                     print('\t\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} is NaN, skipping.'.format(itime,Nt,iloc,Nloc))
                     continue
                 x_0 = x_0all[iloc,itime]
                 Niratio = x_0[0:2*ni:2]/x_0[2*ni]
                 Ti = (Niratio*x_0[1:2*ni:2]).sum()
                 
+                if sp.any(sp.isnan(x_0)):
+                    print('\t\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} is NaN, skipping.'.format(itime,Nt,iloc,Nloc))
+                    continue
                 d_func = (curlag,self.sensdict,self.simparams,Niratio)
                 if first_lag:
                     first_lag = False
