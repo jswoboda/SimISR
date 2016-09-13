@@ -121,16 +121,17 @@ class RadarSpaceTimeOperator(object):
             overlists = overlaps[it_out]
             irows = blist_out[it_out]
             curintimes = [i[0] for i in overlists]
+            curintratio=[i[1] for i in overlists]
             cur_outmat = self.RSTMat[irows[0]:irows[1],:]
             icols=    blist_in[it_out]
             cur_mat = cur_outmat[:,icols[0]:icols[1]]
             
-            for it_in in curintimes:
+            for i_it,it_in in enumerate(curintimes):
                 tempdata=sp.zeros((np_in,nlout),dtype=acf.dtype)
                 for iparam in range(np_in):
                    tempdata[iparam]=cur_mat.dot(acf[:,it_in,iparam])
                
-            outdata[:,it_out] = sp.transpose(sp.dot(ambmat,tempdata)) + outdata[:,it_out]
+                outdata[:,it_out] = sp.transpose(sp.dot(ambmat,tempdata))*curintratio[i_it] + outdata[:,it_out]
 
        
         outiono = IonoContainer(self.Sphere_Coords_Out,outdata,times=self.Time_Out,sensor_loc=Iono_in.Sensor_loc,
@@ -218,10 +219,16 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                 #find amount of time for overlap
                 ratio = float(enp-stp)/Tint
                 # set up new coordinate system
-                newcoorsds1 = cart2sphere(Cart_Coords-curdiff)
-                if mattype=='real':
+                # The thee types of coordinates are as follows
+                # The matrix type assumes that the matrix will be applied to 
+                if mattype=='matrix':
+                    newcoorsds1 = cart2sphere(Cart_Coords)
+                    newcoorsds2 = cart2sphere(Cart_Coords)
+                elif mattype=='real':
+                    newcoorsds1 = cart2sphere(Cart_Coords-curdiff)
                     newcoorsds2 = cart2sphere(Cart_Coords-curdiff2)
                 else:
+                    newcoorsds1 = cart2sphere(Cart_Coords-curdiff)
                     newcoorsds2 = cart2sphere(Cart_Coords-curdiff)
                 overlaps[iton].append([ix,ratio,newcoorsds1,newcoorsds2])
     # make the matrix

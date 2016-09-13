@@ -195,7 +195,7 @@ def applymat(basedir,configfile,optinputs):
     dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
     (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     Ionolist = [dirlist[ikey] for ikey in listorder]
-    RSTO = RadarSpaceTimeOperator(Ionolist,configfile,timevector)
+    RSTO = RadarSpaceTimeOperator(Ionolist,configfile,timevector,mattype='matrix')
     Ionoout = RSTO.mult_iono(Ionolist)
     outfile=os.path.join(outputdir2,'00lags.h5')
     Ionoout.saveh5(outfile)
