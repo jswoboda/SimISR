@@ -70,8 +70,8 @@ class RadarSpaceTimeOperator(object):
         self.Sphere_Coords_Out = sp.column_stack((rng_all,ang_all))
         (R_vec,Az_vec,El_vec) = (self.Sphere_Coords_Out[:,0],self.Sphere_Coords_Out[:,1],
             self.Sphere_Coords_Out[:,2])
-        xvecmult = sp.cos(Az_vec*d2r)*sp.cos(El_vec*d2r)
-        yvecmult = sp.sin(Az_vec*d2r)*sp.cos(El_vec*d2r)
+        xvecmult = sp.sin(Az_vec*d2r)*sp.cos(El_vec*d2r)
+        yvecmult = sp.cos(Az_vec*d2r)*sp.cos(El_vec*d2r)
         zvecmult = sp.sin(El_vec*d2r)
         X_vec = R_vec*xvecmult
         Y_vec = R_vec*yvecmult
@@ -323,7 +323,7 @@ def cart2sphere(coordlist):
     Y_vec = coordlist[:,1]
     Z_vec = coordlist[:,2]
     R_vec = sp.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
-    Az_vec = sp.arctan2(Y_vec,X_vec)*r2d
+    Az_vec = sp.arctan2(X_vec,Y_vec)*r2d
     El_vec = sp.arcsin(Z_vec/R_vec)*r2d
     sp_coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
     return sp_coords

@@ -69,7 +69,7 @@ class IonoContainer(object):
             Z_vec = coordlist[:,2]
 
             R_vec = sp.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
-            Az_vec = sp.arctan2(Y_vec,X_vec)*r2d
+            Az_vec = sp.arctan2(X_vec,Y_vec)*r2d
             El_vec = sp.arcsin(Z_vec/R_vec)*r2d
 
             self.Cart_Coords = coordlist
@@ -85,8 +85,8 @@ class IonoContainer(object):
             Az_vec = coordlist[:,1]
             El_vec = coordlist[:,2]
 
-            xvecmult = np.cos(Az_vec*d2r)*np.cos(El_vec*d2r)
-            yvecmult = np.sin(Az_vec*d2r)*np.cos(El_vec*d2r)
+            xvecmult = np.sin(Az_vec*d2r)*np.cos(El_vec*d2r)
+            yvecmult = np.cos(Az_vec*d2r)*np.cos(El_vec*d2r)
             zvecmult = np.sin(El_vec*d2r)
             X_vec = R_vec*xvecmult
             Y_vec = R_vec*yvecmult
@@ -153,8 +153,8 @@ class IonoContainer(object):
         """
         d2r = np.pi/180.0
         (R,Az,El) = coords
-        x_coord = R*np.cos(Az*d2r)*np.cos(El*d2r)
-        y_coord = R*np.sin(Az*d2r)*np.cos(El*d2r)
+        x_coord = R*np.sin(Az*d2r)*np.cos(El*d2r)
+        y_coord = R*np.cos(Az*d2r)*np.cos(El*d2r)
         z_coord= R*np.sin(El*d2r)
         cartcoord = np.array([x_coord,y_coord,z_coord])
         return self.getclosest(cartcoord,timelist)
