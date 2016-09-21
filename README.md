@@ -1,4 +1,4 @@
-##RadarDataSim
+##SimISR
 by John Swoboda
 ![alt text](https://raw.github.com/jswoboda/RadarDataSim/master/Images/logofig2.png "RadarDataSim")
 
@@ -22,11 +22,16 @@ This runs on Python 2.7.9. The packages required include
 * matplotlib
 * [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum)
 
-#Installation
+## Suggestions
+It is highly suggested that the [Anaconda](https://www.continuum.io/downloads) platform be used as the package manager. All of the development and testing has been done using this. Assuming the user has installed Anaconda a [set up bash script](https://github.com/jswoboda/AnacondaEnvUtilities), which can be used in Linux or Mac environments is avalible.
+
+The user can also take advantage of two different APIs to plot results using the SimISR. The first is in Python and is called [GeoDataPython](https://github.com/jswoboda/GeoDataPython). A MATLAB version of this API is also avalible called [GeoDataMATLAB](https://github.com/jswoboda/GeoDataMATLAB). Both APIs can read in the structured files from SimISR.
+
+# Installation
 
 To install first clone repository:
 
-	$ git clone https://github.com/jswoboda/RadarDataSim.git
+	$ git clone https://github.com/jswoboda/SimISR.git
 
 Before going further in the install the user also needs to download and install the module [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum) from the repository found in the link.
 
