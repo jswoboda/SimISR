@@ -693,7 +693,7 @@ class IonoContainer(object):
                 param vectors and the param names will be the the frequency points 
         """
         (omeg,outspecs) = self.makeallspectrumsopen(func,sensdict,npts)
-        return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg)
+        return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
     def getDoppler(self,sensorloc=sp.zeros(3)):
         """ 
         This will return the line of sight velocity.
