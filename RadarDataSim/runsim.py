@@ -250,7 +250,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
     inputsep = '***************************************************************\n'
 
     funcdict = {'spectrums':makespectrums, 'radardata':makeradardata, 'fitting':fitdata,'fittingmat':fitdata,
-                'fittinginv':fitdata,'applymat':applymat}
+                'fittinginv':fitdata,'applymat':applymat,'fittingmatinv':fitdata}
     #inout = {'spectrums':('Origparams','Spectrums'),'radardata':('Spectrums','Radardata'),'fitting':('ACF','Fitted')}
     #pdb.set_trace()
 
