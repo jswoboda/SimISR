@@ -42,8 +42,6 @@ class RadarSpaceTimeOperator(object):
             
         d2r = sp.pi/180.0
 
-       
-
         (sensdict,simparams) = readconfigfile(configfile)
         # determine if the input ionocontainer is a string, a list of strings or a list of ionocontainers.
         ionoin=makeionocombined(ionoin)
