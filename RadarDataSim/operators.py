@@ -96,9 +96,9 @@ class RadarSpaceTimeOperator(object):
         amb_dict = self.simparams['amb_dict']
         ambmat = amb_dict['WttMatrix']
         overlaps = self.overlaps
-        np = ambmat.shape[0]
+        
         t_s = self.sensdict['t_s']
-        tau_out = t_s*sp.arange(np)
+        
         if isinstance(ionoin_list,list)or isinstance(ionoin_list,str):
             
             Iono_in = makeionocombined(ionoin_list)
@@ -107,10 +107,15 @@ class RadarSpaceTimeOperator(object):
         
         
         ionocart = Iono_in.Cart_Coords
-       
-        tau,acf=spect2acf(Iono_in.Param_Names,Iono_in.Param_List)
+      
+        if self.simparams['numpoints']==Iono_in.Param_List.shape[-1]:
+            tau,acf=spect2acf(Iono_in.Param_Names,Iono_in.Param_List)
+            np = ambmat.shape[0]
+        else:
+            acf=Iono_in.Param_List
+            np = acf.shape[-1]
         np_in =acf.shape[-1]
-        
+        tau_out = t_s*sp.arange(np)
         outdata = sp.zeros((nlout,ntout,np),dtype=acf.dtype)
         assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
 
@@ -128,8 +133,9 @@ class RadarSpaceTimeOperator(object):
                 tempdata=sp.zeros((np_in,nlout),dtype=acf.dtype)
                 for iparam in range(np_in):
                    tempdata[iparam]=cur_mat.dot(acf[:,it_in,iparam])
-               
-                outdata[:,it_out] = sp.transpose(sp.dot(ambmat,tempdata))*curintratio[i_it] + outdata[:,it_out]
+                if self.simparams['numpoints']==Iono_in.Param_List.shape[-1]:
+                    tempdata=sp.dot(ambmat,tempdata)
+                outdata[:,it_out] = sp.transpose(tempdata)*curintratio[i_it] + outdata[:,it_out]
 
        
         outiono = IonoContainer(self.Sphere_Coords_Out,outdata,times=self.Time_Out,sensor_loc=Iono_in.Sensor_loc,
