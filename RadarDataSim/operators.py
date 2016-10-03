@@ -41,7 +41,6 @@ class RadarSpaceTimeOperator(object):
         """
             
         d2r = sp.pi/180.0
-
         (sensdict,simparams) = readconfigfile(configfile)
         # determine if the input ionocontainer is a string, a list of strings or a list of ionocontainers.
         ionoin=makeionocombined(ionoin)
@@ -135,9 +134,9 @@ class RadarSpaceTimeOperator(object):
                    tempdata[iparam]=cur_mat.dot(acf[:,it_in,iparam])
                 if self.simparams['numpoints']==Iono_in.Param_List.shape[-1]:
                     tempdata=sp.dot(ambmat,tempdata)
+                
                 outdata[:,it_out] = sp.transpose(tempdata)*curintratio[i_it] + outdata[:,it_out]
 
-       
         outiono = IonoContainer(self.Sphere_Coords_Out,outdata,times=self.Time_Out,sensor_loc=Iono_in.Sensor_loc,
                                ver=1,coordvecs = ['r','theta','phi'],paramnames=tau_out)
         return outiono
@@ -196,6 +195,10 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     blockloc_out = [[i*Nlocout,(i+1)*Nlocout] for i in range(Ntout)]
     blockloc = [blockloc_in,blockloc_out]
     overlaps={}
+    if mattype=='real':
+        cor_ratio=.5
+    else:
+        cor_ratio=1.
     for iton,ito in enumerate(timeout):
         overlaps[iton]=[]
         firstone=True
@@ -238,6 +241,9 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     # make the matrix
     for iton,ito in enumerate(timeout):
         cur_over = overlaps[iton]
+        if mattype=='matrix':
+            cur_over=[cur_over[0]]
+            cur_over[0][1]=1.
         for it_in,it_info in enumerate(cur_over):
             
             cur_it,cur_ratio,Sp1,Sp2 = it_info
@@ -262,6 +268,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     irow = ibn + isamp*Nbeams + Nbeams*nrgout*iton
                     range_g = rng_vec2[isamp]
                     rnglims = [range_g-rng_len/2.,range_g+rng_len/2.]
+                    
                     # assume centered lag product.
                     rangelog = ((rho1>=rnglims[0])&(rho1<rnglims[1]))
                     # This is a nearest neighbors interpolation for the spectrums in the range domain
@@ -275,21 +282,22 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
 #                    icols = sp.where(rangelog)[0] + Nlocbeg*cur_it
 
                     weights_final = weight_cur*range_g**2/rho1[rangelog]**2
-                    outmat[irow,icols] = weights_final*cur_ratio*0.5 +outmat[irow,icols]
+                    outmat[irow,icols] = weights_final*cur_ratio*cor_ratio+outmat[irow,icols]
                     
-                    # assume centered lag product.
-                    rangelog = ((rho2>=rnglims[0])&(rho2<rnglims[1]))
-                    # This is a nearest neighbors interpolation for the spectrums in the range domain
-                    if sp.sum(rangelog)==0:
-                        minrng = sp.argmin(sp.absolute(range_g-rho2))
-                        rangelog[minrng] = True
-                    #create the weights and weight location based on the beams pattern.
-                    weight_cur =weight2[rangelog]
-                    weight_cur = weight_cur/weight_cur.sum()
-#                    icols = sp.where(rangelog)[0]+ Nlocbeg*cur_it
-                    icols = sp.where(rangelog)[0]+ Nlocbeg*iton
-                    weights_final = weight_cur*range_g**2/rho2[rangelog]**2
-                    outmat[irow,icols] = weights_final*cur_ratio*0.5+outmat[irow,icols]
+                    if mattype=='real':
+                        # assume centered lag product.
+                        rangelog = ((rho2>=rnglims[0])&(rho2<rnglims[1]))
+                        # This is a nearest neighbors interpolation for the spectrums in the range domain
+                        if sp.sum(rangelog)==0:
+                            minrng = sp.argmin(sp.absolute(range_g-rho2))
+                            rangelog[minrng] = True
+                        #create the weights and weight location based on the beams pattern.
+                        weight_cur =weight2[rangelog]
+                        weight_cur = weight_cur/weight_cur.sum()
+    #                    icols = sp.where(rangelog)[0]+ Nlocbeg*cur_it
+                        icols = sp.where(rangelog)[0]+ Nlocbeg*iton
+                        weights_final = weight_cur*range_g**2/rho2[rangelog]**2
+                        outmat[irow,icols] = weights_final*cur_ratio*cor_ratio+outmat[irow,icols]
                 
                 
 

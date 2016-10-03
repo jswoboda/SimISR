@@ -333,7 +333,7 @@ class IonoContainer(object):
                     indata[vardict[ikey]] = [str(''.join(letter)) for letter_array in indata[vardict[ikey]][0] for letter in letter_array]
 
                 outdict[ikey] = indata[vardict[ikey]]
-        #pdb.set_trace()
+
         if 'coordvecs' in outdict.keys():
             if [str(x) for x in outdict['coordvecs']] == ['r','theta','phi']:
                 outdict['ver']=1
@@ -414,13 +414,12 @@ class IonoContainer(object):
             h5file.close()
             timelist.append(times)
             fileslist.append(ifilenum*sp.ones(len(times)))
-            
         times_file =sp.array([i[:,0].min() for i in timelist])
         sortlist = sp.argsort(times_file)
         
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
-        fileslist = sp.vstack([fileslist[i] for i in sortlist]).flatten().astype('int64')
+        fileslist = sp.vstack([fileslist[i][0] for i in sortlist]).flatten().astype('int64')
         outime = sp.vstack(timelist_s)
         return (sortlist,outime,fileslist,timebeg,timelist_s)
         
@@ -524,7 +523,6 @@ class IonoContainer(object):
             This is the (*) multiplication. The thingtomult object can be a number, numpy array
             thats the same size as Param_List or another ionocontainer.
         """
-        pdb.set_trace()
         # check if multiplying a number or numpy array
         isnum = isinstance(thingtomult,numbers.Number)
         isarray=isinstance(thingtomult,sp.ndarray)
@@ -710,7 +708,7 @@ class IonoContainer(object):
             curcoords = self.Cart_Coords
         denom = np.tile(sp.sqrt(sp.sum(curcoords**2,1))[:,sp.newaxis],(1,3))
         unit_coords = curcoords/denom
-#        pdb.set_trace()
+
         Vi = sp.zeros((ncoords,ntimes))
         for itime in range(ntimes):
             Vi[:,itime] = (self.Velocity[:,itime]*unit_coords).sum(1)
