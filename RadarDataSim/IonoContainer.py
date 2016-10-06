@@ -731,11 +731,14 @@ def makeionocombined(datapath,ext='.h5'):
             outiono - The ionocontainer with of all the time points.
 
         """
+
     if isinstance(datapath,basestring):
         if os.path.splitext(datapath)[-1]==0:
             ionocontlist=[datapath]
         else:
             ionocontlist = glob.glob(os.path.join(datapath,'*'+ext))
+    elif not isinstance(datapath,list):
+        return datapath
     else:
         ionocontlist = datapath
 

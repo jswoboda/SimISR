@@ -247,6 +247,8 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
         for it_in,it_info in enumerate(cur_over):
             
             cur_it,cur_ratio,Sp1,Sp2 = it_info
+            if mattype=='sim':
+                cur_ratio=1
             rho1 = Sp1[:,0]
             Az1 = Sp1[:,1]
             El1 = Sp1[:,2]
