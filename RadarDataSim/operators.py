@@ -79,6 +79,7 @@ class RadarSpaceTimeOperator(object):
         self.simparams=simparams
         self.sensdict=sensdict
         self.lagmat = self.simparams['amb_dict']['WttMatrix']
+        self.mattype=mattype
         # create the matrix
         (self.RSTMat,self.overlaps,self.blocklocs) = makematPA(ionoin.Sphere_Coords,ionoin.Cart_Coords,ionoin.Time_Vector,configfile,ionoin.Velocity,mattype)
 
@@ -124,6 +125,9 @@ class RadarSpaceTimeOperator(object):
             irows = blist_out[it_out]
             curintimes = [i[0] for i in overlists]
             curintratio=[i[1] for i in overlists]
+#            if self.mattype=='sim':
+#                curintratio=sp.ones(len(curintratio))
+            
             cur_outmat = self.RSTMat[irows[0]:irows[1],:]
             icols=    blist_in[it_out]
             cur_mat = cur_outmat[:,icols[0]:icols[1]]
@@ -183,17 +187,20 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     Ntout = len(timeout)
     if vel is None:
         vel=sp.zeros((Nlocbeg,Ntbeg,3))
-    # set up blocks
-    blocksize = (Ntout*Nbeams*nrgout,Nlocbeg*Ntout)
+   
 
     
-    # make the matrix
-    outmat = sp.sparse.lil_matrix(blocksize,dtype =sp.float64)
+    
     # determine the overlaps
     # change
+    
     blockloc_in = [[i*Nlocbeg,(i+1)*Nlocbeg] for i in range(Ntout)]
     blockloc_out = [[i*Nlocout,(i+1)*Nlocout] for i in range(Ntout)]
     blockloc = [blockloc_in,blockloc_out]
+    # set up blocks
+    blocksize = (Ntout*Nbeams*nrgout,Nlocbeg*Ntout)
+    # make the matrix
+    outmat = sp.sparse.lil_matrix(blocksize,dtype =sp.float64)
     overlaps={}
     if mattype=='real':
         cor_ratio=.5
@@ -211,41 +218,43 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                 else:
                     enp = sp.minimum(ito[1],x[1])
                 stp = sp.maximum(x[0],ito[0])
+                
+                curvel=vel[:,0]*1e-3
+                
                 if firstone:
                     firstone=False
                     t_0 = stp.copy()
-                    curvel=vel[:,ix]*1e-3
-                    curdiff=sp.zeros_like(curvel)
-                    curdiff2=curdiff+curvel*enp
+                    curdiff=sp.zeros_like(vel[:,ix])
+                    curdiff2=curdiff+float(enp-stp)*curvel
                 else:
                     T_1=float(x[0]-t_0)   
                     t_0=stp.copy()
-                    curdiff= curdiff+T_1*curvel
-                    curvel=vel[:,ix]*1e-3
-                    curdiff2=curdiff+enp*curvel
+                    curdiff= curdiff2
+                    curdiff2=curdiff+float(enp-stp)*curvel
                 #find amount of time for overlap
                 ratio = float(enp-stp)/Tint
                 # set up new coordinate system
                 # The thee types of coordinates are as follows
-                # The matrix type assumes that the matrix will be applied to 
+                # The matrix type assumes that the matrix will be applied to the data.
+                # The sim type
                 if mattype=='matrix':
                     newcoorsds1 = cart2sphere(Cart_Coords)
                     newcoorsds2 = cart2sphere(Cart_Coords)
                 elif mattype=='real':
-                    newcoorsds1 = cart2sphere(Cart_Coords-curdiff)
-                    newcoorsds2 = cart2sphere(Cart_Coords-curdiff2)
+                    newcoorsds1 = cart2sphere(Cart_Coords+curdiff)
+                    newcoorsds2 = cart2sphere(Cart_Coords+curdiff2)
                 else:
-                    newcoorsds1 = cart2sphere(Cart_Coords-curdiff)
-                    newcoorsds2 = cart2sphere(Cart_Coords-curdiff)
+                    newcoorsds1 = cart2sphere(Cart_Coords+curdiff)
+                    newcoorsds2 = cart2sphere(Cart_Coords+curdiff)
                 overlaps[iton].append([ix,ratio,newcoorsds1,newcoorsds2])
     # make the matrix
     for iton,ito in enumerate(timeout):
         cur_over = overlaps[iton]
-        if mattype=='matrix':
-            cur_over=[cur_over[0]]
-            cur_over[0][1]=1.
+#        if mattype=='matrix':
+#            cur_over=[cur_over[0]]
+#            cur_over[0][1]=1.
         for it_in,it_info in enumerate(cur_over):
-            
+            print('\t Making Input time {0:d} of {1:d}'.format(it_in,len(cur_over)))
             cur_it,cur_ratio,Sp1,Sp2 = it_info
             if mattype=='sim':
                 cur_ratio=1
@@ -278,7 +287,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                         minrng = sp.argmin(sp.absolute(range_g-rho1))
                         rangelog[minrng] = True
                     #create the weights and weight location based on the beams pattern.
-                    weight_cur =weight1[rangelog]
+                    weight_cur = weight1[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
                     icols = sp.where(rangelog)[0] + Nlocbeg*iton
 #                    icols = sp.where(rangelog)[0] + Nlocbeg*cur_it
