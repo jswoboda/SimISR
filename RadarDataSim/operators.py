@@ -125,8 +125,9 @@ class RadarSpaceTimeOperator(object):
             irows = blist_out[it_out]
             curintimes = [i[0] for i in overlists]
             curintratio=[i[1] for i in overlists]
-#            if self.mattype=='sim':
-#                curintratio=sp.ones(len(curintratio))
+            if self.mattype=='sim':
+                curintimes=[curintimes[0]]
+                curintratio=[curintratio[0]]
             
             cur_outmat = self.RSTMat[irows[0]:irows[1],:]
             icols=    blist_in[it_out]
@@ -253,17 +254,20 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
 #        if mattype=='matrix':
 #            cur_over=[cur_over[0]]
 #            cur_over[0][1]=1.
+        beamnorm=sp.ones(Nbeams*nrgout)
         for it_in,it_info in enumerate(cur_over):
             print('\t Making Input time {0:d} of {1:d}'.format(it_in,len(cur_over)))
             cur_it,cur_ratio,Sp1,Sp2 = it_info
             if mattype=='sim':
-                cur_ratio=1
+                cur_ratio=1.
             rho1 = Sp1[:,0]
             Az1 = Sp1[:,1]
             El1 = Sp1[:,2]
             rho2 = Sp2[:,0]
             Az2 = Sp2[:,1]
             El2 = Sp2[:,2]
+            
+           
             # get the weights
             weights1 = {ibn:sensdict['ArrayFunc'](Az1,El1,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
             weights2 = {ibn:sensdict['ArrayFunc'](Az2,El2,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
@@ -288,7 +292,10 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                         rangelog[minrng] = True
                     #create the weights and weight location based on the beams pattern.
                     weight_cur = weight1[rangelog]
-                    weight_cur = weight_cur/weight_cur.sum()
+                    # fix averaging problems
+                    if it_in==0:
+                        beamnorm[ibn + isamp*Nbeams]=weight_cur.sum()
+                    weight_cur = weight_cur/beamnorm[ibn + isamp*Nbeams]
                     icols = sp.where(rangelog)[0] + Nlocbeg*iton
 #                    icols = sp.where(rangelog)[0] + Nlocbeg*cur_it
 
@@ -304,7 +311,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                             rangelog[minrng] = True
                         #create the weights and weight location based on the beams pattern.
                         weight_cur =weight2[rangelog]
-                        weight_cur = weight_cur/weight_cur.sum()
+                        weight_cur = weight_cur//beamnorm[ibn + isamp*Nbeams]
     #                    icols = sp.where(rangelog)[0]+ Nlocbeg*cur_it
                         icols = sp.where(rangelog)[0]+ Nlocbeg*iton
                         weights_final = weight_cur*range_g**2/rho2[rangelog]**2
