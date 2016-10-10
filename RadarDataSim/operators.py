@@ -39,7 +39,10 @@ class RadarSpaceTimeOperator(object):
                 RSTOPinv - The inverse operator object.
                 invmat - The inverse matrix to the original operator.
         """
-            
+        mattype=mattype.lower()
+        accepttypes=['matrix','sim','real']
+        if not mattype in accepttypes:
+            raise ValueError('Matrix type can only be {0}'.format(', '.join(accepttypes)))
         d2r = sp.pi/180.0
         (sensdict,simparams) = readconfigfile(configfile)
         # determine if the input ionocontainer is a string, a list of strings or a list of ionocontainers.
