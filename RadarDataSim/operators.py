@@ -125,7 +125,7 @@ class RadarSpaceTimeOperator(object):
             irows = blist_out[it_out]
             curintimes = [i[0] for i in overlists]
             curintratio=[i[1] for i in overlists]
-            if self.mattype=='sim':
+            if self.mattype.lower()=='sim':
                 curintimes=[curintimes[0]]
                 curintratio=[curintratio[0]]
             
@@ -203,7 +203,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     # make the matrix
     outmat = sp.sparse.lil_matrix(blocksize,dtype =sp.float64)
     overlaps={}
-    if mattype=='real':
+    if mattype.lower()=='real':
         cor_ratio=.5
     else:
         cor_ratio=1.
@@ -238,10 +238,10 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                 # The thee types of coordinates are as follows
                 # The matrix type assumes that the matrix will be applied to the data.
                 # The sim type
-                if mattype=='matrix':
+                if mattype.lower()=='matrix':
                     newcoorsds1 = cart2sphere(Cart_Coords)
                     newcoorsds2 = cart2sphere(Cart_Coords)
-                elif mattype=='real':
+                elif mattype.lower=='real':
                     newcoorsds1 = cart2sphere(Cart_Coords+curdiff)
                     newcoorsds2 = cart2sphere(Cart_Coords+curdiff2)
                 else:
@@ -258,7 +258,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
         for it_in,it_info in enumerate(cur_over):
             print('\t Making Input time {0:d} of {1:d}'.format(it_in,len(cur_over)))
             cur_it,cur_ratio,Sp1,Sp2 = it_info
-            if mattype=='sim':
+            if mattype.lower()=='sim':
                 cur_ratio=1.
             rho1 = Sp1[:,0]
             Az1 = Sp1[:,1]
@@ -302,7 +302,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     weights_final = weight_cur*range_g**2/rho1[rangelog]**2
                     outmat[irow,icols] = weights_final*cur_ratio*cor_ratio+outmat[irow,icols]
                     
-                    if mattype=='real':
+                    if mattype.lower()=='real':
                         # assume centered lag product.
                         rangelog = ((rho2>=rnglims[0])&(rho2<rnglims[1]))
                         # This is a nearest neighbors interpolation for the spectrums in the range domain
