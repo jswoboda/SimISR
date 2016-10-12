@@ -130,7 +130,7 @@ class RadarSpaceTimeOperator(object):
             curintratio=[i[1] for i in overlists]
             if self.mattype.lower()=='sim':
                 curintimes=[curintimes[0]]
-                curintratio=[curintratio[0]]
+                curintratio=[1.]
             
             cur_outmat = self.RSTMat[irows[0]:irows[1],:]
             icols=    blist_in[it_out]
@@ -261,8 +261,8 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
         for it_in,it_info in enumerate(cur_over):
             print('\t Making Input time {0:d} of {1:d}'.format(it_in,len(cur_over)))
             cur_it,cur_ratio,Sp1,Sp2 = it_info
-            if mattype.lower()=='sim':
-                cur_ratio=1.
+#            if mattype.lower()=='sim':
+#                cur_ratio=1.
             rho1 = Sp1[:,0]
             Az1 = Sp1[:,1]
             El1 = Sp1[:,2]
