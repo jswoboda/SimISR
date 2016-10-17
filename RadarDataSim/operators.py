@@ -224,7 +224,8 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                 stp = sp.maximum(x[0],ito[0])
                 
                 curvel=vel[:,0]*1e-3
-                
+                # XXX This is just a quick fix
+                curvel[:,-1]=0
                 if firstone:
                     firstone=False
                     t_0 = stp.copy()
