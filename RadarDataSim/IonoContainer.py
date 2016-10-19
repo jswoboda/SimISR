@@ -741,7 +741,6 @@ def makeionocombined(datapath,ext='.h5'):
         return datapath
     else:
         ionocontlist = datapath
-
     (sortlist,outime,fileslist,timebeg,timelist_s)=IonoContainer.gettimes(ionocontlist)
     readlist = [ionocontlist[i] for i in fileslist]
 
