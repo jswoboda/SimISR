@@ -570,9 +570,9 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
                 for a in simparams[param]:
                     data += str(a)
                     data += " "
-                config.set('simparams',param,data)
-            else:
-                config.set('simparams',param,simparams[param])
+                config.set('simparams',param,str(data))
+            else:  #TODO config.set() is obsolete, undefined behavior!  use mapping protocol instead https://docs.python.org/3/library/configparser.html#mapping-protocol-access
+                config.set('simparams',param,str(simparams[param]))
             config.set('simparamsnames',param,param)
         config.write(cfgfile)
         cfgfile.close()
@@ -617,6 +617,7 @@ def readconfigfile(fname):
         beamlist = [float(i) for i in beamlist]
         angles = getangles(beamlist,config.get('section 1','radarname'))
         ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+
         sensdict = sensconst.getConst(config.get('section 1','radarname'),ang_data)
 
         simparams = {}

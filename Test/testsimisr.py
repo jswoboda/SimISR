@@ -7,7 +7,7 @@ in the command line and this should run.
 @author: John Swoboda
 """
 
-import os, inspect, glob,pdb
+import os, inspect, glob
 import scipy as sp
 from RadarDataSim.utilFunctions import makeconfigfile
 from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
@@ -115,5 +115,5 @@ def main():
     if not failflag:
         analysisdump(testpath,os.path.join(testpath,'PFISRExample.ini'))
 if __name__== '__main__':
-    
+
     main()

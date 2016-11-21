@@ -3,10 +3,10 @@
 Holds the IonoContainer class that contains the ionospheric parameters.
 @author: John Swoboda
 """
+from six import string_types
 import os
 import glob
 import inspect
-import pdb
 import posixpath
 import copy
 
@@ -19,7 +19,6 @@ import h5py
 import numbers
 from datetime import datetime
 # From my
-from ISRSpectrum.ISRSpectrum import ISRSpectrum
 from .utilFunctions import Chapmanfunc, TempProfile
 
 class IonoContainer(object):
@@ -292,7 +291,7 @@ class IonoContainer(object):
             os.remove(filename)
         vardict = vars(self)
 
-        with tables.openFile(filename, mode = "w", title = "IonoContainer out.") as f:
+        with tables.open_file(filename, mode = "w", title = "IonoContainer out.") as f:
 
             try:
                 # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
@@ -303,10 +302,10 @@ class IonoContainer(object):
                         dictkeys = vardict[cvar].keys()
                         group2 = f.create_group('/',cvar,cvar+' dictionary')
                         for ikeys in dictkeys:
-                            f.createArray(group2,ikeys,vardict[cvar][ikeys],'Static array')
+                            f.create_array(group2,ikeys,vardict[cvar][ikeys],'Static array')
                     else:
                         if not(vardict[cvar] is None):
-                            f.createArray('/',cvar,vardict[cvar],'Static array')
+                            f.create_array('/',cvar,vardict[cvar],'Static array')
 
             except Exception as inst:
                 print(type(inst))
@@ -355,14 +354,14 @@ class IonoContainer(object):
         vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
         outdict = {}
 
-        h5file=tables.openFile(filename)
-        output={}
-        # Read in all of the info from the h5 file and put it in a dictionary.
-        for group in h5file.walkGroups(posixpath.sep):
-            output[group._v_pathname]={}
-            for array in h5file.listNodes(group, classname = 'Array'):
-                output[group._v_pathname][array.name]=array.read()
-        h5file.close()
+        with tables.open_file(filename) as f:
+            output={}
+            # Read in all of the info from the h5 file and put it in a dictionary.
+            for group in f.walk_groups(posixpath.sep):
+                output[group._v_pathname]={}
+                for array in f.list_nodes(group, classname = 'Array'):
+                    output[group._v_pathname][array.name]=array.read()
+
         outarr = [pathparts(ipath) for ipath in output.keys() if len(pathparts(ipath))>0]
         outlist = []
         basekeys  = output[posixpath.sep].keys()
@@ -389,6 +388,7 @@ class IonoContainer(object):
         if 'coordlist2' in outdict.keys():
             del outdict['coordlist2']
         return IonoContainer(**outdict)
+
     @staticmethod
     def gettimes(ionocontlist):
         """
@@ -403,15 +403,15 @@ class IonoContainer(object):
             outtime - A Nt x 2 numpy array of all of the times.
             timebeg - A list of beginning times
         """
-        if isinstance(ionocontlist,basestring):
+        if isinstance(ionocontlist,string_types):
             ionocontlist=[ionocontlist]
         timelist=[]
         fileslist = []
         for ifilenum,ifile in enumerate(ionocontlist):
 
-            h5file=tables.openFile(ifile)
-            times=h5file.root.Time_Vector.read()
-            h5file.close()
+            with tables.open_file(ifile) as f:
+                times = f.root.Time_Vector.read()
+
             timelist.append(times)
             fileslist.append(ifilenum*sp.ones(len(times)))
         times_file =sp.array([i[:,0].min() for i in timelist])
