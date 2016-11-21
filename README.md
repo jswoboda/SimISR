@@ -13,7 +13,8 @@ From there the data can be processed like ISR data. The following flow diagram r
 ![SIMisr block diagram](https://raw.github.com/jswoboda/SimISR/master/Images/datastackchain.png)
 
 ## Requirements
-auto-installed via `requirements.txt` from `setup.py`, which includes [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum)
+
+Before installing this program, setup [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum)
 
 ## Suggestions
 It is highly suggested that the [Anaconda](https://www.continuum.io/downloads) platform be used as the package manager. All of the development and testing has been done using this.

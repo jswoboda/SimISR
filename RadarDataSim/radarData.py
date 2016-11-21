@@ -12,11 +12,12 @@ import scipy as sp
 import tables
 import pdb
 # My modules
-from IonoContainer import IonoContainer
-from const.physConstants import v_C_0, v_Boltz
-from utilFunctions import CenteredLagProduct,MakePulseDataRep, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag
-import specfunctions
-from analysisplots import plotspecsgen
+from .IonoContainer import IonoContainer
+from ISRSpectrum.const.physConstants import v_C_0, v_Boltz
+from .utilFunctions import CenteredLagProduct,MakePulseDataRep, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag
+from . import specfunctions
+from .analysisplots import plotspecsgen
+
 class RadarDataFile(object):
     """ This class will will take the ionosphere class and create radar data both
     at the IQ and fitted level.
@@ -65,7 +66,7 @@ class RadarDataFile(object):
        Npall = sp.floor(Npall/N_angles)*N_angles
        Np = Npall/N_angles
 
-       print "All spectrums created already"
+       print("All spectrums created already")
        filetimes = Ionodict.keys()
        filetimes.sort()
        ftimes = sp.array(filetimes)
@@ -102,7 +103,7 @@ class RadarDataFile(object):
             Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
             self.outfilelist = []
             for ifn, ifilet in enumerate(filetimes):
-                
+
                 outdict = {}
                 ifile = Ionodict[ifilet]
                 print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),
@@ -214,7 +215,7 @@ class RadarDataFile(object):
 #                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
                     cur_pulse_data = MakePulseDataRepLPC(pulse,cur_spec,20,len(curdataloc),numtype = simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
-                    
+
                     for idatn,idat in enumerate(curdataloc):
                         out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
 
@@ -295,7 +296,7 @@ class RadarDataFile(object):
             nfile_loclist=[ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(tnoiselist)]
         else:
             sridata=False
-       
+
         pulsen = sp.hstack(pulsen_list).astype(int)# pulse number
         beamn = sp.hstack(beamn_list).astype(int)# beam numbers
         ptimevec = sp.hstack(time_list).astype(float)# time of each pulse
@@ -304,7 +305,7 @@ class RadarDataFile(object):
             ntimevec = sp.vstack(tnoiselist).astype(float)
             nfile_loc = sp.hstack(nfile_loclist).astype(int)
             outnoise = sp.zeros((Ntime,Nbeams,NNs-Pulselen+1,Nlag),dtype=simdtype)
-            
+
         # run the time loop
         print("Forming ACF estimates")
 
@@ -368,7 +369,7 @@ class RadarDataFile(object):
                     curh5data_n = h52dict(ifile)
                     file_arlocs = sp.where(curfileloc_n==ifn)[0]
                     curnoise[file_arlocs] = curh5data_n['NoiseDataACF'][curfileit_n]
-                    
+
             # differentiate between phased arrays and dish antennas
             if self.sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
                 # After data is read in form lags for each beam
@@ -376,7 +377,7 @@ class RadarDataFile(object):
                     print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(beamlocs==ibeam)[0]
                     pulses[itn,ibeam] = len(beamlocstmp)
-                   
+
                     outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),
                         numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
                     if sridata:
@@ -447,7 +448,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # Copy the lags
     lagsData= DataLags['ACF'].copy()
     # Set up the constants for the lags so they are now
-    # in terms of density fluxtuations. 
+    # in terms of density fluxtuations.
     angtile = sp.tile(ang_data,(Nrng2,1))
     rng_rep = sp.repeat(rng_vec2,ang_data.shape[0],axis=0)
     coordlist=sp.zeros((len(rng_rep),3))
@@ -466,7 +467,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
     lagsNoise = lagsNoise/pulsesnoise
     lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
-    
+
 
 
     # subtract out noise lags
@@ -523,7 +524,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     return (ionodata,ionosigs)
 
 def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
-    
+
     axvec=sp.roll(sp.arange(lagsDatasum.ndim),1)
     # Get the covariance matrix
     R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=axvec)

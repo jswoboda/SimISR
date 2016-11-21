@@ -2,15 +2,15 @@
 """
 
 runsim.py by John Swoboda 3/16/2015
-This script will run the RadarDataSim code. The user can run a number of different 
-aspects including making data, fitting applying matrix formulation of the 
-space-time ambuiguty operator and calling inversion methods. 
+This script will run the RadarDataSim code. The user can run a number of different
+aspects including making data, fitting applying matrix formulation of the
+space-time ambuiguty operator and calling inversion methods.
 
 
-Inputs 
+Inputs
              -f These will be the possible functions that can be used
-                 spectrums :makespectrums, 
-                 radardata :makeradardata, 
+                 spectrums :makespectrums,
+                 radardata :makeradardata,
                  fitting :fitdata,'
                  fittingmat :fitdata,
                  fittinginv :fitdata,
@@ -22,7 +22,6 @@ from __future__ import print_function
 import os, time, sys, getopt, glob
 from datetime import datetime
 import traceback
-import pdb
 # Imported scipy and matplotlib modules
 import scipy as sp
 # My modules
@@ -32,13 +31,14 @@ import RadarDataSim.specfunctions as specfuncs
 from RadarDataSim.specfunctions import ISRSfitfunction
 from RadarDataSim.fitterMethodGen import Fitterionoconainer
 from RadarDataSim.utilFunctions import readconfigfile
-from operators import RadarSpaceTimeOperator
+from .operators import RadarSpaceTimeOperator
+
 #%% Make spectrums
 def makespectrums(basedir,configfile,remakealldata):
-    """ This will make all of the spectra for a set of data and save it in a 
+    """ This will make all of the spectra for a set of data and save it in a
     folder in basedir called Spectrums. It is assumed that the data in the Origparams
-    is time tagged in the title with a string seperated by a white space and the 
-    rest of the file name. For example ~/DATA/Basedir/0 origdata.h5. 
+    is time tagged in the title with a string seperated by a white space and the
+    rest of the file name. For example ~/DATA/Basedir/0 origdata.h5.
     Inputs:
         basedir: A string for the directory that will hold all of the data for the simulation.
         configfile: The configuration file for the simulation.
@@ -53,11 +53,11 @@ def makespectrums(basedir,configfile,remakealldata):
     (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     slist = [dirlist[ikey] for ikey in listorder]
     (sensdict,simparams) = readconfigfile(configfile)
-    # Delete data 
+    # Delete data
     outfiles = glob.glob(os.path.join(outputdir,'*.h5'))
     for ifile in outfiles:
         os.remove(ifile)
-                         
+
     for inum, curfile in zip(timebeg,slist):
 
         outfile = os.path.join(outputdir,str(inum)+' spectrum.h5')
@@ -77,7 +77,7 @@ def makeradardata(basedir,configfile,remakealldata):
         configfile: The configuration file for the simulation.
         remakealldata: A bool that determines if the radar data is remade. If false
             only the acfs will be estimated using the radar that is already made."""
-            
+
     dirio = ('Spectrums','Radardata','ACF')
     inputdir = os.path.join(basedir,dirio[0])
     outputdir = os.path.join(basedir,dirio[1])
@@ -99,7 +99,7 @@ def makeradardata(basedir,configfile,remakealldata):
         outlist2 = radardatalist
     else:
         outlist2 = None
-        
+
     # create the radar data file class
     rdata = RadarDataFile(Ionodict,configfile,outputdir,outfilelist=outlist2)
     # From the ACFs and uncertainties
@@ -136,7 +136,7 @@ def fitdata(basedir,configfile,optinputs):
     else:
         Ionoinsig=IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
-    
+
     (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,fitterone.simparams['startfile'],fittimes=fitlist)
 
 
@@ -152,8 +152,8 @@ def fitdata(basedir,configfile,optinputs):
         # Seperate Ti and put it in as an element of the ionocontainer.
         Ti = fitteddata[:,:,1]
 
-        nTi =  fittederronly[:,:,1]  
-        
+        nTi =  fittederronly[:,:,1]
+
         paramlist = sp.concatenate((fitteddata,Ti[:,:,sp.newaxis],fittederronly,nTi[:,:,sp.newaxis],funcevals[:,:,sp.newaxis]),axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
@@ -176,7 +176,7 @@ def fitdata(basedir,configfile,optinputs):
     elif set(Ionoin.Coord_Vecs)=={'r','theta','phi'}:
         newver=1
         Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,timevec,ver =newver,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
-    
+
 
     outfile = os.path.join(outputdir,'fitteddata{0}.h5'.format(exstr))
     Ionoout.saveh5(outfile)
@@ -191,7 +191,7 @@ def applymat(basedir,configfile,optinputs):
     dirio = ('Spectrums','Mat','ACFMat')
     inputdir = os.path.join(basedir,dirio[0])
     outputdir2 = os.path.join(basedir,dirio[2])
-    
+
     dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
     (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     Ionolist = [dirlist[ikey] for ikey in listorder]
@@ -208,43 +208,43 @@ def ke(item):
         return float('inf')
 #%% Main function
 def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
-    """ Main function for this module. The function will set up the directory 
+    """ Main function for this module. The function will set up the directory
     structure, create or update a diary file and run the simulation depending
-    on the user input. 
-    Inputs 
-        funcnamelist: A list of strings that coorespond to specific functions. 
+    on the user input.
+    Inputs
+        funcnamelist: A list of strings that coorespond to specific functions.
                 The stirng and function they correspond to, that will be shown.
-                 
+
                  spectrums: makespectrums, This will create the ISR spectrums
-                 
+
                  radardata :makeradardata, This will make the radar data and
-                     form the ACF estimates. If the raw radar data exists then 
-                     the user must use the -r option on the command line and set 
+                     form the ACF estimates. If the raw radar data exists then
+                     the user must use the -r option on the command line and set
                      it to y.
-                     
-                 fitting :fitdata, This will apply the fitter to the data in 
+
+                 fitting :fitdata, This will apply the fitter to the data in
                  the ACF folder of the base directory.
-                 
-                 fittingmat :fitdata,This will apply the fitter to the data in 
+
+                 fittingmat :fitdata,This will apply the fitter to the data in
                  the ACFMat folder of the base directory.
-                 
-                 fittinginv :fitdata,This will apply the fitter to the data in 
+
+                 fittinginv :fitdata,This will apply the fitter to the data in
                  the ACFInv folder of the base directory.
-                 
-                 applymat :applymat, This wil create and apply a matrix  
+
+                 applymat :applymat, This wil create and apply a matrix
                  formulation of thespace-time ambiguity function to ISR spectrums.
-        basedir: The base directory that will contain all of the data. This directory 
-                must contain a directory called Origparams with h5 files to run 
-                the full simulation. The user can also start with a directory 
+        basedir: The base directory that will contain all of the data. This directory
+                must contain a directory called Origparams with h5 files to run
+                the full simulation. The user can also start with a directory
                 from a later stage of the simulation instead though.
-        
+
         configfile: The configuration used for the simulation. Can be an ini file or
                 a pickle file.
-                
+
         remakealldata: A bool to determine if the raw radar data will be remade. If
                 this is False the radar data will only be made if it does
                 not exist in the file first.
-        
+
     """
 
     inputsep = '***************************************************************\n'
@@ -289,7 +289,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
             f.write('Duration: {}\n'.format(ptime))
             f.write('Base directory: {}\n'.format(basedir))
 
-        except Exception, e:
+        except Exception as e:
             f.write('Failed!\n')
             ftime = datetime.now()
             ptime = ftime-stime
@@ -308,61 +308,61 @@ if __name__ == "__main__":
 
     argv = sys.argv[1:]
 
-    outstr = ''' 
+    outstr = '''
              Usage: python runsim.py -f <function: spectrums, radardata, fitting or all> -i <basedir> -c <config> -r <type y to remake data>
 
-             or 
-             
+             or
+
              python runsim.py -h
-             
-             This script will run the RadarDataSim code. The user 
+
+             This script will run the RadarDataSim code. The user
              can run a number of different aspects including making data, fitting
-             applying matrix formulation sof the space-time operator and calling 
-             inversion methods. 
-             
-                          
-             Manditory Arguments to run code, for help just use the -h option. 
-             
-             -f These will be the possible strings for the argument and the  
+             applying matrix formulation sof the space-time operator and calling
+             inversion methods.
+
+
+             Manditory Arguments to run code, for help just use the -h option.
+
+             -f These will be the possible strings for the argument and the
                 function they correspond to, that will be used ish shown.
-                 
+
                  spectrums: makespectrums, This will create the ISR spectrums
-                 
+
                  radardata :makeradardata, This will make the radar data and
-                     form the ACF estimates. If the raw radar data exists then 
-                     the user must use the -r option on the command line and set 
+                     form the ACF estimates. If the raw radar data exists then
+                     the user must use the -r option on the command line and set
                      it to y.
-                     
-                 fitting :fitdata, This will apply the fitter to the data in 
+
+                 fitting :fitdata, This will apply the fitter to the data in
                  the ACF folder of the base directory.
-                 
-                 fittingmat :fitdata,This will apply the fitter to the data in 
+
+                 fittingmat :fitdata,This will apply the fitter to the data in
                  the ACFMat folder of the base directory.
-                 
-                 fittinginv :fitdata,This will apply the fitter to the data in 
+
+                 fittinginv :fitdata,This will apply the fitter to the data in
                  the ACFInv folder of the base directory.
-                 
-                 applymat :applymat, This wil create and apply a matrix  
+
+                 applymat :applymat, This wil create and apply a matrix
                  formulation of thespace-time ambiguity function to ISR spectrums.
-                 
-                 
-                 all - This will run the commands from using the spectrums, radardata, 
+
+
+                 all - This will run the commands from using the spectrums, radardata,
                      and fitting
-                     
-            -i The base directory that will contain all of the data. This directory 
-                must contain a directory called Origparams with h5 files to run 
-                the full simulation. The user can also start with a directory 
+
+            -i The base directory that will contain all of the data. This directory
+                must contain a directory called Origparams with h5 files to run
+                the full simulation. The user can also start with a directory
                 from a later stage of the simulation instead though.
-                
+
             -c The configuration used for the simulation. Can be an ini file or
                 a pickle file.
-                
+
             Optional arguments
-            
+
             -r If a y follows this then the raw radar data will be remade. If
                 this is not used the radar data will only be made if it does
                 not exist in the file first.
-            
+
              Example:
              python runsim.py -f radardata -f fitting -i ~/DATA/ExampleLongPulse -c ~/DATA/Example -r y'''
 
@@ -388,7 +388,7 @@ if __name__ == "__main__":
         elif opt in ('-r', "--re"):
             if arg.lower() == 'y':
                 remakealldata = True
-        
+
     if funcname.lower() == 'all':
         funcnamelist=['spectrums','radardata','fitting']
     else:

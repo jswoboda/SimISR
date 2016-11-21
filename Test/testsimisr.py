@@ -93,10 +93,10 @@ def main():
     origparamsdir = os.path.join(testpath,'Origparams')
     if not os.path.exists(testpath):
         os.mkdir(testpath)
-        print "Making a path for testdata at "+testpath
+        print("Making a path for testdata at "+testpath)
     if not os.path.exists(origparamsdir):
         os.mkdir(origparamsdir)
-        print "Making a path for testdata at "+origparamsdir
+        print("Making a path for testdata at "+origparamsdir)
 
     # clear everything out
     folderlist = ['Origparams','Spectrums','Radardata','ACF','Fitted']

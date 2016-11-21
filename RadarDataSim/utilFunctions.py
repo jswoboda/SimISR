@@ -8,7 +8,7 @@ import os
 import inspect
 import warnings
 import pickle
-import ConfigParser
+from six.moves.configparser import ConfigParser
 import tables
 import pdb
 import scipy as sp
@@ -17,8 +17,8 @@ import scipy.signal as scisig
 import scipy.interpolate as spinterp
 
 
-from const.physConstants import v_C_0
-import const.sensorConstants as sensconst
+from ISRSpectrum.const.physConstants import v_C_0
+import ISRSpectrum.const.sensorConstants as sensconst
 from beamtools.bcotools import getangles
 
 
@@ -58,7 +58,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     #make delay vector
     Delay_num = sp.arange(-(len(nvec)-1),m_up*(nlags+5))
     Delay = Delay_num*dt
-    
+
     t_rng = sp.arange(0,1.5*plen,dt)
     if len(t_rng)>2e4:
         raise ValueError('The time array is way too large. plen should be in seconds.')
@@ -157,8 +157,8 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
         Inputs:
             pulse_shape: A numpy array that holds the shape of the single pulse.
             filt_freq - a numpy array that holds the complex frequency response of the filter
-                that will be used to shape the noise data. It is assumed that the 
-                filter has been correctly scaled so the noise will have the 
+                that will be used to shape the noise data. It is assumed that the
+                filter has been correctly scaled so the noise will have the
                 desired energy/variance.
             delay - The number of samples that the pulse will be delayed into the
                 array of noise data to avoid any problems with filter overlap.
@@ -188,7 +188,7 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     return data_out
 
 def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
-    """ This will make data by assuming the data is an autoregressive process. 
+    """ This will make data by assuming the data is an autoregressive process.
         Inputs
             spec - The properly weighted spectrum.
             N - The size of the ar process used to model the filter.
@@ -196,7 +196,7 @@ def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
             rep1 - The number of repeats of the process.
         Outputs
             outdata - A numpy Array with the shape of the """
-    
+
     lp = len(pulse)
     r1 = scfft.ifft(scfft.ifftshift(spec))
     rp1 = r1[:N]
@@ -254,7 +254,7 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14),lagtype
     if lagtype=='forward':
         arback = sp.zeros(N,dtype=int)
         arfor = sp.arange(N,dtype=int)
-        
+
     elif lagtype=='backward':
         arback = sp.arange(N,dtype=int)
         arfor = sp.zeros(N,dtype=int)
@@ -370,29 +370,27 @@ def dict2h5(filename,dictin):
     """
     if os.path.exists(filename):
         os.remove(filename)
-    h5file = tables.openFile(filename, mode = "w", title = "RadarDataFile out.")
-    try:
-        # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
-        # Make group for each dictionary
-        for cvar in dictin.keys():
-#            pdb.set_trace()
-            if type(dictin[cvar]) is list:
-                h5file.createGroup('/',cvar)
-                lenzeros= len(str(len(dictin[cvar])))-1
-                for inum, datapnts in enumerate(dictin[cvar]):
-                    h5file.createArray('/'+cvar,'Inst{0:0{1:d}d}'.format(inum,lenzeros),datapnts,'Static array')
-            elif type(dictin[cvar]) is sp.ndarray:
-                h5file.createArray('/',cvar,dictin[cvar],'Static array')
-            else:
-                raise ValueError('Values in list must be lists or numpy arrays')
+    with tables.openFile(filename, mode = "w", title = "RadarDataFile out.") as f:
+        try:
+            # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
+            # Make group for each dictionary
+            for cvar in dictin.keys():
+    #            pdb.set_trace()
+                if type(dictin[cvar]) is list:
+                    f.createGroup('/',cvar)
+                    lenzeros= len(str(len(dictin[cvar])))-1
+                    for inum, datapnts in enumerate(dictin[cvar]):
+                        f.createArray('/'+cvar,'Inst{0:0{1:d}d}'.format(inum,lenzeros),datapnts,'Static array')
+                elif type(dictin[cvar]) is sp.ndarray:
+                    f.createArray('/',cvar,dictin[cvar],'Static array')
+                else:
+                    raise ValueError('Values in list must be lists or numpy arrays')
 
-        h5file.close()
-    except Exception as inst:
-        print type(inst)
-        print inst.args
-        print inst
-        h5file.close()
-        raise NameError('Failed to write to h5 file.')
+        except Exception as inst:
+            print(type(inst))
+            print(inst.args)
+            print(inst)
+            raise NameError('Failed to write to h5 file.')
 
 def h52dict(filename):
     """This will read in the information from a structure h5 file where it is assumed
@@ -511,23 +509,23 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     d_file = os.path.join(curpath,'default.ini')
     fext = os.path.splitext(fname)[-1]
-    # reduce the number of stuff needed to be saved and avoid problems with writing 
+    # reduce the number of stuff needed to be saved and avoid problems with writing
     keys2save = ['IPP','TimeLim','RangeLims','Pulselength','t_s','Pulsetype','Tint',
                     'Fitinter','NNs','NNp','dtype','ambupsamp','species', 'numpoints',
                     'startfile','FitType']
-                    
+
     simparams = {i:simparams_orig[i] for i in keys2save}
     if fext =='.pickle':
         pickleFile = open(fname, 'wb')
         pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
         pickleFile.close()
     elif fext =='.ini':
-        defaultparser = ConfigParser.ConfigParser()
+        defaultparser = ConfigParser()
         defaultparser.read(d_file)
-#        config = ConfigParser.ConfigParser()
+#        config = configparser()
 #        config.read(fname)
         cfgfile = open(fname,'w')
-        config = ConfigParser.ConfigParser(allow_no_value = True)
+        config = ConfigParser(allow_no_value = True)
 
         config.add_section('section 1')
         beamstring = ""
@@ -580,6 +578,7 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
         cfgfile.close()
     else:
         raise ValueError('fname needs to have an extension of .pickle or .ini')
+
 def makedefaultfile(fname):
     """ This function will copy the default configuration file to whatever file the users
     specifies."""
@@ -612,7 +611,7 @@ def readconfigfile(fname):
         simparams = dictlist[1]
     if ftype=='.ini':
 
-        config = ConfigParser.ConfigParser()
+        config = ConfigParser()
         config.read(fname)
         beamlist = config.get('section 1','beamlist').split()
         beamlist = [float(i) for i in beamlist]
@@ -647,7 +646,7 @@ def readconfigfile(fname):
                             simparams[param][a]=float(simparams[param][a])
                         except:
                             pass
-    
+
     if 't_s' in simparams.keys():
         sensdict['t_s'] = simparams['t_s']
         sensdict['fs'] =1.0/simparams['t_s']
@@ -676,8 +675,8 @@ def readconfigfile(fname):
     maxrg = len(rng_gates)-sumrule[1].max()
 
     simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
-    
-    
+
+
     if ('startfile' in simparams.keys() and len(simparams['startfile']) >0 )and simparams['Pulsetype'].lower()!='barker':
         relpath = simparams['startfile'][0] !=os.path.sep
         if relpath:
