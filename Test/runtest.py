@@ -4,10 +4,8 @@ Created on Fri Apr 15 15:00:12 2016
 This script will be used to see if any changes will prevent the simulator from running.
 @author: John Swoboda
 """
-
-import os,inspect
+from RadarDataSim import Path
 import scipy as sp
-import pdb
 from RadarDataSim.utilFunctions import readconfigfile,makeconfigfile
 from RadarDataSim.IonoContainer import IonoContainer
 from  RadarDataSim.runsim import main as runsim 
@@ -23,8 +21,8 @@ def configfilesetup(testpath,npulses):
             npulses - The number of pulses. 
     """
     
-    curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    defcon = os.path.join(curloc,'statsbase.ini')
+    curloc = Path(__file__).parent
+    defcon = curloc/'statsbase.ini'
     
     (sensdict,simparams) = readconfigfile(defcon)
     tint = simparams['IPP']*npulses
@@ -34,7 +32,7 @@ def configfilesetup(testpath,npulses):
     simparams['TimeLim'] = 12*tint
     
     simparams['startfile']='startfile.h5'
-    makeconfigfile(os.path.join(testpath,'stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
+    makeconfigfile(testpath/'stats.ini',simparams['Beamlist'],sensdict['Name'],simparams)
     
 def makedata(testpath,tint):
     """ This will make the input data for the test case. The data will have cases
@@ -88,12 +86,10 @@ def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis'
     """
     
         
-    curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curloc)[0],'Testdata','BasicTest')
+    curloc = Path(__file__).parent
+    testpath = curloc/'Testdata'/'BasicTest'
     
-    
-    if not os.path.isdir(testpath):
-        os.mkdir(testpath)
+    testpath.mkdir(exist_ok=True,parents=True)
         
     functlist_default = ['spectrums','radardata','fitting']
     check_list = sp.array([i in functlist for i in functlist_default])

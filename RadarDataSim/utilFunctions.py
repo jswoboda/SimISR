@@ -4,8 +4,7 @@ Created on Tue Jul 22 16:18:21 2014
 
 @author: Bodangles
 """
-import os
-import inspect
+from . import Path
 import warnings
 import pickle
 from six.moves.configparser import ConfigParser
@@ -17,8 +16,8 @@ import scipy.signal as scisig
 import scipy.interpolate as spinterp
 
 
-from ISRSpectrum.const.physConstants import v_C_0
-import ISRSpectrum.const.sensorConstants as sensconst
+from isrutilities.physConstants import v_C_0
+import isrutilities.sensorConstants as sensconst
 from beamtools.bcotools import getangles
 
 
@@ -498,6 +497,7 @@ def makeparamdicts(beamlist,radarname,simparams):
     elif simparams['Pulsetype'].lower()!='barker':
         warnings.warn('No start file given',UserWarning)
     return(sensdict,simparams)
+    
 def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     """This will make the config file based off of the desired input parmeters.
     Inputs
@@ -505,10 +505,11 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
         beamlist - A list of beams numbers used by the AMISRS
         radarname - A string that is the name of the radar being simulated.
         simparams_orig - A set of simulation parameters in a dictionary."""
+    fname = Path(fname).expanduser()
 
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    d_file = os.path.join(curpath,'default.ini')
-    fext = os.path.splitext(fname)[-1]
+    curpath = Path(__file__).parent
+    d_file = curpath/'default.ini'
+    fext = fname.suffix
     # reduce the number of stuff needed to be saved and avoid problems with writing
     keys2save = ['IPP','TimeLim','RangeLims','Pulselength','t_s','Pulsetype','Tint',
                     'Fitinter','NNs','NNp','dtype','ambupsamp','species', 'numpoints',
@@ -516,15 +517,15 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
 
     simparams = {i:simparams_orig[i] for i in keys2save}
     if fext =='.pickle':
-        pickleFile = open(fname, 'wb')
+        pickleFile = fname.open('wb')
         pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
         pickleFile.close()
     elif fext =='.ini':
         defaultparser = ConfigParser()
-        defaultparser.read(d_file)
+        defaultparser.read(str(d_file))
 #        config = configparser()
 #        config.read(fname)
-        cfgfile = open(fname,'w')
+        cfgfile = fname.open('w')
         config = ConfigParser(allow_no_value = True)
 
         config.add_section('section 1')
@@ -595,12 +596,13 @@ def readconfigfile(fname):
         sensdict - A dictionary that holds the sensor parameters.
         simparams - A dictionary that holds the simulation parameters."""
 
-    assert isinstance(fname,str), "fname is not a valid string  %r" % fname
-    assert os.path.isfile(fname), "fname is not a valid file %r" % fname
-    ftype = os.path.splitext(fname)[-1]
-    curpath = os.path.split(fname)[0]
+    fname = Path(fname).expanduser()
+    assert fname.is_file()
+    
+    ftype = fname.suffix
+    curpath = fname.parent
     if ftype=='.pickle':
-        pickleFile = open(fname, 'rb')
+        pickleFile = fname.open('rb')
         dictlist = pickle.load(pickleFile)
         pickleFile.close()
         angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
@@ -612,7 +614,7 @@ def readconfigfile(fname):
     if ftype=='.ini':
 
         config = ConfigParser()
-        config.read(fname)
+        config.read(str(fname))
         beamlist = config.get('section 1','beamlist').split()
         beamlist = [float(i) for i in beamlist]
         angles = getangles(beamlist,config.get('section 1','radarname'))

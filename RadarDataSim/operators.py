@@ -9,7 +9,7 @@ import tables
 import scipy.fftpack as scfft
 import scipy as sp
 #
-from ISRSpectrum.const.physConstants import v_C_0
+from isrutilities.physConstants import v_C_0
 from .utilFunctions import readconfigfile
 from .IonoContainer import IonoContainer,makeionocombined
 from RadarDataSim.utilFunctions import spect2acf

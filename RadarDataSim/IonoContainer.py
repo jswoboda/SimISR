@@ -287,11 +287,12 @@ class IonoContainer(object):
         filename - A string for the file name.
         """
 
-        if os.path.isfile(filename):
-            os.remove(filename)
+        if filename.is_file():
+            filename.unlink()
+            
         vardict = vars(self)
 
-        with tables.open_file(filename, mode = "w", title = "IonoContainer out.") as f:
+        with tables.open_file(str(filename), mode = "w", title = "IonoContainer out.") as f:
 
             try:
                 # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
@@ -409,7 +410,7 @@ class IonoContainer(object):
         fileslist = []
         for ifilenum,ifile in enumerate(ionocontlist):
 
-            with tables.open_file(ifile) as f:
+            with tables.open_file(str(ifile)) as f:
                 times = f.root.Time_Vector.read()
 
             timelist.append(times)

@@ -19,8 +19,9 @@ Inputs
 from __future__ import print_function
 
 #imported basic modules
-import os, time, sys, getopt, glob
 from datetime import datetime
+import time
+import sys
 import traceback
 # Imported scipy and matplotlib modules
 import scipy as sp
@@ -45,18 +46,18 @@ def makespectrums(basedir,configfile,remakealldata):
          """
 
     dirio=('Origparams','Spectrums')
-    inputdir = os.path.join(basedir,dirio[0])
-    outputdir = os.path.join(basedir,dirio[1])
+    inputdir = basedir/dirio[0]
+    outputdir = basedir/dirio[1]
     # determine the list of h5 files in Origparams directory
-    dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
+    dirlist = sorted(inputdir.glob('*.h5'))
     # Make the lists of numbers and file names for the dictionary
     (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     slist = [dirlist[ikey] for ikey in listorder]
     (sensdict,simparams) = readconfigfile(configfile)
     # Delete data
-    outfiles = glob.glob(os.path.join(outputdir,'*.h5'))
+    outfiles = outputdir.glob('*.h5')
     for ifile in outfiles:
-        os.remove(ifile)
+        ifile.unlink()
 
     for inum, curfile in zip(timebeg,slist):
 
@@ -67,7 +68,7 @@ def makespectrums(basedir,configfile,remakealldata):
 
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake,sensdict,
                                      simparams['numpoints']).saveh5(outfile)
-        print('Finished file {0} starting at {1}\n'.format(os.path.split(curfile)[1],datetime.now()))
+        print('Finished file {0} starting at {1}\n'.format(curfile.name, datetime.now()))
 
 #%% Make Radar Data
 def makeradardata(basedir,configfile,remakealldata):
@@ -105,8 +106,8 @@ def makeradardata(basedir,configfile,remakealldata):
     # From the ACFs and uncertainties
     (ionoout,ionosig) = rdata.processdataiono()
     # save the acfs and uncertianties in ionocontainer h5 files.
-    ionoout.saveh5(os.path.join(outputdir2,'00lags.h5'))
-    ionosig.saveh5(os.path.join(outputdir2,'00sigs.h5'))
+    ionoout.saveh5(outputdir2/'00lags.h5')
+    ionosig.saveh5(outputdir2/'00sigs.h5')
     return ()
 #%% Fit data
 def fitdata(basedir,configfile,optinputs):
@@ -120,15 +121,15 @@ def fitdata(basedir,configfile,optinputs):
     dirdict = {'fitting':('ACF','Fitted'),'fittingmat':('ACFMat','FittedMat'),
                'fittinginv':('ACFInv','FittedInv'),'fittingmatinv':('ACFMatInv','FittedMatInv')}
     dirio = dirdict[optinputs[0]]
-    inputdir = os.path.join(basedir,dirio[0])
-    outputdir = os.path.join(basedir,dirio[1])
+    inputdir = basedir/dirio[0]
+    outputdir = basedir/dirio[1]
     fitlist=optinputs[1]
     if len(optinputs)>2:
         exstr=optinputs[2]
     else:
         exstr=''
-    dirlist = glob.glob(os.path.join(inputdir,'*lags{0}.h5'.format(exstr)))
-    dirlistsig = glob.glob(os.path.join(inputdir,'*sigs{0}.h5'.format(exstr)))
+    dirlist = inputdir.glob('*lags{0}.h5'.format(exstr))
+    dirlistsig = inputdir.glob('*sigs{0}.h5'.format(exstr))
 
     Ionoin=IonoContainer.readh5(dirlist[0])
     if len(dirlistsig)==0:
@@ -257,9 +258,8 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
     # check for the directories
     dirnames = ['Origparams','Spectrums','Radardata','ACF','Fitted','ACFOrig','ACFMat','ACFInv','FittedMat','FittedInv','ACFMatInv','FittedMatInv']
     for idir in dirnames:
-        curdir = os.path.join(basedir,idir)
-        if not os.path.exists(curdir):
-            os.makedirs(curdir)
+        curdir = basedir/idir
+        curdir.mkdir(exist_ok=True,parents=True)
 
     if len(funcnamelist)==3:
         funcname='all'
@@ -267,41 +267,41 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
         funcname=''.join(funcnamelist)
 
     dfilename = 'diary'+funcname+'.txt'
-    dfullfilestr = os.path.join(basedir,dfilename)
-    f= open(dfullfilestr,'a')
+    dfullfilestr = basedir/dfilename
+    
+    with dfullfilestr.open('a') as f:
+        failure=False
+        for curfuncn in funcnamelist:
+            curfunc = funcdict[curfuncn]
+            f.write(inputsep)
+            f.write(curfunc.__name__+'\n')
+            f.write(time.asctime()+'\n')
+            if curfunc.__name__=='fitdata':
+                ex_inputs=[curfuncn,fitlist,invtype]
+            else:
+                ex_inputs = remakealldata
+            try:
+                stime = datetime.now()
+                curfunc(basedir,configfile,ex_inputs)
+                ftime = datetime.now()
+                ptime = ftime-stime
+                f.write('Success!\n')
+                f.write('Duration: {}\n'.format(ptime))
+                f.write('Base directory: {}\n'.format(basedir))
 
-    failure=False
-    for curfuncn in funcnamelist:
-        curfunc = funcdict[curfuncn]
+            except Exception as e:
+                f.write('Failed!\n')
+                ftime = datetime.now()
+                ptime = ftime-stime
+                f.write('Duration: {}\n'.format(ptime))
+                f.write('Base directory: {}\n'.format(basedir))
+                traceback.print_exc(file=sys.stdout)
+                traceback.print_exc(file = f)
+                failure=True
+                break
+
         f.write(inputsep)
-        f.write(curfunc.__name__+'\n')
-        f.write(time.asctime()+'\n')
-        if curfunc.__name__=='fitdata':
-            ex_inputs=[curfuncn,fitlist,invtype]
-        else:
-            ex_inputs = remakealldata
-        try:
-            stime = datetime.now()
-            curfunc(basedir,configfile,ex_inputs)
-            ftime = datetime.now()
-            ptime = ftime-stime
-            f.write('Success!\n')
-            f.write('Duration: {}\n'.format(ptime))
-            f.write('Base directory: {}\n'.format(basedir))
 
-        except Exception as e:
-            f.write('Failed!\n')
-            ftime = datetime.now()
-            ptime = ftime-stime
-            f.write('Duration: {}\n'.format(ptime))
-            f.write('Base directory: {}\n'.format(basedir))
-            traceback.print_exc(file=sys.stdout)
-            traceback.print_exc(file = f)
-            failure=True
-            break
-        #pdb.set_trace()
-    f.write(inputsep)
-    f.close()
 
     return failure
 if __name__ == "__main__":

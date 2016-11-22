@@ -6,14 +6,12 @@ This file holds the RadarData class that hold the radar data and processes it.
 @author: John Swoboda
 """
 
-import os, time,inspect
 import scipy.fftpack as scfft
 import scipy as sp
 import tables
-import pdb
 # My modules
 from .IonoContainer import IonoContainer
-from ISRSpectrum.const.physConstants import v_C_0, v_Boltz
+from isrutilities.physConstants import v_C_0, v_Boltz
 from .utilFunctions import CenteredLagProduct,MakePulseDataRep, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag
 from . import specfunctions
 from .analysisplots import plotspecsgen

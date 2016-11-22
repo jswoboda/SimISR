@@ -32,4 +32,5 @@ try:
 except OSError:
     pass
 print("created {}".format(testpath))
+
 setup(**config)
