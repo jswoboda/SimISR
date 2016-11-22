@@ -5,7 +5,7 @@ This will create a number of data sets for statistical analysis. It'll then make
 statistics and histograms of the output parameters.
 @author: John Swoboda
 """
-import os,inspect,glob
+from RadarDataSim import Path
 import scipy as sp
 
 import matplotlib.pyplot as plt
@@ -222,8 +222,8 @@ def configfilesetup(testpath,npulses):
             npulses - The number of pulses. 
     """
     
-    curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    defcon = os.path.join(curloc,'statsbase.ini')
+    curloc = Path(__file__).parent
+    defcon = curloc/'statsbase.ini'
     
     (sensdict,simparams) = readconfigfile(defcon)
     tint = simparams['IPP']*npulses
@@ -233,7 +233,7 @@ def configfilesetup(testpath,npulses):
     simparams['TimeLim'] = ratio1 * simparams['TimeLim']
     
     simparams['startfile']='startfile.h5'
-    makeconfigfile(os.path.join(testpath,'stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
+    makeconfigfile(testpath/'stats.ini',simparams['Beamlist'],sensdict['Name'],simparams)
     
 def makedata(testpath):
     """ This will make the input data for the test case. The data will have the 
@@ -277,12 +277,11 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis',
         plist = sp.array([50,100,200,500,1000,2000,5000])
     if isinstance(plist,list):
         plist=sp.array(plist)
-    curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curloc)[0],'Testdata','StatsTest')
+    curloc = Path(__file__).parent
+    testpath = curloc/'Testdata'/'StatsTest'
     
+    testpath.mkdir(exist_ok=True,parents=True)
     
-    if not os.path.isdir(testpath):
-        os.mkdir(testpath)
     functlist_default = ['spectrums','radardata','fitting']
     check_list = sp.array([i in functlist for i in functlist_default])
     check_run =sp.any( check_list) 
@@ -291,14 +290,14 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis',
 #    rsystools = []
     for ip in plist:
         foldname = 'Pulses_{:04d}'.format(ip)
-        curfold =os.path.join(testpath,foldname)
+        curfold = testpath/foldname
         allfolds.append(curfold)
-        if not os.path.isdir(curfold):
-            os.mkdir(curfold)
+        
+        curfold.mkdir(exist_ok=True,parents=True)
             
-            configfilesetup(curfold,ip)
+        configfilesetup(curfold,ip)
         makedata(curfold)
-        config = os.path.join(curfold,'stats.ini')
+        config = curfold/'stats.ini'
         (sensdict,simparams) = readconfigfile(config)
 #        rtemp = RadarSys(sensdict,simparams['Rangegatesfinal'],ip)
 #        rsystools.append(rtemp.rms(sp.array([1e12]),sp.array([2.5e3]),sp.array([2.5e3])))

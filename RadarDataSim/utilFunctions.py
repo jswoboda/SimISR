@@ -599,7 +599,8 @@ def readconfigfile(fname):
         simparams - A dictionary that holds the simulation parameters."""
 
     fname = Path(fname).expanduser()
-    assert fname.is_file()
+    if not fname.is_file():
+        raise FileNotFoundError('{}'.format(fname))
     
     ftype = fname.suffix
     curpath = fname.parent

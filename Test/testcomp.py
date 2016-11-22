@@ -4,20 +4,22 @@ Created on Wed Jul  1 10:29:20 2015
 
 @author: John Swoboda
 """
+from RadarDataSim import Path
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.interpolate as spinterp
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pdb
+sns.set_style("whitegrid")
+sns.set_context("notebook")
+
 from RadarDataSim.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 
+inifile= "/Users/Bodangles/Documents/Python/RadarDataSim/Testdata/PFISRExample.pickle"
 
 def main():
-    sns.set_style("whitegrid")
-    sns.set_context("notebook")
-    inifile= "/Users/Bodangles/Documents/Python/RadarDataSim/Testdata/PFISRExample.pickle"
+
     (sensdict,simparams) = readconfigfile(inifile)
     simdtype = simparams['dtype']
     sumrule = simparams['SUMRULE']

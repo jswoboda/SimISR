@@ -6,7 +6,7 @@ This module is used to plot the output from various stages of the simulator to d
 problems.
 @author: John Swoboda
 """
-import os, glob
+from . import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -244,8 +244,8 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     sns.set_style("whitegrid")
     sns.set_context("notebook")
 #    rc('text', usetex=True)
-    ffit = os.path.join(maindir,fitdir,'fitteddata.h5')
-    inputfiledir = os.path.join(maindir,'Origparams')
+    ffit = maindir/fitdir/'fitteddata.h5'
+    inputfiledir = maindir/'Origparams'
     (sensdict,simparams) = readconfigfile(configfile)
 
     paramslower = [ip.lower() for ip in params]
@@ -282,7 +282,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
 
     # Determine which imput files are to be used.
 
-    dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
+    dirlist = inputfiledir.glob('*.h5')
     filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
     sortlist,outime,outfilelist,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
     timelist = sp.array([int(i.split()[0]) for i in filesonly])
