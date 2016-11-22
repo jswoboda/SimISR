@@ -7,12 +7,12 @@ Holds class that applies the fitter.
 """
 
 #imported basic modules
-import os, inspect, time,sys,traceback
+import os
 # Imported scipy modules
 import scipy as sp
 import scipy.optimize
 # My modules
-from .IonoContainer import IonoContainer, makeionocombined
+from .IonoContainer import IonoContainer#, makeionocombined
 from .utilFunctions import readconfigfile
 from RadarDataSim.specfunctions import ISRSfitfunction
 

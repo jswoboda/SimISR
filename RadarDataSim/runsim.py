@@ -17,9 +17,9 @@ Inputs
                  applymat applymat
 """
 from __future__ import print_function
-
+from . import Path
 #imported basic modules
-import os, time, sys, getopt, glob
+import time, sys, getopt
 from datetime import datetime
 import traceback
 # Imported scipy and matplotlib modules
@@ -43,31 +43,30 @@ def makespectrums(basedir,configfile,remakealldata):
         basedir: A string for the directory that will hold all of the data for the simulation.
         configfile: The configuration file for the simulation.
          """
-
+    basedir = Path(basedir).expanduser()
     dirio=('Origparams','Spectrums')
-    inputdir = os.path.join(basedir,dirio[0])
-    outputdir = os.path.join(basedir,dirio[1])
+    inputdir = Path(basedir).expanduser() / dirio[0]
+    outputdir = basedir/dirio[1]
     # determine the list of h5 files in Origparams directory
-    dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
+    dirlist = sorted(inputdir.glob('*.h5'))
     # Make the lists of numbers and file names for the dictionary
     (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     slist = [dirlist[ikey] for ikey in listorder]
     (sensdict,simparams) = readconfigfile(configfile)
     # Delete data
-    outfiles = glob.glob(os.path.join(outputdir,'*.h5'))
+    outfiles = outputdir.glob('*.h5')
     for ifile in outfiles:
-        os.remove(ifile)
+        ifile.unlink()
 
     for inum, curfile in zip(timebeg,slist):
 
-        outfile = os.path.join(outputdir,str(inum)+' spectrum.h5')
-        print('Processing file {0} starting at {1}\n'.format(os.path.split(curfile)[1]
-            ,datetime.now()))
+        outfile = outputdir / (str(inum)+' spectrum.h5')
+        print('Processing file {0} starting at {1}\n'.format(curfile.name ,datetime.now()))
         curiono = IonoContainer.readh5(curfile)
 
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake,sensdict,
                                      simparams['numpoints']).saveh5(outfile)
-        print('Finished file {0} starting at {1}\n'.format(os.path.split(curfile)[1],datetime.now()))
+        print('Finished file {0} starting at {1}\n'.format(curfile[1].name ,datetime.now()))
 
 #%% Make Radar Data
 def makeradardata(basedir,configfile,remakealldata):
@@ -79,21 +78,21 @@ def makeradardata(basedir,configfile,remakealldata):
             only the acfs will be estimated using the radar that is already made."""
 
     dirio = ('Spectrums','Radardata','ACF')
-    inputdir = os.path.join(basedir,dirio[0])
-    outputdir = os.path.join(basedir,dirio[1])
-    outputdir2 = os.path.join(basedir,dirio[2])
+    inputdir =  basedir/dirio[0]
+    outputdir = basedir/dirio[1]
+    outputdir2 = basedir/dirio[2]
 
     # determine the list of h5 files in Origparams directory
-    dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
+    dirlist = sorted(inputdir.glob('*.h5'))
     # Make the lists of numbers and file names for the dictionary
     if len(dirlist)>0:
         (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
 
         Ionodict = {timebeg[itn]:dirlist[it] for itn, it in enumerate(listorder)}
     else:
-        Ionodict = {0:os.path.join(inputdir,'00.h5')}
+        Ionodict = {0:inputdir/'00.h5'}
     # Find all of the raw data files
-    radardatalist = glob.glob(os.path.join(outputdir,'*RawData.h5'))
+    radardatalist = outputdir.glob('*RawData.h5')
     if radardatalist and (not remakealldata):
         # XXX need to work on time stuff
         outlist2 = radardatalist

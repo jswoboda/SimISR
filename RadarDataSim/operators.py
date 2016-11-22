@@ -4,9 +4,8 @@ Created on Tue Dec 29 15:49:01 2015
 
 @author: John Swoboda
 """
-
+from . import Path
 import tables
-import scipy.fftpack as scfft
 import scipy as sp
 #
 from ISRSpectrum.const.physConstants import v_C_0
@@ -234,7 +233,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     curdiff=sp.zeros_like(vel[:,ix])
                     curdiff2=curdiff+float(enp-stp)*curvel
                 else:
-                    T_1=float(x[0]-t_0)
+                 #   T_1=float(x[0]-t_0)
                     t_0=stp.copy()
                     curdiff= curdiff2
                     curdiff2=curdiff+float(enp-stp)*curvel
@@ -352,15 +351,13 @@ def getOverlap(a, b):
 #%% Math Functions
 
 def cart2sphere(coordlist):
-    r2d = 180.0/sp.pi
-    d2r = sp.pi/180.0
 
     X_vec = coordlist[:,0]
     Y_vec = coordlist[:,1]
     Z_vec = coordlist[:,2]
     R_vec = sp.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
-    Az_vec = sp.arctan2(X_vec,Y_vec)*r2d
-    El_vec = sp.arcsin(Z_vec/R_vec)*r2d
+    Az_vec = np.degrees(sp.arctan2(X_vec,Y_vec))
+    El_vec = np.degrees(sp.arcsin(Z_vec/R_vec))
     sp_coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
     return sp_coords
 
