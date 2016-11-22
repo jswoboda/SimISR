@@ -15,7 +15,6 @@ import scipy as sp
 import scipy.io as sio
 import scipy.interpolate
 import tables
-import h5py
 import numbers
 from datetime import datetime
 # From my
@@ -733,7 +732,7 @@ def makeionocombined(datapath,ext='.h5'):
 
         """
 
-    if isinstance(datapath,basestring):
+    if isinstance(datapath,string_types):
         if os.path.splitext(datapath)[-1]==0:
             ionocontlist=[datapath]
         else:

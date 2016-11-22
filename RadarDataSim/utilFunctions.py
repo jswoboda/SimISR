@@ -9,7 +9,6 @@ import warnings
 import pickle
 from six.moves.configparser import ConfigParser
 import tables
-import pdb
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.signal as scisig
@@ -174,7 +173,7 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     multforimag[hpnt:]=-1
     tmp = scfft.ifft(filt_freq)
     tmp[hpnt:]=0.
-    comp_filt = scfft.fft(tmp)*sp.sqrt(2.)
+    #comp_filt = scfft.fft(tmp)*sp.sqrt(2.)
     filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
     shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
     noisereal = sp.random.randn(rep,npts).astype(numtype)
@@ -258,7 +257,7 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14),lagtype
         arback = sp.arange(N,dtype=int)
         arfor = sp.zeros(N,dtype=int)
     else:
-        arex = sp.arange(0,N/2.0,0.5);
+       # arex = sp.arange(0,N/2.0,0.5);
         arback = -sp.floor(sp.arange(0,N/2.0,0.5)).astype(int)
         arfor = sp.ceil(sp.arange(0,N/2.0,0.5)).astype(int)
 
@@ -361,15 +360,17 @@ def makepulse(ptype,plen,ts):
 
 
 #%% dictionary file
-def dict2h5(filename,dictin):
+def dict2h5(fn,dictin):
     """A function that will save a dictionary to a h5 file.
     Inputs
         filename - The file name in a string.
         dictin - A dictionary that will be saved out.
     """
-    if os.path.exists(filename):
-        os.remove(filename)
-    with tables.openFile(filename, mode = "w", title = "RadarDataFile out.") as f:
+    fn = Path(fn).expanduser()
+    if fn.is_files():
+        fn.unlink()
+
+    with tables.open_file(fn, mode = "w", title = "RadarDataFile out.") as f:
         try:
             # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
             # Make group for each dictionary
@@ -456,7 +457,7 @@ def TempProfile(z,T0=1000.,z0=100.):
 
 #%% Config files
 def makeparamdicts(beamlist,radarname,simparams):
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    curpath = Path(__file__[0]).parent
 
     angles = getangles(beamlist,radarname)
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
@@ -486,18 +487,19 @@ def makeparamdicts(beamlist,radarname,simparams):
 
     simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
     if 'startfile' in simparams.keys() and simparams['Pulsetype'].lower()!='barker':
-        relpath = simparams['startfile'][0] !=os.path.sep
-        if relpath:
-            fullfilepath = os.path.join(curpath,simparams['startfile'])
+        relpath = Path(simparams['startfile'][0]).expanduser()
+        if not relpath.is_absolute():
+            fullfilepath = curpath / simparams['startfile']
             simparams['startfile'] = fullfilepath
-        stext = os.path.isfile(simparams['startfile'])
+        stext = simparams['startfile'].is_file()
+
         if not stext:
             warnings.warn('The given start file does not exist',UserWarning)
 
     elif simparams['Pulsetype'].lower()!='barker':
         warnings.warn('No start file given',UserWarning)
     return(sensdict,simparams)
-    
+
 def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     """This will make the config file based off of the desired input parmeters.
     Inputs
@@ -516,11 +518,11 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
                     'startfile','FitType']
 
     simparams = {i:simparams_orig[i] for i in keys2save}
-    if fext =='.pickle':
+    if fname.suffix =='.pickle':
         pickleFile = fname.open('wb')
         pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
         pickleFile.close()
-    elif fext =='.ini':
+    elif fname.suffix =='.ini':
         defaultparser = ConfigParser()
         defaultparser.read(str(d_file))
 #        config = configparser()
@@ -583,8 +585,8 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
 def makedefaultfile(fname):
     """ This function will copy the default configuration file to whatever file the users
     specifies."""
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    d_file = os.path.join(curpath,'default.ini')
+    curpath = Path(__file__[0]).expanduser()
+    d_file = curpath / 'default.ini'
     (sensdict,simparams)=readconfigfile(d_file)
     makeconfigfile(fname,simparams['Beamlist'],sensdict['Name'],simparams)
 
@@ -681,11 +683,11 @@ def readconfigfile(fname):
 
 
     if ('startfile' in simparams.keys() and len(simparams['startfile']) >0 )and simparams['Pulsetype'].lower()!='barker':
-        relpath = simparams['startfile'][0] !=os.path.sep
-        if relpath:
-            fullfilepath = os.path.join(curpath,simparams['startfile'])
+        relpath = simparams['startfile'][0]
+        if not relpath.is_abosolute():
+            fullfilepath = curpath / simparams['startfile']
             simparams['startfile'] = fullfilepath
-        stext = os.path.isfile(simparams['startfile'])
+        stext = simparams['startfile'].is_file()
         if not stext:
             warnings.warn('The given start file does not exist',UserWarning)
 

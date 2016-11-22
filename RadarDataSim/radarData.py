@@ -8,7 +8,7 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 import scipy.fftpack as scfft
 import scipy as sp
-import tables
+
 # My modules
 from .IonoContainer import IonoContainer
 from isrutilities.physConstants import v_C_0, v_Boltz
@@ -93,8 +93,8 @@ class RadarDataFile(object):
        pn_list = []
        fname_list = []
        self.datadir = outdir
-       self.maindir = os.path.dirname(os.path.abspath(outdir))
-       self.procdir =os.path.join(self.maindir,'ACF')
+       self.maindir = outdir.parent
+       self.procdir = self.maindir/'ACF'
        if outfilelist is None:
             print('\nData Now being created.')
 
@@ -104,8 +104,8 @@ class RadarDataFile(object):
 
                 outdict = {}
                 ifile = Ionodict[ifilet]
-                print('\tData from {0:d} of {1:d} being processed Name: {2:s}.'.format(ifn,len(filetimes),
-                      os.path.split(ifile)[1]))
+                print('\tData from {:d} of {:d} being processed Name: {:s}.'.format(ifn,len(filetimes)),
+                      ifile.suffix)
                 curcontainer = IonoContainer.readh5(ifile)
                 if ifn==0:
                     self.timeoffset=curcontainer.Time_Vector[0,0]
@@ -126,7 +126,7 @@ class RadarDataFile(object):
                 outdict['Beams']=pb
                 outdict['Time'] = pt
                 fname = '{0:d} RawData.h5'.format(ifn)
-                newfn = os.path.join(self.datadir,fname)
+                newfn = self.datadir/fname
                 self.outfilelist.append(newfn)
                 dict2h5(newfn,outdict)
 
@@ -136,10 +136,10 @@ class RadarDataFile(object):
                 pn_list.append(pn)
                 fname_list.append(fname)
             infodict = {'Files':fname_list,'Time':pt_list,'Beams':pb_list,'Pulses':pn_list}
-            dict2h5(os.path.join(outdir,'INFO.h5'),infodict)
+            dict2h5(outdir / 'INFO.h5',infodict)
 
        else:
-           infodict= h52dict(os.path.join(outdir,'INFO.h5'))
+           infodict= h52dict(outdir/'INFO.h5')
            alltime=sp.hstack(infodict['Time'])
            self.timeoffset=alltime.min()
            self.outfilelist=outfilelist
@@ -279,11 +279,11 @@ class RadarDataFile(object):
         timemat = sp.zeros((Ntime,2))
         Ksysvec = self.sensdict['Ksys']
         # set up arrays that hold the location of pulses that are to be processed together
-        infoname = os.path.join(self.datadir,'INFO.h5')
+        infoname = self.datadir / 'INFO.h5'
         # Just going to assume that the info file is in the directory
         infodict =h52dict(infoname)
         flist =  infodict['Files']
-        file_list = [os.path.join(self.datadir,i) for i in flist]
+        file_list = [self.datadir/i for i in flist]
         pulsen_list = infodict['Pulses']
         beamn_list = infodict['Beams']
         time_list = infodict['Time']

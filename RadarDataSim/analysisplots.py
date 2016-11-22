@@ -13,20 +13,19 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import scipy as sp
 import scipy.fftpack as scfft
-import scipy.interpolate as spinterp
 
 import numpy as np
 import seaborn as sns
-import pdb
+
 
 from RadarDataSim.IonoContainer import IonoContainer
 from RadarDataSim.utilFunctions import readconfigfile,spect2acf,acf2spect
-from RadarDataSim.specfunctions import ISRspecmakeout,ISRSfitfunction,makefitsurf
+from RadarDataSim.specfunctions import ISRspecmakeout,ISRSfitfunction
 
 def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs Time'):
     """ This will create a altitude time image for the data for ionocontainer files
         that are in sphereical coordinates.
-        Inputs 
+        Inputs
             Times - A list of times that will be plotted.
             configfile - The INI file with the simulation parameters that will be useds.
             maindir - The directory the images will be saved in.
@@ -44,7 +43,7 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
     Np = len(params)
     inputfile = os.path.join(maindir,'Fitted','fitteddata.h5')
 
-    
+
     Ionofit = IonoContainer.readh5(inputfile)
     times = Ionofit.Time_Vector
     Nt = len(times)
@@ -52,7 +51,7 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
     pnames = Ionofit.Param_Names
     pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
     p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
-        
+
     angles = dataloc[:,1:]
     b = np.ascontiguousarray(angles).view(np.dtype((np.void, angles.dtype.itemsize * angles.shape[1])))
     _, idx, invidx = np.unique(b, return_index=True,return_inverse=True)
@@ -66,7 +65,7 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
     ifig=-1
     for iparam in range(Np):
         for ibeam in range(Nb):
-            
+
             if newfig:
                 (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w',sharex=True, sharey=True)
                 axvec = axmat.flatten()
@@ -80,7 +79,7 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
             curparm = paramslower[iparam]
             if curparm == 'nepow':
                 curparm = 'ne'
-            
+
             indxkep = np.argwhere(invidx==ibeam)[:,0]
             rng_fit= dataloc[indxkep,0]
             rngargs = np.argsort(rng_fit)
@@ -96,14 +95,14 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
             else:
                 image.set_norm(colors.PowerNorm(gamma=1.,vmin=500,vmax=3e3))
                 cbarstr = params[iparam] + ' K'
-            
+
             if ix>5:
                 ax.set_xlabel("Time in s")
             if sp.mod(ix,3)==0:
                 ax.set_ylabel('Alt km')
             ax.set_title('{0} vs Altitude, Az: {1}$^o$ El: {2}$^o$'.format(params[iparam],*curbeam))
             imcount=imcount+1
-    
+
             ix+=1
             if ix==9 or ibeam+1==Nb:
                 cbar_ax = figmplf.add_axes([.91, .3, .06, .4])
@@ -115,26 +114,26 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
                 plt.savefig(fname)
                 plt.close(figmplf)
                 newfig=True
-                
-    
+
+
 def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='fitsurfs',suptitle = 'Fit Surfaces'):
-    """ This will create a fit surface plot. 
+    """ This will create a fit surface plot.
         Inputs
         paramdict - A dictionary with the followign key value pairs.
             Ne - Array of possible electron density values.
             Te - Array of possible electron tempreture values.
             Ti - Array of possible ion tempreture values.
             frac - Array of possible fraction shares of the ion make up.
-        plotvals - A dictionary with key value pars. 
+        plotvals - A dictionary with key value pars.
             setparam - A string that describes he parameter thats set.
             xparam - The parameter that's varied along the x axis of the image.
-            yparam - The parameter that's varied along the y axis of the image.  
-            indx - The index from the paramdict for the set variable. 
+            yparam - The parameter that's varied along the y axis of the image.
+            indx - The index from the paramdict for the set variable.
         configfile - The file thats used for the simulation.
         y_acf - the complex ACF used to create the errors.
         yerr - The standard deviation of the acf measurement.
         filetemplate - The template on how the file will be named.
-        suptitle - The super title for the plots. 
+        suptitle - The super title for the plots.
     """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
@@ -207,13 +206,13 @@ def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='f
 
 
 def maketi(Ionoin):
-    """ This makes the ion densities, tempretures and velocities and places 
+    """ This makes the ion densities, tempretures and velocities and places
         them in the Param_List variable in the ionocontainer object.
     """
     (Nloc,Nt,Nion,Nppi) = Ionoin.Param_List.shape
     Paramlist = Ionoin.Param_List[:,:,:-1,:]
     Vi = Ionoin.getDoppler()
- 
+
     Nisum = sp.sum(Paramlist[:,:,:,0],axis=2)
     Tisum = sp.sum(Paramlist[:,:,:,0]*Paramlist[:,:,:,1],axis=2)
     Tiave = Tisum/Nisum
@@ -232,7 +231,7 @@ def maketi(Ionoin):
 def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'],filetemplate='params',suptitle = 'Parameter Comparison',werrors=False,nelog=True):
     """ This function will plot the desired parameters for each beam along range.
         The values of the input and measured parameters will be plotted
-        Inputs 
+        Inputs
             Times - A list of times that will be plotted.
             configfile - The INI file with the simulation parameters that will be useds.
             maindir - The directory the images will be saved in.
@@ -252,16 +251,16 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     paramslower = [ip.lower() for ip in params]
     Nt = len(times)
     Np = len(params)
-    
+
     #Read in fitted data
-    
+
     Ionofit = IonoContainer.readh5(ffit)
     dataloc = Ionofit.Sphere_Coords
     pnames = Ionofit.Param_Names
     pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
     p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
     time2fit = [None]*Nt
-    
+
     for itn,itime in enumerate(times):
         filear = sp.argwhere(Ionofit.Time_Vector>=itime)
         if len(filear)==0:
@@ -270,7 +269,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
             filenum = filear[0][0]
         time2fit[itn] = filenum
     times_int = [Ionofit.Time_Vector[i] for i in time2fit]
-    
+
     # determine the beams
     angles = dataloc[:,1:]
     rng = sp.unique(dataloc[:,0])
@@ -280,25 +279,25 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     beamlist = angles[idx]
 
     Nb = beamlist.shape[0]
-    
+
     # Determine which imput files are to be used.
-    
+
     dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
     filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
     sortlist,outime,outfilelist,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
     timelist = sp.array([int(i.split()[0]) for i in filesonly])
     time2file = [None]*Nt
-    
+
     time2intime = [None]*Nt
     # go through times find files and then times in files
     for itn,itime in enumerate(times):
-        
+
         filear = sp.argwhere(timelist>=itime)
         if len(filear)==0:
             filenum = [len(timelist)-1]
         else:
             filenum = filear[0]
-        
+
         flist1 = []
         timeinflist = []
         for ifile in filenum:
@@ -321,7 +320,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
         labels = [None]*2
         (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
-        # loop that goes through each axis loops through each parameter, beam 
+        # loop that goes through each axis loops through each parameter, beam
         # then time.
         for iax,ax in enumerate(axvec):
             if imcount>=Nt*Nb*Np:
@@ -332,7 +331,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
             curbeam = beamlist[ibeam]
 
             altlist = sp.sin(curbeam[1]*sp.pi/180.)*rng
-            
+
             curparm = paramslower[iparam]
             # Use Ne from input to compare the ne derived from the power.
             if curparm == 'nepow':
@@ -342,9 +341,9 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
 
             curcoord = sp.zeros(3)
             curcoord[1:] = curbeam
-            
+
             for iplot,filenum in enumerate(time2file[itime]):
-                
+
                 if curfilenum!=filenum:
                     curfilenum=filenum
                     datafilename = dirlist[filenum]
@@ -368,7 +367,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
                 lines[0]= ax.plot(curdata,altlist,marker='o',c='b',linewidth=2)[0]
                 labels[0] = 'Input Parameters'
             # Plot fitted data for the axis
-            
+
             indxkep = np.argwhere(invidx==ibeam)[:,0]
             curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
             rng_fit= dataloc[indxkep,0]
@@ -382,12 +381,12 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
                 lines[1]= ax.plot(curfit,alt_fit,marker='o',c='g',linewidth=2)[0]
             labels[1] = 'Fitted Parameters'
             # get and plot the input data
-            
-            numplots = len(time2file[itime])
-                
 
-            
-    
+            numplots = len(time2file[itime])
+
+
+
+
 
             # set the limit for the parameter
             if curparm_in!='ne':
@@ -410,7 +409,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
         fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
         plt.savefig(fname)
         plt.close(figmplf)
-        
+
 def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
               fitdisp=True,filetemplate='spec',suptitle = 'Spectrum Comparison'):
     """ This will create a set of images that compare the input ISR spectrum to the
@@ -752,11 +751,11 @@ def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png'
 
 def analysisdump(maindir,configfile,suptitle=None):
     """ This function will perform all of the plotting functions in this module
-        given the main directory that all of the files live. 
+        given the main directory that all of the files live.
         Inputs
-            maindir - The directory for the simulation. 
+            maindir - The directory for the simulation.
             configfile - The name of the configuration file used.
-            suptitle - The supertitle used on the files. 
+            suptitle - The supertitle used on the files.
     """
     plotdir = os.path.join(maindir,'AnalysisPlots')
     if not os.path.isdir(plotdir):
@@ -773,7 +772,7 @@ def analysisdump(maindir,configfile,suptitle=None):
         ang_data_temp = ang_data.copy()
         beamlistlist = sp.array(simparams['outangles']).astype(int)
         ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist ])
-    
+
     zenang = ang_data[sp.argmax(ang_data[:,1])]
     rnggates = simparams['Rangegatesfinal']
     rngchoices = sp.linspace(sp.amin(rnggates),sp.amax(rnggates),4)
