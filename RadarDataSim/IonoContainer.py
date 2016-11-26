@@ -290,7 +290,7 @@ class IonoContainer(object):
         
         if os.path.isfile(filename):
             os.remove(filename)
-        h5file = tables.openFile(filename, mode = "w", title = "IonoContainer out.")
+        h5file = tables.open_file(filename, mode = "w", title = "IonoContainer out.")
         vardict = vars(self)
 
         try:
@@ -355,12 +355,12 @@ class IonoContainer(object):
         vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
         outdict = {}
 
-        h5file=tables.openFile(filename)
+        h5file=tables.open_file(filename)
         output={}
         # Read in all of the info from the h5 file and put it in a dictionary.
-        for group in h5file.walkGroups(posixpath.sep):
+        for group in h5file.walk_groups(posixpath.sep):
             output[group._v_pathname]={}
-            for array in h5file.listNodes(group, classname = 'Array'):
+            for array in h5file.list_nodes(group, classname = 'Array'):
                 output[group._v_pathname][array.name]=array.read()
         h5file.close()
         outarr = [pathparts(ipath) for ipath in output.keys() if len(pathparts(ipath))>0]
@@ -409,7 +409,7 @@ class IonoContainer(object):
         fileslist = []
         for ifilenum,ifile in enumerate(ionocontlist):
             
-            h5file=tables.openFile(ifile)
+            h5file=tables.open_file(ifile)
             times=h5file.root.Time_Vector.read()
             h5file.close()
             timelist.append(times)
