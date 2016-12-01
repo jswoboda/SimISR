@@ -13,7 +13,7 @@ import scipy as sp
 import scipy.fftpack as scfft
 import scipy.signal as scisig
 import scipy.interpolate as spinterp
-
+import pdb
 
 from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
@@ -367,25 +367,24 @@ def dict2h5(fn,dictin):
         dictin - A dictionary that will be saved out.
     """
     fn = Path(fn).expanduser()
-    if fn.is_files():
+    if fn.is_file():
         fn.unlink()
-
-    with tables.open_file(fn, mode = "w", title = "RadarDataFile out.") as f:
+    with tables.open_file(str(fn), mode = "w", title = "RadarDataFile out.") as f:
         try:
             # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
             # Make group for each dictionary
             for cvar in dictin.keys():
     #            pdb.set_trace()
                 if type(dictin[cvar]) is list:
-                    f.createGroup('/',cvar)
+                    f.create_group('/',cvar)
                     lenzeros= len(str(len(dictin[cvar])))-1
                     for inum, datapnts in enumerate(dictin[cvar]):
-                        f.createArray('/'+cvar,'Inst{0:0{1:d}d}'.format(inum,lenzeros),datapnts,'Static array')
+                        f.create_array('/'+cvar,'Inst{0:0{1:d}d}'.format(inum,lenzeros),datapnts,'Static array')
                 elif type(dictin[cvar]) is sp.ndarray:
-                    f.createArray('/',cvar,dictin[cvar],'Static array')
+                    f.create_array('/',cvar,dictin[cvar],'Static array')
                 else:
                     raise ValueError('Values in list must be lists or numpy arrays')
-
+            f.close()
         except Exception as inst:
             print(type(inst))
             print(inst.args)
@@ -400,11 +399,11 @@ def h52dict(filename):
     Output
     outdict - A dictionary where the keys are the group names and the values are lists
     or numpy arrays."""
-    h5file = tables.openFile(filename, mode = "r")
+    h5file = tables.open_file(filename, mode = "r")
     output ={}
-    for group in h5file.walkGroups('/'):
+    for group in h5file.walk_groups('/'):
             output[group._v_pathname]={}
-            for array in h5file.listNodes(group, classname = 'Array'):
+            for array in h5file.list_nodes(group, classname = 'Array'):
                 output[group._v_pathname][array.name]=array.read()
     h5file.close()
 
@@ -684,11 +683,11 @@ def readconfigfile(fname):
 
 
     if ('startfile' in simparams.keys() and len(simparams['startfile']) >0 )and simparams['Pulsetype'].lower()!='barker':
-        relpath = simparams['startfile'][0]
-        if not relpath.is_abosolute():
-            fullfilepath = curpath / simparams['startfile']
-            simparams['startfile'] = fullfilepath
-        stext = simparams['startfile'].is_file()
+        relpath = Path(simparams['startfile'])
+        if not relpath.is_absolute():
+            fullfilepath = curpath.joinpath(simparams['startfile'])
+            simparams['startfile'] = str(fullfilepath)
+        stext = fullfilepath.is_file()
         if not stext:
             warnings.warn('The given start file does not exist',UserWarning)
 

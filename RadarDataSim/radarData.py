@@ -8,7 +8,8 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 import scipy.fftpack as scfft
 import scipy as sp
-
+from . import Path
+import pdb
 # My modules
 from .IonoContainer import IonoContainer
 from isrutilities.physConstants import v_C_0, v_Boltz
@@ -104,8 +105,8 @@ class RadarDataFile(object):
 
                 outdict = {}
                 ifile = Ionodict[ifilet]
-                print('\tData from {:d} of {:d} being processed Name: {:s}.'.format(ifn,len(filetimes)),
-                      ifile.suffix)
+                ifilename = Path(ifile).name
+                print('\tData from {:d} of {:d} being processed Name: {:s}.'.format(ifn,len(filetimes),ifilename))
                 curcontainer = IonoContainer.readh5(ifile)
                 if ifn==0:
                     self.timeoffset=curcontainer.Time_Vector[0,0]
@@ -127,8 +128,8 @@ class RadarDataFile(object):
                 outdict['Time'] = pt
                 fname = '{0:d} RawData.h5'.format(ifn)
                 newfn = self.datadir/fname
-                self.outfilelist.append(newfn)
-                dict2h5(newfn,outdict)
+                self.outfilelist.append(str(newfn))
+                dict2h5(str(newfn),outdict)
 
                 #Listing info
                 pt_list.append(pt)
@@ -136,10 +137,10 @@ class RadarDataFile(object):
                 pn_list.append(pn)
                 fname_list.append(fname)
             infodict = {'Files':fname_list,'Time':pt_list,'Beams':pb_list,'Pulses':pn_list}
-            dict2h5(outdir / 'INFO.h5',infodict)
+            dict2h5(str(outdir.joinpath('INFO.h5')),infodict)
 
        else:
-           infodict= h52dict(outdir/'INFO.h5')
+           infodict= h52dict(str(outdir.joinpath('INFO.h5')))
            alltime=sp.hstack(infodict['Time'])
            self.timeoffset=alltime.min()
            self.outfilelist=outfilelist
@@ -281,9 +282,9 @@ class RadarDataFile(object):
         # set up arrays that hold the location of pulses that are to be processed together
         infoname = self.datadir / 'INFO.h5'
         # Just going to assume that the info file is in the directory
-        infodict =h52dict(infoname)
+        infodict =h52dict(str(infoname))
         flist =  infodict['Files']
-        file_list = [self.datadir/i for i in flist]
+        file_list = [str(self.datadir/i) for i in flist]
         pulsen_list = infodict['Pulses']
         beamn_list = infodict['Beams']
         time_list = infodict['Time']

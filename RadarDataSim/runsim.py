@@ -62,10 +62,10 @@ def makespectrums(basedir,configfile,remakealldata):
 
         outfile = outputdir / (str(inum)+' spectrum.h5')
         print('Processing file {} starting at {}\n'.format(curfile.name ,datetime.now()))
-        curiono = IonoContainer.readh5(curfile)
+        curiono = IonoContainer.readh5(str(curfile))
 
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake,sensdict,
-                                     simparams['numpoints']).saveh5(outfile)
+                                     simparams['numpoints']).saveh5(str(outfile))
         print('Finished file {} starting at {}\n'.format(curfile.name ,datetime.now()))
 
 #%% Make Radar Data
@@ -83,14 +83,14 @@ def makeradardata(basedir,configfile,remakealldata):
     outputdir2 = basedir/dirio[2]
 
     # determine the list of h5 files in Origparams directory
-    dirlist = sorted(inputdir.glob('*.h5'))
+    dirlist = [str(i) for i in inputdir.glob('*.h5')]
     # Make the lists of numbers and file names for the dictionary
     if len(dirlist)>0:
         (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
-
+        
         Ionodict = {timebeg[itn]:dirlist[it] for itn, it in enumerate(listorder)}
     else:
-        Ionodict = {0:inputdir/'00.h5'}
+        Ionodict = {0.:str(inputdir.joinpath('00.h5'))}
     # Find all of the raw data files
     radardatalist = outputdir.glob('*RawData.h5')
     if radardatalist and (not remakealldata):
@@ -104,8 +104,8 @@ def makeradardata(basedir,configfile,remakealldata):
     # From the ACFs and uncertainties
     (ionoout,ionosig) = rdata.processdataiono()
     # save the acfs and uncertianties in ionocontainer h5 files.
-    ionoout.saveh5(outputdir2/'00lags.h5')
-    ionosig.saveh5(outputdir2/'00sigs.h5')
+    ionoout.saveh5(str(outputdir2.joinpath('00lags.h5')))
+    ionosig.saveh5(str(outputdir2.joinpath('00sigs.h5')))
     return ()
 #%% Fit data
 def fitdata(basedir,configfile,optinputs):
@@ -126,8 +126,8 @@ def fitdata(basedir,configfile,optinputs):
         exstr=optinputs[2]
     else:
         exstr=''
-    dirlist = inputdir.glob('*lags{0}.h5'.format(exstr))
-    dirlistsig = inputdir.glob('*sigs{0}.h5'.format(exstr))
+    dirlist = [str(i) for i in inputdir.glob('*lags{0}.h5'.format(exstr))]
+    dirlistsig =[str(i) for i in inputdir.glob('*sigs{0}.h5'.format(exstr))]
 
     Ionoin=IonoContainer.readh5(dirlist[0])
     if len(dirlistsig)==0:
@@ -177,8 +177,8 @@ def fitdata(basedir,configfile,optinputs):
         Ionoout=IonoContainer(Ionoin.Sphere_Coords,paramlist,timevec,ver =newver,coordvecs = Ionoin.Coord_Vecs, paramnames=paranamsf,species=species)
 
 
-    outfile = os.path.join(outputdir,'fitteddata{0}.h5'.format(exstr))
-    Ionoout.saveh5(outfile)
+    outfile = outputdir.joinpath('fitteddata{0}.h5'.format(exstr))
+    Ionoout.saveh5(str(outfile))
 #%% apply the matrix for the data
 def applymat(basedir,configfile,optinputs):
     """ This function apply the matrix version of the space time ambiugty function
@@ -188,16 +188,17 @@ def applymat(basedir,configfile,optinputs):
         configfile: The configuration file for the simulation.
          """
     dirio = ('Spectrums','Mat','ACFMat')
-    inputdir = os.path.join(basedir,dirio[0])
-    outputdir2 = os.path.join(basedir,dirio[2])
+    basedir=Path(basedir)
+    inputdir = basedir.joinpath(dirio[0])
+    outputdir2 = basedir.joinpath(dirio[2])
 
-    dirlist = glob.glob(os.path.join(inputdir,'*.h5'))
+    dirlist = [str(i) for i in inputdir.glob('*.h5')]
     (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
     Ionolist = [dirlist[ikey] for ikey in listorder]
     RSTO = RadarSpaceTimeOperator(Ionolist,configfile,timevector,mattype='matrix')
     Ionoout = RSTO.mult_iono(Ionolist)
-    outfile=os.path.join(outputdir2,'00lags.h5')
-    Ionoout.saveh5(outfile)
+    outfile=outputdir2.joinpath('00lags.h5')
+    Ionoout.saveh5(str(outfile))
 
 #%% For sorting
 def ke(item):
@@ -267,7 +268,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
     dfilename = 'diary'+funcname+'.txt'
     dfullfilestr = basedir/dfilename
     
-    with dfullfilestr.open('a') as f:
+    with open(str(dfullfilestr),'a') as f:
         failure=False
         for curfuncn in funcnamelist:
             curfunc = funcdict[curfuncn]
@@ -376,10 +377,10 @@ if __name__ == "__main__":
             print(outstr)
             sys.exit()
         elif opt in ("-i", "--ifile"):
-            basedir = os.path.expanduser(arg)
+            basedir =  str(Path(arg).expanduser())
         elif opt in ("-c", "--cfile"):
             outdirexist = True
-            configfile = os.path.expanduser(arg)
+            configfile = str(Path(arg).expanduser())
         elif opt in ("-f", "--func"):
             funcname = arg
 

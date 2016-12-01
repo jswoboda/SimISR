@@ -757,14 +757,15 @@ def analysisdump(maindir,configfile,suptitle=None):
             configfile - The name of the configuration file used.
             suptitle - The supertitle used on the files.
     """
-    plotdir = os.path.join(maindir,'AnalysisPlots')
-    if not os.path.isdir(plotdir):
-        os.mkdir(plotdir)
+    maindir=Path(maindir)
+    plotdir = maindir.joinpath('AnalysisPlots')
+    if not plotdir.is_dir():
+        plotdir.mkdir()
 
     #plot spectrums
-    filetemplate1 = os.path.join(maindir,'AnalysisPlots','Spec')
-    filetemplate3 = os.path.join(maindir,'AnalysisPlots','ACF')
-    filetemplate4 = os.path.join(maindir,'AnalysisPlots','AltvTime')
+    filetemplate1 = maindir.joinpath('AnalysisPlots','Spec')
+    filetemplate3 = maindir.joinpath('AnalysisPlots','ACF')
+    filetemplate4 = maindir.joinpath('AnalysisPlots','AltvTime')
     (sensdict,simparams) = readconfigfile(configfile)
     angles = simparams['angles']
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
@@ -781,7 +782,7 @@ def analysisdump(maindir,configfile,suptitle=None):
     times = simparams['Timevec']
 
 
-    filetemplate2= os.path.join(maindir,'AnalysisPlots','Params')
+    filetemplate2= maindir.joinpath('AnalysisPlots','Params')
     if simparams['Pulsetype'].lower()=='barker':
         params=['Ne']
         if suptitle is None:

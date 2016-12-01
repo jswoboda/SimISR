@@ -9,7 +9,7 @@ import glob
 import inspect
 import posixpath
 import copy
-
+from . import Path
 import numpy as np
 import scipy as sp
 import scipy.io as sio
@@ -285,7 +285,7 @@ class IonoContainer(object):
         Input:
         filename - A string for the file name.
         """
-
+        filename=Path(filename)
         if filename.is_file():
             filename.unlink()
             
