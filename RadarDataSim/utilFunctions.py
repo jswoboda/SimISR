@@ -518,16 +518,16 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
                     'startfile','FitType']
 
     simparams = {i:simparams_orig[i] for i in keys2save}
-    if fname.suffix =='.pickle':
+    if fext =='.pickle':
         pickleFile = fname.open('wb')
         pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
         pickleFile.close()
-    elif fname.suffix =='.ini':
+    elif fext =='.ini':
         defaultparser = ConfigParser()
         defaultparser.read(str(d_file))
 #        config = configparser()
 #        config.read(fname)
-        cfgfile = fname.open('w')
+        cfgfile = open(str(fname),'w')
         config = ConfigParser(allow_no_value = True)
 
         config.add_section('section 1')
