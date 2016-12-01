@@ -17,6 +17,7 @@ def configsetup(testpath):
     """This function will make a pickle file used to configure the simulation.
     Inputs
     testpath - A string for the path that this file will be saved."""
+    testpath=Path(testpath)
     beamlist = [64094,64091,64088,64085,64082,64238,64286,64070,64061,64058,64055,64052,
                 64049,64046,64043,64067,64040,64037,64034] # list of beams in
     radarname = 'pfisr'# name of radar for parameters can either be pfisr or risr
@@ -45,13 +46,13 @@ def configsetup(testpath):
                    'ambupsamp':1, # up sampling factor for ambiguity function
                    'species':['O+','e-'], # type of ion species used in simulation
                    'numpoints':128, # number of points for each spectrum
-                   'startfile': testpath/'startdata.h5'} # file used for starting points
+                   'startfile': str(testpath/'startdata.h5')} # file used for starting points
 #                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
 #                       ,[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])}
 
     fname = testpath/'PFISRExample'
 
-    makeconfigfile(fname.with_suffix('.ini'),beamlist,radarname,simparams)
+    makeconfigfile(str(fname.with_suffix('.ini')),beamlist,radarname,simparams)
     
 def makeinputh5(Iono,basedir):
     """This will make a h5 file for the IonoContainer that can be used as starting
@@ -82,7 +83,7 @@ def makeinputh5(Iono,basedir):
 
     Ionoout = IonoContainer(datalocsave,outdata,times,Iono.Sensor_loc,ver=0,
                             paramnames=Iono.Param_Names, species=Iono.Species,velocity=outvel)
-    Ionoout.saveh5(basedir/'startdata.h5')
+    Ionoout.saveh5(str(basedir/'startdata.h5'))
 
 def main():
     """This function will run the test simulation buy first making a simple set of
@@ -91,11 +92,13 @@ def main():
     curpath = Path(__file__).parent
     testpath = curpath.parent/'Testdata'/'Long_Pulse'
     origparamsdir = testpath/'Origparams'
-
-    testpath.mkdir(exist_ok=True,parents=True)
-    print("Making a path for testdata at {}".format(testpath))
-
-    origparamsdir.mkdir(exist_ok=True,parents=True)
+    
+    if not testpath.is_dir():
+        testpath.mkdir(parents=True)
+    print("Making a path for testdata at {}".format(str(testpath)))
+    
+    if not origparamsdir.is_dir():
+        origparamsdir.mkdir(parents=True)
     print("Making a path for testdata at {}".format(origparamsdir))
 
     # clear everything out

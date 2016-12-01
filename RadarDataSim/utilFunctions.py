@@ -687,7 +687,10 @@ def readconfigfile(fname):
         if not relpath.is_absolute():
             fullfilepath = curpath.joinpath(simparams['startfile'])
             simparams['startfile'] = str(fullfilepath)
-        stext = fullfilepath.is_file()
+            
+        else:
+            fullfilepath=simparams['startfile']
+        stext = Path(fullfilepath).is_file()
         if not stext:
             warnings.warn('The given start file does not exist',UserWarning)
 
