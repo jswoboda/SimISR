@@ -34,7 +34,7 @@ class RadarSpaceTimeOperator(object):
         """ This will create the RadarSpaceTimeOperator object.
             Inputs
                 ionoin - The input ionocontainer. This can be either an string that is a ionocontainer file,
-                    a list of ionocontainer objects or a list a strings to ionocontainer files
+                    a list of ionocontainer objects or a list a strings to ionocontainer files.
                 config  - The ini file that used to set up the simulation.
                 timein - A Ntx2 numpy array of times.
                 RSTOPinv - The inverse operator object.
