@@ -256,6 +256,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
 
     # check for the directories
     dirnames = ['Origparams','Spectrums','Radardata','ACF','Fitted','ACFOrig','ACFMat','ACFInv','FittedMat','FittedInv','ACFMatInv','FittedMatInv']
+    basedir=Path(basedir).expanduser()
     for idir in dirnames:
         curdir = basedir/idir
         curdir.mkdir(exist_ok=True,parents=True)

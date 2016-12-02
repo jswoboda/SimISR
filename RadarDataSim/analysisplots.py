@@ -41,7 +41,8 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
 
     paramslower = [ip.lower() for ip in params]
     Np = len(params)
-    inputfile = os.path.join(maindir,'Fitted','fitteddata.h5')
+    maindir=Path(maindir)
+    inputfile = str(maindir.joinpath('Fitted','fitteddata.h5'))
 
 
     Ionofit = IonoContainer.readh5(inputfile)
@@ -244,6 +245,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     sns.set_style("whitegrid")
     sns.set_context("notebook")
 #    rc('text', usetex=True)
+    maindir=Path(maindir)
     ffit = maindir/fitdir/'fitteddata.h5'
     inputfiledir = maindir/'Origparams'
     (sensdict,simparams) = readconfigfile(configfile)
@@ -254,7 +256,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
 
     #Read in fitted data
 
-    Ionofit = IonoContainer.readh5(ffit)
+    Ionofit = IonoContainer.readh5(str(ffit))
     dataloc = Ionofit.Sphere_Coords
     pnames = Ionofit.Param_Names
     pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
@@ -282,10 +284,11 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
 
     # Determine which imput files are to be used.
 
-    dirlist = inputfiledir.glob('*.h5')
-    filesonly= [os.path.splitext(os.path.split(ifile)[-1])[0] for ifile in dirlist]
-    sortlist,outime,outfilelist,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
-    timelist = sp.array([int(i.split()[0]) for i in filesonly])
+    dirlist = sorted(inputfiledir.glob('*.h5'))
+    dirliststr=[str(i) for i in dirlist]
+    filesonly= [ifile.name for ifile in dirlist]
+    sortlist,outime,outfilelist,timebeg,timelist_s = IonoContainer.gettimes(dirliststr)
+    timelist = sp.array([float(i.split()[0]) for i in filesonly])
     time2file = [None]*Nt
 
     time2intime = [None]*Nt
@@ -427,9 +430,10 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
 
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-    acfname = os.path.join(maindir,'ACF','00lags.h5')
-    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
-    specsfiledir = os.path.join(maindir,'Spectrums')
+    maindir=Path(maindir).expanduser()
+    acfname = maindir.joinpath('ACF','00lags.h5')
+    ffit = maindir.joinpath('Fitted','fitteddata.h5')
+    specsfiledir = maindir.joinpath('Spectrums')
     (sensdict,simparams) = readconfigfile(configfile)
     simdtype = simparams['dtype']
     npts = simparams['numpoints']*3.0
@@ -442,16 +446,16 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
     sns.set_context("notebook")
 
     if indisp:
-        dirlist = os.listdir(specsfiledir)
-        timelist = sp.array([int(float(i.split()[0])) for i in dirlist])
+        dirlist = [i.name for i in specsfiledir.glob('*.h5')]
+        timelist = sp.array([float(i.split()[0]) for i in dirlist])
         for itn,itime in enumerate(times):
             filear = sp.argwhere(timelist>=itime)
             if len(filear)==0:
                 filenum = len(timelist)-1
             else:
                 filenum = filear[0][0]
-            specsfilename = os.path.join(specsfiledir,dirlist[filenum])
-            Ionoin = IonoContainer.readh5(specsfilename)
+            specsfilename = specsfiledir.joinpath(dirlist[filenum])
+            Ionoin = IonoContainer.readh5(str(specsfilename))
             if itn==0:
                 specin = sp.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
             omeg = Ionoin.Param_Names
@@ -467,7 +471,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
     fs = sensdict['fs']
 
     if acfdisp:
-        Ionoacf = IonoContainer.readh5(acfname)
+        Ionoacf = IonoContainer.readh5(str(acfname))
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
         ts = sensdict['t_s']
         omeg = sp.arange(-sp.ceil((npts-1.)/2.),sp.floor((npts-1.)/2.)+1)/ts/npts
@@ -482,7 +486,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         specout = scfft.fftshift(scfft.fft(ACFin,n=npts,axis=-1),axes=-1)
 
     if fitdisp:
-        Ionofit = IonoContainer.readh5(ffit)
+        Ionofit = IonoContainer.readh5(str(ffit))
         (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
         Ionofit.Param_List= outspecsfit
         Ionofit.Param_Names = omegfit
@@ -572,13 +576,13 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
     """
 #    indisp = specsfilename is not None
 #    acfdisp = acfname is not None
-
+    maindir=Path(maindir).expanduser()
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-    acfname = os.path.join(maindir,'ACF','00lags.h5')
-    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
+    acfname = maindir.joinpath('ACF','00lags.h5')
+    ffit = maindir.joinpath('Fitted','fitteddata.h5')
 
-    specsfiledir = os.path.join(maindir,'Spectrums')
+    specsfiledir = maindir.joinpath('Spectrums')
     (sensdict,simparams) = readconfigfile(configfile)
     simdtype = simparams['dtype']
     npts = simparams['numpoints']*3.0
@@ -593,16 +597,16 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
     ts = sensdict['t_s']
     tau1 = sp.arange(pulse.shape[-1])*ts
     if indisp:
-        dirlist = os.listdir(specsfiledir)
-        timelist = sp.array([int(float(i.split()[0])) for i in dirlist])
+        dirlist = [i.name for i in specsfiledir.glob('*.h5')]
+        timelist = sp.array([float(i.split()[0]) for i in dirlist])
         for itn,itime in enumerate(times):
             filear = sp.argwhere(timelist>=itime)
             if len(filear)==0:
                 filenum = len(timelist)-1
             else:
                 filenum = filear[0][0]
-            specsfilename = os.path.join(specsfiledir,dirlist[filenum])
-            Ionoin = IonoContainer.readh5(specsfilename)
+            specsfilename = specsfiledir.joinpath(dirlist[filenum])
+            Ionoin = IonoContainer.readh5(str(specsfilename))
             if itn==0:
                 specin = sp.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
             omeg = Ionoin.Param_Names
@@ -617,7 +621,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
 #                    tempin = tempin[sp.newaxis,:]
                 specin[icn,itn] = tempin[0,:]/npts
     if acfdisp:
-        Ionoacf = IonoContainer.readh5(acfname)
+        Ionoacf = IonoContainer.readh5(str(acfname))
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
 
         omeg = sp.arange(-sp.ceil((npts+1)/2),sp.floor((npts+1)/2))/ts/npts
@@ -632,7 +636,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
 
 
     if fitdisp:
-        Ionofit = IonoContainer.readh5(ffit)
+        Ionofit = IonoContainer.readh5(str(ffit))
         (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
         Ionofit.Param_List= outspecsfit
         Ionofit.Param_Names = omegfit
@@ -763,9 +767,9 @@ def analysisdump(maindir,configfile,suptitle=None):
         plotdir.mkdir()
 
     #plot spectrums
-    filetemplate1 = maindir.joinpath('AnalysisPlots','Spec')
-    filetemplate3 = maindir.joinpath('AnalysisPlots','ACF')
-    filetemplate4 = maindir.joinpath('AnalysisPlots','AltvTime')
+    filetemplate1 = str(maindir.joinpath('AnalysisPlots','Spec'))
+    filetemplate3 = str(maindir.joinpath('AnalysisPlots','ACF'))
+    filetemplate4 = str(maindir.joinpath('AnalysisPlots','AltvTime'))
     (sensdict,simparams) = readconfigfile(configfile)
     angles = simparams['angles']
     ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
@@ -782,7 +786,7 @@ def analysisdump(maindir,configfile,suptitle=None):
     times = simparams['Timevec']
 
 
-    filetemplate2= maindir.joinpath('AnalysisPlots','Params')
+    filetemplate2= str(maindir.joinpath('AnalysisPlots','Params'))
     if simparams['Pulsetype'].lower()=='barker':
         params=['Ne']
         if suptitle is None:

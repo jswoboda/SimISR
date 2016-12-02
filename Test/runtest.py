@@ -20,7 +20,7 @@ def configfilesetup(testpath,npulses):
             testpath - The location of the data.
             npulses - The number of pulses. 
     """
-    
+    testpath=Path(testpath).expanduser()
     curloc = Path(__file__).parent
     defcon = curloc/'statsbase.ini'
     
@@ -32,7 +32,7 @@ def configfilesetup(testpath,npulses):
     simparams['TimeLim'] = 12*tint
     
     simparams['startfile']='startfile.h5'
-    makeconfigfile(testpath/'stats.ini',simparams['Beamlist'],sensdict['Name'],simparams)
+    makeconfigfile(str(testpath/'stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
     
 def makedata(testpath,tint):
     """ This will make the input data for the test case. The data will have cases
@@ -43,9 +43,10 @@ def makedata(testpath,tint):
             testpath - Directory that will hold the data.
             tint - The integration time in seconds.
     """
-    finalpath = os.path.join(testpath,'Origparams')
-    if not os.path.isdir(finalpath):
-        os.mkdir(finalpath)
+    testpath=Path(testpath).expanduser()
+    finalpath = testpath.joinpath('Origparams')
+    if not finalpath.is_dir():
+        finalpath.mkdir()
     data = sp.array([[1e11,1100.],[1e11,2100.]])
     z = (50.+sp.arange(50)*10.)
     nz = len(z)
@@ -69,9 +70,9 @@ def makedata(testpath,tint):
     Icont1 = IonoContainer(coordlist=coords,paramlist=p2,times = times2,sensor_loc = sp.zeros(3),ver =0,coordvecs =
         ['x','y','z'],paramnames=None,species=species,velocity=vel2)
         
-    finalfile = os.path.join(finalpath,'0 stats.h5')
-    Icont1.saveh5(finalfile)
-    Icontstart.saveh5(os.path.join(testpath,'startfile.h5'))
+    finalfile = finalpath.joinpath('0 stats.h5')
+    Icont1.saveh5(str(finalfile))
+    Icontstart.saveh5(str(testpath.joinpath('startfile.h5')))
     
 
 def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis']):
@@ -87,9 +88,9 @@ def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis'
     
         
     curloc = Path(__file__).parent
-    testpath = curloc/'Testdata'/'BasicTest'
-    
-    testpath.mkdir(exist_ok=True,parents=True)
+    testpath = curloc.parent/'Testdata'/'BasicTest'
+    if not testpath.is_dir():
+        testpath.mkdir(parents=True)
         
     functlist_default = ['spectrums','radardata','fitting']
     check_list = sp.array([i in functlist for i in functlist_default])
@@ -97,14 +98,14 @@ def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis'
     functlist_red = sp.array(functlist_default)[check_list].tolist()
 
     
-    configfilesetup(testpath,npulse)
-    config = os.path.join(testpath,'stats.ini')
-    (sensdict,simparams) = readconfigfile(config)
+    configfilesetup(str(testpath),npulse)
+    config = testpath.joinpath('stats.ini')
+    (sensdict,simparams) = readconfigfile(str(config))
     makedata(testpath,simparams['Tint'])
     if check_run :
-        runsim(functlist_red,testpath,config,True)
+        runsim(functlist_red,str(testpath),config,True)
     if 'analysis' in functlist:
-        analysisdump(testpath,config)
+        analysisdump(str(testpath),config)
 
 if __name__== '__main__':
     from argparse import ArgumentParser
