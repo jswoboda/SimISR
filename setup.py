@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 setup.py
-This is the setup file for the RadarDataSim python package
+This is the setup file for the SimISR python package
 
 @author: John Swoboda
 """
@@ -17,12 +17,12 @@ except Exception as e:
 config = {
     'description': 'An ISR data simulator',
     'author': 'John Swoboda',
-    'url': 'https://github.com/jswoboda/RadarDataSim.git',
+    'url': 'https://github.com/jswoboda/SimISR.git',
     'version': '1',
     'install_requires': ['ISRSpectrum','lmfit'],
     'dependency_links': ['https://github.com/jswoboda/ISRSpectrum/tarball/master#egg=ISRSpectrum'],
-    'packages': ['RadarDataSim','beamtools','radarsystools'],
-    'name': 'RadarDataSim'
+    'packages': ['SimISR','beamtools','radarsystools'],
+    'name': 'SimISR'
 }
 
 curpath = os.path.dirname(__file__)
