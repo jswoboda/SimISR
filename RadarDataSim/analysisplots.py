@@ -350,7 +350,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
                 if curfilenum!=filenum:
                     curfilenum=filenum
                     datafilename = dirlist[filenum]
-                    Ionoin = IonoContainer.readh5(datafilename)
+                    Ionoin = IonoContainer.readh5(str(datafilename))
                     if ('ti' in paramslower) or ('vi' in paramslower):
                         Ionoin = maketi(Ionoin)
                     pnames = Ionoin.Param_Names
