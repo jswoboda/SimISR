@@ -4,9 +4,6 @@ Created on Tue May  5 17:16:51 2015
 
 @author: John Swoboda
 """
-
-
-import os, inspect, glob
 import scipy as sp
 from RadarDataSim.utilFunctions import makepicklefile, GenBarker
 from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
@@ -14,6 +11,8 @@ import RadarDataSim.runsim as runsim
 from RadarDataSim.analysisplots import analysisdump
 
 def makeconfigfile(testpath):
+    testpath = Path(testpath).expanduser()
+
     beamlist = [64094,64091,64088,64085,64082,64238,64286,64070,64061,64058,64055,64052,
                 64049,64046,64043,64067,64040,64037,64034]
     radarname = 'pfisr'
@@ -40,11 +39,13 @@ def makeconfigfile(testpath):
                    'numpoints':128,
                    'startfile':os.path.join(testpath,'startdata.h5')}
 
-    fname = os.path.join(testpath,'PFISRExample')
+    fn = testpath/'PFISRExample.pickle'
 
-    makepicklefile(fname+'.pickle',beamlist,radarname,simparams)
+    makepicklefile(fn,beamlist,radarname,simparams)
 
 def makeinputh5(Iono,basedir):
+    basedir = Path(basedir).expanduser()
+
     Param_List = Iono.Param_List
     dataloc = Iono.Cart_Coords
     times = Iono.Time_Vector
@@ -64,18 +65,22 @@ def makeinputh5(Iono,basedir):
 
     Ionoout = IonoContainer(datalocsave,outdata,times,Iono.Sensor_loc,ver=0,
                             paramnames=Iono.Param_Names, species=Iono.Species,velocity=outvel)
-    Ionoout.saveh5(os.path.join(basedir,'startdata.h5'))
+                            
+                            
+    ofn = basedir/'startdata.h5'
+    print('writing {}'.format(ofn))
+    Ionoout.saveh5(str(ofn))
 
 def main():
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Testdata','Barker')
-    origparamsdir = os.path.join(testpath,'Origparams')
-    if not os.path.exists(testpath):
-        os.mkdir(testpath)
-        print "Making a path for testdata at "+testpath
-    if not os.path.exists(origparamsdir):
-        os.mkdir(origparamsdir)
-        print "Making a path for testdata at "+origparamsdir
+    curpath = Path(__file__).parent
+    testpath = curpath/'Testdata'/'Barker'
+    origparamsdir = testpath/'Origparams'
+
+    testpath.mkdir(exist_ok=True,parents=True)
+    print("Making a path for testdata at {}".format(testpath))
+        
+    origparamsdir.mkdir(exist_ok=True,parents=True)
+    print("Making a path for testdata at {}".format(origparamsdir))
 #    makeconfigfile(testpath)
 
 

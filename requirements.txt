@@ -1,0 +1,8 @@
+nose
+six
+numpy
+scipy
+pytables
+matplotlib
+seaborn
+numba

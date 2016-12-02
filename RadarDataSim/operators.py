@@ -4,18 +4,19 @@ Created on Tue Dec 29 15:49:01 2015
 
 @author: John Swoboda
 """
-
+from . import Path
 import tables
-from const.physConstants import v_C_0
-from utilFunctions import readconfigfile
-import scipy.fftpack as scfft
-from IonoContainer import IonoContainer,makeionocombined
-from RadarDataSim.utilFunctions import spect2acf
 import scipy as sp
-import pdb
+#
+from isrutilities.physConstants import v_C_0
+from .utilFunctions import readconfigfile
+from .IonoContainer import IonoContainer,makeionocombined
+from RadarDataSim.utilFunctions import spect2acf
+
+
 class RadarSpaceTimeOperator(object):
     """ This is a class to hold the operator methods for the ISR simulator.
-    
+
         Variables:
            Cart_Cords_In - Ntbegx3 array of cartisian coordinates for the input space.
            Sphere_Cords_In - Ntbegx3 array of spherical coordinates for the input space.
@@ -33,7 +34,7 @@ class RadarSpaceTimeOperator(object):
         """ This will create the RadarSpaceTimeOperator object.
             Inputs
                 ionoin - The input ionocontainer. This can be either an string that is a ionocontainer file,
-                    a list of ionocontainer objects or a list a strings to ionocontainer files
+                    a list of ionocontainer objects or a list a strings to ionocontainer files.
                 config  - The ini file that used to set up the simulation.
                 timein - A Ntx2 numpy array of times.
                 RSTOPinv - The inverse operator object.
@@ -76,7 +77,7 @@ class RadarSpaceTimeOperator(object):
         X_vec = R_vec*xvecmult
         Y_vec = R_vec*yvecmult
         Z_vec = R_vec*zvecmult
-        
+
         self.Cart_Coords_Out = sp.column_stack((X_vec,Y_vec,Z_vec))
         self.Time_Out = sp.column_stack((simparams['Timevec'],simparams['Timevec']+simparams['Tint']))+self.Time_In[0,0]
         self.simparams=simparams
@@ -88,8 +89,8 @@ class RadarSpaceTimeOperator(object):
 
 
     def mult_iono(self,ionoin_list):
-        """ 
-            This will apply the forward model to the contents of an ionocontainer object. It is assuming that 
+        """
+            This will apply the forward model to the contents of an ionocontainer object. It is assuming that
             this is an ionocontainer holding the spectra.
         """
 
@@ -99,18 +100,18 @@ class RadarSpaceTimeOperator(object):
         amb_dict = self.simparams['amb_dict']
         ambmat = amb_dict['WttMatrix']
         overlaps = self.overlaps
-        
+
         t_s = self.sensdict['t_s']
-        
+
         if isinstance(ionoin_list,list)or isinstance(ionoin_list,str):
-            
+
             Iono_in = makeionocombined(ionoin_list)
         else:
             Iono_in=ionoin_list
-        
-        
+
+
         ionocart = Iono_in.Cart_Coords
-      
+
         if self.simparams['numpoints']==Iono_in.Param_List.shape[-1]:
             tau,acf=spect2acf(Iono_in.Param_Names,Iono_in.Param_List)
             np = ambmat.shape[0]
@@ -123,7 +124,7 @@ class RadarSpaceTimeOperator(object):
         assert sp.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
 
         for it_out in range(ntout):
-            
+
             overlists = overlaps[it_out]
             irows = blist_out[it_out]
             curintimes = [i[0] for i in overlists]
@@ -131,29 +132,29 @@ class RadarSpaceTimeOperator(object):
             if self.mattype.lower()=='sim':
                 curintimes=[curintimes[0]]
                 curintratio=[1.]
-            
+
             cur_outmat = self.RSTMat[irows[0]:irows[1],:]
             icols=    blist_in[it_out]
             cur_mat = cur_outmat[:,icols[0]:icols[1]]
-            
+
             for i_it,it_in in enumerate(curintimes):
                 tempdata=sp.zeros((np_in,nlout),dtype=acf.dtype)
                 for iparam in range(np_in):
                    tempdata[iparam]=cur_mat.dot(acf[:,it_in,iparam])
                 if self.simparams['numpoints']==Iono_in.Param_List.shape[-1]:
                     tempdata=sp.dot(ambmat,tempdata)
-                
+
                 outdata[:,it_out] = sp.transpose(tempdata)*curintratio[i_it] + outdata[:,it_out]
 
         outiono = IonoContainer(self.Sphere_Coords_Out,outdata,times=self.Time_Out,sensor_loc=Iono_in.Sensor_loc,
                                ver=1,coordvecs = ['r','theta','phi'],paramnames=tau_out)
         return outiono
 
-    
+
 
 def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matrix'):
-    """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc sparse matrix for the space time operator. 
-       The output space will have range repeated first, then beams then time. 
+    """Make a Ntimeout*Nbeam*Nrng x Ntime*Nloc sparse matrix for the space time operator.
+       The output space will have range repeated first, then beams then time.
        The coordinates will be [t0,b0,r0],[t0,b0,r1],[t0,b0,r2],...
        [t0,b1,r0],[t0,b1,r1], ... [t1,b0,r0],[t1,b0,r1],...[t1,b1,r0]...
        Inputs
@@ -175,11 +176,11 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     timeout = sp.column_stack((timeout,timeout+Tint)) +timein[0,0]
 
     rng_bin=sensdict['t_s']*v_C_0*1e-3/2.
-    
+
     angles = simparams['angles']
     Nbeams = len(angles)
 
-    
+
     rng_vec2 = simparams['Rangegatesfinal']
     nrgout = len(rng_vec2)
     pulse=simparams['Pulse']
@@ -191,13 +192,13 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     Ntout = len(timeout)
     if vel is None:
         vel=sp.zeros((Nlocbeg,Ntbeg,3))
-   
 
-    
-    
+
+
+
     # determine the overlaps
     # change
-    
+
     blockloc_in = [[i*Nlocbeg,(i+1)*Nlocbeg] for i in range(Ntout)]
     blockloc_out = [[i*Nlocout,(i+1)*Nlocout] for i in range(Ntout)]
     blockloc = [blockloc_in,blockloc_out]
@@ -215,14 +216,14 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
         firstone=True
         for ix, x in enumerate(timein):
             if ( x[0]+1<ito[1] or ix==(Ntbeg-1)) and x[1]-1>ito[0]:
-                
+
                 # find the end of the data
                 if ix ==Ntbeg-1:
                     enp=ito[1]
                 else:
                     enp = sp.minimum(ito[1],x[1])
                 stp = sp.maximum(x[0],ito[0])
-                
+
                 curvel=vel[:,0]*1e-3
                 # XXX This is just a quick fix
                 curvel[:,-1]=0
@@ -232,7 +233,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     curdiff=sp.zeros_like(vel[:,ix])
                     curdiff2=curdiff+float(enp-stp)*curvel
                 else:
-                    T_1=float(x[0]-t_0)   
+                 #   T_1=float(x[0]-t_0)
                     t_0=stp.copy()
                     curdiff= curdiff2
                     curdiff2=curdiff+float(enp-stp)*curvel
@@ -270,14 +271,14 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
             rho2 = Sp2[:,0]
             Az2 = Sp2[:,1]
             El2 = Sp2[:,2]
-            
-           
+
+
             # get the weights
             weights1 = {ibn:sensdict['ArrayFunc'](Az1,El1,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
             weights2 = {ibn:sensdict['ArrayFunc'](Az2,El2,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
-    
+
             for ibn in range(Nbeams):
-                
+
 
                 print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
                 weight1 = weights1[ibn]
@@ -287,7 +288,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                     irow = ibn + isamp*Nbeams + Nbeams*nrgout*iton
                     range_g = rng_vec2[isamp]
                     rnglims = [range_g-rng_len/2.,range_g+rng_len/2.]
-                    
+
                     # assume centered lag product.
                     rangelog = ((rho1>=rnglims[0])&(rho1<rnglims[1]))
                     # This is a nearest neighbors interpolation for the spectrums in the range domain
@@ -305,7 +306,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
 
                     weights_final = weight_cur*range_g**2/rho1[rangelog]**2
                     outmat[irow,icols] = weights_final*cur_ratio*cor_ratio+outmat[irow,icols]
-                    
+
                     if mattype.lower()=='real':
                         # assume centered lag product.
                         rangelog = ((rho2>=rnglims[0])&(rho2<rnglims[1]))
@@ -320,8 +321,8 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
                         icols = sp.where(rangelog)[0]+ Nlocbeg*iton
                         weights_final = weight_cur*range_g**2/rho2[rangelog]**2
                         outmat[irow,icols] = weights_final*cur_ratio*cor_ratio+outmat[irow,icols]
-                
-                
+
+
 
 
 
@@ -350,17 +351,15 @@ def getOverlap(a, b):
 #%% Math Functions
 
 def cart2sphere(coordlist):
-    r2d = 180.0/sp.pi
-    d2r = sp.pi/180.0
-    
+
     X_vec = coordlist[:,0]
     Y_vec = coordlist[:,1]
     Z_vec = coordlist[:,2]
     R_vec = sp.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
-    Az_vec = sp.arctan2(X_vec,Y_vec)*r2d
-    El_vec = sp.arcsin(Z_vec/R_vec)*r2d
+    Az_vec = np.degrees(sp.arctan2(X_vec,Y_vec))
+    El_vec = np.degrees(sp.arcsin(Z_vec/R_vec))
     sp_coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
     return sp_coords
-    
-    
-    
+
+
+
