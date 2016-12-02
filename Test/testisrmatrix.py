@@ -62,9 +62,9 @@ def main():
     
     plotdir.mkdir(exist_ok=True,parents=True)
     
-    f_templ = plotdir/'params'
+    f_templ = str(plotdir/'params')
     
-    plotbeamparametersv2([0.],configname,testpath,fitdir = 'FittedMat',params=['Ne','Ti','Te'],filetemplate=f_templ,
+    plotbeamparametersv2([0.],str(configname),str(testpath),fitdir = 'FittedMat',params=['Ne','Ti','Te'],filetemplate=f_templ,
                          suptitle = 'With Mat',werrors=False,nelog=False)
                          
 if __name__== '__main__':

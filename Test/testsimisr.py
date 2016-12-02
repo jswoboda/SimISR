@@ -116,7 +116,7 @@ def main():
     funcnamelist=['spectrums','radardata','fitting']
     failflag = runsim.main(funcnamelist,testpath, testpath/'PFISRExample.ini',True)
     if not failflag:
-        analysisdump(testpath,testpath/'PFISRExample.ini')
+        analysisdump(testpath,str(testpath/'PFISRExample.ini'))
 if __name__== '__main__':
 
     main()

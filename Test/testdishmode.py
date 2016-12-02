@@ -50,7 +50,7 @@ def configsetup(testpath):
                    'ambupsamp':1, # up sampling factor for ambiguity function
                    'species':['O+','e-'], # type of ion species used in simulation
                    'numpoints':128, # number of points for each spectrum
-                   'startfile': testpath/'startdata.h5',# file used for starting points
+                   'startfile': str(testpath/'startdata.h5'),# file used for starting points
                    'beamrate':b_rate,# the number of pulses each beam will output until it moves
                    'outangles':[sp.arange(i,i+intrate) for i in sp.arange(0,len(beamlist),intrate)]}
 #                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
