@@ -7,14 +7,13 @@ Holds class that applies the fitter.
 """
 
 #imported basic modules
-import os, inspect, time,sys,traceback
-import pdb
+import os
 # Imported scipy modules
 import scipy as sp
 import scipy.optimize
 # My modules
-from IonoContainer import IonoContainer, makeionocombined
-from utilFunctions import readconfigfile
+from .IonoContainer import IonoContainer#, makeionocombined
+from .utilFunctions import readconfigfile
 from RadarDataSim.specfunctions import ISRSfitfunction
 
 def defaultparamsfunc(curlag,sensdict,simparams):
@@ -66,7 +65,7 @@ class Fitterionoconainer(object):
         lagsData= self.Iono.Param_List.copy()
         (Nloc,Nt,Nlags) = lagsData.shape
         # Need list of times to save time
-        
+
         if fittimes is None:
             fittimes = range(Nt)
         else:
@@ -100,7 +99,7 @@ class Fitterionoconainer(object):
                 x_0 = x_0all[iloc,itime]
                 Niratio = x_0[0:2*ni:2]/x_0[2*ni]
                 Ti = (Niratio*x_0[1:2*ni:2]).sum()
-                
+
                 if sp.any(sp.isnan(x_0)):
                     print('\t\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} is NaN, skipping.'.format(itime,Nt,iloc,Nloc))
                     continue
@@ -161,24 +160,24 @@ class Fitterionoconainer(object):
 #
                 if len(vars_vec)<fittederror.shape[-1]-1:
                     pdb.set_trace()
-                fittederror[iloc,itn,:-1]=vars_vec 
+                fittederror[iloc,itn,:-1]=vars_vec
 
                 if not self.sig is None:
                     fittederror[iloc,itn,-1] = Ne_sig[iloc,itime]
-                    
+
             print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
         return(fittedarray,fittederror,funcevals)
 
 #%% start values for the fit function
 def startvalfunc(Ne_init, loc,time,inputs):
     """ This is a method to determine the start values for the fitter.
-    Inputs 
+    Inputs
         Ne_init - A nloc x nt numpy array of the initial estimate of electron density. Basically
         the zeroth lag of the ACF.
         loc - A nloc x 3 numpy array of cartisian coordinates.
         time - A nt x 2 numpy array of times in seconds
         exinputs - A list of extra inputs allowed for by the fitter class. It only
-            has one element and its the name of the ionocontainer file holding the 
+            has one element and its the name of the ionocontainer file holding the
             rest of the start parameters.
     Outputs
         xarray - This is a numpy arrya of starting values for the fitter parmaeters."""

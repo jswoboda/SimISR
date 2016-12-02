@@ -5,7 +5,7 @@ This will create a number of data sets for statistical analysis. It'll then make
 statistics and histograms of the output parameters.
 @author: John Swoboda
 """
-import os,inspect,glob
+from RadarDataSim import Path
 import scipy as sp
 
 import matplotlib.pyplot as plt
@@ -103,7 +103,7 @@ def makehist(testpath,npulses):
     
     
     for ierr, iername in enumerate(ernames):
-        filetemplate= os.path.join(testpath,'AnalysisPlots',iername)
+        filetemplate= str(Path(testpath).join('AnalysisPlots',iername))
         (figmplf, axmat) = plt.subplots(2, 2,figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         for ipn, iparam in enumerate(params):
@@ -140,8 +140,9 @@ def makehistdata(params,maindir):
             errordict - A dictionary with the data values in numpy arrays. The keys are param names.
             errdictrel -  A dictionary with the error values in numpy arrays, normalized by the correct value. The keys are param names.
     """
-    ffit = os.path.join(maindir,'Fitted','fitteddata.h5')
-    inputfiledir = os.path.join(maindir,'Origparams')
+    maindir=Path(maindir)
+    ffit = maindir.joinpath('Fitted','fitteddata.h5')
+    inputfiledir = maindir.joinpath('Origparams')
 
     paramslower = [ip.lower() for ip in params]
     eparamslower = ['n'+ip.lower() for ip in params]
@@ -167,7 +168,7 @@ def makehistdata(params,maindir):
     edatadict = {ip:Ionofit.Param_List[:,:,ep2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
     # Determine which input files are to be used.
     
-    dirlist = glob.glob(os.path.join(inputfiledir,'*.h5'))
+    dirlist = [str(i) for i in inputfiledir.glob('*.h5')]
     sortlist,outime,filelisting,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
     time2files = []
     for itn,itime in enumerate(times):
@@ -222,8 +223,8 @@ def configfilesetup(testpath,npulses):
             npulses - The number of pulses. 
     """
     
-    curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    defcon = os.path.join(curloc,'statsbase.ini')
+    curloc = Path(__file__).parent
+    defcon = curloc.joinpath('statsbase.ini')
     
     (sensdict,simparams) = readconfigfile(defcon)
     tint = simparams['IPP']*npulses
@@ -233,7 +234,7 @@ def configfilesetup(testpath,npulses):
     simparams['TimeLim'] = ratio1 * simparams['TimeLim']
     
     simparams['startfile']='startfile.h5'
-    makeconfigfile(os.path.join(testpath,'stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
+    makeconfigfile(testpath.joinpath('stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
     
 def makedata(testpath):
     """ This will make the input data for the test case. The data will have the 
@@ -242,9 +243,9 @@ def makedata(testpath):
             testpath - Directory that will hold the data.
             
     """
-    finalpath = os.path.join(testpath,'Origparams')
-    if not os.path.isdir(finalpath):
-        os.mkdir(finalpath)
+    finalpath = testpath.joinpath('Origparams')
+    if not finalpath.exists():
+        finalpath.mkdir()
     data=SIMVALUES
     z = sp.linspace(50.,1e3,50)
     nz = len(z)
@@ -256,11 +257,11 @@ def makedata(testpath):
     Icont1 = IonoContainer(coordlist=coords,paramlist=params,times = times,sensor_loc = sp.zeros(3),ver =0,coordvecs =
         ['x','y','z'],paramnames=None,species=species,velocity=vel)
         
-    finalfile = os.path.join(finalpath,'0 stats.h5')
-    Icont1.saveh5(finalfile)
+    finalfile = finalpath.joinpath('0 stats.h5')
+    Icont1.saveh5(str(finalfile))
     # set start temp to 1000 K.
     Icont1.Param_List[:,:,:,1]=1e3
-    Icont1.saveh5(os.path.join(testpath,'startfile.h5'))
+    Icont1.saveh5(str(testpath.joinpath('startfile.h5')))
     
 
 def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis','stats']):
@@ -277,12 +278,11 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis',
         plist = sp.array([50,100,200,500,1000,2000,5000])
     if isinstance(plist,list):
         plist=sp.array(plist)
-    curloc = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curloc)[0],'Testdata','StatsTest')
+    curloc = Path(__file__).parent
+    testpath=curloc.parent.joinpath('Testdata','StatsTest')
     
+    testpath.mkdir(exist_ok=True,parents=True)
     
-    if not os.path.isdir(testpath):
-        os.mkdir(testpath)
     functlist_default = ['spectrums','radardata','fitting']
     check_list = sp.array([i in functlist for i in functlist_default])
     check_run =sp.any( check_list) 
@@ -291,19 +291,19 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis',
 #    rsystools = []
     for ip in plist:
         foldname = 'Pulses_{:04d}'.format(ip)
-        curfold =os.path.join(testpath,foldname)
+        curfold = testpath.joinpath(foldname)
         allfolds.append(curfold)
-        if not os.path.isdir(curfold):
-            os.mkdir(curfold)
+        
+        curfold.mkdir(exist_ok=True,parents=True)
             
-            configfilesetup(curfold,ip)
+        configfilesetup(curfold,ip)
         makedata(curfold)
-        config = os.path.join(curfold,'stats.ini')
+        config = curfold/'stats.ini'
         (sensdict,simparams) = readconfigfile(config)
 #        rtemp = RadarSys(sensdict,simparams['Rangegatesfinal'],ip)
 #        rsystools.append(rtemp.rms(sp.array([1e12]),sp.array([2.5e3]),sp.array([2.5e3])))
         if check_run :
-            runsim(functlist_red,curfold,os.path.join(curfold,'stats.ini'),True)
+            runsim(functlist_red,curfold,str(curfold.joinpath('stats.ini')),True)
         if 'analysis' in functlist:
             analysisdump(curfold,config)
         if 'stats' in functlist:

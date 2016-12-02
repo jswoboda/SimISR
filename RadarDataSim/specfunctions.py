@@ -6,10 +6,10 @@ fitting and making spectrums.
 @author: John Swoboda
 """
 import scipy as sp
-import pdb
 import scipy.fftpack as scfft
+#
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
-from utilFunctions import  spect2acf
+from .utilFunctions import  spect2acf
 
 
 def ISRSspecmake(ionocont,sensdict,npts):
@@ -61,11 +61,11 @@ def ISRSspecmake(ionocont,sensdict,npts):
     return (omeg,outspecs)
 
 def ISRspecmakeout(paramvals,fc,fs,species,npts):
-    """ This will make a spectra for a set a param values. This is mainly used 
+    """ This will make a spectra for a set a param values. This is mainly used
         in the plotting functions to get spectra for given parameters.
         Input
-            paramvals - A N_x x N_t x 2Nsp+1 numpy array that holds the parameter 
-                values. Nx is number of spatial locations, N_t is number of 
+            paramvals - A N_x x N_t x 2Nsp+1 numpy array that holds the parameter
+                values. Nx is number of spatial locations, N_t is number of
                 times and Nsp is number of ion and electron species.
             fc - The carrier frequency of the ISR.
             fs - The sampling frequency of the ISR.
