@@ -41,7 +41,7 @@ class Gui():
          # get the current path
 
         curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-        constpath = os.path.join(os.path.split(curpath)[0],'RadarDataSim','const')
+        constpath = os.path.join(os.path.split(curpath)[0],'SimISR','const')
         # set the root
         self.parent = parent
         self.subgui = subgui
