@@ -285,17 +285,11 @@ class IonoContainer(object):
         Input:
         filename - A string for the file name.
         """
-<<<<<<< HEAD:RadarDataSim/IonoContainer.py
-        
-        if os.path.isfile(filename):
-            os.remove(filename)
-        h5file = tables.open_file(filename, mode = "w", title = "IonoContainer out.")
-=======
         filename=Path(filename)
         if filename.is_file():
             filename.unlink()
             
->>>>>>> a227f7ca29e4100bc6b65e9d4ce2a99004c59093:SimISR/IonoContainer.py
+
         vardict = vars(self)
 
         with tables.open_file(str(filename), mode = "w", title = "IonoContainer out.") as f:
@@ -361,16 +355,6 @@ class IonoContainer(object):
         vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
         outdict = {}
 
-<<<<<<< HEAD:RadarDataSim/IonoContainer.py
-        h5file=tables.open_file(filename)
-        output={}
-        # Read in all of the info from the h5 file and put it in a dictionary.
-        for group in h5file.walk_groups(posixpath.sep):
-            output[group._v_pathname]={}
-            for array in h5file.list_nodes(group, classname = 'Array'):
-                output[group._v_pathname][array.name]=array.read()
-        h5file.close()
-=======
         with tables.open_file(filename) as f:
             output={}
             # Read in all of the info from the h5 file and put it in a dictionary.
@@ -378,8 +362,7 @@ class IonoContainer(object):
                 output[group._v_pathname]={}
                 for array in f.list_nodes(group, classname = 'Array'):
                     output[group._v_pathname][array.name]=array.read()
-
->>>>>>> a227f7ca29e4100bc6b65e9d4ce2a99004c59093:SimISR/IonoContainer.py
+            f.close()
         outarr = [pathparts(ipath) for ipath in output.keys() if len(pathparts(ipath))>0]
         outlist = []
         basekeys  = output[posixpath.sep].keys()
@@ -426,17 +409,10 @@ class IonoContainer(object):
         timelist=[]
         fileslist = []
         for ifilenum,ifile in enumerate(ionocontlist):
-<<<<<<< HEAD:RadarDataSim/IonoContainer.py
-            
-            h5file=tables.open_file(ifile)
-            times=h5file.root.Time_Vector.read()
-            h5file.close()
-=======
-
             with tables.open_file(str(ifile)) as f:
                 times = f.root.Time_Vector.read()
 
->>>>>>> a227f7ca29e4100bc6b65e9d4ce2a99004c59093:SimISR/IonoContainer.py
+
             timelist.append(times)
             fileslist.append(ifilenum*sp.ones(len(times)))
         times_file =sp.array([i[:,0].min() for i in timelist])
