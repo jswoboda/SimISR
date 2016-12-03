@@ -3,29 +3,27 @@
 Holds the IonoContainer class that contains the ionospheric parameters.
 @author: John Swoboda
 """
+from six import string_types
 import os
 import glob
 import inspect
-import pdb
 import posixpath
 import copy
-
+from . import Path
 import numpy as np
 import scipy as sp
 import scipy.io as sio
 import scipy.interpolate
 import tables
-import h5py
 import numbers
 from datetime import datetime
 # From my
-from ISRSpectrum.ISRSpectrum import ISRSpectrum
-from utilFunctions import Chapmanfunc, TempProfile
+from .utilFunctions import Chapmanfunc, TempProfile
 
 class IonoContainer(object):
     """
         Holds the coordinates and parameters to create the ISR data. This class can hold plasma parameters
-        spectra, or ACFs. If given plasma parameters the can call the ISR spectrum functions and for each 
+        spectra, or ACFs. If given plasma parameters the can call the ISR spectrum functions and for each
         point in time and space a spectra will be created.
     """
     #%% Init function
@@ -137,8 +135,8 @@ class IonoContainer(object):
 
     #%% Getting closest objects
     def getclosestsphere(self,coords,timelist=None):
-        """ 
-            This method will get the closest point in space to given spherical coordinates from the 
+        """
+            This method will get the closest point in space to given spherical coordinates from the
             IonoContainer.
             Input
             coords - A list of r,az and phi coordinates.
@@ -146,10 +144,10 @@ class IonoContainer(object):
             paramout - A NtxNp array from the closes output params
             sphereout - A Nc length array The sphereical coordinates of the closest point.
             cartout -  Cartisian coordinates of the closes point.
-            distance - The spatial distance between the returned location and the 
+            distance - The spatial distance between the returned location and the
                 desired location.
             minidx - The spatial index point.
-            tvec - The times of the returned data. 
+            tvec - The times of the returned data.
         """
         d2r = np.pi/180.0
         (R,Az,El) = coords
@@ -168,10 +166,10 @@ class IonoContainer(object):
         paramout - A NtxNp array from the closes output params
         sphereout - A Nc length array The sphereical coordinates of the closest point.
         cartout -  Cartisian coordinates of the closes point.
-        distance - The spatial distance between the returned location and the 
+        distance - The spatial distance between the returned location and the
             desired location.
         minidx - The spatial index point.
-        tvec - The times of the returned data. 
+        tvec - The times of the returned data.
         """
         X_vec = self.Cart_Coords[:,0]
         Y_vec = self.Cart_Coords[:,1]
@@ -188,7 +186,7 @@ class IonoContainer(object):
         tvec = self.Time_Vector
         if sp.ndim(self.Time_Vector)>1:
             datatime = datatime[:,0]
-            
+
         if isinstance(timelist,list):
             timelist=sp.array(timelist)
         if timelist is not None:
@@ -203,7 +201,7 @@ class IonoContainer(object):
                     log3 = (tvec[:,0]<=itime[0]) & (tvec[:,1]>itime[1])
                     log4 = (tvec[:,0]>itime[0]) & (tvec[:,1]<itime[1])
                     tempindx = sp.where(log1|log2|log3|log4)[0]
-                    
+
                     timeindx = timeindx +tempindx.tolist()
             paramout=paramout[timeindx]
             velout=velout[timeindx]
@@ -266,7 +264,7 @@ class IonoContainer(object):
 
      #%% Read and Write Methods
     def savemat(self,filename):
-        """ 
+        """
         This method will write out a structured mat file and save information
         from the class.
         inputs
@@ -287,32 +285,40 @@ class IonoContainer(object):
         Input:
         filename - A string for the file name.
         """
+<<<<<<< HEAD:RadarDataSim/IonoContainer.py
         
         if os.path.isfile(filename):
             os.remove(filename)
         h5file = tables.open_file(filename, mode = "w", title = "IonoContainer out.")
+=======
+        filename=Path(filename)
+        if filename.is_file():
+            filename.unlink()
+            
+>>>>>>> a227f7ca29e4100bc6b65e9d4ce2a99004c59093:SimISR/IonoContainer.py
         vardict = vars(self)
 
-        try:
-            # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
-            # Make group for each dictionary
-            for cvar in vardict.keys():
-                #group = h5file.create_group(posixpath.sep, cvar,cvar +'dictionary')
-                if type(vardict[cvar]) ==dict: # Check if dictionary
-                    dictkeys = vardict[cvar].keys()
-                    group2 = h5file.create_group('/',cvar,cvar+' dictionary')
-                    for ikeys in dictkeys:
-                        h5file.createArray(group2,ikeys,vardict[cvar][ikeys],'Static array')
-                else:
-                    if not(vardict[cvar] is None):
-                        h5file.createArray('/',cvar,vardict[cvar],'Static array')
-            h5file.close()
-        except Exception as inst:
-            print type(inst)
-            print inst.args
-            print inst
-            h5file.close()
-            raise NameError('Failed to write to h5 file.')
+        with tables.open_file(str(filename), mode = "w", title = "IonoContainer out.") as f:
+
+            try:
+                # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
+                # Make group for each dictionary
+                for cvar in vardict.keys():
+                    #group = f.create_group(posixpath.sep, cvar,cvar +'dictionary')
+                    if type(vardict[cvar]) ==dict: # Check if dictionary
+                        dictkeys = vardict[cvar].keys()
+                        group2 = f.create_group('/',cvar,cvar+' dictionary')
+                        for ikeys in dictkeys:
+                            f.create_array(group2,ikeys,vardict[cvar][ikeys],'Static array')
+                    else:
+                        if not(vardict[cvar] is None):
+                            f.create_array('/',cvar,vardict[cvar],'Static array')
+
+            except Exception as inst:
+                print(type(inst))
+                print(inst.args)
+                print(inst)
+                raise NameError('Failed to write to h5 file.')
 
     @staticmethod
 
@@ -355,6 +361,7 @@ class IonoContainer(object):
         vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
         outdict = {}
 
+<<<<<<< HEAD:RadarDataSim/IonoContainer.py
         h5file=tables.open_file(filename)
         output={}
         # Read in all of the info from the h5 file and put it in a dictionary.
@@ -363,6 +370,16 @@ class IonoContainer(object):
             for array in h5file.list_nodes(group, classname = 'Array'):
                 output[group._v_pathname][array.name]=array.read()
         h5file.close()
+=======
+        with tables.open_file(filename) as f:
+            output={}
+            # Read in all of the info from the h5 file and put it in a dictionary.
+            for group in f.walk_groups(posixpath.sep):
+                output[group._v_pathname]={}
+                for array in f.list_nodes(group, classname = 'Array'):
+                    output[group._v_pathname][array.name]=array.read()
+
+>>>>>>> a227f7ca29e4100bc6b65e9d4ce2a99004c59093:SimISR/IonoContainer.py
         outarr = [pathparts(ipath) for ipath in output.keys() if len(pathparts(ipath))>0]
         outlist = []
         basekeys  = output[posixpath.sep].keys()
@@ -389,47 +406,55 @@ class IonoContainer(object):
         if 'coordlist2' in outdict.keys():
             del outdict['coordlist2']
         return IonoContainer(**outdict)
+
     @staticmethod
     def gettimes(ionocontlist):
-        """ 
-        This static method will take a list of files, or a single string, and 
+        """
+        This static method will take a list of files, or a single string, and
         deterimine the time ordering and give the sort order for the files to be in.
         Inputs
-            ionocontlist- A list of IonoContainer h5 files. Can also be a single 
+            ionocontlist- A list of IonoContainer h5 files. Can also be a single
             string of a file name.
         Outputs
-            sortlist - A numpy array of integers that will chronilogically order 
+            sortlist - A numpy array of integers that will chronilogically order
             the files
             outtime - A Nt x 2 numpy array of all of the times.
             timebeg - A list of beginning times
         """
-        if isinstance(ionocontlist,basestring):
+        if isinstance(ionocontlist,string_types):
             ionocontlist=[ionocontlist]
         timelist=[]
         fileslist = []
         for ifilenum,ifile in enumerate(ionocontlist):
+<<<<<<< HEAD:RadarDataSim/IonoContainer.py
             
             h5file=tables.open_file(ifile)
             times=h5file.root.Time_Vector.read()
             h5file.close()
+=======
+
+            with tables.open_file(str(ifile)) as f:
+                times = f.root.Time_Vector.read()
+
+>>>>>>> a227f7ca29e4100bc6b65e9d4ce2a99004c59093:SimISR/IonoContainer.py
             timelist.append(times)
             fileslist.append(ifilenum*sp.ones(len(times)))
         times_file =sp.array([i[:,0].min() for i in timelist])
         sortlist = sp.argsort(times_file)
-        
+
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
         fileslist = sp.vstack([fileslist[i][0] for i in sortlist]).flatten().astype('int64')
         outime = sp.vstack(timelist_s)
         return (sortlist,outime,fileslist,timebeg,timelist_s)
-        
+
     #%% Reduce numbers
     def coordreduce(self,coorddict):
         """
-        Given a dictionary of coordinates the location points in the IonoContainer 
-        object will be reduced. 
+        Given a dictionary of coordinates the location points in the IonoContainer
+        object will be reduced.
         Inputs
-            corrddict - A dictionary with keys 'x','y','z','r','theta','phi'. The 
+            corrddict - A dictionary with keys 'x','y','z','r','theta','phi'. The
                 values in the dictionary are coordinate values that will be kept.
         """
         assert type(coorddict)==dict, "Coorddict needs to be a dictionary"
@@ -464,8 +489,8 @@ class IonoContainer(object):
         self.Velocity=self.Velocity[ckeep]
 
     def timereduce(self, timelims=None,timesselected=None):
-        """ 
-        Given set of time limits or list of times the data the IonoContainer will be 
+        """
+        Given set of time limits or list of times the data the IonoContainer will be
         pruned accordinly.
         Input
             timelims - A two point list with the desired time limits.
@@ -482,7 +507,7 @@ class IonoContainer(object):
         self.Time_Vector=self.Time_Vector[tkeep]
         self.Param_List=self.Param_List[:,tkeep]
         self.Velocity=self.Velocity[:,tkeep]
-    
+
     def timelisting(self):
         """ This will output a list of lists that contains the times in strings."""
 
@@ -519,7 +544,7 @@ class IonoContainer(object):
         return not self.__eq__(self2)
     # multiplication operators
     def __mul__(self,thingtomult):
-        """ 
+        """
             This is the (*) multiplication. The thingtomult object can be a number, numpy array
             thats the same size as Param_List or another ionocontainer.
         """
@@ -533,34 +558,34 @@ class IonoContainer(object):
             newself=self.copy()
             newself.Param_List=newself.Param_List*thingtomult
             return newself
-        
+
         # Now if you're multiplying two iono containers
         if isiono:
             assert sp.allclose(self.Time_Vector,thingtomult.Time_Vector),"Need to have the same times"
             a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
             blah = np.ma.array(thingtomult.Cart_Coords,mask=np.isnan(thingtomult.Cart_Coords))
-    
+
             assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
-    
+
             assert type(self.Param_Names)==type(thingtomult.Param_Names),'Param_Names are different types, they need to be the same'
-    
-    
+
+
             assert sp.all(self.Param_Names == thingtomult.Param_Names), "Need to have same parameter names"
             assert self.Species== thingtomult.Species, "Need to have the same species"
-            
+
             newself=self.copy()
             newself.Param_List=newself.Param_List*thingtomult
             return newself
         raise ValueError('thing2mult must be a number, numpy array or ionoContainer.')
     def __rmul__(self,thingtomult):
-        """ 
+        """
             This is the reverse (*) multiplication operator. The thingtomult object can be a number, numpy array
             thats the same size as Param_List or another ionocontainer.
         """
         return self.__mul__(thingtomult)
-        
+
     def __div__(self, thing2div):
-        """ 
+        """
             This is the (/) division. The thing2div object can be a number, numpy array
             thats the same size as Param_List or another ionocontainer.
         """
@@ -573,29 +598,29 @@ class IonoContainer(object):
             newself=self.copy()
             newself.Param_List=newself.Param_List/thing2div.Param_List
             return newself
-        
+
         # Now if you're multiplying two iono containers
         if isiono:
             assert sp.allclose(self.Time_Vector,thing2div.Time_Vector),"Need to have the same times"
             a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
             blah = np.ma.array(thing2div.Cart_Coords,mask=np.isnan(thing2div.Cart_Coords))
-    
+
             assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
-    
+
             assert type(self.Param_Names)==type(thing2div.Param_Names),'Param_Names are different types, they need to be the same'
-    
-    
+
+
             assert sp.all(self.Param_Names == thing2div.Param_Names), "Need to have same parameter names"
             assert self.Species== thing2div.Species, "Need to have the same species"
-            
+
             newself=self.copy()
             newself.Param_List=newself.Param_List/thing2div.Param_List
             return newself
         raise ValueError('thing2div must be a number, numpy array or ionoContainer.')
     def __truediv__(self,thing2div):
-        """ 
-            This is the (/) division operator but for python 3. This may not be implemented properly. 
-            The thing2div object can be a number, numpy arraythats the same 
+        """
+            This is the (/) division operator but for python 3. This may not be implemented properly.
+            The thing2div object can be a number, numpy arraythats the same
             size as Param_List or another ionocontainer.
         """
         return self.__div__(thing2div)
@@ -650,7 +675,7 @@ class IonoContainer(object):
         return func(self,sensdict,npts)
 
     def combinetimes(self,self2):
-        """ 
+        """
         """
         a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
         blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
@@ -674,7 +699,7 @@ class IonoContainer(object):
             npts - The number of points the spectrum is to be evaluated at.
         Output:
             Iono1 - An instance of the IonoContainer class with the spectrums as the
-                param vectors and the param names will be the the frequency points. 
+                param vectors and the param names will be the the frequency points.
         """
         (omeg,outspecs) = self.makeallspectrums(sensdict,npts)
         # XXX velocity is from original parameters
@@ -688,12 +713,12 @@ class IonoContainer(object):
             npts - The number of points the spectrum is to be evaluated at.
         Output:
             Iono1 - An instance of the IonoContainer class with the spectrums as the
-                param vectors and the param names will be the the frequency points 
+                param vectors and the param names will be the the frequency points
         """
         (omeg,outspecs) = self.makeallspectrumsopen(func,sensdict,npts)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
     def getDoppler(self,sensorloc=sp.zeros(3)):
-        """ 
+        """
         This will return the line of sight velocity.
         Inputs
             sensorloc - The location of the sensor in local Cartisian coordinates.
@@ -724,15 +749,15 @@ class IonoContainer(object):
 def makeionocombined(datapath,ext='.h5'):
     """ This function make an ionocontainer for all of the points in a folder or a list
         Inputs
-            datapath - Can be a string containing the folder holding the ionocontaner files or can be 
+            datapath - Can be a string containing the folder holding the ionocontaner files or can be
                 list of file names.
             ext - (default '.h5') The extention of the files that will be used.
-        Output 
+        Output
             outiono - The ionocontainer with of all the time points.
 
         """
 
-    if isinstance(datapath,basestring):
+    if isinstance(datapath,string_types):
         if os.path.splitext(datapath)[-1]==0:
             ionocontlist=[datapath]
         else:
@@ -769,7 +794,7 @@ def pathparts(path):
         components.append(tail)
 
 def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times =sp.array([[0,1e6]])):
-    """ 
+    """
     This function will create a test ionoclass with an electron density that
     follows a chapman function.
     Inputs
@@ -781,7 +806,7 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coo
         H_0 - The scale hight.
         coords - A list of coordinates that the data will be created over.
         times - A list of times the data will be created over.
-    Outputs 
+    Outputs
         Icont - A test ionocontainer.
     """
     if coords is None:
@@ -831,8 +856,8 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coo
     return Icont1
 
 def main():
-    """ 
-    This is a test function that create an instance of the ionocontainer class and check if 
+    """
+    This is a test function that create an instance of the ionocontainer class and check if
     copies of it are equal.
     """
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -846,13 +871,13 @@ def main():
     Icont3 = IonoContainer.readh5(os.path.join(testpath,'testiono.h5'))
 
     if Icont1==Icont2:
-        print "Mat file saving and reading works"
+        print("Mat file saving and reading works")
     else:
-        print "Something is wrong with the Mat file writing and reading"
+        print("Something is wrong with the Mat file writing and reading")
     if Icont1==Icont3:
-        print "h5 file saving and reading works"
+        print("h5 file saving and reading works")
     else:
-        print "Something is wrong with the h5 file writing and reading"
+        print("Something is wrong with the h5 file writing and reading")
     #%% Main
 if __name__== '__main__':
 

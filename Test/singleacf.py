@@ -9,9 +9,9 @@ import scipy as sp
 import scipy.optimize
 import scipy.fftpack as scfft
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
-from RadarDataSim.specfunctions import ISRSfitfunction
-from RadarDataSim.utilFunctions import MakePulseDataRepLPC, CenteredLagProduct, readconfigfile
-from RadarDataSim.IonoContainer import IonoContainer
+from SimISR.specfunctions import ISRSfitfunction
+from SimISR.utilFunctions import MakePulseDataRepLPC, CenteredLagProduct, readconfigfile
+from SimISR.IonoContainer import IonoContainer
 import matplotlib.pyplot as plt
 import seaborn as sns
 

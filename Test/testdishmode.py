@@ -4,15 +4,15 @@ Created on Mon Nov  9 13:13:02 2015
 
 @author: John Swoboda
 """
-
-import os, inspect, glob,pdb,getopt,sys
+from SimISR import Path
+import sys
 import scipy as sp
 import matplotlib
 matplotlib.use('Agg')
-from RadarDataSim.utilFunctions import makeconfigfile
-from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
-import RadarDataSim.runsim as runsim
-from RadarDataSim.analysisplots import analysisdump
+from SimISR.utilFunctions import makeconfigfile
+from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
+import SimISR.runsim as runsim
+from SimISR.analysisplots import analysisdump
 
 def configsetup(testpath):
     """This function will make a pickle file used to configure the simulation.
@@ -50,15 +50,15 @@ def configsetup(testpath):
                    'ambupsamp':1, # up sampling factor for ambiguity function
                    'species':['O+','e-'], # type of ion species used in simulation
                    'numpoints':128, # number of points for each spectrum
-                   'startfile':os.path.join(testpath,'startdata.h5'),# file used for starting points
+                   'startfile': str(testpath/'startdata.h5'),# file used for starting points
                    'beamrate':b_rate,# the number of pulses each beam will output until it moves
                    'outangles':[sp.arange(i,i+intrate) for i in sp.arange(0,len(beamlist),intrate)]}
 #                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
 #                       ,[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])}
 
-    fname = os.path.join(testpath,'DishExample')
+    fname = testpath/'DishExample'
 
-    makeconfigfile(fname+'.ini',beamlist,radarname,simparams)
+    makeconfigfile(fname.with_suffix('.ini'),beamlist,radarname,simparams)
 def makeinputh5(Iono,basedir):
     """This will make a h5 file for the IonoContainer that can be used as starting
     points for the fitter. The ionocontainer taken will be average over the x and y dimensions
@@ -88,22 +88,19 @@ def makeinputh5(Iono,basedir):
 
     Ionoout = IonoContainer(datalocsave,outdata,times,Iono.Sensor_loc,ver=0,
                             paramnames=Iono.Param_Names, species=Iono.Species,velocity=outvel)
-    Ionoout.saveh5(os.path.join(basedir,'startdata.h5'))
+    Ionoout.saveh5(basedir/'startdata.h5')
 
 def main(funcnamelist):
     """This function will run the test simulation buy first making a simple set of
     ionospheric parameters based off of a Chapman function. Then it will create configuration
     and start files followed by running the simulation."""
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Testdata','DishMode')
-    origparamsdir = os.path.join(testpath,'Origparams')
-    if not os.path.exists(testpath):
-        os.mkdir(testpath)
-        print "Making a path for testdata at "+testpath
-    if not os.path.exists(origparamsdir):
-        os.mkdir(origparamsdir)
-        print "Making a path for testdata at "+origparamsdir
+    curpath = Path(__file__).parent
+    testpath = curpath/'Testdata'/'DishMode'
+    origparamsdir = testpath/'Origparams'
 
+    testpath.mkdir(exist_ok=True,parents=True)
+    
+    origparamsdir.mkdir(exist_ok=True,parents=True)
 
     if 'configupdate' in funcnamelist:
         configsetup(testpath)
@@ -115,9 +112,9 @@ def main(funcnamelist):
         folderlist=folderlist+folddict[i]
 #    folderlist = ['Origparams','Spectrums','Radardata','ACF','Fitted']
     for ifl in folderlist:
-        flist = glob.glob(os.path.join(testpath,ifl,'*.h5'))
+        flist = (testpath/ifl).glob('*.h5')
         for ifile in flist:
-            os.remove(ifile)
+            ifile.unlink()
     # Now make stuff again
 
 
@@ -125,36 +122,27 @@ def main(funcnamelist):
 
         Icont1 = MakeTestIonoclass(testv=True,testtemp=True)
         makeinputh5(MakeTestIonoclass(testv=True,testtemp=False),testpath)
-        Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
+        Icont1.saveh5(origparamsdir/'0 testiono.h5')
         funcnamelist.remove('origdata')
 
 #    funcnamelist=['spectrums','radardata','fitting']
-    failflag=runsim.main(funcnamelist,testpath,os.path.join(testpath,'DishExample.ini'),True)
+    failflag=runsim.main(funcnamelist,testpath,testpath/'DishExample.ini',True)
     if not failflag:
-        analysisdump(testpath,os.path.join(testpath,'DishExample.ini'))
+        analysisdump(testpath,testpath/'DishExample.ini')
+        
 if __name__== '__main__':
+    from argparse import ArgumentParser
+    p = ArgumentParser(description='Planeproc.py -f <function: configupdate, origdata, spectrums, radardata, fitting or all>')
+    p.add_argument('-f','--funcnamelist',nargs='+')
+    p.add_argument('-r','--re',action='store_true')
+    p = p.parse_args()
+    
+    
+    curpath = Path(__file__).parent
 
-    argv = sys.argv[1:]
-
-    outstr = 'Planeproc.py -f <function: configupdate, origdata, spectrums, radardata, fitting or all>'
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    try:
-        opts, args = getopt.gnu_getopt(argv,"hf:")
-    except getopt.GetoptError:
-        print(outstr)
-        sys.exit(2)
-
-    funcnamelist=[]
-    for opt, arg in opts:
-        if opt == '-h':
-            print(outstr)
-            sys.exit()
-        elif opt in ("-f", "--func"):
-            funcnamelist.append(arg)
-
-        elif opt in ('-r', "--re"):
-            if arg.lower() == 'y':
-                remakealldata = True
-    if len(funcnamelist)==0 or 'all' in funcnamelist:
+    remakealldata = p.re
+    
+    if p.funcnamelist is None or 'all' in p.funcnamelist:
         funcnamelist=['configupdate','origdata','spectrums','radardata','fitting']
+        
     main(funcnamelist)

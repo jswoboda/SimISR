@@ -6,18 +6,18 @@ in the command line and this should run.
 
 @author: John Swoboda
 """
-
-import os, inspect, glob,pdb
+from SimISR import Path
 import scipy as sp
-from RadarDataSim.utilFunctions import makeconfigfile
-from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
-import RadarDataSim.runsim as runsim
-from RadarDataSim.analysisplots import analysisdump
+from SimISR.utilFunctions import makeconfigfile
+from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
+import SimISR.runsim as runsim
+from SimISR.analysisplots import analysisdump
 
 def configsetup(testpath):
     """This function will make a pickle file used to configure the simulation.
     Inputs
     testpath - A string for the path that this file will be saved."""
+    testpath=Path(testpath)
     beamlist = [64094,64091,64088,64085,64082,64238,64286,64070,64061,64058,64055,64052,
                 64049,64046,64043,64067,64040,64037,64034] # list of beams in
     radarname = 'pfisr'# name of radar for parameters can either be pfisr or risr
@@ -46,13 +46,14 @@ def configsetup(testpath):
                    'ambupsamp':1, # up sampling factor for ambiguity function
                    'species':['O+','e-'], # type of ion species used in simulation
                    'numpoints':128, # number of points for each spectrum
-                   'startfile':os.path.join(testpath,'startdata.h5')}# file used for starting points
+                   'startfile': str(testpath/'startdata.h5')} # file used for starting points
 #                   'SUMRULE': sp.array([[-2,-3,-3,-4,-4,-5,-5,-6,-6,-7,-7,-8,-8,-9]
 #                       ,[1,1,2,2,3,3,4,4,5,5,6,6,7,7]])}
 
-    fname = os.path.join(testpath,'PFISRExample')
+    fname = testpath/'PFISRExample'
 
-    makeconfigfile(fname+'.ini',beamlist,radarname,simparams)
+    makeconfigfile(str(fname.with_suffix('.ini')),beamlist,radarname,simparams)
+    
 def makeinputh5(Iono,basedir):
     """This will make a h5 file for the IonoContainer that can be used as starting
     points for the fitter. The ionocontainer taken will be average over the x and y dimensions
@@ -82,38 +83,40 @@ def makeinputh5(Iono,basedir):
 
     Ionoout = IonoContainer(datalocsave,outdata,times,Iono.Sensor_loc,ver=0,
                             paramnames=Iono.Param_Names, species=Iono.Species,velocity=outvel)
-    Ionoout.saveh5(os.path.join(basedir,'startdata.h5'))
+    Ionoout.saveh5(str(basedir/'startdata.h5'))
 
 def main():
     """This function will run the test simulation buy first making a simple set of
     ionospheric parameters based off of a Chapman function. Then it will create configuration
     and start files followed by running the simulation."""
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'Testdata','Long_Pulse')
-    origparamsdir = os.path.join(testpath,'Origparams')
-    if not os.path.exists(testpath):
-        os.mkdir(testpath)
-        print "Making a path for testdata at "+testpath
-    if not os.path.exists(origparamsdir):
-        os.mkdir(origparamsdir)
-        print "Making a path for testdata at "+origparamsdir
+    curpath = Path(__file__).parent
+    testpath = curpath.parent/'Testdata'/'Long_Pulse'
+    origparamsdir = testpath/'Origparams'
+    
+    if not testpath.is_dir():
+        testpath.mkdir(parents=True)
+    print("Making a path for testdata at {}".format(str(testpath)))
+    
+    if not origparamsdir.is_dir():
+        origparamsdir.mkdir(parents=True)
+    print("Making a path for testdata at {}".format(origparamsdir))
 
     # clear everything out
     folderlist = ['Origparams','Spectrums','Radardata','ACF','Fitted']
     for ifl in folderlist:
-        flist = glob.glob(os.path.join(testpath,ifl,'*.h5'))
+        flist = (testpath/ifl).glob('*.h5')
         for ifile in flist:
-            os.remove(ifile)
+            ifile.unlink()
     # Now make stuff again
     configsetup(testpath)
 
     Icont1 = MakeTestIonoclass(testv=True,testtemp=True)
     makeinputh5(MakeTestIonoclass(testv=True,testtemp=False),testpath)
-    Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
+    Icont1.saveh5(origparamsdir/'0 testiono.h5')
     funcnamelist=['spectrums','radardata','fitting']
-    failflag = runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.ini'),True)
+    failflag = runsim.main(funcnamelist,testpath, testpath/'PFISRExample.ini',True)
     if not failflag:
-        analysisdump(testpath,os.path.join(testpath,'PFISRExample.ini'))
+        analysisdump(testpath,str(testpath/'PFISRExample.ini'))
 if __name__== '__main__':
-    
+
     main()
