@@ -5,10 +5,10 @@ Created on Tue May  5 17:16:51 2015
 @author: John Swoboda
 """
 import scipy as sp
-from RadarDataSim.utilFunctions import makepicklefile, GenBarker
-from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
-import RadarDataSim.runsim as runsim
-from RadarDataSim.analysisplots import analysisdump
+from SimISR.utilFunctions import makepicklefile, GenBarker
+from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
+import SimISR.runsim as runsim
+from SimISR.analysisplots import analysisdump
 
 def makeconfigfile(testpath):
     testpath = Path(testpath).expanduser()

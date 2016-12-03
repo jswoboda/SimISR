@@ -4,12 +4,12 @@ Created on Fri Apr 15 15:00:12 2016
 This script will be used to see if any changes will prevent the simulator from running.
 @author: John Swoboda
 """
-from RadarDataSim import Path
+from SimISR import Path
 import scipy as sp
-from RadarDataSim.utilFunctions import readconfigfile,makeconfigfile
-from RadarDataSim.IonoContainer import IonoContainer
-from  RadarDataSim.runsim import main as runsim 
-from RadarDataSim.analysisplots import analysisdump
+from SimISR.utilFunctions import readconfigfile,makeconfigfile
+from SimISR.IonoContainer import IonoContainer
+from  SimISR.runsim import main as runsim 
+from SimISR.analysisplots import analysisdump
 
 
 def configfilesetup(testpath,npulses):
@@ -78,12 +78,12 @@ def makedata(testpath,tint):
 def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis']):
     """ This function will call other functions to create the input data, config
         file and run the radar data sim. The path for the simulation will be 
-        created in the Testdata directory in the RadarDataSim module. The new
+        created in the Testdata directory in the SimISR module. The new
         folder will be called BasicTest. The simulation is a long pulse simulation
         will the desired number of pulses from the user.
         Inputs
             npulse - Number of pulses for the integration period, default==100.
-            functlist - The list of functions for the RadarDataSim to do.
+            functlist - The list of functions for the SimISR to do.
     """
     
         

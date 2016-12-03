@@ -2,7 +2,7 @@
 """
 
 runsim.py by John Swoboda 3/16/2015
-This script will run the RadarDataSim code. The user can run a number of different
+This script will run the SimISR code. The user can run a number of different
 aspects including making data, fitting applying matrix formulation of the
 space-time ambuiguty operator and calling inversion methods.
 
@@ -25,12 +25,12 @@ import traceback
 # Imported scipy and matplotlib modules
 import scipy as sp
 # My modules
-from RadarDataSim.IonoContainer import IonoContainer
-from RadarDataSim.radarData import RadarDataFile
-import RadarDataSim.specfunctions as specfuncs
-from RadarDataSim.specfunctions import ISRSfitfunction
-from RadarDataSim.fitterMethodGen import Fitterionoconainer
-from RadarDataSim.utilFunctions import readconfigfile
+from .IonoContainer import IonoContainer
+from .radarData import RadarDataFile
+import specfunctions as specfuncs
+from .specfunctions import ISRSfitfunction
+from .fitterMethodGen import Fitterionoconainer
+from .utilFunctions import readconfigfile
 from .operators import RadarSpaceTimeOperator
 
 #%% Make spectrums
@@ -315,7 +315,7 @@ if __name__ == "__main__":
 
              python runsim.py -h
 
-             This script will run the RadarDataSim code. The user
+             This script will run the SimISR code. The user
              can run a number of different aspects including making data, fitting
              applying matrix formulation sof the space-time operator and calling
              inversion methods.

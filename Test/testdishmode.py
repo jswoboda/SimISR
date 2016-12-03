@@ -4,15 +4,15 @@ Created on Mon Nov  9 13:13:02 2015
 
 @author: John Swoboda
 """
-from RadarDataSim import Path
+from SimISR import Path
 import sys
 import scipy as sp
 import matplotlib
 matplotlib.use('Agg')
-from RadarDataSim.utilFunctions import makeconfigfile
-from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
-import RadarDataSim.runsim as runsim
-from RadarDataSim.analysisplots import analysisdump
+from SimISR.utilFunctions import makeconfigfile
+from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
+import SimISR.runsim as runsim
+from SimISR.analysisplots import analysisdump
 
 def configsetup(testpath):
     """This function will make a pickle file used to configure the simulation.

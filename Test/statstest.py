@@ -5,16 +5,16 @@ This will create a number of data sets for statistical analysis. It'll then make
 statistics and histograms of the output parameters.
 @author: John Swoboda
 """
-from RadarDataSim import Path
+from SimISR import Path
 import scipy as sp
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pdb
-from RadarDataSim.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf,makeconfigfile
-from RadarDataSim.IonoContainer import IonoContainer
-from  RadarDataSim.runsim import main as runsim 
-from RadarDataSim.analysisplots import analysisdump,maketi
+from SimISR.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf,makeconfigfile
+from SimISR.IonoContainer import IonoContainer
+from  SimISR.runsim import main as runsim 
+from SimISR.analysisplots import analysisdump,maketi
 #from radarsystools.radarsystools import RadarSys
 PVALS = [1e11,2.1e3,1.1e3,0.]
 SIMVALUES = sp.array([[PVALS[0],PVALS[2]],[PVALS[0],PVALS[1]]])
@@ -267,12 +267,12 @@ def makedata(testpath):
 def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis','stats']):
     """ This function will call other functions to create the input data, config
         file and run the radar data sim. The path for the simulation will be 
-        created in the Testdata directory in the RadarDataSim module. The new
+        created in the Testdata directory in the SimISR module. The new
         folder will be called BasicTest. The simulation is a long pulse simulation
         will the desired number of pulses from the user.
         Inputs
             npulse - Number of pulses for the integration period, default==100.
-            functlist - The list of functions for the RadarDataSim to do.
+            functlist - The list of functions for the SimISR to do.
     """
     if plist is None:
         plist = sp.array([50,100,200,500,1000,2000,5000])

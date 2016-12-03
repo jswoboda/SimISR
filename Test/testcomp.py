@@ -4,7 +4,7 @@ Created on Wed Jul  1 10:29:20 2015
 
 @author: John Swoboda
 """
-from RadarDataSim import Path
+from SimISR import Path
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.interpolate as spinterp
@@ -13,10 +13,10 @@ import seaborn as sns
 sns.set_style("whitegrid")
 sns.set_context("notebook")
 
-from RadarDataSim.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf
+from SimISR.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 
-inifile= "/Users/Bodangles/Documents/Python/RadarDataSim/Testdata/PFISRExample.pickle"
+inifile= "/Users/Bodangles/Documents/Python/SimISR/Testdata/PFISRExample.pickle"
 
 def main():
 

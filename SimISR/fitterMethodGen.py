@@ -14,7 +14,7 @@ import scipy.optimize
 # My modules
 from .IonoContainer import IonoContainer#, makeionocombined
 from .utilFunctions import readconfigfile
-from RadarDataSim.specfunctions import ISRSfitfunction
+from .specfunctions import ISRSfitfunction
 
 def defaultparamsfunc(curlag,sensdict,simparams):
     return(curlag,sensdict,simparams)

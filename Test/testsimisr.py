@@ -6,12 +6,12 @@ in the command line and this should run.
 
 @author: John Swoboda
 """
-from RadarDataSim import Path
+from SimISR import Path
 import scipy as sp
-from RadarDataSim.utilFunctions import makeconfigfile
-from RadarDataSim.IonoContainer import IonoContainer, MakeTestIonoclass
-import RadarDataSim.runsim as runsim
-from RadarDataSim.analysisplots import analysisdump
+from SimISR.utilFunctions import makeconfigfile
+from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
+import SimISR.runsim as runsim
+from SimISR.analysisplots import analysisdump
 
 def configsetup(testpath):
     """This function will make a pickle file used to configure the simulation.

@@ -11,7 +11,7 @@ import scipy as sp
 from isrutilities.physConstants import v_C_0
 from .utilFunctions import readconfigfile
 from .IonoContainer import IonoContainer,makeionocombined
-from RadarDataSim.utilFunctions import spect2acf
+from .utilFunctions import spect2acf
 
 
 class RadarSpaceTimeOperator(object):

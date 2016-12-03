@@ -4,14 +4,14 @@ Created on Tue Oct 20 13:20:27 2015
 
 @author: John Swoboda
 """
-from RadarDataSim import Path
+from SimISR import Path
 import scipy as sp
 import shutil
-from RadarDataSim.utilFunctions import makedefaultfile
-from RadarDataSim.operators import makematPA
-from RadarDataSim.IonoContainer import MakeTestIonoclass
-from RadarDataSim.analysisplots import plotbeamparametersv2
-import RadarDataSim.runsim as runsim
+from SimISR.utilFunctions import makedefaultfile
+from SimISR.operators import makematPA
+from SimISR.IonoContainer import MakeTestIonoclass
+from SimISR.analysisplots import plotbeamparametersv2
+import SimISR.runsim as runsim
 
 
 
@@ -36,7 +36,7 @@ def main():
     configname = testpath/'config.ini'
     
     if not configname.is_file():
-        srcfile = curpath/'RadarDataSim'/'default.ini'
+        srcfile = curpath/'SimISR'/'default.ini'
         shutil.copy(str(srcfile),str(configname))
 
     # make the coordinates

@@ -9,8 +9,8 @@ data.
 import sys, getopt
 import numpy as np
 
-from RadarDataSim.const.physConstants import v_C_0, v_Boltz, v_electron_rcs, v_epsilon0,v_elemcharge
-import RadarDataSim.const.sensorConstants as sensconst
+from isrutilities.physConstants import v_C_0, v_Boltz, v_electron_rcs, v_epsilon0,v_elemcharge
+import isrutilities.sensorConstants as sensconst
 import pdb
 
 class RadarSys(object):

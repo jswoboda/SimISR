@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-This GUI can be used to create set up files for the RadarDataSim. The user can set up
+This GUI can be used to create set up files for the SimISR. The user can set up
 the parameters and set up the beam pattern. The user can also bring in an older setup
 file, change the settings and then save out a new version.
 
@@ -11,13 +11,13 @@ import tkFileDialog
 import pickBeams as pb
 import pdb
 import scipy as sp
-from RadarDataSim.utilFunctions import makeconfigfile,readconfigfile
+from SimISR.utilFunctions import makeconfigfile,readconfigfile
 
 class App():
 
     def __init__(self,root):
         self.root = root
-        self.root.title("RadarDataSim")
+        self.root.title("SimISR")
         # title
         self.titleframe = Frame(self.root)
         self.titleframe.grid(row=0,columnspan=3)
