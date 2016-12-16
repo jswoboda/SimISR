@@ -314,14 +314,15 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
             timeinflist = timeinflist+curtimes1
         time2intime[itn] = timeinflist
         time2file[itn] = flist1
-    nfig = int(sp.ceil(Nt*Nb*Np/9.0))
+    nfig = int(sp.ceil(Nt*Nb))
+    
     imcount = 0
     curfilenum = -1
     # Loop for the figures
     for i_fig in range(nfig):
         lines = [None]*2
         labels = [None]*2
-        (figmplf, axmat) = plt.subplots(3, 3,figsize=(20, 15), facecolor='w')
+        (figmplf, axmat) = plt.subplots(sp.ceil(Np/2), 2,figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         # loop that goes through each axis loops through each parameter, beam
         # then time.
