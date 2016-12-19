@@ -119,7 +119,7 @@ def spect2acf(omeg,spec,n=None):
     acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec,axes=-1),n,axis=-1),axes=-1)
     acf = acf/n
     dt = 1/(df*n)
-    tau = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*dt
+    tau = sp.arange(-sp.ceil(float(n-1)/2.),sp.floor(float(n-1)/2.)+1)*dt
     return tau, acf
 
 def acf2spect(tau,acf,n=None,initshift = False):
@@ -205,7 +205,7 @@ def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
     # The Gain  term.
     G = sp.sqrt(sp.sum(sp.conjugate(r1[:N+1])*lpc))
     Gvec= sp.r_[G,sp.zeros(N)]
-    Npnt = (N+1)*3
+    Npnt = (N+1)*3+lp
     # Create the noise vector and normalize
     xin = sp.random.randn(rep1,Npnt)+1j*sp.random.randn(rep1,Npnt)
     xinsum = sp.tile(sp.sqrt(sp.sum(xin.real**2+xin.imag**2,axis=1))[:,sp.newaxis],(1,Npnt))
