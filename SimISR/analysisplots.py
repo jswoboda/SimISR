@@ -599,9 +599,8 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
     tau1 = sp.arange(pulse.shape[-1])*ts
     
     
-    # Determine the inverse ACF stuff
-    if len(invacf)==0:
-        invacfbool = False
+    
+        
     if indisp:
         dirlist = [i.name for i in specsfiledir.glob('*.h5')]
         timelist = sp.array([float(i.split()[0]) for i in dirlist])
@@ -640,7 +639,25 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 tempin = tempin[sp.newaxis,:]
             ACFin[icn] = tempin
 
+            # Determine the inverse ACF stuff
+    if len(invacf)==0:
+        invacfbool = False
+    else:
+        invacfbool = True
+        invfile=maindir.joinpath('ACFInv','00lags'+invacf+'.h5')
+        Ionoacfinv=IonoContainer.readh5(str(invfile))
+        ACFinv = sp.zeros((Nloc,Nt,Ionoacfinv.Param_List.shape[-1])).astype(Ionoacfinv.Param_List.dtype)
 
+        for icn, ic in enumerate(coords):
+            if cartcoordsys:
+                tempin = Ionoacfinv.getclosest(ic,times)[0]
+            else:
+                tempin = Ionoacfinv.getclosestsphere(ic,times)[0]
+            if sp.ndim(tempin)==1:
+                tempin = tempin[sp.newaxis,:]
+            ACFinv[icn] = tempin
+
+        
     if fitdisp:
         Ionofit = IonoContainer.readh5(str(ffit))
         (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
@@ -656,15 +673,16 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 tempin = tempin[sp.newaxis,:]
             specfit[icn] = tempin/npts/npts
 
-    nfig = int(sp.ceil(Nt*Nloc/6.0))
+    nfig = int(sp.ceil(Nt*Nloc/3))
     imcount = 0
 
     for i_fig in range(nfig):
-        lines = [None]*6
-        labels = [None]*6
-        (figmplf, axmat) = plt.subplots(2, 3,figsize=(24, 18), facecolor='w')
-        axvec = axmat.flatten()
-        for iax,ax in enumerate(axvec):
+        lines = [None]*3
+        labels = [None]*3
+        lines_im = [None]*3
+        labels_im = [None]*3
+        (figmplf, axmat) = plt.subplots(3, 2,figsize=(24, 18), facecolor='w')
+        for ax in axmat:
             if imcount>=Nt*Nloc:
                 break
             iloc = int(sp.floor(imcount/Nt))
@@ -687,10 +705,10 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 maxvec.append(guess_acf.imag.max())
                 minvec.append(acf1.real.min())
                 minvec.append(acf1.imag.min())
-                lines[0]= ax.plot(tau1*1e6,guess_acf.real,label='Input',linewidth=5)[0]
+                lines[0]= ax[0].plot(tau1*1e6,guess_acf.real,label='Input',linewidth=5)[0]
                 labels[0] = 'Input ACF With Ambiguity Applied Real'
-                lines[1]= ax.plot(tau1*1e6,guess_acf.imag,label='Input',linewidth=5)[0]
-                labels[1] = 'Input ACF With Ambiguity Applied Imag'
+                lines_im[0]= ax[1].plot(tau1*1e6,guess_acf.imag,label='Input',linewidth=5)[0]
+                labels_im[0] = 'Input ACF With Ambiguity Applied Imag'
 
             if fitdisp:
                 curinfit = specfit[iloc,itime]
@@ -699,31 +717,37 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
                 guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
 
-                lines[2]= ax.plot(tau1*1e6,guess_acffit.real,label='Input',linewidth=5)[0]
-                labels[2] = 'Fitted ACF real'
-                lines[3]= ax.plot(tau1*1e6,guess_acffit.imag,label='Input',linewidth=5)[0]
-                labels[3] = 'Fitted ACF Imag'
+                lines[1]= ax[0].plot(tau1*1e6,guess_acffit.real,label='Input',linewidth=5)[0]
+                labels[1] = 'Fitted ACF real'
+                lines_im[1]= ax[1].plot(tau1*1e6,guess_acffit.imag,label='Input',linewidth=5)[0]
+                labels_im[1] = 'Fitted ACF Imag'
             if acfdisp:
-                lines[4]=ax.plot(tau1*1e6,ACFin[iloc,itime].real,label='Output',linewidth=5)[0]
-                labels[4] = 'Estimated ACF Real'
-                lines[5]=ax.plot(tau1*1e6,ACFin[iloc,itime].imag,label='Output',linewidth=5)[0]
-                labels[5] = 'Estimated ACF Imag'
+                lines[2]=ax[0].plot(tau1*1e6,ACFin[iloc,itime].real,label='Output',linewidth=5)[0]
+                labels[2] = 'Estimated ACF Real'
+                lines_im[2]=ax[1].plot(tau1*1e6,ACFin[iloc,itime].imag,label='Output',linewidth=5)[0]
+                labels_im[2] = 'Estimated ACF Imag'
 
                 maxvec.append(ACFin[iloc,itime].real.max())
                 maxvec.append(ACFin[iloc,itime].imag.max())
                 minvec.append(ACFin[iloc,itime].real.min())
                 minvec.append(ACFin[iloc,itime].imag.min())
             if invacfbool:
-                ACFinv = invacfs[iloc,itime]
-                lines[6]=ax.plot(tau1*1e6,ACFinv[iloc,itime].real,label='Output',linewidth=5)[0]
-                labels[6] = 'Reconstructed ACF Real'
-                lines[7]=ax.plot(tau1*1e6,ACFinv[iloc,itime].imag,label='Output',linewidth=5)[0]
-                labels[8] = 'Reconstructed ACF Imag'
-            ax.set_xlabel('t in us')
-            ax.set_ylabel('Amp')
-            ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
-            ax.set_ylim(min(minvec),max(maxvec)*1)
-            ax.set_xlim([tau1.min()*1e6,tau1.max()*1e6])
+                
+                lines[3]=ax[0].plot(tau1*1e6,ACFinv[iloc,itime].real,label='Output',linewidth=5)[0]
+                labels[3] = 'Reconstructed ACF Real'
+                lines_im[3]=ax[1].plot(tau1*1e6,ACFinv[iloc,itime].imag,label='Output',linewidth=5)[0]
+                labels_im[3] = 'Reconstructed ACF Imag'
+            ax[0].set_xlabel('t in us')
+            ax[0].set_ylabel('Amp')
+            ax[0].set_title('Real Part Location {0}, Time {1}'.format(coords[iloc],times[itime]))
+            ax[0].set_ylim(min(minvec),max(maxvec)*1)
+            ax[0].set_xlim([tau1.min()*1e6,tau1.max()*1e6])
+            
+            ax[1].set_xlabel('t in us')
+            ax[1].set_ylabel('Amp')
+            ax[1].set_title('Imag Part Location {0}, Time {1}'.format(coords[iloc],times[itime]))
+            ax[1].set_ylim(min(minvec),max(maxvec)*1)
+            ax[1].set_xlim([tau1.min()*1e6,tau1.max()*1e6])
             imcount=imcount+1
         figmplf.suptitle(suptitle, fontsize=20)
         if None in labels:
