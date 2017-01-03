@@ -562,7 +562,7 @@ def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,a
         plt.close(figmplf)
 
 def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
-             fitdisp=True, filetemplate='acf',suptitle = 'ACF Comparison'):
+             fitdisp=True, filetemplate='acf',suptitle = 'ACF Comparison',invacf=''):
     """ This will create a set of images that compare the input ISR acf to the
         output ISR acfs from the simulator.
         Inputs
@@ -597,6 +597,11 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
     pulse = simparams['Pulse']
     ts = sensdict['t_s']
     tau1 = sp.arange(pulse.shape[-1])*ts
+    
+    
+    # Determine the inverse ACF stuff
+    if len(invacf)==0:
+        invacfbool = False
     if indisp:
         dirlist = [i.name for i in specsfiledir.glob('*.h5')]
         timelist = sp.array([float(i.split()[0]) for i in dirlist])
@@ -708,6 +713,12 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 maxvec.append(ACFin[iloc,itime].imag.max())
                 minvec.append(ACFin[iloc,itime].real.min())
                 minvec.append(ACFin[iloc,itime].imag.min())
+            if invacfbool:
+                ACFinv = invacfs[iloc,itime]
+                lines[6]=ax.plot(tau1*1e6,ACFinv[iloc,itime].real,label='Output',linewidth=5)[0]
+                labels[6] = 'Reconstructed ACF Real'
+                lines[7]=ax.plot(tau1*1e6,ACFinv[iloc,itime].imag,label='Output',linewidth=5)[0]
+                labels[8] = 'Reconstructed ACF Imag'
             ax.set_xlabel('t in us')
             ax.set_ylabel('Amp')
             ax.set_title('Location {0}, Time {1}'.format(coords[iloc],times[itime]))
