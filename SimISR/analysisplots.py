@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import scipy as sp
 import scipy.fftpack as scfft
-
+import pdb
 import numpy as np
 import seaborn as sns
 
@@ -673,15 +673,14 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 tempin = tempin[sp.newaxis,:]
             specfit[icn] = tempin/npts/npts
 
-    nfig = int(sp.ceil(Nt*Nloc/3))
+    nfig = int(sp.ceil(Nt*Nloc/3.))
     imcount = 0
-
     for i_fig in range(nfig):
-        lines = [None]*3
-        labels = [None]*3
-        lines_im = [None]*3
-        labels_im = [None]*3
-        (figmplf, axmat) = plt.subplots(3, 2,figsize=(24, 18), facecolor='w')
+        lines = [None]*4
+        labels = [None]*4
+        lines_im = [None]*4
+        labels_im = [None]*4
+        (figmplf, axmat) = plt.subplots(3, 2,figsize=(16, 12), facecolor='w')
         for ax in axmat:
             if imcount>=Nt*Nloc:
                 break
@@ -695,7 +694,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 # apply ambiguity funciton to spectrum
                 curin = specin[iloc,itime]
                 (tau,acf) = spect2acf(omeg,curin)
-                acf1 = scfft.ifftshift(acf)[:len(pulse)]
+                acf1 = scfft.ifftshift(acf)[:len(pulse)]*len(curin)
                 rcs=acf1[0].real
                 guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
                 guess_acf = guess_acf*rcs/guess_acf[0].real
@@ -706,9 +705,9 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 minvec.append(acf1.real.min())
                 minvec.append(acf1.imag.min())
                 lines[0]= ax[0].plot(tau1*1e6,guess_acf.real,label='Input',linewidth=5)[0]
-                labels[0] = 'Input ACF With Ambiguity Applied Real'
+                labels[0] = 'Input ACF With Ambiguity Applied'
                 lines_im[0]= ax[1].plot(tau1*1e6,guess_acf.imag,label='Input',linewidth=5)[0]
-                labels_im[0] = 'Input ACF With Ambiguity Applied Imag'
+                labels_im[0] = 'Input ACF With Ambiguity Applied'
 
             if fitdisp:
                 curinfit = specfit[iloc,itime]
@@ -716,16 +715,16 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 rcsfit=curinfit.sum()
                 guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
                 guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
-
+                
                 lines[1]= ax[0].plot(tau1*1e6,guess_acffit.real,label='Input',linewidth=5)[0]
-                labels[1] = 'Fitted ACF real'
+                labels[1] = 'Fitted ACF'
                 lines_im[1]= ax[1].plot(tau1*1e6,guess_acffit.imag,label='Input',linewidth=5)[0]
-                labels_im[1] = 'Fitted ACF Imag'
+                labels_im[1] = 'Fitted ACF'
             if acfdisp:
                 lines[2]=ax[0].plot(tau1*1e6,ACFin[iloc,itime].real,label='Output',linewidth=5)[0]
-                labels[2] = 'Estimated ACF Real'
+                labels[2] = 'Estimated ACF'
                 lines_im[2]=ax[1].plot(tau1*1e6,ACFin[iloc,itime].imag,label='Output',linewidth=5)[0]
-                labels_im[2] = 'Estimated ACF Imag'
+                labels_im[2] = 'Estimated ACF'
 
                 maxvec.append(ACFin[iloc,itime].real.max())
                 maxvec.append(ACFin[iloc,itime].imag.max())
@@ -734,18 +733,18 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
             if invacfbool:
                 
                 lines[3]=ax[0].plot(tau1*1e6,ACFinv[iloc,itime].real,label='Output',linewidth=5)[0]
-                labels[3] = 'Reconstructed ACF Real'
+                labels[3] = 'Reconstructed ACF'
                 lines_im[3]=ax[1].plot(tau1*1e6,ACFinv[iloc,itime].imag,label='Output',linewidth=5)[0]
-                labels_im[3] = 'Reconstructed ACF Imag'
-            ax[0].set_xlabel('t in us')
+                labels_im[3] = 'Reconstructed ACF'
+            ax[0].set_xlabel(r'$\tau$ in $\mu$s')
             ax[0].set_ylabel('Amp')
-            ax[0].set_title('Real Part Location {0}, Time {1}'.format(coords[iloc],times[itime]))
+            ax[0].set_title('Real Part')# Location {0}, Time {1}'.format(coords[iloc],times[itime]))
             ax[0].set_ylim(min(minvec),max(maxvec)*1)
             ax[0].set_xlim([tau1.min()*1e6,tau1.max()*1e6])
             
-            ax[1].set_xlabel('t in us')
+            ax[1].set_xlabel(r'$\tau$ in $\mu$s')
             ax[1].set_ylabel('Amp')
-            ax[1].set_title('Imag Part Location {0}, Time {1}'.format(coords[iloc],times[itime]))
+            ax[1].set_title('Imag Part')# Location {0}, Time {1}'.format(coords[iloc],times[itime]))
             ax[1].set_ylim(min(minvec),max(maxvec)*1)
             ax[1].set_xlim([tau1.min()*1e6,tau1.max()*1e6])
             imcount=imcount+1
@@ -755,7 +754,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
             lines.remove(None)
         plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
         fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
-        plt.savefig(fname)
+        plt.savefig(fname,dpi=300)
         plt.close(figmplf)
 
 def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png',n=None):
