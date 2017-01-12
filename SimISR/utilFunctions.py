@@ -508,7 +508,7 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
         simparams_orig - A set of simulation parameters in a dictionary."""
     fname = Path(fname).expanduser()
 
-    curpath = Path(__file__).parent
+    curpath = Path(__file__).resolve().parent
     d_file = curpath/'default.ini'
     fext = fname.suffix
     # reduce the number of stuff needed to be saved and avoid problems with writing

@@ -223,7 +223,7 @@ def configfilesetup(testpath,npulses):
             npulses - The number of pulses. 
     """
     
-    curloc = Path(__file__).parent
+    curloc = Path(__file__).resolve().parent
     defcon = curloc.joinpath('statsbase.ini')
     
     (sensdict,simparams) = readconfigfile(defcon)
@@ -278,7 +278,7 @@ def main(plist = None,functlist = ['spectrums','radardata','fitting','analysis',
         plist = sp.array([50,100,200,500,1000,2000,5000])
     if isinstance(plist,list):
         plist=sp.array(plist)
-    curloc = Path(__file__).parent
+    curloc = Path(__file__).resolve().parent
     testpath=curloc.parent.joinpath('Testdata','StatsTest')
     
     testpath.mkdir(exist_ok=True,parents=True)

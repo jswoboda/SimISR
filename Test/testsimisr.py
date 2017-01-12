@@ -89,7 +89,7 @@ def main():
     """This function will run the test simulation buy first making a simple set of
     ionospheric parameters based off of a Chapman function. Then it will create configuration
     and start files followed by running the simulation."""
-    curpath = Path(__file__).parent
+    curpath = Path(__file__).resolve().parent
     testpath = curpath.parent/'Testdata'/'Long_Pulse'
     origparamsdir = testpath/'Origparams'
     

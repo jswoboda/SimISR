@@ -21,7 +21,7 @@ def configfilesetup(testpath,npulses):
             npulses - The number of pulses. 
     """
     testpath=Path(testpath).expanduser()
-    curloc = Path(__file__).parent
+    curloc = Path(__file__).resolve().parent
     defcon = curloc/'statsbase.ini'
     
     (sensdict,simparams) = readconfigfile(defcon)
@@ -87,8 +87,8 @@ def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis'
     """
     
         
-    curloc = Path(__file__).parent
-    testpath = curloc.parent/'Testdata'/'BasicTest'
+    curloc = Path(__file__).resolve()
+    testpath = curloc.parent.parent/'Testdata'/'BasicTest'
     if not testpath.is_dir():
         testpath.mkdir(parents=True)
         

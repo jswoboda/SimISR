@@ -17,7 +17,7 @@ import SimISR.runsim as runsim
 
 def main():
 
-    curpath = Path(__file__).expanduser().parents[1]
+    curpath = Path(__file__).resolve().parents[1]
     print(curpath)
     testpath = curpath/'Testdata'/'MatrixTest'
     origparamsdir = testpath/'Origparams'

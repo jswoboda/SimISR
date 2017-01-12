@@ -4,13 +4,14 @@ Created on Tue May  5 17:16:51 2015
 
 @author: John Swoboda
 """
+from SimISR import Path
 import scipy as sp
-from SimISR.utilFunctions import makepicklefile, GenBarker
+from SimISR.utilFunctions import readconfigfile,makeconfigfile, GenBarker
 from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
 import SimISR.runsim as runsim
 from SimISR.analysisplots import analysisdump
-
-def makeconfigfile(testpath):
+import pdb
+def makeconfigfilebarker(testpath):
     testpath = Path(testpath).expanduser()
 
     beamlist = [64094,64091,64088,64085,64082,64238,64286,64070,64061,64058,64055,64052,
@@ -24,11 +25,15 @@ def makeconfigfile(testpath):
     IPP = .0087
     NNs = 28
     NNp = 100
+    t_s=2e-5
+    Pulselength=len(pulse)*t_s
     simparams =   {'IPP':IPP,
                    'TimeLim':time_lim,
                    'RangeLims':rng_lims,
                    'Pulse':pulse,
                    'Pulsetype':'barker',
+                   'Pulselength':Pulselength,
+                   't_s':t_s,
                    'Tint':Tint,
                    'Fitinter':Tint,
                    'NNs': NNs,
@@ -37,11 +42,12 @@ def makeconfigfile(testpath):
                    'ambupsamp':30,
                    'species':['O+','e-'],
                    'numpoints':128,
-                   'startfile':os.path.join(testpath,'startdata.h5')}
+                   'FitType':'acf',
+                   'startfile':str(testpath.joinpath('startdata.h5'))}
 
-    fn = testpath/'PFISRExample.pickle'
-
-    makepicklefile(fn,beamlist,radarname,simparams)
+    fn = testpath/'PFISRExample.ini'
+    
+    makeconfigfile(str(fn),beamlist,radarname,simparams)
 
 def makeinputh5(Iono,basedir):
     basedir = Path(basedir).expanduser()
@@ -72,26 +78,26 @@ def makeinputh5(Iono,basedir):
     Ionoout.saveh5(str(ofn))
 
 def main():
-    curpath = Path(__file__).parent
-    testpath = curpath/'Testdata'/'Barker'
+    curloc = Path(__file__).resolve()
+    testpath = curloc.parent.parent/'Testdata'/'Barker'
     origparamsdir = testpath/'Origparams'
-
+    pdb.set_trace()
     testpath.mkdir(exist_ok=True,parents=True)
     print("Making a path for testdata at {}".format(testpath))
         
     origparamsdir.mkdir(exist_ok=True,parents=True)
     print("Making a path for testdata at {}".format(origparamsdir))
-#    makeconfigfile(testpath)
+    makeconfigfilebarker(testpath)
 
 
     Icont1 = MakeTestIonoclass(testv=True,testtemp=False,N_0=1e12,z_0=150.0,H_0=50.0)
-    makeinputh5(Icont1,testpath)
-    Icont1.saveh5(os.path.join(origparamsdir,'0 testiono.h5'))
+    makeinputh5(Icont1,str(testpath))
+    Icont1.saveh5(str(origparamsdir.joinpath('0 testiono.h5')))
     funcnamelist=['spectrums','radardata','fitting']
 
-    failflag=runsim.main(funcnamelist,testpath,os.path.join(testpath,'PFISRExample.pickle'),True)
+    failflag=runsim.main(funcnamelist,testpath,str(testpath.joinpath('barkertest.ini')),True)
     if not failflag:
-        analysisdump(testpath,os.path.join(testpath,'PFISRExample.pickle'))
+        analysisdump(testpath,testpath.joinpath('barkertest.ini'))
 if __name__== '__main__':
 
     main()
