@@ -12,7 +12,7 @@ from ISRSpectrum.ISRSpectrum import ISRSpectrum
 from .utilFunctions import  spect2acf
 
 
-def ISRSspecmake(ionocont,sensdict,npts):
+def ISRSspecmake(ionocont,sensdict,npts,print_line=True):
     """ This function will take an ionocontainer instance of plasma parameters and create
         ISR spectra for each object.
 
@@ -45,7 +45,8 @@ def ISRSspecmake(ionocont,sensdict,npts):
     #pdb.set_trace()
     for i_x in sp.arange(N_x):
         for i_t in sp.arange(N_t):
-            print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t,N_t,i_x,N_x))
+            if print_line:
+                print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t,N_t,i_x,N_x))
 
             if full_grid:
                 cur_params = ionocont.Param_List[i_x,i_t]

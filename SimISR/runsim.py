@@ -34,7 +34,7 @@ from .utilFunctions import readconfigfile
 from .operators import RadarSpaceTimeOperator
 
 #%% Make spectrums
-def makespectrums(basedir,configfile,remakealldata):
+def makespectrums(basedir,configfile,printlines=True):
     """ This will make all of the spectra for a set of data and save it in a
     folder in basedir called Spectrums. It is assumed that the data in the Origparams
     is time tagged in the title with a string seperated by a white space and the
@@ -65,7 +65,7 @@ def makespectrums(basedir,configfile,remakealldata):
         curiono = IonoContainer.readh5(str(curfile))
 
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake,sensdict,
-                                     simparams['numpoints']).saveh5(str(outfile))
+                                     simparams['numpoints'],printlines).saveh5(str(outfile))
         print('Finished file {} starting at {}\n'.format(curfile.name ,datetime.now()))
 
 #%% Make Radar Data
@@ -124,6 +124,7 @@ def fitdata(basedir,configfile,optinputs):
     fitlist=optinputs[1]
     if len(optinputs)>2:
         exstr=optinputs[2]
+        printlines=optinputs[3]
     else:
         exstr=''
     dirlist = [str(i) for i in inputdir.glob('*lags{0}.h5'.format(exstr))]
@@ -136,7 +137,7 @@ def fitdata(basedir,configfile,optinputs):
         Ionoinsig=IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
 
-    (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,fitterone.simparams['startfile'],fittimes=fitlist)
+    (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,fitterone.simparams['startfile'],fittimes=fitlist,printlines=printlines)
 
 
     if fitterone.simparams['Pulsetype'].lower() == 'barker':
@@ -207,7 +208,7 @@ def ke(item):
     else:
         return float('inf')
 #%% Main function
-def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
+def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype='',printlines=True):
     """ Main function for this module. The function will set up the directory
     structure, create or update a diary file and run the simulation depending
     on the user input.
@@ -244,6 +245,9 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
         remakealldata: A bool to determine if the raw radar data will be remade. If
                 this is False the radar data will only be made if it does
                 not exist in the file first.
+        fitlist:  A list of time entries that will be fit.
+        
+        invtype
 
     """
 
@@ -277,9 +281,11 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype=''):
             f.write(curfunc.__name__+'\n')
             f.write(time.asctime()+'\n')
             if curfunc.__name__=='fitdata':
-                ex_inputs=[curfuncn,fitlist,invtype]
-            else:
+                ex_inputs=[curfuncn,fitlist,invtype,printlines]
+            elif curfunc.__name__=='makeradardata':
                 ex_inputs = remakealldata
+            else:
+                ex_inputs=printlines
             try:
                 stime = datetime.now()
                 curfunc(basedir,configfile,ex_inputs)
