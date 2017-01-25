@@ -6,7 +6,8 @@ file, change the settings and then save out a new version.
 
 @author: Greg Starr
 """
-from Tkinter import *
+#from Tkinter import *
+import Tkinter as Tk
 import tkFileDialog
 import pickBeams as pb
 import pdb
@@ -19,137 +20,137 @@ class App():
         self.root = root
         self.root.title("SimISR")
         # title
-        self.titleframe = Frame(self.root)
+        self.titleframe = Tk.Frame(self.root)
         self.titleframe.grid(row=0,columnspan=3)
-        self.menubar = Menu(self.titleframe)
+        self.menubar = Tk.Menu(self.titleframe)
         # filemenu stuff
-        self.filemenu = Menu(self.menubar, tearoff=0)
+        self.filemenu = Tk.Menu(self.menubar, tearoff=0)
         self.filemenu.add_command(label="Load", command=self.loadfile)
         self.filemenu.add_command(label="Save", command=self.savefile)
         self.menubar.add_cascade(label="File", menu=self.filemenu)
         self.root.config(menu=self.menubar)
         # frame label
-        self.frame = LabelFrame(self.root, text="Sim Params", padx=5, pady=5)
+        self.frame = Tk.LabelFrame(self.root, text="Sim Params", padx=5, pady=5)
         self.frame.grid(row=1,column=0, sticky="e")
         #Gui label
-        self.leb = Label(self.titleframe, text="Radar Data Sim GUI",font=("Helvetica", 16))
+        self.leb = Tk.Label(self.titleframe, text="Radar Data Sim GUI",font=("Helvetica", 16))
         self.leb.grid()
 
         rown = 4
         #IPP stuff
-        self.ipp = Entry(self.frame)
+        self.ipp = Tk.Entry(self.frame)
         self.ipp.grid(row=rown,column=1)
-        self.ipplabel = Label(self.frame,text="IPP (sec)")
+        self.ipplabel = Tk.Label(self.frame,text="IPP (sec)")
         self.ipplabel.grid(row=rown,column=0)
         rown+=1
         # Range limits
-        self.rangelimlow = Entry(self.frame)
-        self.rangelimhigh = Entry(self.frame)
+        self.rangelimlow = Tk.Entry(self.frame)
+        self.rangelimhigh = Tk.Entry(self.frame)
         self.rangelimlow.grid(row=rown,column=1)
         self.rangelimhigh.grid(row=rown,column=2)
-        self.rangelabel = Label(self.frame,text="Range Gate Limits (km)")
+        self.rangelabel = Tk.Label(self.frame,text="Range Gate Limits (km)")
         self.rangelabel.grid(row=rown)
         rown+=1
         # pulse length
-        self.pulselength = Entry(self.frame)
+        self.pulselength = Tk.Entry(self.frame)
         self.pulselength.grid(row=rown,column=1)
-        self.pulselengthlabel = Label(self.frame,text="Pulse Length (us)")
+        self.pulselengthlabel = Tk.Label(self.frame,text="Pulse Length (us)")
         self.pulselengthlabel.grid(row=rown)
         rown+=1
         # Sampling rate
-        self.t_s = Entry(self.frame)
+        self.t_s = Tk.Entry(self.frame)
         self.t_s.grid(row=rown,column=1)
-        self.t_slabel = Label(self.frame,text="Sampling Time (us)")
+        self.t_slabel = Tk.Label(self.frame,text="Sampling Time (us)")
         self.t_slabel.grid(row=rown)
         rown+=1
         # Pulse type update
-        self.pulsetype = StringVar()
+        self.pulsetype = Tk.StringVar()
         self.pulsetype.set("Long")
-        self.pulsetypelabel = Label(self.frame,text="Pulse Type")
+        self.pulsetypelabel = Tk.Label(self.frame,text="Pulse Type")
         self.pulsetypelabel.grid(row=rown)
-        self.pulsetypemenu = OptionMenu(self.frame, self.pulsetype,"Long","Barker",command=self.set_defaults)
+        self.pulsetypemenu = Tk.OptionMenu(self.frame, self.pulsetype,"Long","Barker",command=self.set_defaults)
         self.pulsetypemenu.grid(row=rown,column=1,sticky='w')
         rown+=1
         # Integration Time
-        self.tint = Entry(self.frame)
+        self.tint = Tk.Entry(self.frame)
         self.tint.grid(row=rown,column=1)
-        self.tintlabel = Label(self.frame,text="Integration time (s)")
+        self.tintlabel = Tk.Label(self.frame,text="Integration time (s)")
         self.tintlabel.grid(row=rown)
         rown+=1
         # Fitter time interval
-        self.fitinter = Entry(self.frame)
+        self.fitinter = Tk.Entry(self.frame)
         self.fitinter.grid(row=rown,column=1)
-        self.fitinterlabel = Label(self.frame,text="Time interval between fits (s)")
+        self.fitinterlabel = Tk.Label(self.frame,text="Time interval between fits (s)")
         self.fitinterlabel.grid(row=rown)
         rown+=1
         # Fitter time Limit
-        self.timelim = Entry(self.frame)
+        self.timelim = Tk.Entry(self.frame)
         self.timelim.grid(row=rown,column=1)
-        self.timelimlabel = Label(self.frame,text="Simulation Time limit (s)")
+        self.timelimlabel = Tk.Label(self.frame,text="Simulation Time limit (s)")
         self.timelimlabel.grid(row=rown)
         rown+=1
         # Number of noise samples per pulse
-        self.nns = Entry(self.frame)
+        self.nns = Tk.Entry(self.frame)
         self.nns.grid(row=rown,column=1)
-        self.nnslabel = Label(self.frame,text="noise samples per pulse")
+        self.nnslabel = Tk.Label(self.frame,text="noise samples per pulse")
         self.nnslabel.grid(row=rown)
         rown+=1
         # Number of noise pulses
         # XXX May get rid of this
-        self.nnp = Entry(self.frame)
+        self.nnp = Tk.Entry(self.frame)
         self.nnp.grid(row=rown,column=1)
-        self.nnplabel = Label(self.frame,text="number of noise pulses")
+        self.nnplabel = Tk.Label(self.frame,text="number of noise pulses")
         self.nnplabel.grid(row=rown)
         rown+=1
         # Data type
-        self.dtype = StringVar()
+        self.dtype = Tk.StringVar()
         self.dtype.set("complex128")
-        self.dtypelabel = Label(self.frame,text="Raw Data Type")
+        self.dtypelabel = Tk.Label(self.frame,text="Raw Data Type")
         self.dtypelabel.grid(row=rown)
-        self.dtypemenu = OptionMenu(self.frame, self.dtype,"complex64","complex128")
+        self.dtypemenu = Tk.OptionMenu(self.frame, self.dtype,"complex64","complex128")
         self.dtypemenu.grid(row=rown,column=1,sticky='w')
         rown+=1
         # Upsampling factor for the ambiguity funcition
         # XXX May get rid of this.
-        self.ambupsamp = Entry(self.frame)
+        self.ambupsamp = Tk.Entry(self.frame)
         self.ambupsamp.grid(row=rown,column=1)
-        self.ambupsamplabel = Label(self.frame,text="Up sampling factor for ambiguity function")
+        self.ambupsamplabel = Tk.Label(self.frame,text="Up sampling factor for ambiguity function")
         self.ambupsamplabel.grid(row=rown)
         rown+=1
         # Species
-        self.species = Entry(self.frame)
+        self.species = Tk.Entry(self.frame)
         self.species.grid(row=rown,column=1)
-        self.specieslabel = Label(self.frame,text="Species N2+, N+, O+, NO+, H+, O2+, e-")
+        self.specieslabel = Tk.Label(self.frame,text="Species N2+, N+, O+, NO+, H+, O2+, e-")
         self.specieslabel.grid(row=rown)
         rown+=1
         # Number of samples per spectrum
-        self.numpoints = Entry(self.frame)
+        self.numpoints = Tk.Entry(self.frame)
         self.numpoints.grid(row=rown,column=1)
-        self.numpointslabel = Label(self.frame,text="Number of Samples for Sectrum")
+        self.numpointslabel = Tk.Label(self.frame,text="Number of Samples for Sectrum")
         self.numpointslabel.grid(row=rown)
         rown+=1
         # Start file for set up
-        self.startfile = Entry(self.frame)
+        self.startfile = Tk.Entry(self.frame)
         self.startfile.grid(row=rown,column=1)
-        self.startfilelabel = Label(self.frame,text="Start File")
+        self.startfilelabel = Tk.Label(self.frame,text="Start File")
         self.startfilelabel.grid(row=rown)
         rown+=1
         # Fitting Type
-        self.fittype = StringVar()
+        self.fittype = Tk.StringVar()
         self.fittype.set("Spectrum")
-        self.fittypelabel = Label(self.frame,text="Fit type")
+        self.fittypelabel = Tk.Label(self.frame,text="Fit type")
         self.fittypelabel.grid(row=rown)
-        self.fittypemenu = OptionMenu(self.frame, self.fittype,"Spectrum","ACF")
+        self.fittypemenu = Tk.OptionMenu(self.frame, self.fittype,"Spectrum","ACF")
         self.fittypemenu.grid(row=rown,column=1,sticky='w')
         rown+=1
                 # outangles output
-        self.outangles = Entry(self.frame)
+        self.outangles = Tk.Entry(self.frame)
         self.outangles.grid(row=rown,column=1)
-        self.outangleslabel = Label(self.frame,text="Beam int together, seperated by commas")
+        self.outangleslabel = Tk.Label(self.frame,text="Beam int together, seperated by commas")
         self.outangleslabel.grid(row=rown)
 
         # Beam selector GUI
-        self.frame2 = LabelFrame(self.root,text="Beam Selector",padx=5,pady=5)
+        self.frame2 = Tk.LabelFrame(self.root,text="Beam Selector",padx=5,pady=5)
         self.frame2.grid(row=1,column=1, sticky="e")
 
         self.pickbeams = pb.Gui(self.frame2)
@@ -262,12 +263,12 @@ class App():
             for i in simparams:
                 try:
                     if i=='RangeLims':
-                        self.paramdic[i][0].delete(0,END)
-                        self.paramdic[i][1].delete(0,END)
+                        self.paramdic[i][0].delete(0,Tk.END)
+                        self.paramdic[i][1].delete(0,Tk.END)
                         self.paramdic[i][0].insert(0,str(simparams[i][0]))
                         self.paramdic[i][1].insert(0,str(simparams[i][1]))
                     elif i=='species':
-                        self.paramdic[i].delete(0,END)
+                        self.paramdic[i].delete(0,Tk.END)
                         string=''
                         if isinstance(simparams[i],list):
                             for a in simparams[i]:
@@ -277,14 +278,14 @@ class App():
                             string = simparams[i]
                         self.paramdic[i].insert(0,string)
                     elif i=='Pulselength' or i=='t_s':
-                        self.paramdic[i].delete(0,END)
+                        self.paramdic[i].delete(0,Tk.END)
                         num = float(simparams[i])*10**6
                         self.paramdic[i].insert(0,str(num))
                     elif i== 'FitType':
                         self.fittype = simparams[i]
                         fitnfound=False
                     else:
-                        self.paramdic[i].delete(0,END)
+                        self.paramdic[i].delete(0,Tk.END)
                         self.paramdic[i].insert(0,str(simparams[i]))
                 except:
                     if simparams[i]==sp.complex128:
@@ -306,12 +307,12 @@ class App():
 
 def runsetupgui():
 
-    root = Tk()
+    root = Tk.Tk()
     app = App(root)
     root.mainloop()
 
 if __name__ == "__main__":
 
-    root = Tk()
+    root = Tk.Tk()
     app = App(root)
     root.mainloop()

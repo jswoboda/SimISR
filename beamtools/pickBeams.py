@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import tables
 from beamfuncs import BeamSelector
 import pdb
+from isrutilities.sensorConstants import get_files
 
 def rect(r, w, deg=1):
     # radian if deg=0; degree if deg=1
@@ -88,10 +89,10 @@ class Gui():
 
         self.var = Tkinter.StringVar()
         self.var.set("PFISR")
-        self.choices = {"PFISR":os.path.join(constpath,'PFISR_PARAMS.h5'),
-                        "RISR-N":os.path.join(constpath,'RISR_PARAMS.h5'),
-                        "Sondrestrom":os.path.join(constpath,'Sondrestrom_PARAMS.h5'),
-                        "Millstone":os.path.join(constpath,'Millstone_PARAMS.h5')}#, "RISR-S":'file3'}
+        self.choices = {"PFISR":get_files('PFISR_PARAMS.h5'),
+                        "RISR-N":get_files('RISR_PARAMS.h5'),
+                        "Sondrestrom":get_files('Sondrestrom_PARAMS.h5'),
+                        "Millstone":get_files('Millstone_PARAMS.h5')}#, "RISR-S":'file3'}
         self.option = Tkinter.OptionMenu(self.frame1, self.var, *self.choices)
         self.option.grid(row=1,column=0,sticky='w')
         hfile=tables.open_file(self.choices[self.var.get()])
