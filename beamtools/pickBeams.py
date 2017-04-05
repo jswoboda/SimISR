@@ -295,7 +295,7 @@ class Gui():
             try:
                 inputnums.append(float(iin))
             except:
-                inputnums.append(maxmin(i))
+                inputnums.append(maxmin[i])
 
 
         alldata = self.lines

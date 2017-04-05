@@ -62,7 +62,7 @@ class RadarDataFile(object):
        NNs = int(self.simparams['NNs'])
        self.sensdict = sensdict
        Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
-       Npall = sp.floor(Npall/N_angles)*N_angles
+       Npall = int(sp.floor(Npall/N_angles)*N_angles)
        Np = Npall/N_angles
 
        print("All spectrums created already")

@@ -44,7 +44,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     nlags = len(pulse)
     # make the sinc
     nsamps = sp.floor(8.5*m_up)
-    nsamps = nsamps-(1-sp.mod(nsamps,2))
+    nsamps = int(nsamps-(1-sp.mod(nsamps,2)))
     # need to incorporate summation rule
     vol = 1.
     nvec = sp.arange(-sp.floor(nsamps/2.0),sp.floor(nsamps/2.0)+1)
@@ -341,7 +341,7 @@ def makepulse(ptype,plen,ts):
             pulse - The pulse array that will be used as the window in the data formation.
             plen - The length of the pulse with the sampling time taken into account.
     """
-    nsamps = sp.floor(plen/ts)
+    nsamps = int(sp.floor(plen/ts))
 
     if ptype.lower()=='long':
         pulse = sp.ones(nsamps)
@@ -700,7 +700,13 @@ def readconfigfile(fname):
     if ('startfile' in simparams.keys() and len(simparams['startfile']) >0 )and simparams['Pulsetype'].lower()!='barker':
         relpath = Path(simparams['startfile'])
         if not relpath.is_absolute():
-            fullfilepath = curpath.joinpath(simparams['startfile'])
+            # Some times the ini files may split the strings of the start file because of white space in file names.
+            if type(simparams['startfile'])is list:
+                startfile=" ".join(simparams['startfile'])
+            else:
+                startfile=simparams['startfile']
+                
+            fullfilepath = curpath.joinpath(startfile)
             simparams['startfile'] = str(fullfilepath)
             
         else:
