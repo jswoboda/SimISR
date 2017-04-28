@@ -288,7 +288,7 @@ class IonoContainer(object):
         filename=Path(filename)
         if filename.is_file():
             filename.unlink()
-            
+
 
         vardict = vars(self)
 
@@ -855,7 +855,6 @@ def main():
     else:
         print("Something is wrong with the h5 file writing and reading")
     #%% Main
-if __name__== '__main__':
+if __name__ == '__main__':
 
-
-   main()
+    main()

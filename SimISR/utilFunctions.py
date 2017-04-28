@@ -4,7 +4,6 @@ Created on Tue Jul 22 16:18:21 2014
 
 @author: Bodangles
 """
-from . import Path
 import warnings
 import pickle
 import yaml
@@ -19,9 +18,32 @@ import pdb
 from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
 from beamtools.bcotools import getangles
-
+from . import Path
 
 # utility functions
+
+# update_progress() : Displays or updates a console progress bar
+## Accepts a float between 0 and 1. Any int will be converted to a float.
+## A value under 0 represents a 'halt'.
+## A value at 1 or bigger represents 100%
+def update_progress(progress):
+    barLength = 100 # Modify this to change the length of the progress bar
+    status = ""
+    if isinstance(progress, int):
+        progress = float(progress)
+    if not isinstance(progress, float):
+        progress = 0
+        status = "error: progress var must be float\r\n"
+    if progress < 0:
+        progress = 0
+        status = "Halt...\r\n"
+    if progress >= 1:
+        progress = 1
+        status = "Done...\r\n"
+    block = int(round(barLength*progress))
+    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    sys.stdout.write(text)
+    sys.stdout.flush()
 def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     """ Make the ambiguity function dictionary that holds the lag ambiguity and
     range ambiguity. Uses a sinc function weighted by a blackman window. Currently
@@ -605,7 +627,7 @@ def readconfigfile(fname):
     fname = Path(fname).expanduser()
     if not fname.is_file():
         raise IOError('{0} not found'.format(str(fname)))
-    
+
     ftype = fname.suffix
     curpath = fname.parent
     if ftype=='.pickle':
@@ -705,10 +727,10 @@ def readconfigfile(fname):
                 startfile=" ".join(simparams['startfile'])
             else:
                 startfile=simparams['startfile']
-                
+
             fullfilepath = curpath.joinpath(startfile)
             simparams['startfile'] = str(fullfilepath)
-            
+
         else:
             fullfilepath=simparams['startfile']
         stext = Path(fullfilepath).is_file()
@@ -718,4 +740,3 @@ def readconfigfile(fname):
     elif simparams['Pulsetype'].lower()!='barker':
         warnings.warn('No start file given',UserWarning)
     return(sensdict,simparams)
-
