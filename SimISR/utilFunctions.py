@@ -4,6 +4,7 @@ Created on Tue Jul 22 16:18:21 2014
 
 @author: Bodangles
 """
+import sys
 import warnings
 import pickle
 import yaml
@@ -26,41 +27,55 @@ from . import Path
 ## Accepts a float between 0 and 1. Any int will be converted to a float.
 ## A value under 0 represents a 'halt'.
 ## A value at 1 or bigger represents 100%
-def update_progress(progress):
-    barLength = 100 # Modify this to change the length of the progress bar
+def update_progress(progress, extstr=""):
+    """
+        This will make a progress bar in the command line
+
+        Args:
+            progress (:obj:`float`): Proportion of progress on scale of 0 to one.
+            extstr (:obj:'str'): Extra string added to the progress bar.
+    """
+    bar_length = 100 # Modify this to change the length of the progress bar
     status = ""
     if isinstance(progress, int):
         progress = float(progress)
     if not isinstance(progress, float):
-        progress = 0
+        progress = 0.
         status = "error: progress var must be float\r\n"
-    if progress < 0:
-        progress = 0
+    if progress < 0.:
+        progress = 0.
         status = "Halt...\r\n"
     if progress >= 1:
-        progress = 1
+        progress = 1.
         status = "Done...\r\n"
-    block = int(round(barLength*progress))
-    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    block = int(round(bar_length*progress))
+    if  extstr != "":
+        status = status + '\n'+extstr
+    text = "\rPercent: [{0}] {1}% {2}".format("#"*block + "-"*(bar_length-block),
+                                              progress*100, status)
     sys.stdout.write(text)
     sys.stdout.flush()
+
 def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
-    """ Make the ambiguity function dictionary that holds the lag ambiguity and
-    range ambiguity. Uses a sinc function weighted by a blackman window. Currently
-    only set up for an uncoded pulse.
-    Inputs:
-        Fsorg: A scalar, the original sampling frequency in Hertz.
-        m_up: The upsampled ratio between the original sampling rate and the rate of
-        the ambiguity function up sampling.
-        plen: The length of the pulse in samples at the original sampling frequency.
-        nlags: The number of lags used.
-    Outputs:
-        Wttdict: A dictionary with the keys 'WttAll' which is the full ambiguity function
-        for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the
-        ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity
-        for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array
-        for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity
-        function on a pulses.
+    """
+        Make the ambiguity function dictionary that holds the lag ambiguity and
+        range ambiguity. Uses a sinc function weighted by a blackman window. Currently
+        only set up for an uncoded pulse.
+
+        Args:
+            Fsorg (:obj:`float`): A scalar, the original sampling frequency in Hertz.
+            m_up (:obj:`int`): The upsampled ratio between the original sampling rate and the rate of
+            the ambiguity function up sampling.
+            plen (:obj:`int`): The length of the pulse in samples at the original sampling frequency.
+            nlags (:obj:`int`): The number of lags used.
+            
+        Returns:
+            Wttdict (:obj:`dict`): A dictionary with the keys 'WttAll' which is the full ambiguity function
+            for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the
+            ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity
+            for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array
+            for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity
+            function on a pulses.
     """
     nspec = int(nspec)
     nlags = len(pulse)

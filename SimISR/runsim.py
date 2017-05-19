@@ -30,7 +30,7 @@ from .radarData import RadarDataFile
 import specfunctions as specfuncs
 from .specfunctions import ISRSfitfunction
 from .fitterMethodGen import Fitterionoconainer
-from .utilFunctions import readconfigfile
+from .utilFunctions import readconfigfile, update_progress
 from .operators import RadarSpaceTimeOperator
 
 #%% Make spectrums
@@ -61,12 +61,14 @@ def makespectrums(basedir,configfile,printlines=True):
     for inum, curfile in zip(timebeg,slist):
 
         outfile = outputdir / (str(inum)+' spectrum.h5')
-        print('Processing file {} starting at {}\n'.format(curfile.name ,datetime.now()))
+        update_progress(float(inum)/float(len(slist)),
+                        'Processing file {} starting at {}\n'.format(curfile.name ,datetime.now()))
         curiono = IonoContainer.readh5(str(curfile))
 
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake,sensdict,
                                      int(simparams['numpoints']),printlines).saveh5(str(outfile))
-        print('Finished file {} starting at {}\n'.format(curfile.name ,datetime.now()))
+        update_progress(float(inum+1)/float(len(slist)),
+                        'Finished file {} starting at {}\n'.format(curfile.name ,datetime.now()))
 
 #%% Make Radar Data
 def makeradardata(basedir,configfile,remakealldata):
@@ -87,7 +89,7 @@ def makeradardata(basedir,configfile,remakealldata):
     # Make the lists of numbers and file names for the dictionary
     if len(dirlist)>0:
         (listorder,timevector,filenumbering,timebeg,time_s) = IonoContainer.gettimes(dirlist)
-        
+
         Ionodict = {timebeg[itn]:dirlist[it] for itn, it in enumerate(listorder)}
     else:
         Ionodict = {0.:str(inputdir.joinpath('00.h5'))}
@@ -246,7 +248,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype='',p
                 this is False the radar data will only be made if it does
                 not exist in the file first.
         fitlist:  A list of time entries that will be fit.
-        
+
         invtype
 
     """
@@ -272,7 +274,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype='',p
 
     dfilename = 'diary'+funcname+'.txt'
     dfullfilestr = basedir/dfilename
-    
+
     with open(str(dfullfilestr),'a') as f:
         failure=False
         for curfuncn in funcnamelist:
