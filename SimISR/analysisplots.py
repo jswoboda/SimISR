@@ -315,7 +315,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
         time2intime[itn] = timeinflist
         time2file[itn] = flist1
     nfig = int(sp.ceil(Nt*Nb))
-    
+
     imcount = 0
     curfilenum = -1
     # Loop for the figures
@@ -387,10 +387,6 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
             # get and plot the input data
 
             numplots = len(time2file[itime])
-
-
-
-
 
             # set the limit for the parameter
             if curparm_in!='ne':
@@ -597,10 +593,10 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
     pulse = simparams['Pulse']
     ts = sensdict['t_s']
     tau1 = sp.arange(pulse.shape[-1])*ts
-    
-    
-    
-        
+
+
+
+
     if indisp:
         dirlist = [i.name for i in specsfiledir.glob('*.h5')]
         timelist = sp.array([float(i.split()[0]) for i in dirlist])
@@ -657,7 +653,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 tempin = tempin[sp.newaxis,:]
             ACFinv[icn] = tempin
 
-        
+
     if fitdisp:
         Ionofit = IonoContainer.readh5(str(ffit))
         (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
@@ -715,7 +711,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 rcsfit=curinfit.sum()
                 guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
                 guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
-                
+
                 lines[1]= ax[0].plot(tau1*1e6,guess_acffit.real,label='Input',linewidth=5)[0]
                 labels[1] = 'Fitted ACF'
                 lines_im[1]= ax[1].plot(tau1*1e6,guess_acffit.imag,label='Input',linewidth=5)[0]
@@ -731,7 +727,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 minvec.append(ACFin[iloc,itime].real.min())
                 minvec.append(ACFin[iloc,itime].imag.min())
             if invacfbool:
-                
+
                 lines[3]=ax[0].plot(tau1*1e6,ACFinv[iloc,itime].real,label='Output',linewidth=5)[0]
                 labels[3] = 'Reconstructed ACF'
                 lines_im[3]=ax[1].plot(tau1*1e6,ACFinv[iloc,itime].imag,label='Output',linewidth=5)[0]
@@ -741,7 +737,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
             ax[0].set_title('Real Part')# Location {0}, Time {1}'.format(coords[iloc],times[itime]))
             ax[0].set_ylim(min(minvec),max(maxvec)*1)
             ax[0].set_xlim([tau1.min()*1e6,tau1.max()*1e6])
-            
+
             ax[1].set_xlabel(r'$\tau$ in $\mu$s')
             ax[1].set_ylabel('Amp')
             ax[1].set_title('Imag Part')# Location {0}, Time {1}'.format(coords[iloc],times[itime]))
