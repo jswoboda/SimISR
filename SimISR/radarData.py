@@ -13,7 +13,7 @@ import pdb
 # My modules
 from .IonoContainer import IonoContainer
 from isrutilities.physConstants import v_C_0, v_Boltz
-from .utilFunctions import CenteredLagProduct,MakePulseDataRep, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag
+from .utilFunctions import CenteredLagProduct,MakePulseDataRep, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
 from . import specfunctions
 from .analysisplots import plotspecsgen
 
@@ -96,6 +96,7 @@ class RadarDataFile(object):
        self.datadir = outdir
        self.maindir = outdir.parent
        self.procdir = self.maindir/'ACF'
+       Nf = len(filetimes)
        if outfilelist is None:
             print('\nData Now being created.')
 
@@ -106,7 +107,7 @@ class RadarDataFile(object):
                 outdict = {}
                 ifile = Ionodict[ifilet]
                 ifilename = Path(ifile).name
-                print('\tData from {:d} of {:d} being processed Name: {:s}.'.format(ifn,len(filetimes),ifilename))
+                update_progress(float(ifn)/Nf, 'Data from {:d} of {:d} being processed Name: {:s}.'.format(ifn,Nf,ifilename))
                 curcontainer = IonoContainer.readh5(ifile)
                 if ifn==0:
                     self.timeoffset=curcontainer.Time_Vector[0,0]
@@ -310,7 +311,7 @@ class RadarDataFile(object):
 
         # For each time go through and read only the necisary files
         for itn,it in enumerate(timevec):
-            print("\tTime {0:d} of {1:d}".format(itn,Ntime))
+            update_progress(float(itn)/Ntime, "Time {0:d} of {1:d}".format(itn,Ntime))
             # do the book keeping to determine locations of data within the files
             cur_tlim = (it,it+inttime)
             curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
@@ -320,7 +321,7 @@ class RadarDataFile(object):
                 curfileloc_n = nfile_loc[curcases_n]
                 curfiles_n = set(curfileloc_n)
             if  not sp.any(curcases):
-                print("\tNo pulses for time {0:d} of {1:d}, lagdata adjusted accordinly".format(itn,Ntime))
+                update_progress(float(itn)/Ntime, "No pulses for time {0:d} of {1:d}, lagdata adjusted accordinly".format(itn, Ntime))
                 outdata = outdata[:itn]
                 outnoise = outnoise[:itn]
                 pulses=pulses[:itn]
@@ -373,7 +374,7 @@ class RadarDataFile(object):
             if self.sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
                 # After data is read in form lags for each beam
                 for ibeam in range(Nbeams):
-                    print("\t\tBeam {0:d} of {0:d}".format(ibeam,Nbeams))
+                    update_progress(float(itn)/Ntime + float(ibeam)/Ntime/Nbeams, "Beam {0:d} of {1:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(beamlocs==ibeam)[0]
                     pulses[itn,ibeam] = len(beamlocstmp)
 
@@ -390,7 +391,7 @@ class RadarDataFile(object):
                         numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
             else:
                 for ibeam,ibeamlist in enumerate(self.simparams['outangles']):
-                    print("\t\tBeam {0:d} of {1:d}".format(ibeam,Nbeams))
+                    update_progress(float(itn)/Ntime + float(ibeam)/Ntime/Nbeams, "Beam {0:d} of {1:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(sp.in1d(beamlocs,ibeamlist))[0]
                     curbeams = beamlocs[beamlocstmp]
                     ksysmat = Ksysvec[curbeams]
@@ -496,20 +497,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # Get the covariance matrix
     pulses_s=sp.transpose(pulses,axes=(1,2,0,3))[:,:Nrng2]
     Cttout=makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags)
-#    R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
-#    Rw=sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s),axes=(3,0,1,2))
-#    l=sp.arange(Nlags)
-#    T1,T2=sp.meshgrid(l,l)
-#    R0=R[sp.zeros_like(T1)]
-#    Rw0=Rw[sp.zeros_like(T1)]
-#    Td=sp.absolute(T1-T2)
-#    Tl = T1>T2
-#    R12 =R[Td]
-#    R12[Tl]=sp.conjugate(R12[Tl])
-#    Rw12 =Rw[Td]
-#    Rw12[Tl]=sp.conjugate(Rw12[Tl])
-#    Ctt=R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
-#    Cttout = sp.transpose(Ctt,(2,3,4,0,1))
+
     Paramdatasig = sp.zeros((Nbeams*Nrng2,Nt,Nlags,Nlags),dtype=Cttout.dtype)
 
     curloc = 0
@@ -523,7 +511,10 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     return (ionodata,ionosigs)
 
 def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
-
+    """
+        Makes the covariance matrix for the lags given the noise acf and number
+        of pulses.
+    """
     axvec=sp.roll(sp.arange(lagsDatasum.ndim),1)
     # Get the covariance matrix
     R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=axvec)

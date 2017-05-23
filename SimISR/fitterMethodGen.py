@@ -90,14 +90,14 @@ class Fitterionoconainer(object):
             dof=1
         for itn,itime in enumerate(fittimes):
             if printlines:
-                print('\tData for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
+                update_progress(float(itime)/Nt, 'Data for time {0:d} of {1:d} now being fit.'.format(itime,Nt))
             for iloc in range(Nloc):
                 if printlines:
-                    print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
+                    update_progress(float(itime)/Nt + float(iloc)/Nt/Nloc,'\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} now being fit.'.format(itime,Nt,iloc,Nloc))
                 curlag = lagsData[iloc,itime]
                 if sp.any(sp.isnan(curlag)) or sp.all(curlag==0):
                     if printlines:
-                        print('\t\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} is NaN, skipping.'.format(itime,Nt,iloc,Nloc))
+                        update_progress(float(itime)/Nt + float(iloc)/Nt/Nloc,'Time:{0:d} of {1:d} Location:{2:d} of {3:d} is NaN, skipping.'.format(itime,Nt,iloc,Nloc))
                     continue
                 x_0 = x_0all[iloc,itime]
                 Niratio = x_0[0:2*ni:2]/x_0[2*ni]
@@ -105,7 +105,7 @@ class Fitterionoconainer(object):
 
                 if sp.any(sp.isnan(x_0)):
                     if printlines:
-                        print('\t\t Time:{0:d} of {1:d} Location:{2:d} of {3:d} is NaN, skipping.'.format(itime,Nt,iloc,Nloc))
+                        update_progress(float(itime)/Nt + float(iloc)/Nt/Nloc,'Time:{0:d} of {1:d} Location:{2:d} of {3:d} is NaN, skipping.'.format(itime,Nt,iloc,Nloc))
                     continue
                 d_func = (curlag,self.sensdict,self.simparams,Niratio)
                 if first_lag:
@@ -212,4 +212,3 @@ def startvalfunc(Ne_init, loc,time,inputs):
         ilocmat = sp.repeat(iloc[sp.newaxis,:],len(time),axis=0)
         xarray[ilocn,:,-1] = sp.sum(vel*ilocmat)/locmag
     return xarray
-

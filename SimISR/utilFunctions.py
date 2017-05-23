@@ -68,7 +68,7 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
             the ambiguity function up sampling.
             plen (:obj:`int`): The length of the pulse in samples at the original sampling frequency.
             nlags (:obj:`int`): The number of lags used.
-            
+
         Returns:
             Wttdict (:obj:`dict`): A dictionary with the keys 'WttAll' which is the full ambiguity function
             for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the
@@ -624,13 +624,21 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
         raise ValueError('fname needs to have an extension of .pickle or .ini')
 
 def makedefaultfile(fname):
-    """ This function will copy the default configuration file to whatever file the users
-    specifies."""
+    """
+        This function will give you default configuration dictionaries.
+    """
+    (sensdict, simparams) = getdefualtparams()
+    makeconfigfile(fname, simparams['Beamlist'], sensdict['Name'], simparams)
+
+def getdefualtparams():
+    """
+        This function will copy the default configuration file to whatever file the users
+        specifies.
+    """
     curpath = Path(__file__[0]).expanduser()
     d_file = curpath / 'default.ini'
-    (sensdict,simparams)=readconfigfile(d_file)
-    makeconfigfile(fname,simparams['Beamlist'],sensdict['Name'],simparams)
-
+    (sensdict, simparams)=readconfigfile(d_file)
+    return sensdict, simparams
 def readconfigfile(fname):
     """This funciton will read in the pickle files that are used for configuration.
     Inputs
