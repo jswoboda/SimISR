@@ -9,10 +9,10 @@ import scipy as sp
 import scipy.fftpack as scfft
 #
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
-from .utilFunctions import  spect2acf
+from .utilFunctions import  spect2acf, update_progress
 
 
-def ISRSspecmake(ionocont,sensdict,npts,print_line=True):
+def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
     """ This function will take an ionocontainer instance of plasma parameters and create
         ISR spectra for each object.
 
@@ -46,7 +46,9 @@ def ISRSspecmake(ionocont,sensdict,npts,print_line=True):
     for i_x in sp.arange(N_x):
         for i_t in sp.arange(N_t):
             if print_line:
-                print('\t Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t,N_t,i_x,N_x))
+                curnum = ifile/nfiles + float(i_x)/N_x/nfiles+float(i_t)/N_t/N_x/nfiles
+                outstr = 'Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t, N_t, i_x ,N_x)
+                update_progress(curnum, outstr)
 
             if full_grid:
                 cur_params = ionocont.Param_List[i_x,i_t]

@@ -62,13 +62,14 @@ def makespectrums(basedir,configfile,printlines=True):
 
         outfile = outputdir / (str(inum)+' spectrum.h5')
         update_progress(float(inum)/float(len(slist)),
-                        'Processing file {} starting at {}\n'.format(curfile.name ,datetime.now()))
+                        'Processing file {} starting at {}'.format(curfile.name ,datetime.now()))
         curiono = IonoContainer.readh5(str(curfile))
 
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake,sensdict,
-                                     int(simparams['numpoints']),printlines).saveh5(str(outfile))
+                                     int(simparams['numpoints']),float(inum),float(len(slist)),
+                                     printlines).saveh5(str(outfile))
         update_progress(float(inum+1)/float(len(slist)),
-                        'Finished file {} starting at {}\n'.format(curfile.name ,datetime.now()))
+                        'Finished file {} starting at {}'.format(curfile.name ,datetime.now()))
 
 #%% Make Radar Data
 def makeradardata(basedir,configfile,remakealldata):

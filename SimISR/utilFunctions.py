@@ -35,7 +35,7 @@ def update_progress(progress, extstr=""):
             progress (:obj:`float`): Proportion of progress on scale of 0 to one.
             extstr (:obj:'str'): Extra string added to the progress bar.
     """
-    bar_length = 100 # Modify this to change the length of the progress bar
+    bar_length = 20 # Modify this to change the length of the progress bar
     status = ""
     if isinstance(progress, int):
         progress = float(progress)
@@ -50,7 +50,7 @@ def update_progress(progress, extstr=""):
         status = "Done...\r\n"
     block = int(round(bar_length*progress))
     if  extstr != "":
-        status = status + '\n'+extstr
+        status = status + extstr + '\n'
     text = "\rPercent: [{0}] {1}% {2}".format("#"*block + "-"*(bar_length-block),
                                               progress*100, status)
     sys.stdout.write(text)
@@ -549,11 +549,16 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     curpath = Path(__file__).resolve().parent
     d_file = curpath/'default.ini'
     fext = fname.suffix
-    # reduce the number of stuff needed to be saved and avoid problems with writing
-    keys2save = ['IPP','TimeLim','RangeLims','Pulselength','t_s','Pulsetype','Tint',
-                    'Fitinter','NNs','NNp','dtype','ambupsamp','species', 'numpoints',
-                    'startfile','FitType']
 
+    # reduce the number of stuff needed to be saved and avoid problems with writing
+    keys2save = ['IPP', 'TimeLim', 'RangeLims', 'Pulselength', 't_s', 'Pulsetype',
+                 'Tint', 'Fitinter', 'NNs', 'dtype', 'ambupsamp', 'species',
+                 'numpoints', 'startfile', 'FitType','beamrate','outangles']
+
+    if not 'beamrate' in simparams_orig.keys():
+        simparams_orig['beamrate'] = 1
+    if not 'outangles' in simparams_orig.keys():
+        simparams_orig['outangles'] = beamlist
     simparams = {i:simparams_orig[i] for i in keys2save}
     if fext =='.pickle':
         pickleFile = fname.open('wb')
@@ -635,17 +640,22 @@ def getdefualtparams():
         This function will copy the default configuration file to whatever file the users
         specifies.
     """
-    curpath = Path(__file__[0]).expanduser()
+    curpath = Path(__file__).parent
     d_file = curpath / 'default.ini'
-    (sensdict, simparams)=readconfigfile(d_file)
+    (sensdict, simparams) = readconfigfile(str(d_file))
     return sensdict, simparams
+
 def readconfigfile(fname):
-    """This funciton will read in the pickle files that are used for configuration.
-    Inputs
-        fname - A string containing the file name and location.
-    Outputs
-        sensdict - A dictionary that holds the sensor parameters.
-        simparams - A dictionary that holds the simulation parameters."""
+    """
+        This funciton will read in the pickle files that are used for configuration.
+
+        Args:
+            fname - A string containing the file name and location.
+
+        Returns:
+            sensdict - A dictionary that holds the sensor parameters.
+            simparams - A dictionary that holds the simulation parameters.
+    """
 
     fname = Path(fname).expanduser()
     if not fname.is_file():
@@ -711,7 +721,6 @@ def readconfigfile(fname):
                             simparams[param][a]=float(simparams[param][a])
                         except:
                             pass
-
     if 't_s' in simparams.keys():
         sensdict['t_s'] = simparams['t_s']
         sensdict['fs'] =1.0/simparams['t_s']

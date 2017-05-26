@@ -191,7 +191,7 @@ class RadarDataFile(object):
                     cur_pnts = samp_num+isamp
 
                     # This is a nearest neighbors interpolation for the spectrums in the range domain
-                    if sp.sum(rangelog)==0:
+                    if sp.sum(rangelog) == 0:
                         minrng = sp.argmin(sp.absolute(range_g-rho))
                         rangelog[minrng] = True
 
@@ -283,7 +283,7 @@ class RadarDataFile(object):
         # set up arrays that hold the location of pulses that are to be processed together
         infoname = self.datadir / 'INFO.h5'
         # Just going to assume that the info file is in the directory
-        infodict =h52dict(str(infoname))
+        infodict = h52dict(str(infoname))
         flist =  infodict['Files']
         file_list = [str(self.datadir/i) for i in flist]
         pulsen_list = infodict['Pulses']
@@ -398,7 +398,7 @@ class RadarDataFile(object):
                     ksysmean = Ksysvec[ibeamlist[0]]
                     inputdata = curdata[beamlocstmp].copy()
                     noisedata = curnoise[beamlocstmp].copy()
-                    noisedataadd=curaddednoise[beamlocstmp].copy()
+                    noisedataadd = curaddednoise[beamlocstmp].copy()
                     ksysmult = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,inputdata.shape[1]))
                     ksysmultn = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,noisedata.shape[1]))
                     ksysmultna = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,noisedataadd.shape[1]))

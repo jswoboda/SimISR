@@ -13,9 +13,9 @@ import scipy as sp
 import scipy.optimize
 # My modules
 from .IonoContainer import IonoContainer#, makeionocombined
-from .utilFunctions import readconfigfile
+from .utilFunctions import readconfigfile, update_progress
 from .specfunctions import ISRSfitfunction
-
+import pdb
 def defaultparamsfunc(curlag,sensdict,simparams):
     return(curlag,sensdict,simparams)
 
