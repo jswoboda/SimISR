@@ -81,15 +81,17 @@ def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle
             if curparm == 'nepow':
                 curparm = 'ne'
 
+
             indxkep = np.argwhere(invidx==ibeam)[:,0]
             rng_fit= dataloc[indxkep,0]
             rngargs = np.argsort(rng_fit)
             rng_fit = rng_fit[rngargs]
             alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
             curfit = Ionofit.Param_List[indxkep,:,p2fit[iparam]]
-            curfit=curfit[rngargs]
+            
+            curfit = curfit[rngargs]
             Tmat, Amat =np.meshgrid(times[:,0],alt_fit)
-            image = ax.pcolor(Tmat,Amat,curfit,cmap='jet')
+            image = ax.pcolor(Tmat,Amat,curfit.real,cmap='viridis')
             if curparm=='ne':
                 image.set_norm(colors.LogNorm(vmin=1e9,vmax=5e12))
                 cbarstr = params[iparam] + ' m-3'
@@ -288,7 +290,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     dirliststr=[str(i) for i in dirlist]
     filesonly= [ifile.name for ifile in dirlist]
     sortlist,outime,outfilelist,timebeg,timelist_s = IonoContainer.gettimes(dirliststr)
-    timelist = sp.array([float(i.split()[0]) for i in filesonly])
+    timelist = timebeg.copy()
     time2file = [None]*Nt
 
     time2intime = [None]*Nt

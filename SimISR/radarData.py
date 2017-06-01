@@ -171,10 +171,10 @@ class RadarDataFile(object):
         N_samps = N_rg +lp_pnts-1
         angles = self.simparams['angles']
         Nbeams = len(angles)
-        rho = Sphere_Coords[:,0]
-        Az = Sphere_Coords[:,1]
-        El = Sphere_Coords[:,2]
-        rng_len=self.sensdict['t_s']*v_C_0*1e-3/2.
+        rho = Sphere_Coords[:, 0]
+        Az = Sphere_Coords[:, 1]
+        El = Sphere_Coords[:, 2]
+        rng_len = self.sensdict['t_s']*v_C_0*1e-3/2.
         (Nloc,Ndtime,speclen) = allspecs.shape
         simdtype = self.simparams['dtype']
         out_data = sp.zeros((Np,N_samps),dtype=simdtype)
@@ -186,8 +186,8 @@ class RadarDataFile(object):
                 for isamp in sp.arange(len(range_gates)):
                     range_g = range_gates[isamp]
                     range_m = range_g*1e3
-                    rnglims = [range_g-rng_len/2.0,range_g+rng_len/2.0]
-                    rangelog = (rho>=rnglims[0])&(rho<rnglims[1])
+                    rnglims = [range_g-rng_len/2.0, range_g+rng_len/2.0]
+                    rangelog = (rho >= rnglims[0])&(rho < rnglims[1])
                     cur_pnts = samp_num+isamp
 
                     # This is a nearest neighbors interpolation for the spectrums in the range domain
@@ -256,7 +256,7 @@ class RadarDataFile(object):
         Pulselen = len(pulse)
         N_samps = N_rg +Pulselen-1
         simdtype = self.simparams['dtype']
-        Ntime=len(timevec)
+        Ntime = len(timevec)
 
         if 'outangles' in self.simparams.keys():
             Nbeams = len(self.simparams['outangles'])
@@ -267,11 +267,11 @@ class RadarDataFile(object):
 
         # Choose type of processing
         if self.simparams['Pulsetype'].lower() == 'barker':
-            lagfunc=BarkerLag
-            Nlag=1
+            lagfunc = BarkerLag
+            Nlag = 1
         else:
-            lagfunc=CenteredLagProduct
-            Nlag=Pulselen
+            lagfunc = CenteredLagProduct
+            Nlag = Pulselen
         # initialize output arrays
         outdata = sp.zeros((Ntime,Nbeams,N_rg,Nlag),dtype=simdtype)
         outaddednoise = sp.zeros((Ntime,Nbeams,N_rg,Nlag),dtype=simdtype)
@@ -424,12 +424,12 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     DataLags - A dictionary """
     # Pull in Location Data
     angles = simparams['angles']
-    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+    ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
     rng_vec = simparams['Rangegates']
     # pull in other data
     pulsewidth = len(simparams['Pulse'])*sensdict['t_s']
     txpower = sensdict['Pt']
-    if sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
+    if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
         Ksysvec = sensdict['Ksys']
     else:
 
@@ -446,23 +446,23 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     Nrng2 = len(rng_vec2)
 
     # Copy the lags
-    lagsData= DataLags['ACF'].copy()
+    lagsData = DataLags['ACF'].copy()
     # Set up the constants for the lags so they are now
     # in terms of density fluxtuations.
-    angtile = sp.tile(ang_data,(Nrng2,1))
-    rng_rep = sp.repeat(rng_vec2,ang_data.shape[0],axis=0)
-    coordlist=sp.zeros((len(rng_rep),3))
-    [coordlist[:,0],coordlist[:,1:]] = [rng_rep,angtile]
-    (Nt,Nbeams,Nrng,Nlags) = lagsData.shape
-    rng3d = sp.tile(rng_vec[sp.newaxis,sp.newaxis,:,sp.newaxis],(Nt,Nbeams,1,Nlags)) *1e3
-    ksys3d = sp.tile(Ksysvec[sp.newaxis,:,sp.newaxis,sp.newaxis],(Nt,1,Nrng,Nlags))
+    angtile = sp.tile(ang_data, (Nrng2, 1))
+    rng_rep = sp.repeat(rng_vec2, ang_data.shape[0], axis=0)
+    coordlist = sp.zeros((len(rng_rep), 3))
+    [coordlist[:, 0], coordlist[:, 1:]] = [rng_rep, angtile]
+    (Nt, Nbeams, Nrng, Nlags) = lagsData.shape
+    rng3d = sp.tile(rng_vec[sp.newaxis, sp.newaxis, :, sp.newaxis],(Nt, Nbeams, 1, Nlags))*1e3
+    ksys3d = sp.tile(Ksysvec[sp.newaxis, :, sp.newaxis, sp.newaxis], (Nt, 1, Nrng, Nlags))
     radar2acfmult = rng3d*rng3d/(pulsewidth*txpower*ksys3d)
-    pulses = sp.tile(DataLags['Pulses'][:,:,sp.newaxis,sp.newaxis],(1,1,Nrng,Nlags))
+    pulses = sp.tile(DataLags['Pulses'][:, :, sp.newaxis, sp.newaxis], (1, 1, Nrng, Nlags))
     time_vec = time_vec[:Nt]
     # Divid lags by number of pulses
     lagsData = lagsData/pulses
     # Set up the noise lags and divid out the noise.
-    lagsNoise=NoiseLags['ACF'].copy()
+    lagsNoise = NoiseLags['ACF'].copy()
     lagsNoise = sp.mean(lagsNoise,axis=2)
     pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
     lagsNoise = lagsNoise/pulsesnoise
