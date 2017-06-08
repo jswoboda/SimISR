@@ -12,7 +12,7 @@ import os
 import scipy as sp
 import scipy.optimize
 # My modules
-from .IonoContainer import IonoContainer#, makeionocombined
+from .IonoContainer import IonoContainer, makeionocombined
 from .utilFunctions import readconfigfile, update_progress
 from .specfunctions import ISRSfitfunction
 import pdb
@@ -184,16 +184,16 @@ def startvalfunc(Ne_init, loc,time,inputs):
             has one element and its the name of the ionocontainer file holding the
             rest of the start parameters.
     Outputs
-        xarray - This is a numpy arrya of starting values for the fitter parmaeters."""
-    if isinstance(inputs,str):
-        if os.path.splitext(inputs)[-1]=='.h5':
+        xarray - This is a numpy array of starting values for the fitter parameters."""
+    if isinstance(inputs, str):
+        if os.path.splitext(inputs)[-1] == '.h5':
             Ionoin = IonoContainer.readh5(inputs)
-        elif os.path.splitext(inputs)[-1]=='.mat':
+        elif os.path.splitext(inputs)[-1] == '.mat':
             Ionoin = IonoContainer.readmat(inputs)
-        elif os.path.splitext(inputs)[-1]=='':
-            Ionoin = IonoContainer.makeionocombined(inputs)
+        elif os.path.splitext(inputs)[-1] == '':
+            Ionoin = makeionocombined(inputs)
     elif isinstance(inputs,list):
-        Ionoin = IonoContainer.makeionocombined(inputs)
+        Ionoin = makeionocombined(inputs)
     else:
         Ionoin = inputs
 

@@ -119,26 +119,26 @@ def fitdata(basedir,configfile,optinputs):
         optinputs:A string that helps determine the what type of acfs will be fitted.
          """
     # determine the input folders which can be ACFs from the full simulation
-    dirdict = {'fitting':('ACF','Fitted'),'fittingmat':('ACFMat','FittedMat'),
-               'fittinginv':('ACFInv','FittedInv'),'fittingmatinv':('ACFMatInv','FittedMatInv')}
+    dirdict = {'fitting':('ACF', 'Fitted'), 'fittingmat':('ACFMat', 'FittedMat'),
+               'fittinginv':('ACFInv', 'FittedInv'), 'fittingmatinv':('ACFMatInv', 'FittedMatInv')}
     dirio = dirdict[optinputs[0]]
     inputdir = basedir/dirio[0]
     outputdir = basedir/dirio[1]
-    fitlist=optinputs[1]
-    if len(optinputs)>2:
-        exstr=optinputs[2]
-        printlines=optinputs[3]
+    fitlist = optinputs[1]
+    if len(optinputs) > 2:
+        exstr = optinputs[2]
+        printlines = optinputs[3]
     else:
-        exstr=''
+        exstr = ''
     dirlist = [str(i) for i in inputdir.glob('*lags{0}.h5'.format(exstr))]
-    dirlistsig =[str(i) for i in inputdir.glob('*sigs{0}.h5'.format(exstr))]
+    dirlistsig = [str(i) for i in inputdir.glob('*sigs{0}.h5'.format(exstr))]
 
-    Ionoin=IonoContainer.readh5(dirlist[0])
-    if len(dirlistsig)==0:
-        Ionoinsig=None
+    Ionoin = IonoContainer.readh5(dirlist[0])
+    if len(dirlistsig) == 0:
+        Ionoinsig = None
     else:
-        Ionoinsig=IonoContainer.readh5(dirlistsig[0])
-    fitterone = Fitterionoconainer(Ionoin,Ionoinsig,configfile)
+        Ionoinsig = IonoContainer.readh5(dirlistsig[0])
+    fitterone = Fitterionoconainer(Ionoin, Ionoinsig, configfile)
 
     (fitteddata,fittederror,funcevals) = fitterone.fitdata(ISRSfitfunction,fitterone.simparams['startfile'],fittimes=fitlist,printlines=printlines)
 
