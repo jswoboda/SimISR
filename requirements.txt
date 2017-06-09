@@ -6,3 +6,4 @@ pytables
 matplotlib
 seaborn
 numba
+yaml
