@@ -7,3 +7,4 @@ matplotlib
 seaborn
 numba
 yaml
+pyyaml
