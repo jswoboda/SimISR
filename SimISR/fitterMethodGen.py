@@ -169,7 +169,7 @@ class Fitterionoconainer(object):
                 if not self.sig is None:
                     fittederror[iloc,itn,-1] = Ne_sig[iloc,itime]
 
-            print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc,Nloc))
+            print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc, Nloc))
         return(fittedarray,fittederror,funcevals)
 
 #%% start values for the fit function
@@ -192,23 +192,25 @@ def startvalfunc(Ne_init, loc,time,inputs):
             Ionoin = IonoContainer.readmat(inputs)
         elif os.path.splitext(inputs)[-1] == '':
             Ionoin = makeionocombined(inputs)
-    elif isinstance(inputs,list):
+    elif isinstance(inputs, list):
         Ionoin = makeionocombined(inputs)
     else:
         Ionoin = inputs
 
-    numel =sp.prod(Ionoin.Param_List.shape[-2:]) +1
+    numel = sp.prod(Ionoin.Param_List.shape[-2:]) +1
 
-    xarray = sp.zeros((loc.shape[0],len(time),numel))
+    xarray = sp.zeros((loc.shape[0], len(time), numel))
     for ilocn, iloc in enumerate(loc):
-        (datast,vel)=Ionoin.getclosest(iloc,time)[:2]
-        datast[:,-1,0] = Ne_init[ilocn,:]
-        ionoden =datast[:,:-1,0]
-        ionodensum = sp.repeat(sp.sum(ionoden,axis=-1)[:,sp.newaxis],ionoden.shape[-1],axis=-1)
-        ionoden = sp.repeat(Ne_init[ilocn,:,sp.newaxis],ionoden.shape[-1],axis=-1)*ionoden/ionodensum
-        datast[:,:-1,0] = ionoden
-        xarray[ilocn,:,:-1]=sp.reshape(datast,(len(time),numel-1))
+        (datast, vel) = Ionoin.getclosest(iloc, time)[:2]
+        datast[:, -1, 0] = Ne_init[ilocn, :]
+        ionoden = datast[:, :-1, 0]
+        ionodensum = sp.repeat(sp.sum(ionoden, axis=-1)[:, sp.newaxis], ionoden.shape[-1], axis=-1)
+        ionoden = sp.repeat(Ne_init[ilocn, :, sp.newaxis], ionoden.shape[-1],
+                            axis=-1)*ionoden/ionodensum
+        datast[:, :-1, 0] = ionoden
+        xarray[ilocn, :, :-1] = sp.reshape(datast, (len(time), numel-1))
         locmag = sp.sqrt(sp.sum(iloc*iloc))
-        ilocmat = sp.repeat(iloc[sp.newaxis,:],len(time),axis=0)
-        xarray[ilocn,:,-1] = sp.sum(vel*ilocmat)/locmag
+        ilocmat = sp.repeat(iloc[sp.newaxis, :], len(time), axis=0)
+        xarray[ilocn, :, -1] = sp.sum(vel*ilocmat)/locmag
+
     return xarray
