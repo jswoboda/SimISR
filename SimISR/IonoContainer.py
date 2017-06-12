@@ -150,13 +150,13 @@ class IonoContainer(object):
             tvec - The times of the returned data.
         """
         d2r = np.pi/180.0
-        (R,Az,El) = coords
-        x_coord = R*np.sin(Az*d2r)*np.cos(El*d2r)
-        y_coord = R*np.cos(Az*d2r)*np.cos(El*d2r)
-        z_coord= R*np.sin(El*d2r)
-        cartcoord = np.array([x_coord,y_coord,z_coord])
-        return self.getclosest(cartcoord,timelist)
-    def getclosest(self,coords,timelist=None):
+        (r, az, el) = coords
+        x_coord = r*np.sin(az*d2r)*np.cos(el*d2r)
+        y_coord = r*np.cos(az*d2r)*np.cos(el*d2r)
+        z_coord = r*np.sin(el*d2r)
+        cartcoord = np.array([x_coord, y_coord, z_coord])
+        return self.getclosest(cartcoord, timelist)
+    def getclosest(self, coords, timelist=None):
         """
         This method will get the closest set of parameters in the coordinate space. It will return
         the parameters from all times.
@@ -171,24 +171,24 @@ class IonoContainer(object):
         minidx - The spatial index point.
         tvec - The times of the returned data.
         """
-        X_vec = self.Cart_Coords[:,0]
-        Y_vec = self.Cart_Coords[:,1]
-        Z_vec = self.Cart_Coords[:,2]
+        x_vec = self.Cart_Coords[:, 0]
+        y_vec = self.Cart_Coords[:, 1]
+        z_vec = self.Cart_Coords[:, 2]
 
-        xdiff = X_vec -coords[0]
-        ydiff = Y_vec -coords[1]
-        zdiff = Z_vec -coords[2]
+        xdiff = x_vec - coords[0]
+        ydiff = y_vec - coords[1]
+        zdiff = z_vec - coords[2]
         distall = xdiff**2+ydiff**2+zdiff**2
         minidx = np.argmin(distall)
         paramout = self.Param_List[minidx]
         velout = self.Velocity[minidx]
         datatime = self.Time_Vector
         tvec = self.Time_Vector
-        if sp.ndim(self.Time_Vector)>1:
-            datatime = datatime[:,0]
+        if sp.ndim(self.Time_Vector) > 1:
+            datatime = datatime[:, 0]
 
-        if isinstance(timelist,list):
-            timelist=sp.array(timelist)
+        if isinstance(timelist, list):
+            timelist = sp.array(timelist)
         if timelist is not None:
             timeindx = []
             for itime in timelist:
@@ -196,19 +196,19 @@ class IonoContainer(object):
                     timeindx.append(sp.argmin(sp.absolute(itime-datatime)))
                 else:
                     # look for overlap
-                    log1 = (tvec[:,0]>=itime[0]) & (tvec[:,0]<itime[1])
-                    log2 = (tvec[:,1]>itime[0]) & (tvec[:,1]<=itime[1])
-                    log3 = (tvec[:,0]<=itime[0]) & (tvec[:,1]>itime[1])
-                    log4 = (tvec[:,0]>itime[0]) & (tvec[:,1]<itime[1])
+                    log1 = (tvec[:, 0] >= itime[0]) & (tvec[:, 0] < itime[1])
+                    log2 = (tvec[:, 1] > itime[0]) & (tvec[:, 1] <= itime[1])
+                    log3 = (tvec[:, 0] <= itime[0]) & (tvec[:, 1] > itime[1])
+                    log4 = (tvec[:, 0] > itime[0]) & (tvec[:, 1] < itime[1])
                     tempindx = sp.where(log1|log2|log3|log4)[0]
 
                     timeindx = timeindx +tempindx.tolist()
-            paramout=paramout[timeindx]
-            velout=velout[timeindx]
+            paramout = paramout[timeindx]
+            velout = velout[timeindx]
             tvec = tvec[timeindx]
         sphereout = self.Sphere_Coords[minidx]
         cartout = self.Cart_Coords[minidx]
-        return (paramout,velout,sphereout,cartout,np.sqrt(distall[minidx]),minidx,tvec)
+        return (paramout, velout, sphereout, cartout, np.sqrt(distall[minidx]), minidx, tvec)
     #%% Interpolation methods
     def interp(self,new_coords,ver=0,sensor_loc = None,method='linear',fill_value=np.nan):
         """

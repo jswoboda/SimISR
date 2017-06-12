@@ -12,6 +12,7 @@ import os
 import scipy as sp
 import scipy.optimize
 # My modules
+from isrutilities.physConstants import v_C_0
 from .IonoContainer import IonoContainer, makeionocombined
 from .utilFunctions import readconfigfile, update_progress
 from .specfunctions import ISRSfitfunction
@@ -76,8 +77,13 @@ class Fitterionoconainer(object):
 
 
         print('\nData Now being fit.')
+        # HACK taking ambiugty into account with start values
+        plen = float(len(self.simparams['Pulse']))
+        pvec = sp.arange(-sp.ceil((plen-1)/2.),sp.floor((plen-1)/2.)+1)/plen
+        amblen = .5*v_C_0*self.simparams['Pulselength']*pvec
         first_lag = True
-        x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Time_Vector[:,0],startinputs)
+        x_0all = startvalfunc(Ne_start,self.Iono.Cart_Coords,self.Iono.Sphere_Coords,
+                              self.Iono.Time_Vector[:,0],startinputs,amblen)
         nparams=x_0all.shape[-1]
         x_0_red = sp.zeros(4)
         specs = self.simparams['species']
@@ -173,7 +179,7 @@ class Fitterionoconainer(object):
         return(fittedarray,fittederror,funcevals)
 
 #%% start values for the fit function
-def startvalfunc(Ne_init, loc,time,inputs):
+def startvalfunc(Ne_init, loc, locsp, time, inputs, ambinfo = [0]):
     """ This is a method to determine the start values for the fitter.
     Inputs
         Ne_init - A nloc x nt numpy array of the initial estimate of electron density. Basically
@@ -187,30 +193,38 @@ def startvalfunc(Ne_init, loc,time,inputs):
         xarray - This is a numpy array of starting values for the fitter parameters."""
     if isinstance(inputs, str):
         if os.path.splitext(inputs)[-1] == '.h5':
-            Ionoin = IonoContainer.readh5(inputs)
+            ionoin = IonoContainer.readh5(inputs)
         elif os.path.splitext(inputs)[-1] == '.mat':
-            Ionoin = IonoContainer.readmat(inputs)
+            ionoin = IonoContainer.readmat(inputs)
         elif os.path.splitext(inputs)[-1] == '':
-            Ionoin = makeionocombined(inputs)
+            ionoin = makeionocombined(inputs)
     elif isinstance(inputs, list):
-        Ionoin = makeionocombined(inputs)
+        ionoin = makeionocombined(inputs)
     else:
-        Ionoin = inputs
+        ionoin = inputs
 
-    numel = sp.prod(Ionoin.Param_List.shape[-2:]) +1
+    numel = sp.prod(ionoin.Param_List.shape[-2:]) +1
 
     xarray = sp.zeros((loc.shape[0], len(time), numel))
     for ilocn, iloc in enumerate(loc):
-        (datast, vel) = Ionoin.getclosest(iloc, time)[:2]
-        datast[:, -1, 0] = Ne_init[ilocn, :]
-        ionoden = datast[:, :-1, 0]
-        ionodensum = sp.repeat(sp.sum(ionoden, axis=-1)[:, sp.newaxis], ionoden.shape[-1], axis=-1)
-        ionoden = sp.repeat(Ne_init[ilocn, :, sp.newaxis], ionoden.shape[-1],
-                            axis=-1)*ionoden/ionodensum
-        datast[:, :-1, 0] = ionoden
-        xarray[ilocn, :, :-1] = sp.reshape(datast, (len(time), numel-1))
-        locmag = sp.sqrt(sp.sum(iloc*iloc))
-        ilocmat = sp.repeat(iloc[sp.newaxis, :], len(time), axis=0)
-        xarray[ilocn, :, -1] = sp.sum(vel*ilocmat)/locmag
+        for iamb in ambinfo:
+            newlocsp = locsp[ilocn]
+            newlocsp = newlocsp[0]+iamb
+
+            (datast, vel) = ionoin.getclosestsphere(newlocsp, time)[:2]
+            datast[:, -1, 0] = Ne_init[ilocn, :]
+            # get the ion densities
+            ionoden = datast[:, :-1, 0]
+            # find the right normalization for the ion species
+            ionodensum = sp.repeat(sp.sum(ionoden, axis=-1)[:, sp.newaxis],
+                                   ionoden.shape[-1], axis=-1)
+            # renormalized to the right level
+            ionoden = sp.repeat(Ne_init[ilocn, :, sp.newaxis], ionoden.shape[-1],
+                                axis=-1)*ionoden/ionodensum
+            datast[:, :-1, 0] = ionoden
+            xarray[ilocn, :, :-1] += sp.reshape(datast, (len(time), numel-1))/float(len(ambinfo))
+            locmag = sp.sqrt(sp.sum(iloc*iloc))
+            ilocmat = sp.repeat(iloc[sp.newaxis, :], len(time), axis=0)
+            xarray[ilocn, :, -1] += sp.sum(vel*ilocmat)/locmag/float(len(ambinfo))
 
     return xarray
