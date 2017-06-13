@@ -18,32 +18,33 @@ from . import specfunctions
 from .analysisplots import plotspecsgen
 
 class RadarDataFile(object):
-    """ This class will will take the ionosphere class and create radar data both
-    at the IQ and fitted level.
-
-    Variables
-    simparams - A dictionary that holds simulation parameters the keys are the
-        following
-        'angles': Angles (in degrees) for the simulation.  The az and el angles
-            are stored in a list of tuples [(az_0,el_0),(az_1,el_1)...]
-        'IPP' : Interpulse period in seconds, this is the IPP from position to
-            position.  In other words if a IPP is 10 ms and there are 10 beams it will
-            take 100 ms to go through all of the beams.
-        'Tint'  This is the integration time in seconds.
-        'Timevec': This is the time vector for each frame.  It is referenced to
-            the begining of the frame.  Also in seconds
-        'Pulse': The shape of the pulse.  This is a numpy array.
-        'TimeLim': The length of time that the experiment will run, which cooresponds
-            to how many pulses per position are used.
-    sensdict - A dictionary that holds the sensor parameters.
-    rawdata: This is a NbxNpxNr numpy array that holds the raw IQ data.
-    rawnoise: This is a NbxNpxNr numpy array that holds the raw noise IQ data.
-
     """
-    def __init__(self,Ionodict,inifile, outdir,outfilelist=None):
-       """This function will create an instance of the RadarData class.  It will
-        take in the values and create the class and make raw IQ data.
-        Inputs:
+        This class will will take the ionosphere class and create radar data both
+        at the IQ and fitted level.
+
+        Variables
+        simparams - A dictionary that holds simulation parameters the keys are the
+            following
+            'angles': Angles (in degrees) for the simulation.  The az and el angles
+                are stored in a list of tuples [(az_0,el_0),(az_1,el_1)...]
+            'IPP' : Interpulse period in seconds, this is the IPP from position to
+                position.  In other words if a IPP is 10 ms and there are 10 beams it will
+                take 100 ms to go through all of the beams.
+            'Tint'  This is the integration time in seconds.
+            'Timevec': This is the time vector for each frame.  It is referenced to
+                the begining of the frame.  Also in seconds
+            'Pulse': The shape of the pulse.  This is a numpy array.
+            'TimeLim': The length of time that the experiment will run, which cooresponds
+                to how many pulses per position are used.
+        sensdict - A dictionary that holds the sensor parameters.
+        rawdata: This is a NbxNpxNr numpy array that holds the raw IQ data.
+        rawnoise: This is a NbxNpxNr numpy array that holds the raw noise IQ data.
+    """
+    def __init__(self, Ionodict, inifile, outdir, outfilelist=None):
+        """
+            This function will create an instance of the RadarData class.  It will
+            take in the values and create the class and make raw IQ data.
+            Inputs:
             sensdict - A dictionary of sensor parameters
             angles - A list of tuples which the first position is the az angle
                 and the second position is the el angle.
@@ -54,50 +55,53 @@ class RadarDataFile(object):
                 will be calculated.
             pulse - A numpy array that represents the pulse shape.
             rng_lims - A numpy array of length 2 that holds the min and max range
-                that the radar will cover."""
-       (sensdict,simparams) = readconfigfile(inifile)
-       self.simparams = simparams
-       N_angles = len(self.simparams['angles'])
+                that the radar will cover.
+        """
+        (sensdict, simparams) = readconfigfile(inifile)
+        self.simparams = simparams
+        N_angles = len(self.simparams['angles'])
 
-       NNs = int(self.simparams['NNs'])
-       self.sensdict = sensdict
-       Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
-       Npall = int(sp.floor(Npall/N_angles)*N_angles)
-       Np = Npall/N_angles
+        NNs = int(self.simparams['NNs'])
+        self.sensdict = sensdict
+        Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
+        Npall = int(sp.floor(Npall/N_angles)*N_angles)
+        Np = Npall/N_angles
 
-       print("All spectrums created already")
-       filetimes = Ionodict.keys()
-       filetimes.sort()
-       ftimes = sp.array(filetimes)
-       simdtype = self.simparams['dtype']
-       pulsetimes = sp.arange(Npall)*self.simparams['IPP'] +ftimes.min()
-       pulsefile = sp.array([sp.where(itimes-ftimes>=0)[0][-1] for itimes in pulsetimes])
-       # differentiate between phased arrays and dish antennas
-       if sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
-            beams = sp.tile(sp.arange(N_angles),Npall/N_angles)
-       else:
+        print("All spectrums created already")
+        filetimes = Ionodict.keys()
+        filetimes.sort()
+        ftimes = sp.array(filetimes)
+        simdtype = self.simparams['dtype']
+        pulsetimes = sp.arange(Npall)*self.simparams['IPP'] +ftimes.min()
+        pulsefile = sp.array([sp.where(itimes-ftimes >= 0)[0][-1] for itimes in pulsetimes])
+        # differentiate between phased arrays and dish antennas
+        if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
+
+            beams = sp.tile(sp.arange(N_angles), Npall/N_angles)
+        else:
+
             # for dish arrays
             brate = simparams['beamrate']
             beams2 = sp.repeat(sp.arange(N_angles),brate)
             beam3 = sp.concatenate((beams2,beams2[::-1]))
             ntile = sp.ceil(Npall/len(beam3))
-            leftover = Npall-ntile*len(beam3)
-            if ntile>0:
-                beams = sp.tile(beam3,ntile)
-                beams=sp.concatenate((beams,beam3[:leftover]))
+            leftover = int(Npall-ntile*len(beam3))
+            if ntile > 0:
+                beams = sp.tile(beam3, ntile)
+                beams = sp.concatenate((beams, beam3[:leftover]))
             else:
                 beams=beam3[:leftover]
 
-       pulsen = sp.repeat(sp.arange(Np),N_angles)
-       pt_list = []
-       pb_list = []
-       pn_list = []
-       fname_list = []
-       self.datadir = outdir
-       self.maindir = outdir.parent
-       self.procdir = self.maindir/'ACF'
-       Nf = len(filetimes)
-       if outfilelist is None:
+        pulsen = sp.repeat(sp.arange(Np),N_angles)
+        pt_list = []
+        pb_list = []
+        pn_list = []
+        fname_list = []
+        self.datadir = outdir
+        self.maindir = outdir.parent
+        self.procdir = self.maindir/'ACF'
+        Nf = len(filetimes)
+        if outfilelist is None:
             print('\nData Now being created.')
 
             Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
@@ -140,11 +144,11 @@ class RadarDataFile(object):
             infodict = {'Files':fname_list,'Time':pt_list,'Beams':pb_list,'Pulses':pn_list}
             dict2h5(str(outdir.joinpath('INFO.h5')),infodict)
 
-       else:
-           infodict= h52dict(str(outdir.joinpath('INFO.h5')))
-           alltime=sp.hstack(infodict['Time'])
-           self.timeoffset=alltime.min()
-           self.outfilelist=outfilelist
+        else:
+            infodict= h52dict(str(outdir.joinpath('INFO.h5')))
+            alltime=sp.hstack(infodict['Time'])
+            self.timeoffset=alltime.min()
+            self.outfilelist=outfilelist
 
 
 #%% Make functions
