@@ -231,8 +231,11 @@ def maketi(Ionoin):
     return Ionoin
 
 
-def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'],filetemplate='params',suptitle = 'Parameter Comparison',werrors=False,nelog=True):
-    """ This function will plot the desired parameters for each beam along range.
+def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['Ne'],
+                         filetemplate='params', suptitle='Parameter Comparison',
+                         werrors=False, nelog=True):
+    """
+        This function will plot the desired parameters for each beam along range.
         The values of the input and measured parameters will be plotted
         Inputs
             Times - A list of times that will be plotted.
@@ -247,10 +250,10 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     sns.set_style("whitegrid")
     sns.set_context("notebook")
 #    rc('text', usetex=True)
-    maindir=Path(maindir)
+    maindir = Path(maindir)
     ffit = maindir/fitdir/'fitteddata.h5'
     inputfiledir = maindir/'Origparams'
-    (sensdict,simparams) = readconfigfile(configfile)
+    (sensdict, simparams) = readconfigfile(configfile)
 
     paramslower = [ip.lower() for ip in params]
     Nt = len(times)
@@ -262,7 +265,8 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     dataloc = Ionofit.Sphere_Coords
     pnames = Ionofit.Param_Names
     pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
-    p2fit = [sp.argwhere(ip == pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
+    p2fit = [sp.argwhere(ip == pnameslower)[0][0]
+             if ip in pnameslower else None for ip in paramslower]
     time2fit = [None]*Nt
     # Have to fix this because of time offsets
     if times[0] == 0:
@@ -277,10 +281,11 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     times_int = [Ionofit.Time_Vector[i] for i in time2fit]
 
     # determine the beams
-    angles = dataloc[:,1:]
-    rng = sp.unique(dataloc[:,0])
-    b = np.ascontiguousarray(angles).view(np.dtype((np.void, angles.dtype.itemsize * angles.shape[1])))
-    _, idx, invidx = np.unique(b, return_index=True,return_inverse=True)
+    angles = dataloc[:, 1:]
+    rng = sp.unique(dataloc[:, 0])
+    b_arr = np.ascontiguousarray(angles).view(np.dtype((np.void,
+                                                        angles.dtype.itemsize * angles.shape[1])))
+    _, idx, invidx = np.unique(b_arr, return_index=True, return_inverse=True)
 
     beamlist = angles[idx]
 
@@ -289,8 +294,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     # Determine which imput files are to be used.
 
     dirlist = sorted(inputfiledir.glob('*.h5'))
-    dirliststr=[str(i) for i in dirlist]
-    filesonly = [ifile.name for ifile in dirlist]
+    dirliststr = [str(i) for i in dirlist]
     sortlist, outime, outfilelist,timebeg,timelist_s = IonoContainer.gettimes(dirliststr)
     timelist = timebeg.copy()
     time2file = [None]*Nt
@@ -300,7 +304,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     for itn, itime in enumerate(times):
 
         filear = sp.argwhere(timelist >= itime)
-        if len(filear)==0:
+        if len(filear) == 0:
             filenum = [len(timelist)-1]
         else:
             filenum = filear[0]
@@ -309,12 +313,12 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
         timeinflist = []
         for ifile in filenum:
             filetimes = timelist_s[ifile]
-            log1 = (filetimes[:,0]>=times_int[itn][0]) & (filetimes[:,0]<times_int[itn][1])
-            log2 = (filetimes[:,1]>times_int[itn][0]) & (filetimes[:,1]<=times_int[itn][1])
-            log3 = (filetimes[:,0]<=times_int[itn][0]) & (filetimes[:,1]>times_int[itn][1])
-            log4 = (filetimes[:,0]>times_int[itn][0]) & (filetimes[:,1]<times_int[itn][1])
+            log1 = (filetimes[:, 0] >= times_int[itn][0]) & (filetimes[:, 0] < times_int[itn][1])
+            log2 = (filetimes[:, 1] > times_int[itn][0]) & (filetimes[:, 1] <= times_int[itn][1])
+            log3 = (filetimes[:, 0] <= times_int[itn][0]) & (filetimes[:, 1] > times_int[itn][1])
+            log4 = (filetimes[:, 0] > times_int[itn][0]) & (filetimes[:, 1] < times_int[itn][1])
             curtimes1 = sp.where(log1|log2|log3|log4)[0].tolist()
-            flist1=flist1+ [ifile]*len(curtimes1)
+            flist1 = flist1+ [ifile]*len(curtimes1)
             timeinflist = timeinflist+curtimes1
         time2intime[itn] = timeinflist
         time2file[itn] = flist1
@@ -326,7 +330,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
     for i_fig in range(nfig):
         lines = [None]*2
         labels = [None]*2
-        (figmplf, axmat) = plt.subplots(int(sp.ceil(Np/2)), 2,figsize=(20, 15), facecolor='w')
+        (figmplf, axmat) = plt.subplots(int(sp.ceil(Np/2)), 2, figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         # loop that goes through each axis loops through each parameter, beam
         # then time.
@@ -346,12 +350,12 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
             if curparm == 'nepow':
                 curparm_in = 'ne'
             else:
-                curparm_in=curparm
+                curparm_in = curparm
 
             curcoord = sp.zeros(3)
             curcoord[1:] = curbeam
 
-            for iplot,filenum in enumerate(time2file[itime]):
+            for iplot, filenum in enumerate(time2file[itime]):
 
                 if curfilenum != filenum:
                     curfilenum = filenum
@@ -361,7 +365,7 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
                         Ionoin = maketi(Ionoin)
                     pnames = Ionoin.Param_Names
                     pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
-                prmloc = sp.argwhere(curparm_in==pnameslowerin)
+                prmloc = sp.argwhere(curparm_in == pnameslowerin)
                 if prmloc.size != 0:
                     curprm = prmloc[0][0]
                 # build up parameter vector bs the range values by finding the closest point in space in the input
@@ -370,53 +374,54 @@ def plotbeamparametersv2(times,configfile,maindir,fitdir = 'Fitted',params=['Ne'
                     curcoord[0] = irng
                     tempin = Ionoin.getclosestsphere(curcoord)[0][time2intime[itime]]
                     Ntloc = tempin.shape[0]
-                    tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
-                    curdata[irngn] = tempin[0,curprm]
+                    tempin = sp.reshape(tempin, (Ntloc, len(pnameslowerin)))
+                    curdata[irngn] = tempin[0, curprm]
                 #actual plotting of the input data
-                lines[0]= ax.plot(curdata,altlist,marker='o',c='b',linewidth=2)[0]
+                lines[0] = ax.plot(curdata, altlist, marker='o', c='b', linewidth=2)[0]
                 labels[0] = 'Input Parameters'
             # Plot fitted data for the axis
 
-            indxkep = np.argwhere(invidx==ibeam)[:,0]
-            curfit = Ionofit.Param_List[indxkep,time2fit[itime],p2fit[iparam]]
-            rng_fit= dataloc[indxkep,0]
+            indxkep = np.argwhere(invidx == ibeam)[:, 0]
+            curfit = Ionofit.Param_List[indxkep, time2fit[itime], p2fit[iparam]]
+            rng_fit = dataloc[indxkep, 0]
             alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
             errorexist = 'n'+paramslower[iparam] in pnameslower
             if errorexist and werrors:
-                eparam = sp.argwhere( 'n'+paramslower[iparam]==pnameslower)[0][0]
-                curerror = Ionofit.Param_List[indxkep,time2fit[itime],eparam]
-                lines[1]=ax.errorbar(curfit, alt_fit, xerr=curerror,fmt='-.',c='g',linewidth=2)[0]
+                eparam = sp.argwhere('n'+paramslower[iparam] == pnameslower)[0][0]
+                curerror = Ionofit.Param_List[indxkep, time2fit[itime], eparam]
+                lines[1] = ax.errorbar(curfit, alt_fit, xerr=curerror, fmt='-.',
+                                       c='g', linewidth=2)[0]
             else:
-                lines[1]= ax.plot(curfit,alt_fit,marker='o',c='g',linewidth=2)[0]
+                lines[1] = ax.plot(curfit, alt_fit, marker='o', c='g', linewidth=2)[0]
             labels[1] = 'Fitted Parameters'
             # get and plot the input data
 
             numplots = len(time2file[itime])
 
             # set the limit for the parameter
-            if curparm =='vi':
-                 ax.set(xlim=[-1.25*sp.amax(sp.absolute(curfit)),1.25*sp.amax(sp.absolute(curfit))])
-            elif curparm_in!='ne':
-                ax.set(xlim=[0.75*sp.amin(curfit),sp.minimum(1.25*sp.amax(curfit),8000.)])
-            elif (curparm_in=='ne') and nelog:
+            if curparm == 'vi':
+                 ax.set(xlim=[-1.25*sp.amax(sp.absolute(curfit)), 1.25*sp.amax(sp.absolute(curfit))])
+            elif curparm_in != 'ne':
+                ax.set(xlim=[0.75*sp.amin(curfit), sp.minimum(1.25*sp.amax(curfit), 8000.)])
+            elif (curparm_in == 'ne') and nelog:
                 ax.set_xscale('log')
 
             ax.set_xlabel(params[iparam])
             ax.set_ylabel('Alt km')
-            ax.set_title('{0} vs Altitude, Time: {1}s Az: {2}$^o$ El: {3}$^o$'.format(params[iparam],times[itime],*curbeam))
-            imcount+=1
+            ax.set_title('{0} vs Altitude, Time: {1}s Az: {2}$^o$ El: {3}$^o$'.format(params[iparam], times[itime], *curbeam))
+            imcount += 1
         # save figure
         figmplf.suptitle(suptitle, fontsize=20)
         if None in labels:
             labels.remove(None)
             lines.remove(None)
-        plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
-        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
+        plt.figlegend(lines, labels, loc = 'lower center', ncol=5, labelspacing=0.)
+        fname = filetemplate+'_{0:0>3}.png'.format(i_fig)
         plt.savefig(fname)
         plt.close(figmplf)
 
-def plotspecs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
-              fitdisp=True,filetemplate='spec',suptitle = 'Spectrum Comparison'):
+def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True, acfdisp=True,
+              fitdisp=True, filetemplate='spec', suptitle='Spectrum Comparison'):
     """ This will create a set of images that compare the input ISR spectrum to the
         output ISR spectrum from the simulator.
         Inputs
@@ -777,15 +782,15 @@ def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png'
         if needtrans[ispecn]:
            curbasis,ispec= acf2spect(curbasis,ispec,n=n)
 
-        lines.append(plt.plot(curbasis*1e-3,ispec.real,linewidth=5)[0])
-        xlims = [min(xlims[0],min(curbasis)*1e-3),max(xlims[1],max(curbasis)*1e-3)]
-        ylims = [min(ylims[0],min(ispec.real)),max(ylims[1],max(ispec.real))]
+        lines.append(plt.plot(curbasis*1e-3, ispec.real, linewidth=5)[0])
+        xlims = [min(xlims[0], min(curbasis)*1e-3), max(xlims[1], max(curbasis)*1e-3)]
+        ylims = [min(ylims[0], min(ispec.real)), max(ylims[1], max(ispec.real))]
     plt.xlabel('f in kHz')
     plt.ylabel('Amp')
     plt.title('Output Spectrums')
     plt.xlim(xlims)
     plt.ylim(ylims)
-    plt.legend(lines,labels)
+    plt.legend(lines, labels)
     plt.savefig(filename)
     plt.close(fig1)
 
@@ -797,55 +802,62 @@ def analysisdump(maindir,configfile,suptitle=None, params = ['Ne','Nepow','Te','
             configfile - The name of the configuration file used.
             suptitle - The supertitle used on the files.
     """
-    maindir=Path(maindir)
+    maindir = Path(maindir)
     plotdir = maindir.joinpath('AnalysisPlots')
     if not plotdir.is_dir():
         plotdir.mkdir()
 
     #plot spectrums
-    filetemplate1 = str(maindir.joinpath('AnalysisPlots','Spec'))
-    filetemplate3 = str(maindir.joinpath('AnalysisPlots','ACF'))
-    filetemplate4 = str(maindir.joinpath('AnalysisPlots','AltvTime'))
-    (sensdict,simparams) = readconfigfile(configfile)
+    filetemplate1 = str(maindir.joinpath('AnalysisPlots', 'Spec'))
+    filetemplate3 = str(maindir.joinpath('AnalysisPlots', 'ACF'))
+    filetemplate4 = str(maindir.joinpath('AnalysisPlots', 'AltvTime'))
+    (sensdict, simparams) = readconfigfile(configfile)
     angles = simparams['angles']
-    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-    if not sensdict['Name'].lower() in ['risr','pfisr']:
+    ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
+    if not sensdict['Name'].lower() in ['risr', 'pfisr']:
         ang_data_temp = ang_data.copy()
         beamlistlist = sp.array(simparams['outangles']).astype(int)
-        ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist ])
+        ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist])
 
-    zenang = ang_data[sp.argmax(ang_data[:,1])]
+    zenang = ang_data[sp.argmax(ang_data[:, 1])]
     rnggates = simparams['Rangegatesfinal']
-    rngchoices = sp.linspace(sp.amin(rnggates),sp.amax(rnggates),4)
-    angtile = sp.tile(zenang,(len(rngchoices),1))
-    coords = sp.column_stack((sp.transpose(rngchoices),angtile))
+    rngchoices = sp.linspace(sp.amin(rnggates), sp.amax(rnggates), 4)
+    angtile = sp.tile(zenang, (len(rngchoices), 1))
+    coords = sp.column_stack((sp.transpose(rngchoices), angtile))
     times = simparams['Timevec']
 
 
-    filetemplate2= str(maindir.joinpath('AnalysisPlots','Params'))
-    if simparams['Pulsetype'].lower()=='barker':
-        params=['Ne']
+    filetemplate2 = str(maindir.joinpath('AnalysisPlots', 'Params'))
+    if simparams['Pulsetype'].lower() == 'barker':
+        params = ['Ne']
         if suptitle is None:
-            plotbeamparametersv2(times, configfile, maindir, params=params, filetemplate=filetemplate2, werrors=True)
+            plotbeamparametersv2(times, configfile, maindir, params=params,
+                                 filetemplate=filetemplate2, werrors=True)
         else:
-            plotbeamparametersv2(times,configfile,maindir,params=params,filetemplate=filetemplate2,suptitle=suptitle,werrors=True)
+            plotbeamparametersv2(times, configfile, maindir, params=params,
+                                 filetemplate=filetemplate2, suptitle=suptitle,
+                                 werrors=True)
     else:
         if suptitle is None:
-            plotspecs(coords, times, configfile, maindir, cartcoordsys = False,
-                      filetemplate = filetemplate1)
-            plotacfs(coords,times, configfile, maindir, cartcoordsys = False,
-                     filetemplate = filetemplate3)
+            plotspecs(coords, times, configfile, maindir, cartcoordsys=False,
+                      filetemplate=filetemplate1)
+            plotacfs(coords, times, configfile, maindir, cartcoordsys=False,
+                     filetemplate=filetemplate3)
             plotbeamparametersv2(times, configfile, maindir, params=params,
                                  filetemplate=filetemplate2, werrors=True)
             plotbeamparametersv2(times, configfile, maindir, params=params,
                                  filetemplate=filetemplate2+'Noerrors', werrors=False)
 
-            beamvstime(configfile,maindir,params=params,filetemplate=filetemplate4)
+            beamvstime(configfile, maindir, params=params, filetemplate=filetemplate4)
         else:
-            plotspecs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate1,suptitle=suptitle)
-            plotacfs(coords,times,configfile,maindir,cartcoordsys = False, filetemplate=filetemplate3,suptitle=suptitle)
+            plotspecs(coords, times, configfile, maindir, cartcoordsys=False,
+                      filetemplate=filetemplate1, suptitle=suptitle)
+            plotacfs(coords, times, configfile, maindir, cartcoordsys=False,
+                     filetemplate=filetemplate3, suptitle=suptitle)
             plotbeamparametersv2(times, configfile, maindir, params=params,
                                  filetemplate=filetemplate2, suptitle=suptitle, werrors=True)
             plotbeamparametersv2(times, configfile, maindir, params=params,
-                                 filetemplate=filetemplate2+'Noerrors', suptitle=suptitle, werrors=False)
-            beamvstime(configfile,maindir,params=params,filetemplate=filetemplate4,suptitle = suptitle)
+                                 filetemplate=filetemplate2+'Noerrors', suptitle=suptitle,
+                                 werrors=False)
+            beamvstime(configfile, maindir, params=params, filetemplate=filetemplate4,
+                       suptitle=suptitle)

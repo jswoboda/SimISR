@@ -165,7 +165,8 @@ def fitdata(basedir,configfile,optinputs):
         nTi = fittederronly[:, :, 1]
 
         paramlist = sp.concatenate((fitteddata, Ti[:, :, sp.newaxis], fittederronly,
-                                    nTi[:,:,sp.newaxis], funcevals[:, :, sp.newaxis]), axis=2)
+                                   nTi[:, :, sp.newaxis], funcevals[:, :, sp.newaxis]),
+                                   axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)
@@ -176,18 +177,23 @@ def fitdata(basedir,configfile,optinputs):
     if fitlist is None:
         timevec = Ionoin.Time_Vector
     else:
-        if len(fitlist)==0:
+        if len(fitlist) == 0:
             timevec = Ionoin.Time_Vector
         else:
             timevec = Ionoin.Time_Vector[fitlist]
     # This requires
     if set(Ionoin.Coord_Vecs) == {'x', 'y', 'z'}:
         newver = 0
+        ionoout = IonoContainer(Ionoin.Cart_Coords, paramlist, timevec, ver=newver,
+                                coordvecs=Ionoin.Coord_Vecs, paramnames=paranamsf,
+                                species=species)
     elif set(Ionoin.Coord_Vecs) == {'r', 'theta', 'phi'}:
         newver = 1
+        ionoout = IonoContainer(Ionoin.Sphere_Coords, paramlist, timevec, ver=newver,
+                                coordvecs=Ionoin.Coord_Vecs, paramnames=paranamsf,
+                                species=species)
 
-    ionoout = IonoContainer(Ionoin.Cart_Coords, paramlist, timevec, ver=newver,
-                            coordvecs=Ionoin.Coord_Vecs, paramnames=paranamsf, species=species)
+
     outfile = outputdir.joinpath('fitteddata{0}.h5'.format(exstr))
     ionoout.saveh5(str(outfile))
 #%% apply the matrix for the data

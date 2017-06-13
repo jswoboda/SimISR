@@ -16,7 +16,6 @@ import scipy.optimize
 from isrutilities.physConstants import v_C_0
 from .IonoContainer import IonoContainer, makeionocombined
 from .utilFunctions import readconfigfile, update_progress
-from .specfunctions import ISRSfitfunction
 
 def defaultparamsfunc(curlag, sensdict, simparams):
     """
@@ -57,28 +56,28 @@ class Fitterionoconainer(object):
             elif self.sig.Param_List.ndim == 3:
                 Nesig = sp.absolute(self.sig.Param_List[:,:,0]*(1.0+Tratio)**2)
         return (Ne,Nesig)
+
     def fitdata(self,fitfunc,startinputs,fittimes=None,printlines=True):
         """This funcition is used to fit data given in terms of lags """
 
         # get intial guess for NE
-        Ne_start,Ne_sig =self.fitNE()
-        if self.simparams['Pulsetype'].lower()=='barker':
+        Ne_start, Ne_sig = self.fitNE()
+        if self.simparams['Pulsetype'].lower() == 'barker':
             if Ne_sig is None:
-                 return (Ne_start[:,:,sp.newaxis],None,None)
+                return (Ne_start[:, :, sp.newaxis], None, None)
             else:
-                 return(Ne_start[:,:,sp.newaxis],Ne_sig[:,:,sp.newaxis],None)
+                return(Ne_start[:, :, sp.newaxis], Ne_sig[:, :, sp.newaxis], None)
         # get the data and noise lags
         lagsData= self.acf.Param_List.copy()
-        (Nloc,Nt,Nlags) = lagsData.shape
+        (Nloc, Nt, Nlags) = lagsData.shape
         # Need list of times to save time
-
         if fittimes is None:
             fittimes = range(Nt)
         else:
-            if len(fittimes)==0:
-                fittimes=range(Nt)
+            if len(fittimes) ==0:
+                fittimes = range(Nt)
             else:
-                Nt=len(fittimes)
+                Nt = len(fittimes)
 
 
         print('\nData Now being fit.')
@@ -151,7 +150,7 @@ class Fitterionoconainer(object):
                 x_0_red[0] = Ti
                 x_0_red[1:] = x_0[2*ni:]
                 # Perform the fitting
-                optresults = scipy.optimize.least_squares(fun=ISRSfitfunction, x0=x_0_red,
+                optresults = scipy.optimize.least_squares(fun=fitfunc, x0=x_0_red,
                                                           method='lm', verbose=0, args=d_func)
                 x_res = optresults.x
                 # Derive data for the ions using output from the fitter and ion species ratios which are assumed to be given.
@@ -220,22 +219,22 @@ def startvalfunc(Ne_init, loc, locsp, time, inputs, ambinfo = [0]):
 
     xarray = sp.zeros((loc.shape[0], len(time), numel))
     for ilocn, iloc in enumerate(loc):
-        for iamb in ambinfo:
-            newlocsp = locsp[ilocn]
-            newlocsp[0] += iamb
-            (datast, vel) = ionoin.getclosestsphere(newlocsp, time)[:2]
-            datast[:, -1, 0] = Ne_init[ilocn, :]
-            # get the ion densities
-            ionoden = datast[:, :-1, 0]
-            # find the right normalization for the ion species
-            ionodensum = sp.repeat(sp.sum(ionoden, axis=-1)[:, sp.newaxis],
-                                   ionoden.shape[-1], axis=-1)
-            # renormalized to the right level
-            ionoden = sp.repeat(Ne_init[ilocn, :, sp.newaxis], ionoden.shape[-1],
-                                axis=-1)*ionoden/ionodensum
-            datast[:, :-1, 0] = ionoden
-            xarray[ilocn, :, :-1] += sp.reshape(datast, (len(time), numel-1))/float(len(ambinfo))
-            locmag = sp.sqrt(sp.sum(iloc*iloc))
-            ilocmat = sp.repeat(iloc[sp.newaxis, :], len(time), axis=0)
-            xarray[ilocn, :, -1] += sp.sum(vel*ilocmat)/locmag/float(len(ambinfo))
+        #for iamb in ambinfo:
+        newlocsp = locsp[ilocn]
+        #newlocsp[0] += iamb
+        (datast, vel) = ionoin.getclosestsphere(newlocsp, time)[:2]
+        datast[:, -1, 0] = Ne_init[ilocn, :]
+        # get the ion densities
+        ionoden = datast[:, :-1, 0]
+        # find the right normalization for the ion species
+        ionodensum = sp.repeat(sp.sum(ionoden, axis=-1)[:, sp.newaxis],
+                               ionoden.shape[-1], axis=-1)
+        # renormalized to the right level
+        ionoden = sp.repeat(Ne_init[ilocn, :, sp.newaxis], ionoden.shape[-1],
+                            axis=-1)*ionoden/ionodensum
+        datast[:, :-1, 0] = ionoden
+        xarray[ilocn, :, :-1] = sp.reshape(datast, (len(time), numel-1))#/float(len(ambinfo))
+        locmag = sp.sqrt(sp.sum(iloc*iloc))
+        ilocmat = sp.repeat(iloc[sp.newaxis, :], len(time), axis=0)
+        xarray[ilocn, :, -1] = sp.sum(vel*ilocmat)/locmag#/float(len(ambinfo))
     return xarray

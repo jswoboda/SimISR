@@ -82,17 +82,17 @@ class RadarDataFile(object):
 
             # for dish arrays
             brate = simparams['beamrate']
-            beams2 = sp.repeat(sp.arange(N_angles),brate)
-            beam3 = sp.concatenate((beams2,beams2[::-1]))
-            ntile = sp.ceil(Npall/len(beam3))
+            beams2 = sp.repeat(sp.arange(N_angles), brate)
+            beam3 = sp.concatenate((beams2, beams2[::-1]))
+            ntile = int(sp.ceil(Npall/len(beam3)))
             leftover = int(Npall-ntile*len(beam3))
             if ntile > 0:
                 beams = sp.tile(beam3, ntile)
                 beams = sp.concatenate((beams, beam3[:leftover]))
             else:
-                beams=beam3[:leftover]
+                beams = beam3[:leftover]
 
-        pulsen = sp.repeat(sp.arange(Np),N_angles)
+        pulsen = sp.repeat(sp.arange(Np), N_angles)
         pt_list = []
         pb_list = []
         pn_list = []
@@ -104,16 +104,16 @@ class RadarDataFile(object):
         if outfilelist is None:
             print('\nData Now being created.')
 
-            Noisepwr =  v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
+            Noisepwr = v_Boltz*sensdict['Tsys']*sensdict['BandWidth']
             self.outfilelist = []
             for ifn, ifilet in enumerate(filetimes):
 
                 outdict = {}
                 ifile = Ionodict[ifilet]
                 ifilename = Path(ifile).name
-                update_progress(float(ifn)/Nf, 'Data from {:d} of {:d} being processed Name: {:s}.'.format(ifn,Nf,ifilename))
+                update_progress(float(ifn)/Nf, 'Data from {:d} of {:d} being processed Name: {:s}.'.format(ifn, Nf, ifilename))
                 curcontainer = IonoContainer.readh5(ifile)
-                if ifn==0:
+                if ifn == 0:
                     self.timeoffset=curcontainer.Time_Vector[0,0]
                 pnts = pulsefile==ifn
                 pt =pulsetimes[pnts]
