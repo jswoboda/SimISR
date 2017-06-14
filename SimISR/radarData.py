@@ -5,15 +5,13 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 @author: John Swoboda
 """
-
-import scipy.fftpack as scfft
-import scipy as sp
-from . import Path
 import pdb
+import scipy as sp
 # My modules
-from .IonoContainer import IonoContainer
 from isrutilities.physConstants import v_C_0, v_Boltz
-from .utilFunctions import CenteredLagProduct,MakePulseDataRep, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
+from . import Path
+from .IonoContainer import IonoContainer
+from .utilFunctions import CenteredLagProduct, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
 from . import specfunctions
 from .analysisplots import plotspecsgen
 
@@ -111,44 +109,46 @@ class RadarDataFile(object):
                 outdict = {}
                 ifile = Ionodict[ifilet]
                 ifilename = Path(ifile).name
-                update_progress(float(ifn)/Nf, 'Data from {:d} of {:d} being processed Name: {:s}.'.format(ifn, Nf, ifilename))
+                update_progress(float(ifn)/Nf,
+                                'Data from {:d} of {:d} being processed Name: {:s}.'.format(ifn, Nf, ifilename))
                 curcontainer = IonoContainer.readh5(ifile)
                 if ifn == 0:
-                    self.timeoffset=curcontainer.Time_Vector[0,0]
-                pnts = pulsefile==ifn
-                pt =pulsetimes[pnts]
+                    self.timeoffset = curcontainer.Time_Vector[0,0]
+                pnts = pulsefile == ifn
+                pt = pulsetimes[pnts]
                 pb = beams[pnts]
                 pn = pulsen[pnts].astype(int)
-                rawdata= self.__makeTime__(pt,curcontainer.Time_Vector,
-                    curcontainer.Sphere_Coords, curcontainer.Param_List,pb)
+                rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
+                                            curcontainer.Sphere_Coords,
+                                            curcontainer.Param_List,pb)
                 Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(*rawdata.shape).astype(simdtype)+
                     1j*sp.random.randn(*rawdata.shape).astype(simdtype))
-                outdict['AddedNoise'] =Noise
+                outdict['AddedNoise'] = Noise
                 outdict['RawData'] = rawdata+Noise
                 outdict['RawDatanonoise'] = rawdata
-                outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn),NNs).astype(simdtype)+
-                                                            1j*sp.random.randn(len(pn),NNs).astype(simdtype))
-                outdict['Pulses']=pn
-                outdict['Beams']=pb
+                outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn), NNs).astype(simdtype)+
+                                                            1j*sp.random.randn(len(pn), NNs).astype(simdtype))
+                outdict['Pulses'] = pn
+                outdict['Beams'] = pb
                 outdict['Time'] = pt
                 fname = '{0:d} RawData.h5'.format(ifn)
                 newfn = self.datadir/fname
                 self.outfilelist.append(str(newfn))
-                dict2h5(str(newfn),outdict)
+                dict2h5(str(newfn), outdict)
 
                 #Listing info
                 pt_list.append(pt)
                 pb_list.append(pb)
                 pn_list.append(pn)
                 fname_list.append(fname)
-            infodict = {'Files':fname_list,'Time':pt_list,'Beams':pb_list,'Pulses':pn_list}
-            dict2h5(str(outdir.joinpath('INFO.h5')),infodict)
+            infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
+            dict2h5(str(outdir.joinpath('INFO.h5')), infodict)
 
         else:
-            infodict= h52dict(str(outdir.joinpath('INFO.h5')))
-            alltime=sp.hstack(infodict['Time'])
-            self.timeoffset=alltime.min()
-            self.outfilelist=outfilelist
+            infodict = h52dict(str(outdir.joinpath('INFO.h5')))
+            alltime = sp.hstack(infodict['Time'])
+            self.timeoffset = alltime.min()
+            self.outfilelist = outfilelist
 
 
 #%% Make functions
@@ -167,7 +167,7 @@ class RadarDataFile(object):
         range_gates = self.simparams['Rangegates']
         pulse = self.simparams['Pulse']
         sensdict = self.sensdict
-        pulse2spec = sp.array([sp.where(itimes-spectime>=0)[0][-1] for itimes in pulsetimes])
+        pulse2spec = sp.array([sp.where(itimes-spectime >= 0)[0][-1] for itimes in pulsetimes])
         Np = len(pulse2spec)
         lp_pnts = len(pulse)
         samp_num = sp.arange(lp_pnts)
@@ -179,10 +179,11 @@ class RadarDataFile(object):
         Az = Sphere_Coords[:, 1]
         El = Sphere_Coords[:, 2]
         rng_len = self.sensdict['t_s']*v_C_0*1e-3/2.
-        (Nloc,Ndtime,speclen) = allspecs.shape
+        speclen = allspecs.shape[-1]
         simdtype = self.simparams['dtype']
-        out_data = sp.zeros((Np,N_samps),dtype=simdtype)
-        weights = {ibn:self.sensdict['ArrayFunc'](Az,El,ib[0],ib[1],sensdict['Angleoffset']) for ibn, ib in enumerate(angles)}
+        out_data = sp.zeros((Np, N_samps), dtype=simdtype)
+        weights = {ibn:self.sensdict['ArrayFunc'](Az, El, ib[0], ib[1], sensdict['Angleoffset'])
+                   for ibn, ib in enumerate(angles)}
         for istn, ist in enumerate(spectime):
             for ibn in range(Nbeams):
                 print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,Nbeams))
@@ -200,28 +201,31 @@ class RadarDataFile(object):
                         rangelog[minrng] = True
 
                     #create the weights and weight location based on the beams pattern.
-                    weight_cur =weight[rangelog]
+                    weight_cur = weight[rangelog]
                     weight_cur = weight_cur/weight_cur.sum()
                     specsinrng = allspecs[rangelog]
-                    if specsinrng.ndim==3:
-                        specsinrng=specsinrng[:,istn]
-                    elif specsinrng.ndim==2:
-                        specsinrng=specsinrng[istn]
-                    specsinrng = specsinrng*sp.tile(weight_cur[:,sp.newaxis],(1,speclen))
+                    if specsinrng.ndim == 3:
+                        specsinrng = specsinrng[:, istn]
+                    elif specsinrng.ndim == 2:
+                        specsinrng = specsinrng[istn]
+                    specsinrng = specsinrng*sp.tile(weight_cur[:, sp.newaxis], (1, speclen))
                     cur_spec = specsinrng.sum(0)
-                    pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*sensdict['t_s'] # based off new way of calculating
+                    # based off new way of calculating
+                    pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*sensdict['t_s']
                     pow_den = range_m**2
-                    curdataloc = sp.where(sp.logical_and((pulse2spec==istn),(beamcodes==ibn)))[0]
+                    curdataloc = sp.where(sp.logical_and((pulse2spec == istn),
+                                                         (beamcodes == ibn)))[0]
                     # create data
-                    if len(curdataloc)==0:
+                    if len(curdataloc) == 0:
                         print('\t\t No data for {0:d} of {1:d} in this time period'.format(ibn,Nbeams))
                         continue
 #                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
-                    cur_pulse_data = MakePulseDataRepLPC(pulse,cur_spec,20,len(curdataloc),numtype = simdtype)
+                    cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, 20,
+                                                         len(curdataloc), numtype=simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
-                    for idatn,idat in enumerate(curdataloc):
-                        out_data[idat,cur_pnts] = cur_pulse_data[idatn]+out_data[idat,cur_pnts]
+                    for idatn, idat in enumerate(curdataloc):
+                        out_data[idat, cur_pnts] = cur_pulse_data[idatn]+out_data[idat, cur_pnts]
 
         return out_data
         #%% Processing
@@ -233,8 +237,9 @@ class RadarDataFile(object):
         Outputs:
         Ionocontainer- This is an instance of the ionocontainer class that will hold the acfs.
         """
-        (DataLags,NoiseLags) = self.processdata()
-        return lagdict2ionocont(DataLags,NoiseLags,self.sensdict,self.simparams,DataLags['Time'])
+        (datalags, noiselags) = self.processdata()
+        return lagdict2ionocont(datalags, noiselags, self.sensdict, self.simparams,
+                                datalags['Time'])
 
     def processdata(self):
         """ This will perform the the data processing and create the ACF estimates
@@ -268,7 +273,6 @@ class RadarDataFile(object):
         else:
             Nbeams = len(self.simparams['angles'])
 
-
         # Choose type of processing
         if self.simparams['Pulsetype'].lower() == 'barker':
             lagfunc = BarkerLag
@@ -277,18 +281,18 @@ class RadarDataFile(object):
             lagfunc = CenteredLagProduct
             Nlag = Pulselen
         # initialize output arrays
-        outdata = sp.zeros((Ntime,Nbeams,N_rg,Nlag),dtype=simdtype)
-        outaddednoise = sp.zeros((Ntime,Nbeams,N_rg,Nlag),dtype=simdtype)
-        outnoise = sp.zeros((Ntime,Nbeams,NNs-Pulselen+1,Nlag),dtype=simdtype)
-        pulses = sp.zeros((Ntime,Nbeams))
-        pulsesN = sp.zeros((Ntime,Nbeams))
-        timemat = sp.zeros((Ntime,2))
+        outdata = sp.zeros((Ntime, Nbeams, N_rg, Nlag), dtype=simdtype)
+        outaddednoise = sp.zeros((Ntime, Nbeams, N_rg, Nlag), dtype=simdtype)
+        outnoise = sp.zeros((Ntime, Nbeams, NNs-Pulselen+1, Nlag), dtype=simdtype)
+        pulses = sp.zeros((Ntime, Nbeams))
+        pulsesN = sp.zeros((Ntime, Nbeams))
+        timemat = sp.zeros((Ntime, 2))
         Ksysvec = self.sensdict['Ksys']
         # set up arrays that hold the location of pulses that are to be processed together
         infoname = self.datadir / 'INFO.h5'
         # Just going to assume that the info file is in the directory
         infodict = h52dict(str(infoname))
-        flist =  infodict['Files']
+        flist = infodict['Files']
         file_list = [str(self.datadir/i) for i in flist]
         pulsen_list = infodict['Pulses']
         beamn_list = infodict['Beams']

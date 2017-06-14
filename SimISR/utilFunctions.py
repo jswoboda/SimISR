@@ -238,14 +238,14 @@ def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
     rp1 = r1[:N]
     rp2 = r1[1:N+1]
     # Use Levinson recursion to find the coefs for the data
-    xr1 = sp.linalg.solve_toeplitz(rp1,rp2)
-    lpc = sp.r_[sp.ones(1),-xr1]
+    xr1 = sp.linalg.solve_toeplitz(rp1, rp2)
+    lpc = sp.r_[sp.ones(1), -xr1]
     # The Gain  term.
     G = sp.sqrt(sp.sum(sp.conjugate(r1[:N+1])*lpc))
-    Gvec= sp.r_[G,sp.zeros(N)]
+    Gvec = sp.r_[G, sp.zeros(N)]
     Npnt = (N+1)*3+lp
     # Create the noise vector and normalize
-    xin = sp.random.randn(rep1,Npnt)+1j*sp.random.randn(rep1,Npnt)
+    xin = sp.random.randn(rep1,Npnt)+1j*sp.random.randn(rep1, Npnt)
     xinsum = sp.tile(sp.sqrt(sp.sum(xin.real**2+xin.imag**2,axis=1))[:,sp.newaxis],(1,Npnt))
     xin = xin/xinsum/sp.sqrt(2.)
     outdata = sp.signal.lfilter(Gvec,lpc,xin,axis=1)

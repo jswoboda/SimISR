@@ -78,28 +78,28 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
             omeg - Frequency vector in Hz.
             outspecs - the spectra to be output."""
 
-    if paramvals.ndim==2:
-        paramvals=paramvals[sp.newaxis]
+    if paramvals.ndim == 2:
+        paramvals = paramvals[sp. newaxis]
 
-    (N_x,N_t) = paramvals.shape[:2]
+    (N_x, N_t) = paramvals.shape[:2]
     Nsp = len(species)
-    Vi = paramvals[:,:,2*Nsp]
-    Parammat = paramvals[:,:,:2*Nsp].reshape((N_x,N_t,Nsp,2))
-    outspecs=sp.zeros((N_x,N_t,npts))
-    specobj = ISRSpectrum(centerFrequency =fc,nspec = npts,sampfreq=fs)
+    Vi = paramvals[:, :, 2*Nsp]
+    Parammat = paramvals[:, :, :2*Nsp].reshape((N_x, N_t, Nsp, 2))
+    outspecs = sp.zeros((N_x, N_t, npts))
+    specobj = ISRSpectrum(centerFrequency=fc, nspec=npts, sampfreq=fs)
     outspecsorig = sp.zeros_like(outspecs)
-    outrcs = sp.zeros((N_x,N_t))
+    outrcs = sp.zeros((N_x, N_t))
     for i_x in sp.arange(N_x):
         for i_t in sp.arange(N_t):
-            cur_params = Parammat[i_x,i_t]
-            cur_vel = Vi[i_x,i_t]
-            (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,species,cur_vel,rcsflag=True)
+            cur_params = Parammat[i_x, i_t]
+            cur_vel = Vi[i_x, i_t]
+            (omeg, cur_spec, rcs) = specobj.getspecsep(cur_params, species, cur_vel, rcsflag=True)
             specsum = sp.absolute(cur_spec).sum()
-            cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/specsum
-            outspecsorig[i_x,i_t] = cur_spec
-            outrcs[i_x,i_t] = rcs
-            outspecs[i_x,i_t] = cur_spec_weighted
-    return (omeg,outspecs)
+            cur_spec_weighted = 0.5*sp.pi*len(cur_spec)**2*cur_spec*rcs/specsum
+            outspecsorig[i_x, i_t] = cur_spec
+            outrcs[i_x, i_t] = rcs
+            outspecs[i_x, i_t] = cur_spec_weighted
+    return (omeg, outspecs)
 def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     """
     This is the fit fucntion that is used with scipy.optimize.leastsquares. It will
