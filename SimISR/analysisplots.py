@@ -3,7 +3,7 @@
 Created on Wed May  6 13:55:26 2015
 analysisplots.py
 This module is used to plot the output from various stages of the simulator to debug
-problems.
+problems. This is also helpful for presentations.
 @author: John Swoboda
 """
 from . import Path
