@@ -5,9 +5,11 @@ This will create a number of data sets for statistical analysis. It'll then make
 statistics and histograms of the output parameters.
 @author: John Swoboda
 """
+import itertools
+import math
 from SimISR import Path
 import scipy as sp
-
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pdb
@@ -18,8 +20,17 @@ from SimISR.analysisplots import analysisdump,maketi
 #from radarsystools.radarsystools import RadarSys
 PVALS = [1e11,2.1e3,1.1e3,0.]
 SIMVALUES = sp.array([[PVALS[0],PVALS[2]],[PVALS[0],PVALS[1]]])
-def makehistmult(testpathlist,npulseslist):
+#
+TE = {'param':'Te','paramLT':'T_e','lims':[1200.,3000.],'val':PVALS[1]}
+TI = {'param':'Ti','paramLT':'T_i','lims':[300.,1900.],'val':PVALS[2]}
+NE = {'param':'Ne','paramLT':'N_e','lims':[4e10,2e11],'val':PVALS[0]}
+VI = {'param':'Vi','paramLT':'V_i','lims':[-250.,250.],'val':PVALS[3]}
 
+PARAMDICT = {'Te':TE, 'Ti':TI, 'Ne':NE, 'Vi':VI}
+def makehistmult(testpathlist,npulseslist):
+    """
+        Plot a set of histograms over each other.
+    """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     params = ['Ne','Te','Ti','Vi']
@@ -35,7 +46,7 @@ def makehistmult(testpathlist,npulseslist):
     for iax,iparam in enumerate(params):
         for idict,inpulse in zip(errdictlist,npulseslist):
             curvals = idict[iparam]
-            curhist,binout = sp.histogram(curvals,bins=histvecs[iax])
+            curhist, binout = sp.histogram(curvals,bins=histvecs[iax])
             dx=binout[1]-binout[0]
             curhist_norm = curhist.astype(float)/(curvals.size*dx)
             plthand = axvec[iax].plot(binout[:-1],curhist_norm,label='J = {:d}'.format(inpulse))[0]
@@ -50,6 +61,9 @@ def makehistmult(testpathlist,npulseslist):
     return (figmplf,axvec,linehand)
 
 def makehistsingle(testpath,npulses):
+    """
+        Make a histogram from a single collection of data.
+    """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     params = ['Ne','Te','Ti','Vi']
@@ -64,7 +78,7 @@ def makehistsingle(testpath,npulses):
     lablist=['Histogram','Variance','Error']
     for iax,iparam in enumerate(params):
 
-        mu= PVALS[iax]
+        mu = PVALS[iax]
         curvals = datadict[iparam]
         mu = sp.nanmean(curvals.real)
         RMSE = sp.sqrt(sp.nanvar(curvals))
@@ -87,24 +101,81 @@ def makehistsingle(testpath,npulses):
     plt.subplots_adjust(top=0.9)
     spti = figmplf.suptitle('Pulses J = {:d}'.format(npulses),fontsize=18)
     return (figmplf,axvec,linehand)
+
+def make2dhist(testpath, xaxis=TE, yaxis=TI, figmplf=None, curax=None):
+    """
+        This will plot a 2-D histogram of two variables.
+
+        Args:
+            testpath (obj:`str`): The path where the SimISR data is stored.
+            npulses (obj:`int`): The number of pulses.
+            xaxis (obj: `dict`): default TE, Dictionary that holds the parameter info along the x axis of the distribution.
+            yaxis (obj: `dict`): default TE, Dictionary that holds the parameter info along the y axis of the distribution.
+            figmplf (obj: `matplotb figure`): default None, Figure that the plot will be placed on.
+            curax (obj: `matplotlib axis`): default None, Axis that the plot will be made on.
+
+        Returns:
+            figmplf (obj: `matplotb figure`), curax (obj: `matplotlib axis`):,hist_h (obj: `matplotlib axis`)):
+            The figure handle the plot is made on, the axis handle the plot is on, the plot handle itself.
+    """
+
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+    params = [xaxis['param'], yaxis['param']]
+    datadict, _, _, _ = makehistdata(params, testpath)
+    if (figmplf is None) and (curax is None):
+        (figmplf, curax) = plt.subplots(1, 1, figsize=(6, 6), facecolor='w')
+
+    b1 = sp.linspace(*xaxis['lims'])
+    b2 = sp.linspace(*yaxis['lims'])
+    bins = [b1, b2]
+    d1 = sp.column_stack((datadict[params[0]],datadict[params[1]]))
+    H, xe, ye = sp.histogram2d(d1[:,0].real, d1[:,1].real, bins=bins, normed=True)
+
+    hist_h = curax.pcolor(xe[:-1], ye[:-1], H, cmap='viridis', vmin=0)
+    curax.set_xlabel(r'$'+xaxis['paramLT']+'$')
+    curax.set_ylabel(r'$'+yaxis['paramLT']+'$')
+    curax.set_title(r'Joint distributions for $'+ xaxis['paramLT']+'$'+' and $'+
+                    yaxis['paramLT']+'$')
+    plt.colorbar(hist_h, ax=curax, label='Probability', format='%1.1e')
+    return (figmplf, curax, hist_h)
+
 def makehist(testpath,npulses):
-    """ This functions are will create histogram from data made in the testpath.
+    """
+        This functions are will create histogram from data made in the testpath.
         Inputs
             testpath - The path that the data is located.
             npulses - The number of pulses in the sim.
     """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-    params = ['Ne','Te','Ti','Vi']
-    pvals = [1e11,1e11,2.1e3,1.1e3,0.]
-    errdict = makehistdata(params,testpath)[:4]
-    ernames = ['Data','Error','Error Percent']
+    params = ['Ne', 'Te', 'Ti', 'Vi']
+    pvals = [1e11, 1e11, 2.1e3, 1.1e3, 0.]
+    errdict = makehistdata(params, testpath)[:4]
+    ernames = ['Data', 'Error', 'Error Percent']
     sig1 = sp.sqrt(1./npulses)
 
 
+    # Two dimensiontal histograms
+    pcombos = [i for i in itertools.combinations(params, 2)]
+    c_rows = int(math.ceil(float(len(pcombos))/2.))
+    (figmplf, axmat) = plt.subplots(c_rows, 2, figsize=(12, c_rows*6), facecolor='w')
+    axvec = axmat.flatten()
+    for icomn, icom in enumerate(pcombos):
+        curax = axvec[icomn]
+        str1, str2 = icom
+        _, _, _ = make2dhist(testpath, PARAMDICT[str1], PARAMDICT[str2], figmplf, curax)
+    filetemplate = str(Path(testpath).joinpath('AnalysisPlots', 'TwoDDist'))
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.95)
+    figmplf.suptitle('Pulses: {0}'.format(npulses), fontsize=20)
+    fname = filetemplate+'_{0:0>5}Pulses.png'.format(npulses)
+    plt.savefig(fname)
+    plt.close(figmplf)
+    # One dimensiontal histograms
     for ierr, iername in enumerate(ernames):
-        filetemplate= str(Path(testpath).join('AnalysisPlots',iername))
-        (figmplf, axmat) = plt.subplots(2, 2,figsize=(20, 15), facecolor='w')
+        filetemplate= str(Path(testpath).joinpath('AnalysisPlots', iername))
+        (figmplf, axmat) = plt.subplots(2, 2, figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         for ipn, iparam in enumerate(params):
             plt.sca(axvec[ipn])
@@ -112,21 +183,21 @@ def makehist(testpath,npulses):
                 continue
             histhand = sns.distplot(errdict[ierr][iparam], bins=100, kde=True, rug=False)
             xlim = histhand.get_xlim()
-            if ierr==0:
-                x0=pvals[ipn]
+            if ierr == 0:
+                x0 = pvals[ipn]
             else:
-                x0=0
-            if ierr==2:
-                sig=sig1*100.
+                x0 = 0
+            if ierr == 2:
+                sig = sig1*100.
             else:
-                sig=sig1*pvals[ipn]
-            x = sp.linspace(xlim[0],xlim[1],100)
-            den1 = sp.stats.norm(x0,sig).pdf(x)
+                sig = sig1*pvals[ipn]
+            x = sp.linspace(xlim[0], xlim[1], 100)
+            den1 = sp.stats.norm(x0, sig).pdf(x)
             #plt.plot(x,den1,'g--')
 
             axvec[ipn].set_title(iparam)
         figmplf.suptitle(iername +' Pulses: {0}'.format(npulses), fontsize=20)
-        fname= filetemplate+'_{0:0>5}Pulses.png'.format(npulses)
+        fname = filetemplate+'_{0:0>5}Pulses.png'.format(npulses)
         plt.savefig(fname)
         plt.close(figmplf)
 
@@ -172,9 +243,9 @@ def makehistdata(params,maindir):
     sortlist,outime,filelisting,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
     time2files = []
     for itn,itime in enumerate(times):
-        log1 = (outime[:,0] >= itime[0]) & (outime[:,0]<itime[1])
-        log2 = (outime[:,1] > itime[0]) & (outime[:,1]<=itime[1])
-        log3 = (outime[:,0] <= itime[0]) & (outime[:,1]>itime[1])
+        log1 = (outime[:, 0] >= itime[0]) & (outime[:, 0] < itime[1])
+        log2 = (outime[:, 1] > itime[0]) & (outime[:, 1] <= itime[1])
+        log3 = (outime[:, 0] <= itime[0]) & (outime[:, 1] > itime[1])
         tempindx = sp.where(log1|log2|log3)[0]
         time2files.append(filelisting[tempindx])
 
@@ -189,16 +260,16 @@ def makehistdata(params,maindir):
         for itn,itime in enumerate(times):
             for iplot,filenum in enumerate(time2files[itn]):
                 filenum = int(filenum)
-                if curfilenum!=filenum:
-                    curfilenum=filenum
+                if curfilenum != filenum:
+                    curfilenum = filenum
                     datafilename = dirlist[filenum]
                     Ionoin = IonoContainer.readh5(datafilename)
                     if ('ti' in paramslower) or ('vi' in paramslower):
                         Ionoin = maketi(Ionoin)
                     pnames = Ionoin.Param_Names
                     pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
-                prmloc = sp.argwhere(curparm==pnameslowerin)
-                if prmloc.size !=0:
+                prmloc = sp.argwhere(curparm == pnameslowerin)
+                if prmloc.size != 0:
                     curprm = prmloc[0][0]
                 # build up parameter vector bs the range values by finding the closest point in space in the input
                 curdata = sp.zeros(len(dataloc))
@@ -212,7 +283,7 @@ def makehistdata(params,maindir):
                 datalist.append(curdata)
         errordict[pname] = datadict[pname]-sp.hstack(datalist)
         errordictrel[pname] = 100.*errordict[pname]/sp.absolute(sp.hstack(datalist))
-    return datadict,errordict,errordictrel,edatadict
+    return datadict, errordict, errordictrel, edatadict
 
 def configfilesetup(testpath,npulses):
     """ This will create the configureation file given the number of pulses for
@@ -237,7 +308,8 @@ def configfilesetup(testpath,npulses):
     makeconfigfile(testpath.joinpath('stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
 
 def makedata(testpath):
-    """ This will make the input data for the test case. The data will have the
+    """
+        This will make the input data for the test case. The data will have the
         default set of parameters Ne=Ne=1e11 and Te=Ti=2000.
         Inputs
             testpath - Directory that will hold the data.
