@@ -10,6 +10,8 @@ import math
 from SimISR import Path
 import scipy as sp
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pdb
