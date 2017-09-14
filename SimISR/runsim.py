@@ -164,7 +164,7 @@ def fitdata(basedir,configfile,optinputs):
 
         nTi = fittederronly[:, :, 1]
 
-        paramlist = sp.concatenate((fitteddata, Ti[:, :, sp.newaxis], fittederronly,
+        paramlist = sp.concatenate((fitteddata., Ti[:, :, sp.newaxis], fittederronly,
                                    nTi[:, :, sp.newaxis], funcevals[:, :, sp.newaxis]),
                                    axis=2)
         for isp in species[:-1]:
@@ -184,12 +184,12 @@ def fitdata(basedir,configfile,optinputs):
     # This requires
     if set(Ionoin.Coord_Vecs) == {'x', 'y', 'z'}:
         newver = 0
-        ionoout = IonoContainer(Ionoin.Cart_Coords, paramlist, timevec, ver=newver,
+        ionoout = IonoContainer(Ionoin.Cart_Coords, paramlist.real, timevec, ver=newver,
                                 coordvecs=Ionoin.Coord_Vecs, paramnames=paranamsf,
                                 species=species)
     elif set(Ionoin.Coord_Vecs) == {'r', 'theta', 'phi'}:
         newver = 1
-        ionoout = IonoContainer(Ionoin.Sphere_Coords, paramlist, timevec, ver=newver,
+        ionoout = IonoContainer(Ionoin.Sphere_Coords, paramlist.real, timevec, ver=newver,
                                 coordvecs=Ionoin.Coord_Vecs, paramnames=paranamsf,
                                 species=species)
 
