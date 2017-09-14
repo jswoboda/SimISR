@@ -164,8 +164,8 @@ def fitdata(basedir,configfile,optinputs):
 
         nTi = fittederronly[:, :, 1]
 
-        paramlist = sp.concatenate((fitteddata., Ti[:, :, sp.newaxis], fittederronly,
-                                   nTi[:, :, sp.newaxis], funcevals[:, :, sp.newaxis]),
+        paramlist = sp.concatenate((fitteddata, Ti[:, :, sp.newaxis], fittederronly,
+                                    nTi[:, :, sp.newaxis], funcevals[:, :, sp.newaxis]),
                                    axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
