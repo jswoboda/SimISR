@@ -211,8 +211,8 @@ def makehistdata(params,maindir):
             errordict - A dictionary with the data values in numpy arrays. The keys are param names.
             errdictrel -  A dictionary with the error values in numpy arrays, normalized by the correct value. The keys are param names.
     """
-    maindir=Path(maindir)
-    ffit = maindir.joinpath('Fitted','fitteddata.h5')
+    maindir = Path(maindir)
+    ffit = maindir.joinpath('Fitted', 'fitteddata.h5')
     inputfiledir = maindir.joinpath('Origparams')
 
     paramslower = [ip.lower() for ip in params]
@@ -228,21 +228,24 @@ def makehistdata(params,maindir):
     times = Ionofit.Time_Vector
 
     dataloc = Ionofit.Sphere_Coords
+    rng = dataloc[:,0]
+    rng_log = sp.logical_and(rng > 200., rng < 400)
+    dataloc_out = dataloc[rng_log]
     pnames = Ionofit.Param_Names
     pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
-    p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
+    p2fit = [sp.argwhere(ip == pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
 
-    datadict = {ip:Ionofit.Param_List[:,:,p2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
+    datadict = {ip:Ionofit.Param_List[rng_log, :, p2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
 
     ep2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in eparamslower]
 
-    edatadict = {ip:Ionofit.Param_List[:,:,ep2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
+    edatadict = {ip:Ionofit.Param_List[rng_log, :, ep2fit[ipn]].flatten() for ipn, ip in enumerate(params)}
     # Determine which input files are to be used.
 
     dirlist = [str(i) for i in inputfiledir.glob('*.h5')]
-    sortlist,outime,filelisting,timebeg,timelist_s = IonoContainer.gettimes(dirlist)
+    _, outime, filelisting, _, _ = IonoContainer.gettimes(dirlist)
     time2files = []
-    for itn,itime in enumerate(times):
+    for itn, itime in enumerate(times):
         log1 = (outime[:, 0] >= itime[0]) & (outime[:, 0] < itime[1])
         log2 = (outime[:, 1] > itime[0]) & (outime[:, 1] <= itime[1])
         log3 = (outime[:, 0] <= itime[0]) & (outime[:, 1] > itime[1])
@@ -251,7 +254,7 @@ def makehistdata(params,maindir):
 
 
     curfilenum = -1
-    for iparam,pname in enumerate(params):
+    for iparam, pname in enumerate(params):
         curparm = paramslower[iparam]
         # Use Ne from input to compare the ne derived from the power.
         if curparm == 'nepow':
@@ -272,14 +275,14 @@ def makehistdata(params,maindir):
                 if prmloc.size != 0:
                     curprm = prmloc[0][0]
                 # build up parameter vector bs the range values by finding the closest point in space in the input
-                curdata = sp.zeros(len(dataloc))
+                curdata = sp.zeros(len(dataloc_out))
 
-                for irngn, curcoord in enumerate(dataloc):
+                for irngn, curcoord in enumerate(dataloc_out):
 
-                    tempin = Ionoin.getclosestsphere(curcoord,[itime])[0]
+                    tempin = Ionoin.getclosestsphere(curcoord, [itime])[0]
                     Ntloc = tempin.shape[0]
-                    tempin = sp.reshape(tempin,(Ntloc,len(pnameslowerin)))
-                    curdata[irngn] = tempin[0,curprm]
+                    tempin = sp.reshape(tempin, (Ntloc, len(pnameslowerin)))
+                    curdata[irngn] = tempin[0, curprm]
                 datalist.append(curdata)
         errordict[pname] = datadict[pname]-sp.hstack(datalist)
         errordictrel[pname] = 100.*errordict[pname]/sp.absolute(sp.hstack(datalist))
@@ -381,7 +384,7 @@ def main(plist = None, functlist = ['spectrums','radardata','fitting','analysis'
         if check_run:
             runsim(functlist_red, curfold, str(curfold.joinpath('stats.ini')), True)
         if 'analysis' in functlist:
-            analysisdump(curfold, config)
+            analysisdump(curfold, config, params = ['Ne', 'Te', 'Ti', 'Vi'])
         if 'stats' in functlist:
             makehist(curfold, ip)
 
