@@ -48,4 +48,3 @@ def getangles(bcodes,radar='risr'):
         bcolist = bcodes
     angles = [bco_dict[x] for x in bcolist]
     return angles
-    

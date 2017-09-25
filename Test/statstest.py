@@ -152,7 +152,11 @@ def makehist(testpath,npulses):
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     params = ['Ne', 'Te', 'Ti', 'Vi']
-    pvals = [1e11, 1e11, 2.1e3, 1.1e3, 0.]
+    pvals = [1e11, 2.1e3, 1.1e3, 0.]
+    histlims = [[4e10,2e11],[1200.,3000.],[300.,1900.],[-250.,250.]]
+    erlims = [[-2e11,2e11], [-1000.,1000.], [-800.,-800],[-250.,250.]]
+    erperlims = [[-100.,100.]]*4
+    lims_list = [histlims,erlims,erperlims]
     errdict = makehistdata(params, testpath)[:4]
     ernames = ['Data', 'Error', 'Error Percent']
     sig1 = sp.sqrt(1./npulses)
@@ -183,19 +187,9 @@ def makehist(testpath,npulses):
             plt.sca(axvec[ipn])
             if sp.any(sp.isinf(errdict[ierr][iparam])):
                 continue
-            histhand = sns.distplot(errdict[ierr][iparam], bins=100, kde=True, rug=False)
-            xlim = histhand.get_xlim()
-            if ierr == 0:
-                x0 = pvals[ipn]
-            else:
-                x0 = 0
-            if ierr == 2:
-                sig = sig1*100.
-            else:
-                sig = sig1*pvals[ipn]
-            x = sp.linspace(xlim[0], xlim[1], 100)
-            den1 = sp.stats.norm(x0, sig).pdf(x)
-            #plt.plot(x,den1,'g--')
+            binlims = lims_list[ierr][ipn]
+            bins = sp.linspace(binlims[0],binlims[1],100)
+            histhand = sns.distplot(errdict[ierr][iparam], bins=bins, kde=True, rug=False)
 
             axvec[ipn].set_title(iparam)
         figmplf.suptitle(iername +' Pulses: {0}'.format(npulses), fontsize=20)
