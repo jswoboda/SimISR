@@ -16,10 +16,10 @@ def getangles(bcodes,radar='risr'):
         Outputs
         angles - A list of tuples of the angles.
     """
-    if radar.lower() == 'risr' or radar.lower()=='risr-n':
+    if radar.lower() == 'risr' or radar.lower() == 'risr-n':
         reffile = get_files('RISR_PARAMS.h5')
     elif radar.lower() == 'pfisr':
-        reffile =get_files('PFISR_PARAMS.h5')
+        reffile = get_files('PFISR_PARAMS.h5')
     elif radar.lower() == 'millstone':
         reffile = get_files('Millstone_PARAMS.h5')
     elif radar.lower() == 'sondrestrom':
@@ -32,8 +32,8 @@ def getangles(bcodes,radar='risr'):
     # make a beamcode to angle dictionary
     bco_dict = dict()
     for slin in all_ref:
-        bco_num=slin[0].astype(int)
-        bco_dict[bco_num] = (float(slin[1]),float(slin[2]))
+        bco_num = slin[0].astype(int)
+        bco_dict[bco_num] = (float(slin[1]), float(slin[2]))
 
     # Read in file
     #file_name = 'SelectedBeamCodes.txt'
@@ -48,3 +48,4 @@ def getangles(bcodes,radar='risr'):
         bcolist = bcodes
     angles = [bco_dict[x] for x in bcolist]
     return angles
+    

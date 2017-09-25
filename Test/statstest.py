@@ -338,7 +338,7 @@ def makedata(testpath):
     finalfile = finalpath.joinpath('0 stats.h5')
     Icont1.saveh5(str(finalfile))
     # set start temp to 1000 K.
-    Icont1.Param_List[:,:,:,1] = 1e3
+    Icont1.Param_List[:, :, :, 1] = 1e3
     Icont1.saveh5(str(testpath.joinpath('startfile.h5')))
 
 
