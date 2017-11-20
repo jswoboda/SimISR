@@ -8,14 +8,13 @@ Holds class that applies the fitter.
 
 #imported basic modules
 import os
-import pdb
 # Imported scipy modules
 import scipy as sp
 import scipy.optimize
 # My modules
 from isrutilities.physConstants import v_C_0
-from .IonoContainer import IonoContainer, makeionocombined
-from .utilFunctions import readconfigfile, update_progress
+from SimISR.IonoContainer import IonoContainer, makeionocombined
+from SimISR.utilFunctions import readconfigfile, update_progress
 
 def defaultparamsfunc(curlag, sensdict, simparams):
     """

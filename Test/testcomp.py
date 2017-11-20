@@ -16,7 +16,7 @@ sns.set_context("notebook")
 from SimISR.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 
-inifile= "/Users/Bodangles/Documents/Python/SimISR/Testdata/PFISRExample.pickle"
+inifile= "../Testdata/PFISRExample.pickle"
 
 def main():
 
@@ -89,6 +89,8 @@ def main():
     plt.plot(omega,allspecs[40].real,label='Out',linewidth=5)
     plt.axis((omega.min(),omega.max(),0.0,2e11))
     plt.show(False)
+    
+    
 if __name__== '__main__':
 
     main()

@@ -34,6 +34,12 @@ To determine if everything has been properly installed it is suggested that user
 
 If h5 files for each stage have been created then it should be properly installed.
 
+TODO: 
+
+* `barkertest.ini` is missing, so `Test/barkertest.py` isn't usable.
+* `statstest.py` also appears to be missing a file
+* `testcomp.py`, `testdishmode.py`, `testisrmatrix.py`,`testsimisr.py` missing input file
+
 ## Software Archetecture
 The module is split up into three classes.
 

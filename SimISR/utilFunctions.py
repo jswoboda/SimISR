@@ -18,7 +18,7 @@ import scipy.interpolate as spinterp
 from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
 from beamtools.bcotools import getangles
-from . import Path
+from isrutilities import Path
 
 # utility functions
 
@@ -53,7 +53,7 @@ def update_progress(progress, extstr=""):
     text = "\rPercent: [{0}] {1}% {2}".format("#"*block + "-"*(bar_length-block),
                                               progress*100, status)
     print(text,end="",flush=True)
-    
+
 
 def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     """
@@ -564,9 +564,9 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
         pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
         pickleFile.close()
     elif fext=='.yml':
-        ymlfile=file(str(fname),'w')
-        yaml.dump([{'beamlist':beamlist,'radarname':radarname},simparams],ymlfile)
-        ymlfile.close()
+        with fname.open('w') as f:
+            yaml.dump([{'beamlist':beamlist,'radarname':radarname},simparams], f)
+
     elif fext =='.ini':
         defaultparser = ConfigParser()
         defaultparser.read(str(d_file))
@@ -658,14 +658,14 @@ def readconfigfile(fname):
 
     fname = Path(fname).expanduser()
     if not fname.is_file():
-        raise IOError('{0} not found'.format(str(fname)))
+        raise IOError('{} not found'.format(fname))
 
     ftype = fname.suffix
     curpath = fname.parent
     if ftype=='.pickle':
-        pickleFile = file(str(fname),'r')
-        dictlist = pickle.load(pickleFile)
-        pickleFile.close()
+        with fname.open('r') as f:
+            dictlist = pickle.load(f)
+
         angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
         beamlist = [float(i) for i in dictlist[0]['beamlist']]
         ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
@@ -673,9 +673,9 @@ def readconfigfile(fname):
 
         simparams = dictlist[1]
     elif ftype=='.yml':
-        yamlFile = file(str(fname),'r')
-        dictlist = yaml.load(yamlFile)
-        yamlFile.close()
+        with fname.open('r') as f:
+            dictlist = yaml.load(f)
+
         angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
         beamlist = [float(i) for i in dictlist[0]['beamlist']]
         ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
@@ -770,4 +770,5 @@ def readconfigfile(fname):
 
     elif simparams['Pulsetype'].lower()!='barker':
         warnings.warn('No start file given',UserWarning)
+
     return(sensdict,simparams)
