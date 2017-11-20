@@ -12,10 +12,6 @@ From there the data can be processed like ISR data. The following flow diagram r
 
 ![SIMisr block diagram](https://raw.github.com/jswoboda/SimISR/master/Images/datastackchain.png)
 
-## Requirements
-
-Standard python package requirements such as scipy and matplotlib are stated specifially in requirements.txt. Further requriements are [isrutilities](https://github.com/jswoboda/PythonISRUtilities) and [ISRSpectrum](https://github.com/jswoboda/ISRSpectrum) which need to be installed before hand. 
-
 ## Suggestions
 It is highly suggested that the [Anaconda](https://www.continuum.io/downloads) platform be used as the package manager. All of the development and testing has been done using this.
 Assuming the user has installed Anaconda a [set up bash script](https://github.com/jswoboda/AnacondaEnvUtilities), which can be used in Linux or Mac environments is avalible.
@@ -23,14 +19,14 @@ Assuming the user has installed Anaconda a [set up bash script](https://github.c
 The user can also take advantage of two different APIs to plot results using the SimISR. The first is in Python and is called [GeoDataPython](https://github.com/jswoboda/GeoDataPython). A MATLAB version of this API is also avalible called [GeoDataMATLAB](https://github.com/jswoboda/GeoDataMATLAB). Both APIs can read in the structured files from SimISR.
 
 ## Installation
-from Terminal:
+All prereqs are handled automatically on install:
 
 	git clone https://github.com/jswoboda/SimISR.git
 	cd SimISR
-	python setup.py develop
+    pip install -e .
 
-## Install Test
-To determine if everything has been properly istalled it is suggested that user runs the following Python files to create some test data.
+### Test
+To determine if everything has been properly installed it is suggested that user runs the following Python files to create some test data.
 
 
 	$ cd SimISR/Test

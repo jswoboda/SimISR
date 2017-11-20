@@ -10,7 +10,7 @@ from SimISR.utilFunctions import readconfigfile,makeconfigfile, GenBarker
 from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
 import SimISR.runsim as runsim
 from SimISR.analysisplots import analysisdump
-import pdb
+
 def makeconfigfilebarker(testpath):
     testpath = Path(testpath).expanduser()
 
@@ -47,7 +47,8 @@ def makeconfigfilebarker(testpath):
 
     fn = testpath/'PFISRExample.ini'
     
-    makeconfigfile(str(fn),beamlist,radarname,simparams)
+    makeconfigfile(fn,beamlist,radarname,simparams)
+
 
 def makeinputh5(Iono,basedir):
     basedir = Path(basedir).expanduser()

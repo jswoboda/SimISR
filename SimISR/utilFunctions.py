@@ -4,7 +4,7 @@ Created on Tue Jul 22 16:18:21 2014
 
 @author: Bodangles
 """
-import sys
+from __future__ import print_function
 import warnings
 import pickle
 import yaml
@@ -14,8 +14,7 @@ import scipy as sp
 import scipy.fftpack as scfft
 import scipy.signal as scisig
 import scipy.interpolate as spinterp
-import pdb
-
+#
 from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
 from beamtools.bcotools import getangles
@@ -53,8 +52,8 @@ def update_progress(progress, extstr=""):
         status = status + extstr + '\n'
     text = "\rPercent: [{0}] {1}% {2}".format("#"*block + "-"*(bar_length-block),
                                               progress*100, status)
-    sys.stdout.write(text)
-    sys.stdout.flush()
+    print(text,end="",flush=True)
+    
 
 def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     """
