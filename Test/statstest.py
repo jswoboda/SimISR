@@ -153,10 +153,10 @@ def makehist(testpath,npulses):
     sns.set_context("notebook")
     params = ['Ne', 'Te', 'Ti', 'Vi']
     pvals = [1e11, 2.1e3, 1.1e3, 0.]
-    histlims = [[4e10,2e11],[1200.,3000.],[300.,1900.],[-250.,250.]]
-    erlims = [[-2e11,2e11], [-1000.,1000.], [-800.,-800],[-250.,250.]]
-    erperlims = [[-100.,100.]]*4
-    lims_list = [histlims,erlims,erperlims]
+    histlims = [[1e10, 3e11], [1000., 3000.], [100., 2500.], [-400., 400.]]
+    erlims = [[-2e11, 2e11], [-1000., 1000.], [-800., 800], [-400., 400.]]
+    erperlims = [[-100., 100.]]*4
+    lims_list = [histlims, erlims, erperlims]
     errdict = makehistdata(params, testpath)[:4]
     ernames = ['Data', 'Error', 'Error Percent']
     sig1 = sp.sqrt(1./npulses)
@@ -189,7 +189,10 @@ def makehist(testpath,npulses):
                 continue
             binlims = lims_list[ierr][ipn]
             bins = sp.linspace(binlims[0],binlims[1],100)
-            histhand = sns.distplot(errdict[ierr][iparam], bins=bins, kde=True, rug=False)
+            xdata = errdict[ierr][iparam]
+            xlog = sp.logical_and(xdata >= binlims[0], xdata < binlims[1])
+
+            histhand = sns.distplot(xdata[xlog], bins=bins, kde=True, rug=False)
 
             axvec[ipn].set_title(iparam)
         figmplf.suptitle(iername +' Pulses: {0}'.format(npulses), fontsize=20)
