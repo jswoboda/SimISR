@@ -9,11 +9,11 @@ import pdb
 import scipy as sp
 # My modules
 from isrutilities.physConstants import v_C_0, v_Boltz
-from . import Path
-from .IonoContainer import IonoContainer
-from .utilFunctions import CenteredLagProduct, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
-from . import specfunctions
-from .analysisplots import plotspecsgen
+from SimISR import Path
+from SimISR.IonoContainer import IonoContainer
+from SimISR.utilFunctions import CenteredLagProduct, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
+#from SimISR import specfunctions
+#from SimISR.analysisplots import plotspecsgen
 
 class RadarDataFile(object):
     """
@@ -38,6 +38,8 @@ class RadarDataFile(object):
         rawdata: This is a NbxNpxNr numpy array that holds the raw IQ data.
         rawnoise: This is a NbxNpxNr numpy array that holds the raw noise IQ data.
     """
+
+
     def __init__(self, Ionodict, inifile, outdir, outfilelist=None):
         """
             This function will create an instance of the RadarData class.  It will

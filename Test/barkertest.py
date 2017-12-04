@@ -4,13 +4,14 @@ Created on Tue May  5 17:16:51 2015
 
 @author: John Swoboda
 """
+import pdb
 from SimISR import Path
 import scipy as sp
-from SimISR.utilFunctions import readconfigfile,makeconfigfile, GenBarker
+from SimISR.utilFunctions import makeconfigfile, GenBarker#,readconfigfile
 from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
 import SimISR.runsim as runsim
 from SimISR.analysisplots import analysisdump
-import pdb
+
 def makeconfigfilebarker(testpath):
     testpath = Path(testpath).expanduser()
 
@@ -46,8 +47,9 @@ def makeconfigfilebarker(testpath):
                    'startfile':str(testpath.joinpath('startdata.h5'))}
 
     fn = testpath/'PFISRExample.ini'
-    
-    makeconfigfile(str(fn),beamlist,radarname,simparams)
+
+    makeconfigfile(fn,beamlist,radarname,simparams)
+
 
 def makeinputh5(Iono,basedir):
     basedir = Path(basedir).expanduser()
@@ -71,8 +73,8 @@ def makeinputh5(Iono,basedir):
 
     Ionoout = IonoContainer(datalocsave,outdata,times,Iono.Sensor_loc,ver=0,
                             paramnames=Iono.Param_Names, species=Iono.Species,velocity=outvel)
-                            
-                            
+
+
     ofn = basedir/'startdata.h5'
     print('writing {}'.format(ofn))
     Ionoout.saveh5(str(ofn))
@@ -84,7 +86,7 @@ def main():
     pdb.set_trace()
     testpath.mkdir(exist_ok=True,parents=True)
     print("Making a path for testdata at {}".format(testpath))
-        
+
     origparamsdir.mkdir(exist_ok=True,parents=True)
     print("Making a path for testdata at {}".format(origparamsdir))
     makeconfigfilebarker(testpath)

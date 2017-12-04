@@ -7,8 +7,8 @@ Created on Tue Oct 20 13:20:27 2015
 from SimISR import Path
 import scipy as sp
 import shutil
-from SimISR.utilFunctions import makedefaultfile
-from SimISR.operators import makematPA
+#from SimISR.utilFunctions import makedefaultfile
+#from SimISR.operators import makematPA
 from SimISR.IonoContainer import MakeTestIonoclass
 from SimISR.analysisplots import plotbeamparametersv2
 import SimISR.runsim as runsim
@@ -21,7 +21,7 @@ def main():
     print(curpath)
     testpath = curpath/'Testdata'/'MatrixTest'
     origparamsdir = testpath/'Origparams'
-    
+
     testpath.mkdir(exist_ok=True,parents=True)
 
     origparamsdir.mkdir(exist_ok=True,parents=True)
@@ -34,7 +34,7 @@ def main():
             ifile.unlink()
     # Make Config file
     configname = testpath/'config.ini'
-    
+
     if not configname.is_file():
         srcfile = curpath/'SimISR'/'default.ini'
         shutil.copy(str(srcfile),str(configname))
@@ -57,16 +57,16 @@ def main():
     Icont1.saveh5(testpath/'startdata.h5')
     funcnamelist=['spectrums','applymat','fittingmat']
     runsim.main(funcnamelist,testpath,configname,True)
-    
+
     plotdir = testpath/'AnalysisPlots'
-    
+
     plotdir.mkdir(exist_ok=True,parents=True)
-    
+
     f_templ = str(plotdir/'params')
-    
+
     plotbeamparametersv2([0.],str(configname),str(testpath),fitdir = 'FittedMat',params=['Ne','Ti','Te'],filetemplate=f_templ,
                          suptitle = 'With Mat',werrors=False,nelog=False)
-                         
+
 if __name__== '__main__':
 
     main()
