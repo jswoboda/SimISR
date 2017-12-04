@@ -5,11 +5,12 @@ This module holds the functions that deal with the spectrum formation functions 
 fitting and making spectrums.
 @author: John Swoboda
 """
-import scipy as sp
+import numpy as np
 import scipy.fftpack as scfft
+import pdb
 #
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
-from .utilFunctions import  spect2acf, update_progress
+from SimISR.utilFunctions import spect2acf, update_progress
 
 
 def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
@@ -32,19 +33,19 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
     if ionocont.Time_Vector is None:
         N_x = ionocont.Param_List.shape[0]
         N_t = 1
-        outspecs = sp.zeros((N_x,1,npts))
+        outspecs = np.zeros((N_x,1,npts))
         full_grid = False
     else:
         (N_x,N_t) = ionocont.Param_List.shape[:2]
-        outspecs = sp.zeros((N_x,N_t,npts))
+        outspecs = np.zeros((N_x,N_t,npts))
         full_grid = True
 
     (N_x,N_t) = outspecs.shape[:2]
-    outspecsorig = sp.zeros_like(outspecs)
-    outrcs = sp.zeros((N_x,N_t))
+    outspecsorig = np.zeros_like(outspecs)
+    outrcs = np.zeros((N_x,N_t))
     #pdb.set_trace()
-    for i_x in sp.arange(N_x):
-        for i_t in sp.arange(N_t):
+    for i_x in np.arange(N_x):
+        for i_t in np.arange(N_t):
             if print_line:
                 curnum = ifile/nfiles + float(i_x)/N_x/nfiles+float(i_t)/N_t/N_x/nfiles
                 outstr = 'Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t, N_t, i_x ,N_x)
@@ -56,7 +57,7 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
             else:
                 cur_params = ionocont.Param_List[i_x]
             (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,ionocont.Species,cur_vel,rcsflag=True)
-            specsum = sp.absolute(cur_spec).sum()
+            specsum = np.absolute(cur_spec).sum()
             cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/specsum
             outspecsorig[i_x,i_t] = cur_spec
             outrcs[i_x,i_t] = rcs
@@ -79,27 +80,30 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
             outspecs - the spectra to be output."""
 
     if paramvals.ndim == 2:
-        paramvals = paramvals[sp. newaxis]
+        paramvals = paramvals[np.newaxis]
 
     (N_x, N_t) = paramvals.shape[:2]
     Nsp = len(species)
     Vi = paramvals[:, :, 2*Nsp]
     Parammat = paramvals[:, :, :2*Nsp].reshape((N_x, N_t, Nsp, 2))
-    outspecs = sp.zeros((N_x, N_t, npts))
+    outspecs = np.zeros((N_x, N_t, npts))
     specobj = ISRSpectrum(centerFrequency=fc, nspec=npts, sampfreq=fs)
-    outspecsorig = sp.zeros_like(outspecs)
-    outrcs = sp.zeros((N_x, N_t))
-    for i_x in sp.arange(N_x):
-        for i_t in sp.arange(N_t):
+    outspecsorig = np.zeros_like(outspecs)
+    outrcs = np.zeros((N_x, N_t))
+    for i_x in np.arange(N_x):
+        for i_t in np.arange(N_t):
             cur_params = Parammat[i_x, i_t]
             cur_vel = Vi[i_x, i_t]
             (omeg, cur_spec, rcs) = specobj.getspecsep(cur_params, species, cur_vel, rcsflag=True)
-            specsum = sp.absolute(cur_spec).sum()
-            cur_spec_weighted = 0.5*sp.pi*len(cur_spec)**2*cur_spec*rcs/specsum
+            specsum = np.absolute(cur_spec).sum()
+            cur_spec_weighted = 0.5*np.pi*len(cur_spec)**2*cur_spec*rcs/specsum
             outspecsorig[i_x, i_t] = cur_spec
             outrcs[i_x, i_t] = rcs
             outspecs[i_x, i_t] = cur_spec_weighted
+
     return (omeg, outspecs)
+
+
 def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     """
     This is the fit fucntion that is used with scipy.optimize.leastsquares. It will
@@ -126,7 +130,7 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     nspecs = len(specs)
 
     (Ti,Ne,Te,v_i) = x
-    datablock = sp.zeros((nspecs,2),dtype=x.dtype)
+    datablock = np.zeros((nspecs,2),dtype=x.dtype)
     datablock[:-1,0] = Ne*Niratios
     datablock[:-1,1] = Ti
     datablock[-1,0] = Ne
@@ -134,8 +138,8 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
 
     # determine if you've gone beyond the bounds
     # penalty for being less then zero
-    grt0 = sp.exp(-datablock)
-    pentsum = sp.zeros(grt0.size+1)
+    grt0 = np.exp(-datablock)
+    pentsum = np.zeros(grt0.size+1)
     pentsum[:-1] = grt0.flatten()
 
 
@@ -147,7 +151,7 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
 
     if amb_dict['WttMatrix'].shape[-1]!=acf.shape[0]:
         pdb.set_trace()
-    guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
+    guess_acf = np.dot(amb_dict['WttMatrix'],acf)
     # apply ambiguity function
 
     guess_acf = guess_acf*rcs/guess_acf[0].real
@@ -165,14 +169,16 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
         yout = yout*1./y_err
     # Cannot make the output a complex array! To avoid this problem simply double
     # the size of the array and place the real and imaginary parts in alternating spots.
-    if sp.iscomplexobj(yout):
+    if np.iscomplexobj(yout):
         youttmp=yout.copy()
-        yout=sp.zeros(2*len(youttmp)).astype(youttmp.real.dtype)
+        yout=np.zeros(2*len(youttmp)).astype(youttmp.real.dtype)
         yout[::2]=youttmp.real
         yout[1::2] = youttmp.imag
 
-    penadd = sp.sqrt(sp.power(sp.absolute(yout),2).sum())*pentsum.sum()
+    penadd = np.sqrt(np.power(np.absolute(yout),2).sum())*pentsum.sum()
+
     return yout+penadd
+
 
 def fitsurface(errfunc,paramlists,inputs):
     """This function will create a fit surface using an error function given by the user
@@ -184,24 +190,24 @@ def fitsurface(errfunc,paramlists,inputs):
         the theoretical function
         paramlists - An N length list of arrays for each of the parameters.
         inputs - A tuple of the rest of the inputs for error function."""
-    paramsizlist = sp.array([len(i) for i in paramlists])
-    outsize = sp.where(paramsizlist!=1)[0]
+    paramsizlist = np.array([len(i) for i in paramlists])
+    outsize = np.where(paramsizlist!=1)[0]
     #  make the fit surface and flatten it
-    fit_surface = sp.zeros(paramsizlist[outsize])
+    fit_surface = np.zeros(paramsizlist[outsize])
     fit_surface = fit_surface.flatten()
 
-    for inum in range(sp.prod(paramsizlist)):
+    for inum in range(np.prod(paramsizlist)):
         numcopy = inum
-        curnum = sp.zeros_like(paramsizlist)
-        # TODO: Replace with sp.unravel_index
+        curnum = np.zeros_like(paramsizlist)
+        # TODO: Replace with np.unravel_index
         # determine current parameters
         for i, iparam in enumerate(reversed(paramsizlist)):
-            curnum[i] = sp.mod(numcopy,iparam)
-            numcopy = sp.floor(numcopy/iparam)
+            curnum[i] = np.mod(numcopy,iparam)
+            numcopy = np.floor(numcopy/iparam)
         curnum = curnum[::-1]
-        cur_x = sp.array([ip[curnum[num_p]] for num_p ,ip in enumerate(paramlists)])
+        cur_x = np.array([ip[curnum[num_p]] for num_p ,ip in enumerate(paramlists)])
         diffthing = errfunc(cur_x,*inputs)
-        fit_surface[inum]=(sp.absolute(diffthing)**2).sum()
+        fit_surface[inum]=(np.absolute(diffthing)**2).sum()
         # return the fitsurace after its been de flattened
     return fit_surface.reshape(paramsizlist[outsize]).copy()
 
@@ -215,13 +221,13 @@ def makefitsurf(xarrs,y_acf,sensdict,simparams,yerr=None):
     for xl in youtsize:
         ytprod = ytprod*xl
 
-    yout = sp.zeros(youtsize,dtype=sp.float128)
+    yout = np.zeros(youtsize,dtype=np.float128)
 
     for iparam in range(ytprod):
-        curind = sp.unravel_index(iparam,youtsize)
-        curx = sp.array([x[curind[ix]] for ix, x in enumerate(xarrs)])
+        curind = np.unravel_index(iparam,youtsize)
+        curx = np.array([x[curind[ix]] for ix, x in enumerate(xarrs)])
 
-        yout[curind[:]] = sp.power(sp.absolute(ISRSfitfunction(curx,y_acf,sensdict,simparams,yerr)),2).sum()
+        yout[curind[:]] = np.power(np.absolute(ISRSfitfunction(curx,y_acf,sensdict,simparams,yerr)),2).sum()
     return(yout)
 
 
@@ -233,11 +239,11 @@ def makefitsurfv2(xarrs,y_acf,sensdict,simparams,yerr=None):
     for xl in youtsize:
         ytprod = ytprod*xl
 
-    yout = sp.zeros(youtsize,dtype=sp.float128)
+    yout = np.zeros(youtsize,dtype=np.float128)
 
     for iparam in range(ytprod):
-        curind = sp.unravel_index(iparam,youtsize)
+        curind = np.unravel_index(iparam,youtsize)
         curx = xarrs[curind[0]][curind[1]]
 
-        yout[curind[:]] = sp.power(sp.absolute(ISRSfitfunction(curx,y_acf,sensdict,simparams,yerr)),2).sum()
+        yout[curind[:]] = np.power(np.absolute(ISRSfitfunction(curx,y_acf,sensdict,simparams,yerr)),2).sum()
     return(yout)

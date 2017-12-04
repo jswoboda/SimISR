@@ -9,16 +9,15 @@ import glob
 import inspect
 import posixpath
 import copy
-from . import Path
+from SimISR import Path
 import numpy as np
-import scipy as sp
 import scipy.io as sio
 import scipy.interpolate
 import tables
 import numbers
 from datetime import datetime
 # From my
-from .utilFunctions import Chapmanfunc, TempProfile
+from SimISR.utilFunctions import Chapmanfunc, TempProfile
 
 class IonoContainer(object):
     """
@@ -27,7 +26,7 @@ class IonoContainer(object):
         point in time and space a spectra will be created.
     """
     #%% Init function
-    def __init__(self,coordlist,paramlist,times = None,sensor_loc = sp.zeros(3),ver =0,coordvecs =
+    def __init__(self,coordlist,paramlist,times = None,sensor_loc = np.zeros(3),ver =0,coordvecs =
             None,paramnames=None,species=None,velocity=None):
         """ This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
@@ -45,8 +44,6 @@ class IonoContainer(object):
         if sphereical coordinates keys are 'r','theta','phi' if cartisian 'x','y','z'.
         paramnames - This is a list or number numpy array of numbers for each parameter in the
         """
-        r2d = 180.0/np.pi
-        d2r = np.pi/180.0
         # Set up the size for the time vector if its not given.
         Ndims = paramlist.ndim
         psizetup = paramlist.shape
@@ -66,12 +63,12 @@ class IonoContainer(object):
             Y_vec = coordlist[:,1]
             Z_vec = coordlist[:,2]
 
-            R_vec = sp.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
-            Az_vec = sp.arctan2(X_vec,Y_vec)*r2d
-            El_vec = sp.arcsin(Z_vec/R_vec)*r2d
+            R_vec = np.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
+            Az_vec = np.degrees(np.arctan2(X_vec,Y_vec))
+            El_vec = np.degrees(np.arcsin(Z_vec/R_vec))
 
             self.Cart_Coords = coordlist
-            self.Sphere_Coords = sp.array([R_vec,Az_vec,El_vec]).transpose()
+            self.Sphere_Coords = np.array([R_vec,Az_vec,El_vec]).transpose()
             if coordvecs is not None:
                 if set(coordvecs)!={'x','y','z'}:
                     raise NameError("Keys for coordvecs need to be 'x','y','z' ")
@@ -80,17 +77,17 @@ class IonoContainer(object):
 
         elif ver==1:
             R_vec = coordlist[:,0]
-            Az_vec = coordlist[:,1]
-            El_vec = coordlist[:,2]
+            Az_vec = np.radians(coordlist[:,1])
+            El_vec = np.radians(coordlist[:,2])
 
-            xvecmult = np.sin(Az_vec*d2r)*np.cos(El_vec*d2r)
-            yvecmult = np.cos(Az_vec*d2r)*np.cos(El_vec*d2r)
-            zvecmult = np.sin(El_vec*d2r)
+            xvecmult = np.sin(Az_vec)*np.cos(El_vec)
+            yvecmult = np.cos(Az_vec)*np.cos(El_vec)
+            zvecmult = np.sin(El_vec)
             X_vec = R_vec*xvecmult
             Y_vec = R_vec*yvecmult
             Z_vec = R_vec*zvecmult
 
-            self.Cart_Coords = sp.column_stack((X_vec,Y_vec,Z_vec))
+            self.Cart_Coords = np.column_stack((X_vec,Y_vec,Z_vec))
             self.Sphere_Coords = coordlist
             if coordvecs is not None:
                 if set(coordvecs)!={'r','theta','phi'}:
@@ -109,14 +106,14 @@ class IonoContainer(object):
         (Nloc,Nt) = paramlist.shape[:2]
         #set up a Velocity measurement
         if velocity is None:
-            self.Velocity=sp.zeros((Nloc,Nt,3))
+            self.Velocity=np.zeros((Nloc,Nt,3))
         else:
             # if in sperical coordinates and you have a velocity
             if velocity.ndim ==2 and ver==1:
-                veltup = (velocity*sp.tile(xvecmult[:,sp.newaxis],(1,Nt)),
-                          velocity*sp.tile(yvecmult[:,sp.newaxis],(1,Nt)),
-                        velocity*sp.tile(zvecmult[:,sp.newaxis],(1,Nt)))
-                self.Velocity=  sp.dstack(veltup)
+                veltup = (velocity*np.tile(xvecmult[:,np.newaxis],(1,Nt)),
+                          velocity*np.tile(yvecmult[:,np.newaxis],(1,Nt)),
+                        velocity*np.tile(zvecmult[:,np.newaxis],(1,Nt)))
+                self.Velocity=  np.dstack(veltup)
             else:
                 self.Velocity=velocity
         # set up a params name
@@ -125,7 +122,7 @@ class IonoContainer(object):
             if species is not None:
                 paramnames = [['Ni_'+isp,'Ti_'+isp] for isp in species[:-1]]
                 paramnames.append(['Ne','Te'])
-                self.Param_Names=sp.array(paramnames,dtype=str)
+                self.Param_Names=np.array(paramnames,dtype=str)
             else:
 
                 paramnums = np.arange(np.product(partparam))
@@ -184,23 +181,23 @@ class IonoContainer(object):
         velout = self.Velocity[minidx]
         datatime = self.Time_Vector
         tvec = self.Time_Vector
-        if sp.ndim(self.Time_Vector) > 1:
+        if np.ndim(self.Time_Vector) > 1:
             datatime = datatime[:, 0]
 
         if isinstance(timelist, list):
-            timelist = sp.array(timelist)
+            timelist = np.array(timelist)
         if timelist is not None:
             timeindx = []
             for itime in timelist:
-                if sp.isscalar(itime):
-                    timeindx.append(sp.argmin(sp.absolute(itime-datatime)))
+                if np.isscalar(itime):
+                    timeindx.append(np.argmin(np.absolute(itime-datatime)))
                 else:
                     # look for overlap
                     log1 = (tvec[:, 0] >= itime[0]) & (tvec[:, 0] < itime[1])
                     log2 = (tvec[:, 1] > itime[0]) & (tvec[:, 1] <= itime[1])
                     log3 = (tvec[:, 0] <= itime[0]) & (tvec[:, 1] > itime[1])
                     log4 = (tvec[:, 0] > itime[0]) & (tvec[:, 1] < itime[1])
-                    tempindx = sp.where(log1|log2|log3|log4)[0]
+                    tempindx = np.where(log1|log2|log3|log4)[0]
 
                     timeindx = timeindx +tempindx.tolist()
             paramout = paramout[timeindx]
@@ -329,7 +326,7 @@ class IonoContainer(object):
         outdict = {}
         for ikey in vardict.keys():
             if vardict[ikey] in indata.keys():
-                if (ikey=='species') and (type(indata[vardict[ikey]]) ==sp.ndarray):
+                if (ikey=='species') and (type(indata[vardict[ikey]]) ==np.ndarray):
                     indata[vardict[ikey]] = [str(''.join(letter)) for letter_array in indata[vardict[ikey]][0] for letter in letter_array]
 
                 outdict[ikey] = indata[vardict[ikey]]
@@ -381,7 +378,7 @@ class IonoContainer(object):
                 outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
         # determine version of data
         if 'coordvecs' in outdict.keys():
-            if type(outdict['coordvecs']) ==sp.ndarray:
+            if type(outdict['coordvecs']) ==np.ndarray:
                 outdict['coordvecs'] = outdict['coordvecs'].tolist()
             if outdict['coordvecs'] == ['r','theta','phi']:
                 outdict['ver']=1
@@ -414,14 +411,14 @@ class IonoContainer(object):
 
 
             timelist.append(times)
-            fileslist.append(ifilenum*sp.ones(len(times)))
-        times_file =sp.array([i[:,0].min() for i in timelist])
-        sortlist = sp.argsort(times_file)
+            fileslist.append(ifilenum*np.ones(len(times)))
+        times_file =np.array([i[:,0].min() for i in timelist])
+        sortlist = np.argsort(times_file)
 
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
-        fileslist = sp.vstack([fileslist[i][0] for i in sortlist]).flatten().astype('int64')
-        outime = sp.vstack(timelist_s)
+        fileslist = np.vstack([fileslist[i][0] for i in sortlist]).flatten().astype('int64')
+        outime = np.vstack(timelist_s)
         return (sortlist,outime,fileslist,timebeg,timelist_s)
 
     #%% Reduce numbers
@@ -440,7 +437,7 @@ class IonoContainer(object):
         coordkeysorg = coorddict.keys()
         coordkeys = [ic for ic in coordkeysorg if ic in coordlist]
 
-        ckeep = sp.ones(ncoords,dtype=bool)
+        ckeep = np.ones(ncoords,dtype=bool)
 
         for ic in coordkeys:
             currlims = coorddict[ic]
@@ -456,8 +453,8 @@ class IonoContainer(object):
                 tempcoords = self.Sphere_Coords[:,1]
             elif ic=='phi':
                 tempcoords = self.Sphere_Coords[:,2]
-            keeptemp = sp.logical_and(tempcoords>=currlims[0],tempcoords<currlims[1])
-            ckeep = sp.logical_and(ckeep,keeptemp)
+            keeptemp = np.logical_and(tempcoords>=currlims[0],tempcoords<currlims[1])
+            ckeep = np.logical_and(ckeep,keeptemp)
         # prune the arrays
         self.Cart_Coords=self.Cart_Coords[ckeep]
         self.Sphere_Coords=self.Sphere_Coords[ckeep]
@@ -476,9 +473,9 @@ class IonoContainer(object):
         assert (timelims is not None) or (timesselected is not None), "Need a set of limits or selected set of times"
 
         if timelims is not None:
-            tkeep = sp.logical_and(self.Time_Vector>=timelims[0],self.Time_Vector<timelims[1])
+            tkeep = np.logical_and(self.Time_Vector>=timelims[0],self.Time_Vector<timelims[1])
         if timesselected is not None:
-            tkeep = sp.in1d(self.Time_Vector,timesselected)
+            tkeep = np.in1d(self.Time_Vector,timesselected)
         # prune the arrays
         self.Time_Vector=self.Time_Vector[tkeep]
         self.Param_List=self.Param_List[:,tkeep]
@@ -526,7 +523,7 @@ class IonoContainer(object):
         """
         # check if multiplying a number or numpy array
         isnum = isinstance(thingtomult,numbers.Number)
-        isarray=isinstance(thingtomult,sp.ndarray)
+        isarray=isinstance(thingtomult,np.ndarray)
         isiono= isinstance(thingtomult,type(self))
         if isarray:
             assert thingtomult.shape==self.Param_List.shape, "Numpy array must same shape as Param_List"
@@ -537,7 +534,7 @@ class IonoContainer(object):
 
         # Now if you're multiplying two iono containers
         if isiono:
-            assert sp.allclose(self.Time_Vector,thingtomult.Time_Vector),"Need to have the same times"
+            assert np.allclose(self.Time_Vector,thingtomult.Time_Vector),"Need to have the same times"
             a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
             blah = np.ma.array(thingtomult.Cart_Coords,mask=np.isnan(thingtomult.Cart_Coords))
 
@@ -546,7 +543,7 @@ class IonoContainer(object):
             assert type(self.Param_Names)==type(thingtomult.Param_Names),'Param_Names are different types, they need to be the same'
 
 
-            assert sp.all(self.Param_Names == thingtomult.Param_Names), "Need to have same parameter names"
+            assert np.all(self.Param_Names == thingtomult.Param_Names), "Need to have same parameter names"
             assert self.Species== thingtomult.Species, "Need to have the same species"
 
             newself=self.copy()
@@ -566,7 +563,7 @@ class IonoContainer(object):
             thats the same size as Param_List or another ionocontainer.
         """
         isnum = isinstance(thing2div,numbers.Number)
-        isarray=isinstance(thing2div,sp.ndarray)
+        isarray=isinstance(thing2div,np.ndarray)
         isiono= isinstance(thing2div,type(self))
         if isarray:
             assert thing2div.shape==self.Param_List.shape, "Numpy array must same shape as Param_List"
@@ -577,7 +574,7 @@ class IonoContainer(object):
 
         # Now if you're multiplying two iono containers
         if isiono:
-            assert sp.allclose(self.Time_Vector,thing2div.Time_Vector),"Need to have the same times"
+            assert np.allclose(self.Time_Vector,thing2div.Time_Vector),"Need to have the same times"
             a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
             blah = np.ma.array(thing2div.Cart_Coords,mask=np.isnan(thing2div.Cart_Coords))
 
@@ -586,7 +583,7 @@ class IonoContainer(object):
             assert type(self.Param_Names)==type(thing2div.Param_Names),'Param_Names are different types, they need to be the same'
 
 
-            assert sp.all(self.Param_Names == thing2div.Param_Names), "Need to have same parameter names"
+            assert np.all(self.Param_Names == thing2div.Param_Names), "Need to have same parameter names"
             assert self.Species== thing2div.Species, "Need to have the same species"
 
             newself=self.copy()
@@ -606,7 +603,7 @@ class IonoContainer(object):
             the data will be added.
         """
 
-        assert sp.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
+        assert np.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
         a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
         blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
 
@@ -615,7 +612,7 @@ class IonoContainer(object):
         assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
 
 
-        assert sp.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
+        assert np.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
         assert self.Species== self2.Species, "Need to have the same species"
 
         outiono = self.copy()
@@ -625,7 +622,7 @@ class IonoContainer(object):
         """ This is the '-' operator. Assuming the locations, times and parameter types are the same,
             the data will be subtracted.
         """
-        assert sp.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
+        assert np.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
         a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
         blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
 
@@ -634,7 +631,7 @@ class IonoContainer(object):
         assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
 
 
-        assert sp.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
+        assert np.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
         assert self.Species== self2.Species, "Need to have the same species"
 
         outiono = self.copy()
@@ -661,12 +658,12 @@ class IonoContainer(object):
         assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
 
 
-        assert sp.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
+        assert np.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
         assert self.Species== self2.Species, "Need to have the same species"
 
-        self.Time_Vector = sp.concatenate((self.Time_Vector,self2.Time_Vector),0)
-        self.Velocity = sp.concatenate((self.Velocity,self2.Velocity),1)
-        self.Param_List = sp.concatenate((self.Param_List,self2.Param_List),1)
+        self.Time_Vector = np.concatenate((self.Time_Vector,self2.Time_Vector),0)
+        self.Velocity = np.concatenate((self.Velocity,self2.Velocity),1)
+        self.Param_List = np.concatenate((self.Param_List,self2.Param_List),1)
     def makespectruminstance(self,sensdict,npts):
         """
         This will create another instance of the Ionocont class
@@ -693,7 +690,7 @@ class IonoContainer(object):
         """
         (omeg, outspecs) = self.makeallspectrumsopen(func, sensdict, npts, 0., 1., print_line)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
-    def getDoppler(self,sensorloc=sp.zeros(3)):
+    def getDoppler(self,sensorloc=np.zeros(3)):
         """
         This will return the line of sight velocity.
         Inputs
@@ -703,14 +700,14 @@ class IonoContainer(object):
         """
         ncoords = self.Cart_Coords.shape[0]
         ntimes = len(self.Time_Vector)
-        if not sp.alltrue(sensorloc == sp.zeros(3)):
-            curcoords = self.Cart_Coords -sp.tile(sensorloc[sp.newaxis,:],(ncoords,1))
+        if not np.alltrue(sensorloc == np.zeros(3)):
+            curcoords = self.Cart_Coords -np.tile(sensorloc[np.newaxis,:],(ncoords,1))
         else:
             curcoords = self.Cart_Coords
-        denom = np.tile(sp.sqrt(sp.sum(curcoords**2,1))[:,sp.newaxis],(1,3))
+        denom = np.tile(np.sqrt(np.sum(curcoords**2,1))[:,np.newaxis],(1,3))
         unit_coords = curcoords/denom
 
-        Vi = sp.zeros((ncoords,ntimes))
+        Vi = np.zeros((ncoords,ntimes))
         for itime in range(ntimes):
             Vi[:,itime] = (self.Velocity[:,itime]*unit_coords).sum(1)
         return Vi
@@ -769,7 +766,7 @@ def pathparts(path):
             return components
         components.append(tail)
 
-def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times =sp.array([[0,1e6]])):
+def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times =np.array([[0,1e6]])):
     """
     This function will create a test ionoclass with an electron density that
     follows a chapman function.
@@ -786,12 +783,12 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coo
         Icont - A test ionocontainer.
     """
     if coords is None:
-        xvec = sp.arange(-250.0,250.0,20.0)
-        yvec = sp.arange(-250.0,250.0,20.0)
-        zvec = sp.arange(50.0,900.0,2.0)
+        xvec = np.arange(-250.0,250.0,20.0)
+        yvec = np.arange(-250.0,250.0,20.0)
+        zvec = np.arange(50.0,900.0,2.0)
         # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
-        xx,zz,yy = sp.meshgrid(xvec,zvec,yvec)
-        coords = sp.zeros((xx.size,3))
+        xx,zz,yy = np.meshgrid(xvec,zvec,yvec)
+        coords = np.zeros((xx.size,3))
         coords[:,0] = xx.flatten()
         coords[:,1] = yy.flatten()
         coords[:,2] = zz.flatten()
@@ -814,20 +811,20 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coo
     # set up the velocity
     (Nlocs,ndims) = coords.shape
     Ntime= len(times)
-    vel = sp.zeros((Nlocs,Ntime,ndims))
+    vel = np.zeros((Nlocs,Ntime,ndims))
 
     if testv:
-        vel[:,:,2] = sp.repeat(zzf[:,sp.newaxis],Ntime,axis=1)/5.0
+        vel[:,:,2] = np.repeat(zzf[:,np.newaxis],Ntime,axis=1)/5.0
     species=['O+','e-']
     # put the parameters in order
-    params = sp.zeros((Ne_profile.size,len(times),2,2))
-    params[:,:,0,1] = sp.repeat(Ti[:,sp.newaxis],Ntime,axis=1)
-    params[:,:,1,1] = sp.repeat(Te[:,sp.newaxis],Ntime,axis=1)
-    params[:,:,0,0] = sp.repeat(Ne_profile[:,sp.newaxis],Ntime,axis=1)
-    params[:,:,1,0] = sp.repeat(Ne_profile[:,sp.newaxis],Ntime,axis=1)
+    params = np.zeros((Ne_profile.size,len(times),2,2))
+    params[:,:,0,1] = np.repeat(Ti[:,np.newaxis],Ntime,axis=1)
+    params[:,:,1,1] = np.repeat(Te[:,np.newaxis],Ntime,axis=1)
+    params[:,:,0,0] = np.repeat(Ne_profile[:,np.newaxis],Ntime,axis=1)
+    params[:,:,1,0] = np.repeat(Ne_profile[:,np.newaxis],Ntime,axis=1)
 
 
-    Icont1 = IonoContainer(coordlist=coords,paramlist=params,times = times,sensor_loc = sp.zeros(3),ver =0,coordvecs =
+    Icont1 = IonoContainer(coordlist=coords,paramlist=params,times = times,sensor_loc = np.zeros(3),ver =0,coordvecs =
         ['x','y','z'],paramnames=None,species=species,velocity=vel)
     return Icont1
 

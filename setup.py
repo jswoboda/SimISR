@@ -5,23 +5,21 @@ This is the setup file for the SimISR python package
 
 @author: John Swoboda
 """
-import os,subprocess
-from setuptools import setup
+req = ['ISRSpectrum','lmfit',
+'nose','six','numpy','scipy','tables','matplotlib','seaborn','pyyaml','pandas']
 
-try:
-    subprocess.call(['conda','install','--yes','--file','requirements.txt'])
-except Exception as e:
-    pass
-
+import os
+from setuptools import setup, find_packages
 
 config = {
     'description': 'An ISR data simulator',
     'author': 'John Swoboda',
     'url': 'https://github.com/jswoboda/SimISR.git',
-    'version': '1',
-    'install_requires': ['ISRSpectrum','lmfit'],
-    'dependency_links': ['https://github.com/jswoboda/ISRSpectrum/tarball/master#egg=ISRSpectrum'],
-    'packages': ['SimISR','beamtools','radarsystools'],
+    'version': '1.0.0',
+    'install_requires': req,
+    'python_requires': '>=2.7',
+    'dependency_links': ['https://github.com/jswoboda/ISRSpectrum/tarball/master#egg=ISRSpectrum-999.0'],
+    'packages': find_packages(),
     'name': 'SimISR'
 }
 

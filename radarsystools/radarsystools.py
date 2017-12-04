@@ -8,10 +8,9 @@ data.
 """
 import sys, getopt
 import numpy as np
-
+#
 from isrutilities.physConstants import v_C_0, v_Boltz, v_electron_rcs, v_epsilon0,v_elemcharge
 import isrutilities.sensorConstants as sensconst
-import pdb
 
 class RadarSys(object):
     """ This is a class for the radar system object. This object can be used to
@@ -43,9 +42,9 @@ class RadarSys(object):
         Output
         SNRdata - An array the same shape as ne that holds the SNR'''
         #%% Assersions
-        assert type(te) is np.ndarray, "te is not an numpy array."
-        assert type(ne) is np.ndarray, "ne is not an numpy array."
-        assert type(ti) is np.ndarray,  "ti is not an numpy array."
+        assert isinstance(te,np.ndarray), "te is not an numpy array."
+        assert isinstance(ne,np.ndarray), "ne is not an numpy array."
+        assert isinstance(ti,np.ndarray),  "ti is not an numpy array."
         #%% Get parameters from class
         Kpulse = self.Kpulse
         #%% Do the SNR calculation
@@ -63,9 +62,9 @@ class RadarSys(object):
         te = A one dimensional array of electron tempretures.
         ti = A one dimensional array of ion tempretures.'''
         #%% Assersions
-        assert type(te) is np.ndarray, "te is not an numpy array."
-        assert type(ne) is np.ndarray, "ne is not an numpy array."
-        assert type(ti) is np.ndarray,  "ti is not an numpy array."
+        assert isinstance(te,np.ndarray), "te is not an numpy array."
+        assert isinstance(ne,np.ndarray), "ne is not an numpy array."
+        assert isinstance(ti,np.ndarray),  "ti is not an numpy array."
         #%% Get parameters from class
         rng= self.rng
         Kpulse = self.Kpulse
@@ -74,7 +73,7 @@ class RadarSys(object):
         SNRdb = pow2db(SNRdata)
 
         #%% Set up and Make print out
-        print "SNR for the follwing Ne with Number of pulses = {0:d}".format(Kpulse)
+        print("SNR for the follwing Ne with Number of pulses = {:d}".format(Kpulse))
         # make strings for each Ne
         nestrs = ['{:.2g}m^-3 '.format(i) for i in ne]
         nestrs.insert(0,'Range ')
@@ -98,9 +97,9 @@ class RadarSys(object):
         te = A one dimensional array of electron tempretures.
         ti = A one dimensional array of ion tempretures.'''
         #%% Assersions
-        assert type(te) is np.ndarray, "te is not an numpy array."
-        assert type(ne) is np.ndarray, "ne is not an numpy array."
-        assert type(ti) is np.ndarray,  "ti is not an numpy array."
+        assert isinstance(te,np.ndarray), "te is not an numpy array."
+        assert isinstance(ne,np.ndarray), "ne is not an numpy array."
+        assert isinstance(ti,np.ndarray),  "ti is not an numpy array."
         #%% Do the SNR calculation
         powdata = self.powcalc(ne,te,ti)
         vardata = (powdata+self.noisepow)**2/self.Kpulse
@@ -117,7 +116,7 @@ class RadarSys(object):
         ti = A one dimensional array of ion tempretures.'''
         rmsdata = self.rms(ne,te,ti)
         #%% Set up and Make print out
-        print "RMS for the follwing Ne with Number of pulses = {0:d}".format(self.Kpulse)
+        print("RMS for the follwing Ne with Number of pulses = {:d}".format(self.Kpulse))
         # make strings for each Ne
         nestrs = ['{:.2g}m^-3 '.format(i) for i in ne]
         nestrs.insert(0,'Range ')
@@ -141,9 +140,9 @@ class RadarSys(object):
         te = A one dimensional array of electron tempretures.
         ti = A one dimensional array of ion tempretures.'''
         #%% Assersions
-        assert type(te) is np.ndarray, "te is not an numpy array."
-        assert type(ne) is np.ndarray, "ne is not an numpy array."
-        assert type(ti) is np.ndarray,  "ti is not an numpy array."
+        assert isinstance(te,np.ndarray), "te is not an numpy array."
+        assert isinstance(ne,np.ndarray), "ne is not an numpy array."
+        assert isinstance(ti,np.ndarray),  "ti is not an numpy array."
         #%% Get parameters from class
         rng= self.rng
         Kpulse = self.Kpulse
@@ -152,7 +151,7 @@ class RadarSys(object):
         rmsdata = (powdata+self.noisepow)/(powdata*np.sqrt(self.Kpulse))
 
         #%% Set up and Make print out
-        print "RMS fractional error for the follwing Ne with Number of pulses = {0:d}".format(Kpulse)
+        print("RMS fractional error for the follwing Ne with Number of pulses = {:d}".format(Kpulse))
         # make strings for each Ne
         nestrs = ['{:.2g}m^-3 '.format(i) for i in ne]
         nestrs.insert(0,'Range ')
@@ -176,9 +175,9 @@ class RadarSys(object):
         te = A one dimensional array of electron tempretures.
         ti = A one dimensional array of ion tempretures.'''
         #%% Assersions
-        assert type(te) is np.ndarray, "te is not an numpy array."
-        assert type(ne) is np.ndarray, "ne is not an numpy array."
-        assert type(ti) is np.ndarray,  "ti is not an numpy array."
+        assert isinstance(te,np.ndarray), "te is not an numpy array."
+        assert isinstance(ne,np.ndarray), "ne is not an numpy array."
+        assert isinstance(ti,np.ndarray),  "ti is not an numpy array."
         assert ti.shape==te.shape and te.shape == ne.shape, "te, ti and ne must be the same shape."
 
         #%% Get parameters from class
@@ -220,9 +219,9 @@ def mag2db(x):
 def printtable(rows):
     cols = zip(*rows)
     col_widths = [ max(len(value) for value in col) for col in cols ]
-    format = ' '.join(['%%-%ds' % width for width in col_widths ])
+    fmt = ' '.join(['%%-%ds' % width for width in col_widths ])
     for row in rows:
-        print format % tuple(row)
+        print(fmt % tuple(row))
 
 def main(argv):
 
@@ -230,25 +229,25 @@ def main(argv):
     try:
       opts, args = getopt.getopt(argv,"hp:o:",["pulses=","ofile="])
     except getopt.GetoptError:
-      print 'radarsystools.py -p <number of pulses> -o <outputfile>'
+      print('radarsystools.py -p <number of pulses> -o <outputfile>')
       sys.exit(2)
     for opt, arg in opts:
       if opt == '-h':
-         print 'radarsystools.py -p <number of pulses> -o <outputfile>'
+         print('radarsystools.py -p <number of pulses> -o <outputfile>')
          sys.exit()
       elif opt in ("-p", "--pulses"):
          kinput = int(arg)
       elif opt in ("-o", "--ofile"):
-          print "Still have to add output file feature. I'm working on it... may be..."
+          print("Still have to add output file feature. I'm working on it... may be...")
 
-    print "Without angle"
+    print("Without angle")
     sensdict = sensconst.getConst('risr')
     sensdict['tau'] = 320e-6
     r_sys = RadarSys(sensdict,Kpulse = kinput)
     r_sys.printsnr(ne = np.array([1e11,2e11]),te=np.array([1e3,2e11]),ti=np.array([1e3,2e11]))
     r_sys.printrms(ne = np.array([1e11,2e11]),te=np.array([1e3,2e11]),ti=np.array([1e3,2e11]))
     r_sys.printfracrms(ne = np.array([1e11,2e11]),te=np.array([1e3,2e11]),ti=np.array([1e3,2e11]))
-    print "\n\n"
+    print("\n\n")
 
 
     angles = [(90,85)]
@@ -256,7 +255,7 @@ def main(argv):
     sensdict = sensconst.getConst('risr',ang_data)
     sensdict['tau'] = 320e-6
 
-    print "With Angle"
+    print("With Angle")
     r_sys = RadarSys(sensdict,Kpulse = kinput)
     r_sys.printsnr(ne = np.array([1e11,2e11]),te=np.array([1e3,2e11]),ti=np.array([1e3,2e11]))
     r_sys.printrms(ne = np.array([1e11,2e11]),te=np.array([1e3,2e11]),ti=np.array([1e3,2e11]))

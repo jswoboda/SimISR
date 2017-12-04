@@ -399,7 +399,7 @@ if __name__== '__main__':
                         type=int, default=[50, 100, 200, 500, 1000, 2000, 5000])
     parser.add_argument('-f','--funclist', help='Functions to be uses', nargs='+',
                         default=['spectrums', 'radardata', 'fitting', 'analysis', 'stats'])#action='append',dest='collection',default=['spectrums','radardata','fitting','analysis'])
-    parser.add_argument('-d', '--dir', help='original directory', default=None)
+    parser.add_argument('dir', help='original directory', default='../Testdata/StatsTest/',nargs='?')
     args = parser.parse_args()
 
     main(args.npulses, args.funclist, args.dir)

@@ -11,7 +11,7 @@ import scipy.fftpack as scfft
 from ISRSpectrum.ISRSpectrum import ISRSpectrum
 from SimISR.specfunctions import ISRSfitfunction
 from SimISR.utilFunctions import MakePulseDataRepLPC, CenteredLagProduct, readconfigfile
-from SimISR.IonoContainer import IonoContainer
+#from SimISR.IonoContainer import IonoContainer
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -60,30 +60,30 @@ def fitcheck(repall=[100]):
 
 
 
-    
+
     for i in range(ntypes):
         f,curspec,rcs = ISpec.getspecsep(x_0[i],species,v_i,rcsflag=True)
         specsum = sp.absolute(curspec).sum()
         spvtime[i] = rcs*curspec*nspec**2/specsum
-        
+
     acforig = scfft.ifft(scfft.ifftshift(spvtime,axes=1),axis=1)/nspec
     acfamb = sp.dot(ambdict['WttMatrix'],scfft.fftshift(acforig,axes=1).transpose()).transpose()
     specamb = scfft.fftshift(scfft.fft(acfamb,n=nspec,axis=1),axes=1)
-    
+
     fig, axmat = plt.subplots(2,2)
     axvec=axmat.flatten()
 
     figs,axmats = plt.subplots(2,2)
     axvecs = axmats.flatten()
-    
+
     for i in range(ntypes):
-        ax=axvec[i]                                  
+        ax=axvec[i]
         ax.plot(lagv,acfamb[i].real,label='Input')
         ax.set_title(lablist[i])
-        axs=axvecs[i]                                  
+        axs=axvecs[i]
         axs.plot(f*1e-3,specamb[i].real,label='Input',linewidth=4)
         axs.set_title(lablist[i])
-        
+
 
     for irep, rep1 in enumerate(repall):
         rawdata = sp.zeros((ntypes,rep1,nrg),dtype=sp.complex128)
@@ -111,7 +111,7 @@ def fitcheck(repall=[100]):
         for i in range(ntypes):
             d_func = (acfestsr[i,des_pnt]/l_p,sensdict,simparams)
             (x,cov_x,infodict,mesg,ier) = scipy.optimize.leastsq(func=fitfunc,
-                                                         x0=x_0_red,args=d_func,full_output=True)    
+                                                         x0=x_0_red,args=d_func,full_output=True)
             print(x)
         print(' ')
     fig.suptitle('ACF with Sum Rule')
@@ -121,3 +121,6 @@ def fitcheck(repall=[100]):
     figs.savefig('pulsetestspec.png',dpi=400)
     plt.close(figs)
 
+if __name__ == '__main__':  
+    import sys
+    print(sys.argv[0],'is not meant for running directly, it is a helper function')

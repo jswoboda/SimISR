@@ -21,7 +21,6 @@ from __future__ import print_function
 #imported basic modules
 import time
 import sys
-import getopt
 from datetime import datetime
 import traceback
 import argparse
@@ -29,14 +28,14 @@ import argparse
 # Imported scipy and matplotlib modules
 import scipy as sp
 # My modules
-from . import Path
-from .IonoContainer import IonoContainer
-from .radarData import RadarDataFile
-import specfunctions as specfuncs
-from .specfunctions import ISRSfitfunction
-from .fitterMethodGen import Fitterionoconainer
-from .utilFunctions import readconfigfile, update_progress
-from .operators import RadarSpaceTimeOperator
+from SimISR import Path
+from SimISR.IonoContainer import IonoContainer
+from SimISR.radarData import RadarDataFile
+import SimISR.specfunctions as specfuncs
+from SimISR.specfunctions import ISRSfitfunction
+from SimISR.fitterMethodGen import Fitterionoconainer
+from SimISR.utilFunctions import readconfigfile, update_progress
+from SimISR.operators import RadarSpaceTimeOperator
 
 #%% Make spectrums
 def makespectrums(basedir, configfile, printlines=True):
