@@ -159,10 +159,11 @@ class Fitterionoconainer(object):
                 ionstuff[1:2*ni-1:2] = x_res[0]
                 fittedarray[iloc, itn] = sp.append(ionstuff,
                                                    sp.append(x_res, Ne_start[iloc, itime]))
+                funcevals[iloc, itn] = optresults.nfev
 #                fittedarray[iloc,itime] = sp.append(optresults.x,Ne_start[iloc,itime])
                 resid = optresults.cost
                 jac = optresults.jac
-                # combine the rows because of the comlex conjugates
+                # combine the rows because of the complex conjugates
                 jacc = jac[0::2]+jac[1::2]
                 try:
                     # Derive covariances for the ions using output from the fitter and ion species ratios which are assumed to be given.

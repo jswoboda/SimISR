@@ -5,6 +5,7 @@ Created on Tue Jul 22 16:18:21 2014
 @author: Bodangles
 """
 from __future__ import print_function
+import sys
 import warnings
 import pickle
 import yaml
@@ -52,7 +53,8 @@ def update_progress(progress, extstr=""):
         status = status + extstr + '\n'
     text = "\rPercent: [{0}] {1}% {2}".format("#"*block + "-"*(bar_length-block),
                                               progress*100, status)
-    print(text,end="",flush=True)
+    print(text,end="")
+    sys.stdout.flush()
 
 
 def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):

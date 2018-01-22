@@ -134,7 +134,7 @@ def make2dhist(testpath, xaxis=TE, yaxis=TI, figmplf=None, curax=None):
     d1 = sp.column_stack((datadict[params[0]],datadict[params[1]]))
     H, xe, ye = sp.histogram2d(d1[:,0].real, d1[:,1].real, bins=bins, normed=True)
 
-    hist_h = curax.pcolor(xe[:-1], ye[:-1], H, cmap='viridis', vmin=0)
+    hist_h = curax.pcolor(xe[:-1], ye[:-1], sp.transpose(H), cmap='viridis', vmin=0)
     curax.set_xlabel(r'$'+xaxis['paramLT']+'$')
     curax.set_ylabel(r'$'+yaxis['paramLT']+'$')
     curax.set_title(r'Joint distributions for $'+ xaxis['paramLT']+'$'+' and $'+
@@ -399,7 +399,7 @@ if __name__== '__main__':
                         type=int, default=[50, 100, 200, 500, 1000, 2000, 5000])
     parser.add_argument('-f','--funclist', help='Functions to be uses', nargs='+',
                         default=['spectrums', 'radardata', 'fitting', 'analysis', 'stats'])#action='append',dest='collection',default=['spectrums','radardata','fitting','analysis'])
-    parser.add_argument('dir', help='original directory', default='../Testdata/StatsTest/',nargs='?')
+    parser.add_argument('-d','--dir', help='original directory', default='../Testdata/StatsTest/')
     args = parser.parse_args()
 
     main(args.npulses, args.funclist, args.dir)

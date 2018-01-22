@@ -150,6 +150,7 @@ def fitdata(basedir,configfile,optinputs):
                                                              printlines=printlines)
 
 
+
     if fitterone.simparams['Pulsetype'].lower() == 'barker':
         paramlist = fitteddata
         species = fitterone.simparams['species']
@@ -163,15 +164,25 @@ def fitdata(basedir,configfile,optinputs):
 
         nTi = fittederronly[:, :, 1]
 
-        paramlist = sp.concatenate((fitteddata, Ti[:, :, sp.newaxis], fittederronly,
-                                    nTi[:, :, sp.newaxis], funcevals[:, :, sp.newaxis]),
-                                   axis=2)
+        nTiTe = fittedcov[:, :, 0, 1]
+        nTiNe = fittedcov[:, :, 0, 2]
+        nTiVi = fittedcov[:, :, 0, 3]
+        nTeNe = fittedcov[:, :, 1, 2]
+        nTeVi = fittedcov[:, :, 1, 3]
+        nNeVi = fittedcov[:, :, 2, 3]
+        cov_list = [nTiTe[:, :, sp.newaxis], nTiNe[:, :, sp.newaxis],
+                    nTiVi[:, :, sp.newaxis], nTeNe[:, :, sp.newaxis],
+                    nTeVi[:, :, sp.newaxis], nNeVi[:, :, sp.newaxis]]
+        cov_list_names = ['nTiTe', 'nTiNe', 'nTiVi', 'nTeNe', 'nTeVi','nNeVi']
+        paramlist = sp.concatenate([fitteddata, Ti[:, :, sp.newaxis], fittederronly,
+                                    nTi[:, :, sp.newaxis], funcevals[:, :, sp.newaxis]]
+                                   + cov_list, axis=2)
         for isp in species[:-1]:
             paramnames.append('Ni_'+isp)
             paramnames.append('Ti_'+isp)
         paramnames = paramnames+['Ne', 'Te', 'Vi', 'Nepow', 'Ti']
         paramnamese = ['n'+ip for ip in paramnames]
-        paranamsf = sp.array(paramnames+paramnamese+['FuncEvals'])
+        paranamsf = sp.array(paramnames+paramnamese+['FuncEvals']+cov_list_names)
 
     if fitlist is None:
         timevec = Ionoin.Time_Vector
