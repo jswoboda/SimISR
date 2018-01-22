@@ -126,6 +126,7 @@ class Fitterionoconainer(object):
                     first_lag = False
                     fittedarray = sp.zeros((Nloc, Nt, nparams+1))*sp.nan
                     fittederror = sp.zeros((Nloc, Nt, nparams+1))*sp.nan
+                    fittedcov = sp.zeros((Nloc, Nt, 4, 4))*sp.nan
                     funcevals = sp.zeros((Nloc, Nt))
                 # get uncertianties
                 if sigexist:
@@ -161,6 +162,7 @@ class Fitterionoconainer(object):
 #                fittedarray[iloc,itime] = sp.append(optresults.x,Ne_start[iloc,itime])
                 resid = optresults.cost
                 jac = optresults.jac
+                # combine the rows because of the comlex conjugates
                 jacc = jac[0::2]+jac[1::2]
                 try:
                     # Derive covariances for the ions using output from the fitter and ion species ratios which are assumed to be given.
@@ -176,6 +178,7 @@ class Fitterionoconainer(object):
                     ionstuff[:2*ni:2] = vars_vec[1]*Niratio
                     ionstuff[1:2*ni-1:2] = vars_vec[0]
                     vars_vec = sp.append(ionstuff, vars_vec)
+                    fittedcov[iloc,itn] = covf
                 except:#sp.linalg.LinAlgError('singular matrix'):
                     vars_vec = sp.ones(nparams)*float('nan')
 
@@ -187,7 +190,7 @@ class Fitterionoconainer(object):
                     fittederror[iloc, itn, -1] = Ne_sig[iloc, itime]
 
                 #print('\t\tData for Location {0:d} of {1:d} fitted.'.format(iloc, Nloc))
-        return(fittedarray, fittederror, funcevals)
+        return(fittedarray, fittederror, funcevals, fittedcov)
 
 #%% start values for the fit function
 def startvalfunc(Ne_init, loc, locsp, time, inputs, ambinfo = [0]):
