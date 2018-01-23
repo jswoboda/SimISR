@@ -8,35 +8,35 @@ from SimISR import Path
 import scipy as sp
 from SimISR.utilFunctions import readconfigfile,makeconfigfile
 from SimISR.IonoContainer import IonoContainer
-from  SimISR.runsim import main as runsim 
+from  SimISR.runsim import main as runsim
 from SimISR.analysisplots import analysisdump
 
 
 def configfilesetup(testpath,npulses):
-    """ This will create the configureation file given the number of pulses for 
-        the test. This will make it so that there will be 12 integration periods 
+    """ This will create the configureation file given the number of pulses for
+        the test. This will make it so that there will be 12 integration periods
         for a given number of pulses.
         Input
             testpath - The location of the data.
-            npulses - The number of pulses. 
+            npulses - The number of pulses.
     """
     testpath=Path(testpath).expanduser()
     curloc = Path(__file__).resolve().parent
     defcon = curloc/'statsbase.ini'
-    
+
     (sensdict,simparams) = readconfigfile(defcon)
     tint = simparams['IPP']*npulses
     ratio1 = tint/simparams['Tint']
     simparams['Tint']=ratio1 * simparams['Tint']
     simparams['Fitinter'] = ratio1 * simparams['Fitinter']
     simparams['TimeLim'] = 12*tint
-    
+
     simparams['startfile']='startfile.h5'
     makeconfigfile(str(testpath/'stats.ini'),simparams['Beamlist'],sensdict['Name'],simparams)
-    
+
 def makedata(testpath,tint):
     """ This will make the input data for the test case. The data will have cases
-        where there will be enhancements in Ne, Ti and Te in one location. Each 
+        where there will be enhancements in Ne, Ti and Te in one location. Each
         case will have 3 integration periods. The first 3 integration periods will
         be the default set of parameters Ne=Ne=1e11 and Te=Ti=2000.
         Inputs
@@ -69,15 +69,15 @@ def makedata(testpath,tint):
         ['x','y','z'],paramnames=None,species=species,velocity=vel)
     Icont1 = IonoContainer(coordlist=coords,paramlist=p2,times = times2,sensor_loc = sp.zeros(3),ver =0,coordvecs =
         ['x','y','z'],paramnames=None,species=species,velocity=vel2)
-        
+
     finalfile = finalpath.joinpath('0 stats.h5')
     Icont1.saveh5(str(finalfile))
     Icontstart.saveh5(str(testpath.joinpath('startfile.h5')))
-    
+
 
 def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis']):
     """ This function will call other functions to create the input data, config
-        file and run the radar data sim. The path for the simulation will be 
+        file and run the radar data sim. The path for the simulation will be
         created in the Testdata directory in the SimISR module. The new
         folder will be called BasicTest. The simulation is a long pulse simulation
         will the desired number of pulses from the user.
@@ -85,38 +85,35 @@ def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis'
             npulse - Number of pulses for the integration period, default==100.
             functlist - The list of functions for the SimISR to do.
     """
-    
-        
     curloc = Path(__file__).resolve()
     testpath = curloc.parent.parent/'Testdata'/'BasicTest'
     if not testpath.is_dir():
         testpath.mkdir(parents=True)
-        
-    functlist_default = ['spectrums','radardata','fitting']
+
+    functlist_default = ['spectrums', 'radardata', 'fitting']
     check_list = sp.array([i in functlist for i in functlist_default])
-    check_run =sp.any( check_list) 
+    check_run = sp.any(check_list)
     functlist_red = sp.array(functlist_default)[check_list].tolist()
 
-    
-    configfilesetup(str(testpath),npulse)
+
+    configfilesetup(str(testpath), npulse)
     config = testpath.joinpath('stats.ini')
-    (sensdict,simparams) = readconfigfile(str(config))
-    makedata(testpath,simparams['Tint'])
-    if check_run :
-        runsim(functlist_red,str(testpath),config,True)
+    (sensdict, simparams) = readconfigfile(str(config))
+    makedata(testpath, simparams['Tint'])
+    if check_run:
+        runsim(functlist_red, str(testpath), config, True)
     if 'analysis' in functlist:
-        analysisdump(str(testpath),config)
+        analysisdump(str(testpath), config)
 
 if __name__== '__main__':
     from argparse import ArgumentParser
     descr = '''
              This script will perform the basic run est for ISR sim.
             '''
-    p = ArgumentParser(description=descr)
-    
-    p.add_argument("-p", "--npulses",help='Number of pulses.',type=int,default=100)
-    p.add_argument('-f','--funclist',help='Functions to be uses',nargs='+',default=['spectrums','radardata','fitting','analysis'])#action='append',dest='collection',default=['spectrums','radardata','fitting','analysis'])
-    
-    p = p.parse_args()
-    main(p.npulses,p.funclist)
-   
+    PAR1 = ArgumentParser(description=descr)
+
+    PAR1.add_argument("-p", "--npulses", help='Number of pulses.', type=int, default=100)
+    PAR1.add_argument('-f', '--funclist', help='Functions to be uses', nargs='+',
+                      default=['spectrums', 'radardata', 'fitting', 'analysis'])
+    PAR1 = PAR1.parse_args()
+    main(PAR1.npulses, PAR1.funclist)
