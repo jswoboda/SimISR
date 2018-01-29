@@ -104,7 +104,7 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
     return (omeg, outspecs)
 
 
-def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
+def ISRSfitfunction(x, y_acf, sensdict, simparams, Niratios,  y_err=None ):
     """
     This is the fit fucntion that is used with scipy.optimize.leastsquares. It will
     take a set parameter values construct a spectrum/acf based on those values, apply
@@ -116,6 +116,7 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     sensdict - This is a dictionary that holds many of the sensor parameters.
     simparams - This is a dictionary that holds info on the simulation parameters.
     y_err -  default None - A numpy array of size Nd that holds the standard deviations of the data.
+    fitmethod - default 0 - A number representing the input parameters
     Output
     y_diff - A Nd or 2Nd array if input data is complex that is the difference
     between the data and the fitted model"""
@@ -126,15 +127,20 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     if 'FitType' in simparams.keys():
         fitspec = simparams['FitType']
     else:
-        fitspec ='Spectrum'
+        fitspec = 'Spectrum'
     nspecs = len(specs)
-
-    (Ti,Ne,Te,v_i) = x
-    datablock = np.zeros((nspecs,2),dtype=x.dtype)
-    datablock[:-1,0] = Ne*Niratios
-    datablock[:-1,1] = Ti
-    datablock[-1,0] = Ne
-    datablock[-1,1] = Te
+    if not 'fitmode' in simparams.keys():
+        (Ti, Ne, Te, v_i) = x
+    elif simparams['fitmode'] == 0:
+        (Ti, Ne, Te, v_i) = x
+    elif simparams['fitmode'] == 1:
+        (Ti, Ne, TeoTi, v_i) = x
+        Te = TeoTi*Ti
+    datablock = np.zeros((nspecs, 2), dtype=x.dtype)
+    datablock[:-1, 0] = Ne*Niratios
+    datablock[:-1, 1] = Ti
+    datablock[-1, 0] = Ne
+    datablock[-1, 1] = Te
 
     # determine if you've gone beyond the bounds
     # penalty for being less then zero
@@ -143,26 +149,26 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     pentsum[:-1] = grt0.flatten()
 
 
-    specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
-    (omeg,cur_spec,rcs) = specobj.getspecsep(datablock,specs,v_i,rcsflag=True)
+    specobj = ISRSpectrum(centerFrequency=sensdict['fc'], nspec=npts, sampfreq=sensdict['fs'])
+    (omeg, cur_spec, rcs) = specobj.getspecsep(datablock, specs, v_i, rcsflag=True)
     cur_spec.astype(numtype)
     # Create spectrum guess
-    (tau,acf) = spect2acf(omeg,cur_spec)
+    (tau, acf) = spect2acf(omeg,cur_spec)
 
-    if amb_dict['WttMatrix'].shape[-1]!=acf.shape[0]:
+    if amb_dict['WttMatrix'].shape[-1] != acf.shape[0]:
         pdb.set_trace()
-    guess_acf = np.dot(amb_dict['WttMatrix'],acf)
+    guess_acf = np.dot(amb_dict['WttMatrix'], acf)
     # apply ambiguity function
 
     guess_acf = guess_acf*rcs/guess_acf[0].real
-    if fitspec.lower()=='spectrum':
+    if fitspec.lower() == 'spectrum':
         # fit to spectrums
-        spec_interm = scfft.fft(guess_acf,n=len(cur_spec))
+        spec_interm = scfft.fft(guess_acf, n=len(cur_spec))
         spec_final = spec_interm.real
-        y_interm = scfft.fft(y_acf,n=len(spec_final))
-        y = y_interm.real
-        yout = (y-spec_final)
-    elif fitspec.lower() =='acf':
+        y_interm = scfft.fft(y_acf, n=len(spec_final))
+        y_spec = y_interm.real
+        yout = y_spec-spec_final
+    elif fitspec.lower() == 'acf':
         yout = y_acf-guess_acf
 
     if y_err is not None:
@@ -170,12 +176,12 @@ def ISRSfitfunction(x,y_acf,sensdict,simparams,Niratios,y_err = None):
     # Cannot make the output a complex array! To avoid this problem simply double
     # the size of the array and place the real and imaginary parts in alternating spots.
     if np.iscomplexobj(yout):
-        youttmp=yout.copy()
-        yout=np.zeros(2*len(youttmp)).astype(youttmp.real.dtype)
-        yout[::2]=youttmp.real
+        youttmp = yout.copy()
+        yout = np.zeros(2*len(youttmp)).astype(youttmp.real.dtype)
+        yout[::2] = youttmp.real
         yout[1::2] = youttmp.imag
 
-    penadd = np.sqrt(np.power(np.absolute(yout),2).sum())*pentsum.sum()
+    penadd = np.sqrt(np.power(np.absolute(yout), 2).sum())*pentsum.sum()
 
     return yout+penadd
 

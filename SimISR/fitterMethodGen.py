@@ -78,7 +78,11 @@ class Fitterionoconainer(object):
             else:
                 Nt = len(fittimes)
 
-
+        # Fit mode
+        if 'fitmode' in self.simparams.keys():
+            fitmode = self.simparams['fitmode']
+        else:
+            fitmode = 0
         print('\nData Now being fit.')
         # HACK taking ambiugty into account with start values
         plen = float(len(self.simparams['Pulse']))
@@ -149,6 +153,9 @@ class Fitterionoconainer(object):
                 # Only fit Ti, Te, Ne and Vi
                 x_0_red[0] = Ti
                 x_0_red[1:] = x_0[2*ni:]
+                # change variables because of new fit mode
+                if fitmode == 1:
+                    x_0_red[2] = x_0_red[2]/Ti
                 # Perform the fitting
                 optresults = scipy.optimize.least_squares(fun=fitfunc, x0=x_0_red,
                                                           method='lm', verbose=0, args=d_func)
