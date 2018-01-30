@@ -534,9 +534,9 @@ def makeparamdicts(beamlist,radarname,simparams):
         if not stext:
             warnings.warn('The given start file does not exist',UserWarning)
 
-    elif simparams['Pulsetype'].lower()!='barker':
-        warnings.warn('No start file given',UserWarning)
-    return(sensdict,simparams)
+    elif simparams['Pulsetype'].lower() != 'barker':
+        warnings.warn('No start file given', UserWarning)
+    return(sensdict, simparams)
 
 def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     """This will make the config file based off of the desired input parmeters.
@@ -554,7 +554,7 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     # reduce the number of stuff needed to be saved and avoid problems with writing
     keys2save = ['IPP', 'TimeLim', 'RangeLims', 'Pulselength', 't_s', 'Pulsetype',
                  'Tint', 'Fitinter', 'NNs', 'dtype', 'ambupsamp', 'species',
-                 'numpoints', 'startfile', 'FitType','beamrate','outangles']
+                 'numpoints', 'startfile', 'FitType','beamrate', 'outangles']
 
     if not 'beamrate' in simparams_orig.keys():
         simparams_orig['beamrate'] = 1

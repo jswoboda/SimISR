@@ -24,10 +24,10 @@ def configfilesetup(testpath,npulses):
     curloc = Path(__file__).resolve().parent
     defcon = curloc/'statsbase.ini'
 
-    (sensdict,simparams) = readconfigfile(defcon)
+    (sensdict, simparams) = readconfigfile(defcon)
     tint = simparams['IPP']*npulses
     ratio1 = tint/simparams['Tint']
-    simparams['Tint']=ratio1 * simparams['Tint']
+    simparams['Tint'] = ratio1*simparams['Tint']
     simparams['Fitinter'] = ratio1 * simparams['Fitinter']
     simparams['TimeLim'] = 12*tint
 
@@ -95,9 +95,10 @@ def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis'
     check_run = sp.any(check_list)
     functlist_red = sp.array(functlist_default)[check_list].tolist()
 
-
-    configfilesetup(str(testpath), npulse)
     config = testpath.joinpath('stats.ini')
+    if not config.exists():
+        configfilesetup(str(testpath), npulse)
+
     (sensdict, simparams) = readconfigfile(str(config))
     makedata(testpath, simparams['Tint'])
     if check_run:

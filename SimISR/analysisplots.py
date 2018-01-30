@@ -665,8 +665,10 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
 
     if fitdisp:
         Ionofit = IonoContainer.readh5(str(ffit))
-        (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
-        Ionofit.Param_List= outspecsfit
+        (omegfit,outspecsfit) = ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],
+                                               sensdict['fs'], simparams['species'],
+                                               npts)
+        Ionofit.Param_List = outspecsfit
         Ionofit.Param_Names = omegfit
         specfit = sp.zeros((Nloc,Nt,npts))
         for icn, ic in enumerate(coords):
@@ -700,7 +702,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 curin = specin[iloc,itime]
                 (tau,acf) = spect2acf(omeg,curin)
                 acf1 = scfft.ifftshift(acf)[:len(pulse)]*len(curin)
-                rcs=acf1[0].real
+                rcs = acf1[0].real
                 guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
                 guess_acf = guess_acf*rcs/guess_acf[0].real
 

@@ -159,11 +159,14 @@ class Fitterionoconainer(object):
                 # Perform the fitting
                 optresults = scipy.optimize.least_squares(fun=fitfunc, x0=x_0_red,
                                                           method='lm', verbose=0, args=d_func)
-                x_res = optresults.x
+                x_res = optresults.x.real
                 # Derive data for the ions using output from the fitter and ion species ratios which are assumed to be given.
                 ionstuff = sp.zeros(ni*2-1)
                 ionstuff[:2*ni:2] = x_res[1]*Niratio
                 ionstuff[1:2*ni-1:2] = x_res[0]
+                # change variables because of new fit mode
+                if fitmode == 1:
+                    x_res[2] = x_res[2]*x_res[0]
                 fittedarray[iloc, itn] = sp.append(ionstuff,
                                                    sp.append(x_res, Ne_start[iloc, itime]))
                 funcevals[iloc, itn] = optresults.nfev
@@ -181,12 +184,17 @@ class Fitterionoconainer(object):
                                                            sp.linalg.inv(sigscov)), jacc))
                     else:
                         covf = sp.linalg.inv(sp.dot(jac.transpose(), jac))*resid/dof
+                    # change variables because of new fit mode
+                    if fitmode == 1:
+                        # is this right?
+                        covf[2] = covf[2]*x_res[0]
+                        covf[:,2] = covf[:,2]*x_res[0]
                     vars_vec = sp.diag(covf).real
                     ionstuff = sp.zeros(ni*2-1)
                     ionstuff[:2*ni:2] = vars_vec[1]*Niratio
                     ionstuff[1:2*ni-1:2] = vars_vec[0]
                     vars_vec = sp.append(ionstuff, vars_vec)
-                    fittedcov[iloc,itn] = covf
+                    fittedcov[iloc, itn] = covf
                 except:#sp.linalg.LinAlgError('singular matrix'):
                     vars_vec = sp.ones(nparams)*float('nan')
 
