@@ -28,7 +28,7 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
                 weighting is npts^2 *rcs.
     """
     Vi = ionocont.getDoppler()
-    specobj = ISRSpectrum(centerFrequency =sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
+    specobj = ISRSpectrum(centerFrequency = sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
 
     if ionocont.Time_Vector is None:
         N_x = ionocont.Param_List.shape[0]
@@ -40,7 +40,7 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
         outspecs = np.zeros((N_x,N_t,npts))
         full_grid = True
 
-    (N_x,N_t) = outspecs.shape[:2]
+    (N_x, N_t) = outspecs.shape[:2]
     outspecsorig = np.zeros_like(outspecs)
     outrcs = np.zeros((N_x,N_t))
     #pdb.set_trace()

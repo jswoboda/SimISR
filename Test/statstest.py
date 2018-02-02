@@ -152,14 +152,12 @@ def makehist(testpath,npulses):
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     params = ['Ne', 'Te', 'Ti', 'Vi']
-    pvals = [1e11, 2.1e3, 1.1e3, 0.]
     histlims = [[1e10, 3e11], [1000., 3000.], [100., 2500.], [-400., 400.]]
     erlims = [[-2e11, 2e11], [-1000., 1000.], [-800., 800], [-400., 400.]]
     erperlims = [[-100., 100.]]*4
     lims_list = [histlims, erlims, erperlims]
     errdict = makehistdata(params, testpath)[:4]
     ernames = ['Data', 'Error', 'Error Percent']
-    sig1 = sp.sqrt(1./npulses)
 
 
     # Two dimensiontal histograms
@@ -180,7 +178,7 @@ def makehist(testpath,npulses):
     plt.close(figmplf)
     # One dimensiontal histograms
     for ierr, iername in enumerate(ernames):
-        filetemplate= str(Path(testpath).joinpath('AnalysisPlots', iername))
+        filetemplate = str(Path(testpath).joinpath('AnalysisPlots', iername))
         (figmplf, axmat) = plt.subplots(2, 2, figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         for ipn, iparam in enumerate(params):
@@ -188,7 +186,7 @@ def makehist(testpath,npulses):
             if sp.any(sp.isinf(errdict[ierr][iparam])):
                 continue
             binlims = lims_list[ierr][ipn]
-            bins = sp.linspace(binlims[0],binlims[1],100)
+            bins = sp.linspace(binlims[0], binlims[1], 100)
             xdata = errdict[ierr][iparam]
             xlog = sp.logical_and(xdata >= binlims[0], xdata < binlims[1])
 

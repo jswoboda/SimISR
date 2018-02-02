@@ -32,7 +32,6 @@ from SimISR import Path
 from SimISR.IonoContainer import IonoContainer
 from SimISR.radarData import RadarDataFile
 import SimISR.specfunctions as specfuncs
-from SimISR.specfunctions import ISRSfitfunction
 from SimISR.fitterMethodGen import Fitterionoconainer
 from SimISR.utilFunctions import readconfigfile, update_progress
 from SimISR.operators import RadarSpaceTimeOperator
@@ -144,13 +143,12 @@ def fitdata(basedir,configfile,optinputs):
         Ionoinsig = IonoContainer.readh5(dirlistsig[0])
     fitterone = Fitterionoconainer(Ionoin, Ionoinsig, configfile)
 
-    (fitteddata, fittederror, funcevals, fittedcov) = fitterone.fitdata(ISRSfitfunction,
-                                                             fitterone.simparams['startfile'],
-                                                             fittimes=fitlist,
-                                                             printlines=printlines)
+    fitoutput = fitterone.fitdata(specfuncs.ISRSfitfunction,
+                                  fitterone.simparams['startfile'], fittimes=fitlist,
+                                  printlines=printlines)
 
 
-
+    (fitteddata, fittederror, funcevals, fittedcov) = fitoutput
     if fitterone.simparams['Pulsetype'].lower() == 'barker':
         paramlist = fitteddata
         species = fitterone.simparams['species']
