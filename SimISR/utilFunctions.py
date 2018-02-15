@@ -751,7 +751,10 @@ def readconfigfile(fname):
 
     simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
 
-
+    # Set the number of noise samples to IPP
+    N_samps = len(simparams['Rangegates']) + len(pulse)-1
+    ippsamps = int(simparams['IPP']/simparams['t_s'])
+    simparams['NNs']  = ippsamps - N_samps
     if ('startfile' in simparams.keys() and len(simparams['startfile']) >0 )and simparams['Pulsetype'].lower()!='barker':
         relpath = Path(simparams['startfile'])
         if not relpath.is_absolute():

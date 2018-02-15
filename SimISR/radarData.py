@@ -12,6 +12,7 @@ from isrutilities.physConstants import v_C_0, v_Boltz
 from SimISR import Path
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import CenteredLagProduct, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
+import digital_rf as drf
 #from SimISR import specfunctions
 #from SimISR.analysisplots import plotspecsgen
 
@@ -74,6 +75,57 @@ class RadarDataFile(object):
         simdtype = self.simparams['dtype']
         pulsetimes = sp.arange(Npall)*self.simparams['IPP'] +ftimes.min()
         pulsefile = sp.array([sp.where(itimes-ftimes >= 0)[0][-1] for itimes in pulsetimes])
+
+        #digital rf stuff
+
+        sample_rate_numerator = int(sp.round_(sensdict['fs']))  # 100 Hz sample rate - typically MUCH faster
+        sample_rate_denominator = 1
+        sample_rate = sp.longdouble(sample_rate_numerator) / sample_rate_denominator
+        start_global_index = int(sample_rate*filetimes[0])
+        dtype_str = 'i2'  # short int
+        sub_cadence_secs = 1000  # Number of seconds of data in a subdirectory - typically MUCH larger
+        file_cadence_millisecs = 10000  # Each file will have up to 400 ms of data
+        compression_level = 1  # low level of compression
+        checksum = False  # no checksum
+        is_complex = True  # complex values
+        is_continuous = True
+        num_subchannels = 1  # only one subchannel
+        marching_periods = False  # no marching periods when writing
+        uuid = "Fake UUID - use a better one!"
+        drfdir = outdir.parent.joinpath('drfdata', 'rf_data')
+        data_object = drf.DigitalRFWriter(str(drfdir), dtype_str, sub_cadence_secs,
+                                          file_cadence_millisecs, start_global_index,
+                                          sample_rate_numerator, sample_rate_denominator,
+                                          uuid, compression_level, checksum,
+                                          is_complex, num_subchannels,
+                                          is_continuous, marching_periods)
+
+        # digital metadata
+        #TODO temp for original data
+        # antenna control
+
+        dmddir = outdir.parent.joinpath('drfdata', 'metadata')
+        acmdir = dmddir.joinpath('antenna_control_metadata')
+        acmdict = {'misa_elevation': 88.000488281200006,
+                   'cycle_name': 'zenith_record_cycle_0',
+                   'misa_azimuth': 178.000488281,
+                   'rx_antenna': 'ZENITH',
+                   'tx_antenna': 'ZENITH'}
+        acmobj = drf.DigitalMetadataWriter(str(acmdir), 3600, 60,
+                                           sample_rate_numerator,
+                                           sample_rate_denominator,
+                                       'ant')
+        # id metadata
+        iddir = dmddir.joinpath('id_metadata')
+        idmdict = {'sweepid': 300, 'sample_rate': sample_rate,
+                   'modeid': 100000001, 'sweepnum': 0}
+        idmobj = drf.DigitalMetadataWriter(str(iddir), 3600, 1,
+                                       sample_rate_numerator, sample_rate_denominator,
+                                       'md')
+        # power mete metadata
+        pmdir = dmddir.joinpath('powermeter')
+        pmmdict = {'zenith_power': self.sensdict['Pt'], 'misa_power': 3110.3}
+        pmmobj = drf.DigitalMetadataWriter(str(pmdir), 3600, 5, 1, 1,'power')
         # differentiate between phased arrays and dish antennas
         if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
 
@@ -122,14 +174,15 @@ class RadarDataFile(object):
                 pn = pulsen[pnts].astype(int)
                 rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
                                             curcontainer.Sphere_Coords,
-                                            curcontainer.Param_List,pb)
-                Noise = sp.sqrt(Noisepwr/2)*(sp.random.randn(*rawdata.shape).astype(simdtype)+
-                    1j*sp.random.randn(*rawdata.shape).astype(simdtype))
-                outdict['AddedNoise'] = Noise
-                outdict['RawData'] = rawdata+Noise
+                                            curcontainer.Param_List, pb)
+                noisedata = sp.sqrt(Noisepwr/2)*(sp.random.randn(*rawdata.shape).astype(simdtype)+
+                        1j*sp.random.randn(*rawdata.shape).astype(simdtype))
+                outdict['AddedNoise'] = noisedata
+                outdict['RawData'] = rawdata+noisedata
                 outdict['RawDatanonoise'] = rawdata
-                outdict['NoiseData'] = sp.sqrt(Noisepwr/2)*(sp.random.randn(len(pn), NNs).astype(simdtype)+
-                                                            1j*sp.random.randn(len(pn), NNs).astype(simdtype))
+                ndata_end = sp.random.randn(len(pn), NNs).astype(simdtype) + 1j*sp.random.randn(len(pn), NNs).astype(simdtype)
+                ndata_end = sp.sqrt(Noisepwr/2.)*ndata_end
+                outdict['NoiseData'] = ndata_end
                 outdict['Pulses'] = pn
                 outdict['Beams'] = pb
                 outdict['Time'] = pt
@@ -143,9 +196,16 @@ class RadarDataFile(object):
                 pb_list.append(pb)
                 pn_list.append(pn)
                 fname_list.append(fname)
+
+                # extend array for digital rf to flattend array
+                drfdata = sp.concatenate((rawdata + noisedata, ndata_end), axis=1)
+                data_object.rf_write(drfdata.flatten())
+                acmobj.write(int(acmobj.get_samples_per_second()*ifilet), acmdict)
+                idmobj.write(int(idmobj.get_samples_per_second()*ifilet), idmdict)
+                pmmobj.write(int(pmmobj.get_samples_per_second()*ifilet), pmmdict)
             infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
             dict2h5(str(outdir.joinpath('INFO.h5')), infodict)
-
+            data_object.close()
         else:
             infodict = h52dict(str(outdir.joinpath('INFO.h5')))
             alltime = sp.hstack(infodict['Time'])
@@ -525,21 +585,21 @@ def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
         Makes the covariance matrix for the lags given the noise acf and number
         of pulses.
     """
-    axvec=sp.roll(sp.arange(lagsDatasum.ndim),1)
+    axvec = sp.roll(sp.arange(lagsDatasum.ndim), 1)
     # Get the covariance matrix
-    R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=axvec)
-    Rw=sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s),axes=axvec)
-    l=sp.arange(Nlags)
-    T1,T2=sp.meshgrid(l,l)
-    R0=R[sp.zeros_like(T1)]
-    Rw0=Rw[sp.zeros_like(T1)]
-    Td=sp.absolute(T1-T2)
+    R = sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s), axes=axvec)
+    Rw = sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s), axes=axvec)
+    l = sp.arange(Nlags)
+    T1, T2 = sp.meshgrid(l,l)
+    R0 = R[sp.zeros_like(T1)]
+    Rw0 = Rw[sp.zeros_like(T1)]
+    Td = sp.absolute(T1-T2)
     Tl = T1>T2
-    R12 =R[Td]
-    R12[Tl]=sp.conjugate(R12[Tl])
-    Rw12 =Rw[Td]
-    Rw12[Tl]=sp.conjugate(Rw12[Tl])
-    Ctt=R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
-    avecback=sp.roll(sp.arange(Ctt.ndim),-2)
+    R12 = R[Td]
+    R12[Tl] = sp.conjugate(R12[Tl])
+    Rw12 = Rw[Td]
+    Rw12[Tl] = sp.conjugate(Rw12[Tl])
+    Ctt = R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
+    avecback = sp.roll(sp.arange(Ctt.ndim),-2)
     Cttout = sp.transpose(Ctt,avecback)
     return Cttout
