@@ -354,18 +354,18 @@ def makesumrule(ptype,plen,ts,lagtype='centered'):
     """
     nlags = sp.floor(plen/ts)
     if ptype.lower()=='long':
-        if lagtype=='forward':
-            arback=-sp.arange(nlags,dtype=int)
-            arforward = sp.zeros(nlags,dtype=int)
-        elif lagtype=='backward':
-            arback = sp.zeros(nlags,dtype=int)
-            arforward=sp.arange(nlags,dtype=int)
+        if lagtype == 'forward':
+            arback = -sp.arange(nlags, dtype=int)
+            arforward = sp.zeros(nlags, dtype=int)
+        elif lagtype == 'backward':
+            arback = sp.zeros(nlags, dtype=int)
+            arforward = sp.arange(nlags, dtype=int)
         else:
-            arback = -sp.ceil(sp.arange(0,nlags/2.0,0.5)).astype(int)
-            arforward = sp.floor(sp.arange(0,nlags/2.0,0.5)).astype(int)
-        sumrule = sp.array([arback,arforward])
-    elif ptype.lower()=='barker':
-        sumrule = sp.array([[0],[0]])
+            arback = -sp.ceil(sp.arange(0, nlags/2.0, 0.5)).astype(int)
+            arforward = sp.floor(sp.arange(0, nlags/2.0, 0.5)).astype(int)
+        sumrule = sp.array([arback, arforward])
+    elif ptype.lower() == 'barker':
+        sumrule = sp.array([[0], [0]])
     return sumrule
 
 #%% Make pulse
@@ -381,12 +381,12 @@ def makepulse(ptype,plen,ts):
     """
     nsamps = int(sp.floor(plen/ts))
 
-    if ptype.lower()=='long':
+    if ptype.lower() == 'long':
         pulse = sp.ones(nsamps)
         plen = nsamps*ts
 
-    elif ptype.lower()=='barker':
-        blen = sp.array([1,2, 3, 4, 5, 7, 11,13])
+    elif ptype.lower() == 'barker':
+        blen = sp.array([1, 2, 3, 4, 5, 7, 11, 13])
         nsampsarg = sp.argmin(sp.absolute(blen-nsamps))
         nsamps = blen[nsampsarg]
         pulse = GenBarker(nsamps)
@@ -494,49 +494,6 @@ def TempProfile(z,T0=1000.,z0=100.):
 
 
 #%% Config files
-def makeparamdicts(beamlist,radarname,simparams):
-    curpath = Path(__file__[0]).parent
-
-    angles = getangles(beamlist,radarname)
-    ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-    sensdict = sensconst.getConst(radarname,ang_data)
-
-    if 't_s' in simparams.keys():
-        sensdict['t_s'] = simparams['t_s']
-        sensdict['fs'] =1.0/simparams['t_s']
-        sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
-
-    simparams['Beamlist']=beamlist
-    time_lim = simparams['TimeLim']
-    (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
-    simparams['Pulse'] = pulse
-
-    simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
-        sensdict['t_s']*len(pulse),pulse,simparams['numpoints'])
-    simparams['angles']=angles
-    rng_lims = simparams['RangeLims']
-    rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3)
-    simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
-    simparams['Rangegates']=rng_gates
-    sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
-    simparams['SUMRULE'] = sumrule
-    minrg = -sumrule[0].min()
-    maxrg = len(rng_gates)-sumrule[1].max()
-
-    simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
-    if 'startfile' in simparams.keys() and simparams['Pulsetype'].lower()!='barker':
-        relpath = Path(simparams['startfile'][0]).expanduser()
-        if not relpath.is_absolute():
-            fullfilepath = curpath / simparams['startfile']
-            simparams['startfile'] = fullfilepath
-        stext = simparams['startfile'].is_file()
-
-        if not stext:
-            warnings.warn('The given start file does not exist',UserWarning)
-
-    elif simparams['Pulsetype'].lower() != 'barker':
-        warnings.warn('No start file given', UserWarning)
-    return(sensdict, simparams)
 
 def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     """This will make the config file based off of the desired input parmeters.
@@ -552,24 +509,19 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     fext = fname.suffix
 
     # reduce the number of stuff needed to be saved and avoid problems with writing
-    keys2save = ['IPP', 'TimeLim', 'RangeLims', 'Pulselength', 't_s', 'Pulsetype',
+    keys2save = ['IPP', 'TimeLim', 'RangeLims', 'Pulselength', 'fs', 'Pulsetype',
                  'Tint', 'Fitinter', 'NNs', 'dtype', 'ambupsamp', 'species',
-                 'numpoints', 'startfile', 'FitType','beamrate', 'outangles']
+                 'numpoints', 'startfile', 'FitType', 'beamrate', 'outangles']
 
     if not 'beamrate' in simparams_orig.keys():
         simparams_orig['beamrate'] = 1
     if not 'outangles' in simparams_orig.keys():
         simparams_orig['outangles'] = beamlist
     simparams = {i:simparams_orig[i] for i in keys2save}
-    if fext =='.pickle':
-        pickleFile = fname.open('wb')
-        pickle.dump([{'beamlist':beamlist,'radarname':radarname},simparams],pickleFile)
-        pickleFile.close()
-    elif fext=='.yml':
+    if fext == '.yml':
         with fname.open('w') as f:
-            yaml.dump([{'beamlist':beamlist,'radarname':radarname},simparams], f)
-
-    elif fext =='.ini':
+            yaml.dump([{'beamlist':beamlist, 'radarname':radarname}, simparams], f)
+    elif fext == '.ini':
         defaultparser = ConfigParser()
         defaultparser.read(str(d_file))
 #        config = configparser()
@@ -648,7 +600,7 @@ def getdefualtparams():
 
 def readconfigfile(fname):
     """
-        This funciton will read in the pickle files that are used for configuration.
+        This funciton will read in the ini or yaml files that are used for configuration.
 
         Args:
             fname - A string containing the file name and location.
@@ -664,78 +616,75 @@ def readconfigfile(fname):
 
     ftype = fname.suffix
     curpath = fname.parent
-    if ftype=='.pickle':
-        with fname.open('r') as f:
-            dictlist = pickle.load(f)
-
-        angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
-        beamlist = [float(i) for i in dictlist[0]['beamlist']]
-        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-        sensdict = sensconst.getConst(dictlist[0]['radarname'],ang_data)
-
-        simparams = dictlist[1]
-    elif ftype=='.yml':
+    if ftype == '.yml':
         with fname.open('r') as f:
             dictlist = yaml.load(f)
 
-        angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
+        angles = getangles(dictlist[0]['beamlist'], dictlist[0]['radarname'])
         beamlist = [float(i) for i in dictlist[0]['beamlist']]
-        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-        sensdict = sensconst.getConst(dictlist[0]['radarname'],ang_data)
+        ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
+        sensdict = sensconst.getConst(dictlist[0]['radarname'], ang_data)
 
         simparams = dictlist[1]
-    if ftype=='.ini':
-
+    if ftype == '.ini':
         config = ConfigParser()
         config.read(str(fname))
-        beamlist = config.get('section 1','beamlist').split()
+        beamlist = config.get('section 1', 'beamlist').split()
         beamlist = [float(i) for i in beamlist]
-        angles = getangles(beamlist,config.get('section 1','radarname'))
-        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
+        angles = getangles(beamlist, config.get('section 1', 'radarname'))
+        ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
 
-        sensdict = sensconst.getConst(config.get('section 1','radarname'),ang_data)
+        sensdict = sensconst.getConst(config.get('section 1', 'radarname'), ang_data)
 
         simparams = {}
         for param in config.options('simparams'):
-            rname  = config.get('simparamsnames',param)
-            simparams[rname] = config.get('simparams',param)
+            rname  = config.get('simparamsnames', param)
+            simparams[rname] = config.get('simparams', param)
 
         for param in simparams:
-            if simparams[param]=="<type 'numpy.complex128'>":
-                simparams[param]=sp.complex128
-            elif simparams[param]=="<type 'numpy.complex64'>":
-                simparams[param]=sp.complex64
-            elif param=='outangles':
+            if simparams[param] == "<type 'numpy.complex128'>":
+                simparams[param] = sp.complex128
+            elif simparams[param] == "<type 'numpy.complex64'>":
+                simparams[param] = sp.complex64
+            elif param == 'outangles':
                 outlist1 = simparams[param].split(',')
-                simparams[param]=[[ float(j) for j in  i.lstrip().rstrip().split(' ')] for i in outlist1]
+                simparams[param] = [[float(j) for j in
+                                     i.lstrip().rstrip().split(' ')] for i in outlist1]
             else:
-                simparams[param]=simparams[param].split(" ")
-                if len(simparams[param])==1:
-                    simparams[param]=simparams[param][0]
+                simparams[param] = simparams[param].split(" ")
+                if len(simparams[param]) == 1:
+                    simparams[param] = simparams[param][0]
                     try:
-                        simparams[param]=float(simparams[param])
+                        simparams[param] = float(simparams[param])
                     except:
                         pass
                 else:
                     for a in range(len(simparams[param])):
                         try:
-                            simparams[param][a]=float(simparams[param][a])
+                            simparams[param][a] = float(simparams[param][a])
                         except:
                             pass
     if 't_s' in simparams.keys():
         sensdict['t_s'] = simparams['t_s']
-        sensdict['fs'] =1.0/simparams['t_s']
-        sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
+        sensdict['fs'] = 1.0/simparams['t_s']
+        #used for the noise bandwidth
+    elif 'fs' in simparams.keys():
+        sensdict['fs'] = simparams['fs']
+        sensdict['t_s'] = 1.0/simparams['fs']
+    sensdict['BandWidth'] = sensdict['fs']*0.5
 
     for ikey in sensdict.keys():
         if ikey  in simparams.keys():
-            sensdict[ikey]=simparams[ikey]
+            sensdict[ikey] = simparams[ikey]
 #            del simparams[ikey]
-    simparams['Beamlist']=beamlist
+    ippsamps = int(simparams['IPP']/simparams['t_s'])
+    simparams['Beamlist'] = beamlist
     time_lim = simparams['TimeLim']
-    (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+    (pulse, simparams['Pulselength']) = makepulse(simparams['Pulsetype'],
+                                                  simparams['Pulselength'],
+                                                  1./sensdict['fs'])
     simparams['Pulse'] = pulse
-    simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
+    simparams['amb_dict'] = make_amb(sensdict['fs'], int(simparams['ambupsamp']),
         sensdict['t_s']*len(pulse),pulse,simparams['numpoints'])
     simparams['angles']=angles
     rng_lims = simparams['RangeLims']
@@ -753,27 +702,28 @@ def readconfigfile(fname):
 
     # Set the number of noise samples to IPP
     N_samps = len(simparams['Rangegates']) + len(pulse)-1
-    ippsamps = int(simparams['IPP']/simparams['t_s'])
-    simparams['NNs']  = ippsamps - N_samps
-    if ('startfile' in simparams.keys() and len(simparams['startfile']) >0 )and simparams['Pulsetype'].lower()!='barker':
+
+    simparams['NNs'] = ippsamps - N_samps
+    if ('startfile' in simparams.keys() and simparams['startfile']) and simparams['Pulsetype'].lower() != 'barker':
         relpath = Path(simparams['startfile'])
         if not relpath.is_absolute():
-            # Some times the ini files may split the strings of the start file because of white space in file names.
+            # Some times the ini files may split the strings of the start
+            # file because of white space in file names.
             if type(simparams['startfile'])is list:
-                startfile=" ".join(simparams['startfile'])
+                startfile = " ".join(simparams['startfile'])
             else:
-                startfile=simparams['startfile']
+                startfile = simparams['startfile']
 
             fullfilepath = curpath.joinpath(startfile)
             simparams['startfile'] = str(fullfilepath)
 
         else:
-            fullfilepath=simparams['startfile']
+            fullfilepath = simparams['startfile']
         stext = Path(fullfilepath).is_file()
         if not stext:
-            warnings.warn('The given start file does not exist',UserWarning)
+            warnings.warn('The given start file does not exist', UserWarning)
 
-    elif simparams['Pulsetype'].lower()!='barker':
-        warnings.warn('No start file given',UserWarning)
+    elif simparams['Pulsetype'].lower() != 'barker':
+        warnings.warn('No start file given', UserWarning)
 
     return(sensdict,simparams)

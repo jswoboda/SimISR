@@ -1,0 +1,19 @@
+- beamlist: &id001 [64016.0]
+  radarname: PFISR
+- FitType: ACF
+  Fitinter: 1.0
+  IPP: 0.01
+  NNs: 320
+  Pulselength: 0.00026000000000000003
+  Pulsetype: Long
+  RangeLims: [50.0, 550.0]
+  TimeLim: 300.0
+  Tint: 1.0
+  ambupsamp: 1.0
+  beamrate: 1
+  dtype: !!python/name:numpy.complex128 ''
+  fs: 50000.0
+  numpoints: 128.0
+  outangles: *id001
+  species: [O+, e-]
+  startfile: ''

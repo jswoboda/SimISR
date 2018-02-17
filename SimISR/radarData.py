@@ -68,6 +68,7 @@ class RadarDataFile(object):
         Npall = int(sp.floor(Npall/N_angles)*N_angles)
         Np = Npall/N_angles
 
+        dec_list = self.simparams['declist']
         print("All spectrums created already")
         filetimes = Ionodict.keys()
         filetimes.sort()
@@ -177,12 +178,21 @@ class RadarDataFile(object):
                                             curcontainer.Param_List, pb)
                 noisedata = sp.sqrt(Noisepwr/2)*(sp.random.randn(*rawdata.shape).astype(simdtype)+
                         1j*sp.random.randn(*rawdata.shape).astype(simdtype))
-                outdict['AddedNoise'] = noisedata
-                outdict['RawData'] = rawdata+noisedata
-                outdict['RawDatanonoise'] = rawdata
+                rawdata_ds = rawdata.copy()
+                noisedata_ds = noisedata.copy()
                 ndata_end = sp.random.randn(len(pn), NNs).astype(simdtype) + 1j*sp.random.randn(len(pn), NNs).astype(simdtype)
                 ndata_end = sp.sqrt(Noisepwr/2.)*ndata_end
-                outdict['NoiseData'] = ndata_end
+                ndata_end_ds = ndata_end.copy()
+                for idec in dec_list:
+                    rawdata_ds = sp.signal.decimate(rawdata_ds, idec, axis=1, zero_phase=True)
+                    noisedata_ds = sp.signal.decimate(noisedata_ds, idec, axis=1, zero_phase=True)
+                    ndata_end_ds = sp.signal.decimate(ndata_end_ds, idec, axis=1, zero_phase=True)
+                outdict['AddedNoise'] = noisedata_ds
+                outdict['RawData'] = rawdata_ds+noisedata_ds
+                outdict['RawDatanonoise'] = rawdata_ds
+
+
+                outdict['NoiseData'] = ndata_end_ds
                 outdict['Pulses'] = pn
                 outdict['Beams'] = pb
                 outdict['Time'] = pt
@@ -229,6 +239,12 @@ class RadarDataFile(object):
         range_gates = self.simparams['Rangegates']
         pulse = self.simparams['Pulse']
         sensdict = self.sensdict
+
+        f_s = sensdict['fs']
+
+        #HACK number of lpc points connected to ratio of sampling frequency and
+        # notial ion-line spectra with a factor of 10.
+        nlpc = int(10*f_s/20e3) + 1
         pulse2spec = sp.array([sp.where(itimes-spectime >= 0)[0][-1] for itimes in pulsetimes])
         Np = len(pulse2spec)
         lp_pnts = len(pulse)
@@ -282,7 +298,7 @@ class RadarDataFile(object):
                         print('\t\t No data for {0:d} of {1:d} in this time period'.format(ibn,Nbeams))
                         continue
 #                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
-                    cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, 20,
+                    cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
                                                          len(curdataloc), numtype=simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
