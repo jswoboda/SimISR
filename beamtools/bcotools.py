@@ -7,7 +7,7 @@ Created on Tue Dec 31 10:58:18 2013
 import tables
 from isrutilities.sensorConstants import get_files
 
-def getangles(bcodes,radar='risr'):
+def getangles(bcodes, radar='risr'):
     """ getangles: This function creates take a set of beam codes and determines
         the angles that are associated with them.
         Inputs
@@ -20,7 +20,7 @@ def getangles(bcodes,radar='risr'):
         reffile = get_files('RISR_PARAMS.h5')
     elif radar.lower() == 'pfisr':
         reffile = get_files('PFISR_PARAMS.h5')
-    elif radar.lower() == 'millstone':
+    elif radar.lower() == 'millstone' or radar.lower() == 'millstonez':
         reffile = get_files('Millstone_PARAMS.h5')
     elif radar.lower() == 'sondrestrom':
         reffile = get_files('Sondrestrom_PARAMS.h5')

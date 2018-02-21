@@ -99,8 +99,7 @@ class RadarSpaceTimeOperator(object):
         amb_dict = self.simparams['amb_dict']
         ambmat = amb_dict['WttMatrix']
         overlaps = self.overlaps
-
-        t_s = self.sensdict['t_s']
+        t_s = float(self.simparams['fsden']*sp.prod(self.simparams['declist']))/self.simparams['fsnum']
 
         if isinstance(ionoin_list,list)or isinstance(ionoin_list,str):
 
@@ -111,13 +110,13 @@ class RadarSpaceTimeOperator(object):
 
         ionocart = Iono_in.Cart_Coords
 
-        if self.simparams['numpoints']==Iono_in.Param_List.shape[-1]:
-            tau,acf=spect2acf(Iono_in.Param_Names,Iono_in.Param_List)
+        if self.simparams['numpoints'] == Iono_in.Param_List.shape[-1]:
+            tau, acf = spect2acf(Iono_in.Param_Names,Iono_in.Param_List)
             np = ambmat.shape[0]
         else:
-            acf=Iono_in.Param_List
+            acf = Iono_in.Param_List
             np = acf.shape[-1]
-        np_in =acf.shape[-1]
+        np_in = acf.shape[-1]
         tau_out = t_s*np.arange(np)
         outdata = np.zeros((nlout,ntout,np),dtype=acf.dtype)
         assert np.allclose(ionocart,self.Cart_Coords_In), "Spatial Coordinates need to be the same"
@@ -169,12 +168,13 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
            blockloc - An Ntout x Ntbeg array that holds the corresponding spatial forward model.
     """
     #
-    (sensdict,simparams) = readconfigfile(configfile)
+    (sensdict, simparams) = readconfigfile(configfile)
     timeout = simparams['Timevec']
     Tint = simparams['Tint']
-    timeout = np.column_stack((timeout,timeout+Tint)) +timein[0,0]
-
-    rng_bin=sensdict['t_s']*v_C_0*1e-3/2.
+    timeout = np.column_stack((timeout, timeout+Tint)) +timein[0,0]
+    ds_fac = sp.prod(self.simparams['declist'])
+    t_s = float(self.simparams['fsden']*ds_fac)/self.simparams['fsnum']
+    rng_bin = t_s*v_C_0*1e-3/2.
 
     angles = simparams['angles']
     Nbeams = len(angles)
@@ -182,15 +182,15 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
 
     rng_vec2 = simparams['Rangegatesfinal']
     nrgout = len(rng_vec2)
-    pulse=simparams['Pulse']
+    pulse = simparams['Pulse'][::ds_fac]
     p_samps = pulse.shape[0]
-    rng_len=p_samps*rng_bin
+    rng_len = p_samps*rng_bin
     Nlocbeg = Cart_Coords.shape[0]
-    Nlocout= Nbeams*nrgout
+    Nlocou = Nbeams*nrgout
     Ntbeg = len(timein)
     Ntout = len(timeout)
     if vel is None:
-        vel=np.zeros((Nlocbeg,Ntbeg,3))
+        vel = np.zeros((Nlocbeg,Ntbeg,3))
 
 
 
@@ -359,6 +359,3 @@ def cart2sphere(coordlist):
     El_vec = np.degrees(np.arcsin(Z_vec/R_vec))
     sp_coords = np.array([R_vec,Az_vec,El_vec]).transpose()
     return sp_coords
-
-
-

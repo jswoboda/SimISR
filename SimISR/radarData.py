@@ -79,8 +79,8 @@ class RadarDataFile(object):
 
         #digital rf stuff
 
-        sample_rate_numerator = int(sp.round_(sensdict['fs']))  # 100 Hz sample rate - typically MUCH faster
-        sample_rate_denominator = 1
+        sample_rate_numerator = self.simparams['fsnum']  # 100 Hz sample rate - typically MUCH faster
+        sample_rate_denominator = self.simparams['fsden']
         sample_rate = sp.longdouble(sample_rate_numerator) / sample_rate_denominator
         start_global_index = int(sample_rate*filetimes[0])
         dtype_str = 'i2'  # short int
@@ -240,7 +240,7 @@ class RadarDataFile(object):
         pulse = self.simparams['Pulse']
         sensdict = self.sensdict
 
-        f_s = sensdict['fs']
+        f_s = float(simparams['fsnum'])/simparams['fsden']
 
         #HACK number of lpc points connected to ratio of sampling frequency and
         # notial ion-line spectra with a factor of 10.
@@ -256,7 +256,8 @@ class RadarDataFile(object):
         rho = Sphere_Coords[:, 0]
         Az = Sphere_Coords[:, 1]
         El = Sphere_Coords[:, 2]
-        rng_len = self.sensdict['t_s']*v_C_0*1e-3/2.
+        t_s = float(self.simparams['fsden'])/self.simparams['fsnum']
+        rng_len = t_s*v_C_0*1e-3/2.
         speclen = allspecs.shape[-1]
         simdtype = self.simparams['dtype']
         out_data = sp.zeros((Np, N_samps), dtype=simdtype)
@@ -289,7 +290,7 @@ class RadarDataFile(object):
                     specsinrng = specsinrng*sp.tile(weight_cur[:, sp.newaxis], (1, speclen))
                     cur_spec = specsinrng.sum(0)
                     # based off new way of calculating
-                    pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*sensdict['t_s']
+                    pow_num = sensdict['Pt']*sensdict['Ksys'][ibn]*t_s
                     pow_den = range_m**2
                     curdataloc = sp.where(sp.logical_and((pulse2spec == istn),
                                                          (beamcodes == ibn)))[0]
@@ -513,7 +514,9 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
     rng_vec = simparams['Rangegates']
     # pull in other data
-    pulsewidth = len(simparams['Pulse'])*sensdict['t_s']
+    t_s = float(simparams['fsden'])/simparams['fsnum']
+    ds_fac = sp.prod(simparams['declist'])
+    pulsewidth = len(simparams['Pulse'])*t_s
     txpower = sensdict['Pt']
     if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
         Ksysvec = sensdict['Ksys']
@@ -589,11 +592,13 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     curloc = 0
     for irng in range(Nrng2):
         for ibeam in range(Nbeams):
-            Paramdata[curloc] = lagsDatasum[ibeam,irng].copy()
-            Paramdatasig[curloc] = Cttout[ibeam,irng].copy()
-            curloc+=1
-    ionodata = IonoContainer(coordlist,Paramdata,times = time_vec,ver =1, paramnames=sp.arange(Nlags)*sensdict['t_s'])
-    ionosigs = IonoContainer(coordlist,Paramdatasig,times = time_vec,ver =1, paramnames=sp.arange(Nlags*Nlags).reshape(Nlags,Nlags)*sensdict['t_s'])
+            Paramdata[curloc] = lagsDatasum[ibeam, irng].copy()
+            Paramdatasig[curloc] = Cttout[ibeam, irng].copy()
+            curloc += 1
+    ionodata = IonoContainer(coordlist, Paramdata, times=time_vec, ver=1,
+                             paramnames=sp.arange(Nlags)*t_s*ds_fac)
+    ionosigs = IonoContainer(coordlist, Paramdatasig, times=time_vec, ver=1,
+                             paramnames=sp.arange(Nlags*Nlags).reshape(Nlags,Nlags)*t_s*ds_fac)
     return (ionodata,ionosigs)
 
 def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):

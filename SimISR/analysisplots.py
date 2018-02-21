@@ -479,7 +479,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
     if acfdisp:
         Ionoacf = IonoContainer.readh5(str(acfname))
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
-        ts = sensdict['t_s']
+        ts = float(simparams['fsden']*sp.prod(simparams['declist']))/simparams['fsnum']
         omeg = sp.arange(-sp.ceil((npts-1.)/2.),sp.floor((npts-1.)/2.)+1)/ts/npts
         for icn, ic in enumerate(coords):
             if cartcoordsys:
@@ -566,8 +566,9 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
         plt.savefig(fname)
         plt.close(figmplf)
 
-def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
-             fitdisp=True, filetemplate='acf',suptitle = 'ACF Comparison',invacf=''):
+def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
+             acfdisp=True, fitdisp=True, filetemplate='acf',suptitle='ACF Comparison',
+             invacf=''):
     """ This will create a set of images that compare the input ISR acf to the
         output ISR acfs from the simulator.
         Inputs
@@ -600,11 +601,9 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
     sns.set_style("whitegrid")
     sns.set_context("notebook")
     pulse = simparams['Pulse']
-    ts = sensdict['t_s']
+    ts = float(simparams['fsden']*sp.prod(simparams['declist']))/simparams['fsnum']
+
     tau1 = sp.arange(pulse.shape[-1])*ts
-
-
-
 
     if indisp:
         dirlist = [i.name for i in specsfiledir.glob('*.h5')]

@@ -18,7 +18,6 @@ import scipy.interpolate as spinterp
 #
 from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
-from beamtools.bcotools import getangles
 from isrutilities import Path
 
 # utility functions
@@ -57,7 +56,7 @@ def update_progress(progress, extstr=""):
     sys.stdout.flush()
 
 
-def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
+def make_amb(Fsorg, m_up, plen, pulse, nspec=128, winname = 'boxcar'):
     """
         Make the ambiguity function dictionary that holds the lag ambiguity and
         range ambiguity. Uses a sinc function weighted by a blackman window. Currently
@@ -209,19 +208,19 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     npts = len(filt_freq)
     multforimag = sp.ones_like(filt_freq)
     hpnt = int(sp.ceil(npts/2.))
-    multforimag[hpnt:]=-1
+    multforimag[hpnt:] = -1
     tmp = scfft.ifft(filt_freq)
-    tmp[hpnt:]=0.
+    tmp[hpnt:] = 0.
     #comp_filt = scfft.fft(tmp)*sp.sqrt(2.)
-    filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
-    shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
-    noisereal = sp.random.randn(rep,npts).astype(numtype)
-    noiseimag = sp.random.randn(rep,npts).astype(numtype)
-    noise_vec =(noisereal+1j*noiseimag)/sp.sqrt(2.0)
+    filt_tile = sp.tile(filt_freq[sp.newaxis, :], (rep, 1))
+    shaperep = sp.tile(pulse_shape[sp.newaxis, :], (rep, 1))
+    noisereal = sp.random.randn(rep, npts).astype(numtype)
+    noiseimag = sp.random.randn(rep, npts).astype(numtype)
+    noise_vec = (noisereal+1j*noiseimag)/sp.sqrt(2.0)
 #    noise_vec = noisereal
     mult_freq = filt_tile.astype(numtype)*noise_vec
-    data = scfft.ifft(mult_freq,axis=-1)
-    data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]
+    data = scfft.ifft(mult_freq, axis=-1)
+    data_out = shaperep*data[:, delay:(delay+len(pulse_shape))]
     return data_out
 
 def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
@@ -342,7 +341,7 @@ def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13),lagtype=None):
     #increase the number of axes
     return outdata[len(pulse)-1:,sp.newaxis]
 
-def makesumrule(ptype,plen,ts,lagtype='centered'):
+def makesumrule(ptype,nlags,lagtype='centered'):
     """ This function will return the sum rule.
         Inputs
             ptype - The type of pulse.
@@ -352,8 +351,7 @@ def makesumrule(ptype,plen,ts,lagtype='centered'):
         Output
             sumrule - A 2 x nlags numpy array that holds the summation rule.
     """
-    nlags = sp.floor(plen/ts)
-    if ptype.lower()=='long':
+    if ptype.lower() == 'long':
         if lagtype == 'forward':
             arback = -sp.arange(nlags, dtype=int)
             arforward = sp.zeros(nlags, dtype=int)
@@ -369,7 +367,7 @@ def makesumrule(ptype,plen,ts,lagtype='centered'):
     return sumrule
 
 #%% Make pulse
-def makepulse(ptype,plen,ts):
+def makepulse(ptype,nsamps,ts,nbauds=13):
     """ This will make the pulse array.
         Inputs
             ptype - The type of pulse used.
@@ -379,23 +377,25 @@ def makepulse(ptype,plen,ts):
             pulse - The pulse array that will be used as the window in the data formation.
             plen - The length of the pulse with the sampling time taken into account.
     """
-    nsamps = int(sp.floor(plen/ts))
-
     if ptype.lower() == 'long':
         pulse = sp.ones(nsamps)
         plen = nsamps*ts
 
     elif ptype.lower() == 'barker':
+
         blen = sp.array([1, 2, 3, 4, 5, 7, 11, 13])
-        nsampsarg = sp.argmin(sp.absolute(blen-nsamps))
-        nsamps = blen[nsampsarg]
-        pulse = GenBarker(nsamps)
+        nsampsarg = sp.argmin(sp.absolute(blen-nbauds))
+        nbauds = blen[nsampsarg]
+        pulse = GenBarker(nbauds)
+        baudratio = float(nbauds)/nsamps
+        pulse_samps = sp.floor(sp.arange(nsamps)*baudratio)
+        pulse = pulse[pulse_samps]
         plen = nsamps*ts
 #elif ptype.lower()=='ac':
     else:
         raise ValueError('The pulse type %s is not a valide pulse type.' % (ptype))
 
-    return (pulse,plen)
+    return (pulse, plen)
 
 
 #%% dictionary file
@@ -509,9 +509,10 @@ def makeconfigfile(fname,beamlist,radarname,simparams_orig):
     fext = fname.suffix
 
     # reduce the number of stuff needed to be saved and avoid problems with writing
-    keys2save = ['IPP', 'TimeLim', 'RangeLims', 'Pulselength', 'fs', 'Pulsetype',
-                 'Tint', 'Fitinter', 'NNs', 'dtype', 'ambupsamp', 'species',
-                 'numpoints', 'startfile', 'FitType', 'beamrate', 'outangles']
+    keys2save = ['IPP', 'IPPsamps', 'TimeLim', 'datasamples', 'calsamples', 'noisesamples',
+                 'Pulselength', 'Pulsetype', 'fsnum', 'fsden', 'Tint', 'Fitinter',
+                 'dtype', 'ambupsamp', 'species', 'numpoints', 'startfile',
+                 'FitType', 'beamrate', 'outangles', 'declist']
 
     if not 'beamrate' in simparams_orig.keys():
         simparams_orig['beamrate'] = 1
@@ -620,7 +621,7 @@ def readconfigfile(fname):
         with fname.open('r') as f:
             dictlist = yaml.load(f)
 
-        angles = getangles(dictlist[0]['beamlist'], dictlist[0]['radarname'])
+        angles = sensconst.getangles(dictlist[0]['beamlist'], dictlist[0]['radarname'])
         beamlist = [float(i) for i in dictlist[0]['beamlist']]
         ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
         sensdict = sensconst.getConst(dictlist[0]['radarname'], ang_data)
@@ -631,14 +632,14 @@ def readconfigfile(fname):
         config.read(str(fname))
         beamlist = config.get('section 1', 'beamlist').split()
         beamlist = [float(i) for i in beamlist]
-        angles = getangles(beamlist, config.get('section 1', 'radarname'))
+        angles = sensconst.getangles(beamlist, config.get('section 1', 'radarname'))
         ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
 
         sensdict = sensconst.getConst(config.get('section 1', 'radarname'), ang_data)
 
         simparams = {}
         for param in config.options('simparams'):
-            rname  = config.get('simparamsnames', param)
+            rname = config.get('simparamsnames', param)
             simparams[rname] = config.get('simparams', param)
 
         for param in simparams:
@@ -664,46 +665,48 @@ def readconfigfile(fname):
                             simparams[param][a] = float(simparams[param][a])
                         except:
                             pass
-    if 't_s' in simparams.keys():
-        sensdict['t_s'] = simparams['t_s']
-        sensdict['fs'] = 1.0/simparams['t_s']
-        #used for the noise bandwidth
-    elif 'fs' in simparams.keys():
-        sensdict['fs'] = simparams['fs']
-        sensdict['t_s'] = 1.0/simparams['fs']
-    sensdict['BandWidth'] = sensdict['fs']*0.5
+
+
+
+    if 'declist' not in simparams.keys():
+        simparams['declist'] = []
+
 
     for ikey in sensdict.keys():
         if ikey  in simparams.keys():
             sensdict[ikey] = simparams[ikey]
 #            del simparams[ikey]
-    ippsamps = int(simparams['IPP']/simparams['t_s'])
+    ds_fac = int(sp.prod(simparams['declist']))
     simparams['Beamlist'] = beamlist
     time_lim = simparams['TimeLim']
+    f_s = float(simparams['fsnum'])/simparams['fsden']
+    t_s = float(simparams['fsden'])/simparams['fsnum']
     (pulse, simparams['Pulselength']) = makepulse(simparams['Pulsetype'],
                                                   simparams['Pulselength'],
-                                                  1./sensdict['fs'])
+                                                  t_s)
     simparams['Pulse'] = pulse
-    simparams['amb_dict'] = make_amb(sensdict['fs'], int(simparams['ambupsamp']),
-        sensdict['t_s']*len(pulse),pulse,simparams['numpoints'])
-    simparams['angles']=angles
-    rng_lims = simparams['RangeLims']
-    rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3/2.)
-    simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
-    simparams['Rangegates']=rng_gates
-    if not 'lagtype' in simparams.keys():
-        simparams['lagtype']='centered'
-    sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'],simparams['lagtype'])
+    simparams['amb_dict'] = make_amb(f_s/ds_fac, int(simparams['ambupsamp']),
+                                     t_s*len(pulse), pulse[::ds_fac], simparams['numpoints'])
+    simparams['angles'] = angles
+    rng_lims = sp.array(simparams['datasamples'])*t_s*v_C_0*1e-3/2.
+    rng_gates = sp.arange(rng_lims[0], rng_lims[1], sensdict['t_s']*v_C_0*1e-3/2.)
+    rng_gates_ds = rng_gates[::ds_fac]
+    simparams['Timevec'] = sp.arange(0, time_lim, simparams['Fitinter'])
+    simparams['Rangegates'] = rng_gates
+    if 'lagtype' not in simparams.keys():
+        simparams['lagtype'] = 'centered'
+
+    plen_ds = simparams['Pulselength']/ds_fac
+    sumrule = makesumrule(simparams['Pulsetype'], plen_ds, simparams['lagtype'])
     simparams['SUMRULE'] = sumrule
     minrg = -sumrule[0].min()
-    maxrg = len(rng_gates)-sumrule[1].max()
+    maxrg = len(rng_gates_ds)-sumrule[1].max()
 
-    simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
+    simparams['Rangegatesfinal'] = sp.array([sp.mean(rng_gates_ds[irng+sumrule[0, 0]:irng+sumrule[1, 0]+1])
+                                             for irng in range(minrg, maxrg)])
 
     # Set the number of noise samples to IPP
-    N_samps = len(simparams['Rangegates']) + len(pulse)-1
 
-    simparams['NNs'] = ippsamps - N_samps
     if ('startfile' in simparams.keys() and simparams['startfile']) and simparams['Pulsetype'].lower() != 'barker':
         relpath = Path(simparams['startfile'])
         if not relpath.is_absolute():
@@ -726,4 +729,4 @@ def readconfigfile(fname):
     elif simparams['Pulsetype'].lower() != 'barker':
         warnings.warn('No start file given', UserWarning)
 
-    return(sensdict,simparams)
+    return(sensdict, simparams)
