@@ -8,6 +8,8 @@ import calendar
 
 import scipy as sp
 import shutil
+import matplotlib.pyplot as plt
+import seaborn as sns
 from pyglow.pyglow import Point
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigfile
@@ -57,6 +59,46 @@ def pyglowinput(latlonalt=[65.1367, -147.4472, 250.00], dn_list=[datetime(2015, 
     Param_List[:, :] = Param_List[:, :, spec_keep]
     Iono_out = IonoContainer(coords, Param_List, times = time_arr, species=species)
     return Iono_out
+
+def plotiono(ionoin,fileprefix):
+
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
+
+    timevec = ionoin.Time_Vector
+
+    for itn, itime in enumerate(timevec):
+        t1 = itime[0]
+        d_1 = datetime.utcfromtimestamp(t1)
+        timestr = d_1.strftime("%Y-%m-%d %H:%M:%S")
+        (figmplf, axmat) = plt.subplots(1, 2, figsize=(10, 5), facecolor='w', sharey=True)
+        species = ionoin.Species
+        zvec = ionoin.Cart_Coords[:, 2]
+        params = ionoin.Param_List[:, itn]
+        maxden = 10**sp.ceil(sp.log10(params[:, -1, 0].max()))
+        for iplot, ispec in enumerate(species):
+            axmat[0].plot(params[:, iplot, 0], zvec, label=ispec +'Density')
+            axmat[1].plot(params[:, iplot, 1], zvec, label=ispec+'Temperature')
+
+        axmat[0].set_title('Number Density')
+        axmat[0].set_xscale('log')
+        axmat[0].set_ylim([50, 1000])
+        axmat[0].set_xlim([maxden*1e-5, maxden])
+        axmat[0].set_xlabel(r'Densities in m$^{-3}$')
+        axmat[0].set_ylabel('Alt in km')
+        axmat[0].legend()
+
+        axmat[1].set_title('Temperature')
+        axmat[1].set_xlim([100., 3500.])
+        axmat[1].set_xlabel(r'Temp in $^{\circ}$ K')
+        axmat[1].set_ylabel('Alt in km')
+        axmat[1].legend()
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        figmplf.suptitle('Parameters at Time: '+timestr, fontsize=12)
+
+        figmplf.savefig(fileprefix+'_{0:0>3}.png'.format(itn), dpi=300)
+        plt.close(figmplf)
+
 def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis']):
     """ This function will call other functions to create the input data, config
         file and run the radar data sim. The path for the simulation will be

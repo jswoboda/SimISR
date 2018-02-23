@@ -561,7 +561,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
             labels.remove(None)
             lines.remove(None)
         plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
-        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
+        fname = filetemplate+'_{0:0>3}.png'.format(i_fig)
 
         plt.savefig(fname)
         plt.close(figmplf)
