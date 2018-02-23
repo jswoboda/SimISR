@@ -2,7 +2,7 @@
 """
 
 """
-
+import argparse
 from datetime import datetime
 import calendar
 
@@ -17,7 +17,7 @@ from SimISR.analysisplots import analysisdump
 from SimISR.runsim import main as runsimisr
 from SimISR import Path
 
-def pyglowinput(latlonalt=[65.1367, -147.4472, 250.00], dn_list=[datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)], z=None):
+def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)], z=None):
 
 
     if z is None:
@@ -99,7 +99,7 @@ def plotiono(ionoin,fileprefix):
         figmplf.savefig(fileprefix+'_{0:0>3}.png'.format(itn), dpi=300)
         plt.close(figmplf)
 
-def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis']):
+def main(ARGS):
     """ This function will call other functions to create the input data, config
         file and run the radar data sim. The path for the simulation will be
         created in the Testdata directory in the SimISR module. The new
@@ -110,35 +110,40 @@ def main(npulse = 100 ,functlist = ['spectrums','radardata','fitting','analysis'
             functlist - The list of functions for the SimISR to do.
     """
     curloc = Path(__file__).resolve()
-    testpath = curloc.parent.parent/'Testdata'/'BasicTest'
+    testpath = Path(ARGS.path)
+    configfile_org = curloc / 'MHsimple.yml'
+
     if not testpath.is_dir():
         testpath.mkdir(parents=True)
-
+    functlist = ARGS.funclist
     functlist_default = ['spectrums', 'radardata', 'fitting']
     check_list = sp.array([i in functlist for i in functlist_default])
     check_run = sp.any(check_list)
     functlist_red = sp.array(functlist_default)[check_list].tolist()
 
-    config = testpath.joinpath('stats.ini')
+    config = testpath.joinpath('MHsimple.yml')
     if not config.exists():
-        configfilesetup(str(testpath), npulse)
+        configfile_org.copy(config)
 
-    (sensdict, simparams) = readconfigfile(str(config))
-    makedata(testpath, simparams['Tint'])
+    inputpath = testpath.joinpath('Origparams')
+    ionoout = pyglowinput()
+    if not inputpath.is_dir():
+        inputpath.mkdir()
+
+    inputfile = inputpath.joinpath('0 stats.h5')
+    ionoout.saveh5(str(inputfile))
     if check_run:
-        runsim(functlist_red, str(testpath), config, True)
-    if 'analysis' in functlist:
-        analysisdump(str(testpath), config)
+        runsimisr(functlist_red, str(testpath), config, True)
+
 
 if __name__== '__main__':
-    from argparse import ArgumentParser
     descr = '''
              This script will perform the basic run est for ISR sim.
             '''
-    PAR1 = ArgumentParser(description=descr)
+    PAR1 = argparse.ArgumentParser(description=descr)
 
     PAR1.add_argument("-p", "--path", help='Path.', type=str, default='')
     PAR1.add_argument('-f', '--funclist', help='Functions to be uses', nargs='+',
                       default=['spectrums', 'radardata', 'fitting', 'analysis'])
     PAR1 = PAR1.parse_args()
-    main(PAR1.npulses, PAR1.funclist)
+    main(PAR1)
