@@ -56,7 +56,7 @@ def update_progress(progress, extstr=""):
     sys.stdout.flush()
 
 
-def make_amb(Fsorg, m_up, plen, pulse, nspec=128, winname = 'boxcar'):
+def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
     """
         Make the ambiguity function dictionary that holds the lag ambiguity and
         range ambiguity. Uses a sinc function weighted by a blackman window. Currently
@@ -66,7 +66,6 @@ def make_amb(Fsorg, m_up, plen, pulse, nspec=128, winname = 'boxcar'):
             Fsorg (:obj:`float`): A scalar, the original sampling frequency in Hertz.
             m_up (:obj:`int`): The upsampled ratio between the original sampling rate and the rate of
             the ambiguity function up sampling.
-            plen (:obj:`int`): The length of the pulse in samples at the original sampling frequency.
             nlags (:obj:`int`): The number of lags used.
 
         Returns:
@@ -77,61 +76,88 @@ def make_amb(Fsorg, m_up, plen, pulse, nspec=128, winname = 'boxcar'):
             for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity
             function on a pulses.
     """
+
+
+    # come up with frequency response of filter from signal.decimate.
+    # For default case use chebychev 1 order 8 and take the power of the
+    # original frequency response of each decmination filter because it is run as
+    # a zero phase filter using filtfilt.
+    curfreq = sp.ones(nspec)
+    curds = 1
+    m_up = sp.prod(ds_list)
+    for i_ds in ds_list:
+        # taken from decimate command
+        dtisys1 =  scisig.dlti(*sp.signal.cheby1(8, 0.05, 0.8 / i_ds))
+        w,hf = scisig.freqz(dtisys1.num,dtisys1.den,nspec/curds,True)
+        Hf = sp.absolute(hf)**2
+        f_1 = int(sp.ceil(float(nspec/curds)/2))
+        curfreq[:f_1] = curfreq[:f_1]*Hf[:f_1]
+        curfreq[-f_1:] = curfreq[-f_1:]*Hf[-f_1:]
+        curds *= i_ds
+    curh = sp.ifft(curfreq)
     nspec = int(nspec)
-    nlags = len(pulse)
+    plen = len(pulse)
+    nlags = plen/m_up
+
     # make the sinc
-    nsamps = sp.floor(8.5*m_up)
-    nsamps = int(nsamps-(1-sp.mod(nsamps,2)))
+    nsamps = sp.floor(23.*m_up)
+    nsamps = int(nsamps-(1-sp.mod(nsamps, 2)))
+
     # need to incorporate summation rule
     vol = 1.
-    nvec = sp.arange(-sp.floor(nsamps/2.0),sp.floor(nsamps/2.0)+1)
-    pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann']
-    curwin = scisig.get_window(winname,nsamps)
+    nvec = sp.arange(-sp.floor(nsamps/2.0), sp.floor(nsamps/2.0)+1).astype(int)
+    pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett',
+                   'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall',
+                   'barthann']
+    curwin = scisig.get_window(winname, nsamps)
     # Apply window to the sinc function. This will act as the impulse respons of the filter
-    outsinc = curwin*sp.sinc(nvec/m_up)
-    outsinc = outsinc/sp.sum(outsinc)
-    dt = 1/(Fsorg*m_up)
+    impres = curwin*sp.sinc(nvec/m_up)
+    impres = impres/sp.sum(impres)
+    impres = curh[nvec]
+    d_t = 1./Fsorg
     #make delay vector
-    Delay_num = sp.arange(-(len(nvec)-1),m_up*(nlags+5))
-    Delay = Delay_num*dt
+    Delay_num = sp.arange(-(len(nvec)-1), m_up*(nlags+5))
+    Delay = Delay_num*d_t
 
-    t_rng = sp.arange(0,1.5*plen,dt)
-    if len(t_rng)>2e4:
+    t_rng = sp.arange(0, 1.5*plen)*d_t
+    if len(t_rng) > 2e4:
         raise ValueError('The time array is way too large. plen should be in seconds.')
-    numdiff = len(Delay)-len(outsinc)
-    numback= int(nvec.min()/m_up-Delay_num.min())
+    numdiff = len(Delay)-len(impres)
+    numback = int(nvec.min()/m_up-Delay_num.min())
     numfront = numdiff-numback
-#    outsincpad  = sp.pad(outsinc,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
-    outsincpad  = sp.pad(outsinc,(numback,numfront),mode='constant',constant_values=(0.0,0.0))
-    (d2d,srng)=sp.meshgrid(Delay,t_rng)
+#    imprespad  = sp.pad(impres,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
+    imprespad  = sp.pad(impres, (numback, numfront), mode='constant',
+                        constant_values=(0.0, 0.0))
+    (d2d, srng) = sp.meshgrid(Delay, t_rng)
     # envelop function
-    t_p = sp.arange(nlags)/Fsorg
-    envfunc = sp.interp(sp.ravel(srng-d2d),t_p,pulse,left=0.,right=0.).reshape(d2d.shape)
+    t_p = sp.arange(plen)/Fsorg
+
+    envfunc = sp.interp(sp.ravel(srng-d2d), t_p, pulse, left=0., right=0.).reshape(d2d.shape)
 #    envfunc = sp.zeros(d2d.shape)
 #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
     envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
     Wtt = sp.zeros((nlags,d2d.shape[0],d2d.shape[1]))
-    cursincrep = sp.tile(outsincpad[sp.newaxis,:],(len(t_rng),1))
+    cursincrep = sp.tile(imprespad[sp.newaxis,:],(len(t_rng),1))
     Wt0 = cursincrep*envfunc
     Wt0fft = sp.fft(Wt0,axis=1)
     for ilag in sp.arange(nlags):
-        cursinc = sp.roll(outsincpad,ilag*m_up)
-        cursincrep = sp.tile(cursinc[sp.newaxis,:],(len(t_rng),1))
+        cursinc = sp.roll(imprespad, ilag*m_up)
+        cursincrep = sp.tile(cursinc[sp.newaxis, :], (len(t_rng), 1))
         Wta = cursincrep*envfunc
         #do fft based convolution, probably best method given sizes
-        Wtafft = scfft.fft(Wta,axis=1)
+        Wtafft = scfft.fft(Wta, axis=1)
 
         nmove = len(nvec)-1
-        Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft),axis=1).real,nmove,axis=1)
+        Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, nmove, axis=1)
 
     # make matrix to take
     imat = sp.eye(nspec)
-    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
+    tau = sp.arange(-sp.floor(nspec/2.), sp.ceil(nspec/2.))/Fsorg
     tauint = Delay
-    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
+    interpmat = spinterp.interp1d(tau,imat, bounds_error=0, axis=0)(tauint)
     lagmat = sp.dot(Wtt.sum(axis=1),interpmat)
-    W0=lagmat[0].sum()
+    W0 = lagmat[0].sum()
     for ilag in range(nlags):
        lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
 
@@ -156,8 +182,8 @@ def spect2acf(omeg,spec,n=None):
 #    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
     acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec,axes=-1),n,axis=-1),axes=-1)
     acf = acf/n
-    dt = 1/(df*n)
-    tau = sp.arange(-sp.ceil(float(n-1)/2.),sp.floor(float(n-1)/2.)+1)*dt
+    d_t = 1/(df*n)
+    tau = sp.arange(-sp.ceil(float(n-1)/2.),sp.floor(float(n-1)/2.)+1)*d_t
     return tau, acf
 
 def acf2spect(tau,acf,n=None,initshift = False):
@@ -173,12 +199,12 @@ def acf2spect(tau,acf,n=None,initshift = False):
 
     if n is None:
         n=float(acf.shape[-1])
-    dt = tau[1]-tau[0]
+    d_t = tau[1]-tau[0]
 
     if initshift:
         acf = scfft.iffthsift(acf,axes=-1)
     spec = scfft.fftshift(scfft.fft(acf,n=n,axis=-1),axes=-1)
-    fs = 1/dt
+    fs = 1/d_t
     omeg = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*fs
     return omeg, spec
 #%% making pulse data
@@ -281,42 +307,42 @@ def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14),lagtype
         acf_cent - This is a NrxNl complex numpy array where Nr is number of
         range gate and Nl is number of lags.
     """
-    N=len(pulse)
+    n_pulse = len(pulse)
     # It will be assumed the data will be pulses vs rangne
     rawbeams = rawbeams.transpose()
-    (Nr,Np) = rawbeams.shape
+    (Nr, Np) = rawbeams.shape
 
     # Make masks for each piece of data
-    if lagtype=='forward':
-        arback = sp.zeros(N,dtype=int)
-        arfor = sp.arange(N,dtype=int)
+    if lagtype == 'forward':
+        arback = sp.zeros(n_pulse, dtype=int)
+        arfor = sp.arange(n_pulse, dtype=int)
 
-    elif lagtype=='backward':
-        arback = sp.arange(N,dtype=int)
-        arfor = sp.zeros(N,dtype=int)
+    elif lagtype == 'backward':
+        arback = sp.arange(n_pulse, dtype=int)
+        arfor = sp.zeros(n_pulse, dtype=int)
     else:
        # arex = sp.arange(0,N/2.0,0.5);
-        arback = -sp.floor(sp.arange(0,N/2.0,0.5)).astype(int)
-        arfor = sp.ceil(sp.arange(0,N/2.0,0.5)).astype(int)
+        arback = -sp.floor(sp.arange(0, n_pulse/2.0, 0.5)).astype(int)
+        arfor = sp.ceil(sp.arange(0, n_pulse/2.0, 0.5)).astype(int)
 
     # figure out how much range space will be kept
-    ap = sp.nanmax(abs(arback));
-    ep = Nr- sp.nanmax(arfor);
-    rng_ar_all = sp.arange(ap,ep);
+    ap = sp.nanmax(abs(arback))
+    ep = Nr- sp.nanmax(arfor)
+    rng_ar_all = sp.arange(ap, ep)
 #    wearr = (1./(N-sp.tile((arfor-arback)[:,sp.newaxis],(1,Np)))).astype(numtype)
     #acf_cent = sp.zeros((ep-ap,N))*(1+1j)
-    acf_cent = sp.zeros((ep-ap,N),dtype=numtype)
+    acf_cent = sp.zeros((ep-ap, n_pulse), dtype=numtype)
     for irng, curange in  enumerate(rng_ar_all):
         rng_ar1 = int(curange) + arback
         rng_ar2 = int(curange) + arfor
         # get all of the acfs across pulses # sum along the pulses
-        acf_tmp = sp.conj(rawbeams[rng_ar1,:])*rawbeams[rng_ar2,:]#*wearr
-        acf_ave = sp.sum(acf_tmp,1)
-        acf_cent[irng,:] = acf_ave# might need to transpose this
+        acf_tmp = sp.conj(rawbeams[rng_ar1, :])*rawbeams[rng_ar2, :]#*wearr
+        acf_ave = sp.sum(acf_tmp, 1)
+        acf_cent[irng, :] = acf_ave# might need to transpose this
     return acf_cent
 
 
-def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13),lagtype=None):
+def BarkerLag(rawbeams, numtype=sp.complex128, pulse=GenBarker(13), lagtype=None):
     """This will process barker code data by filtering it with a barker code pulse and
     then sum up the pulses.
     Inputs
@@ -329,19 +355,19 @@ def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13),lagtype=None):
         of range gates  """
      # It will be assumed the data will be pulses vs rangne
     rawbeams = rawbeams.transpose()
-    (Nr,Np) = rawbeams.shape
-    pulsepow = sp.power(sp.absolute(pulse),2.0).sum()
+    (Nr, Np) = rawbeams.shape
+    pulsepow = sp.power(sp.absolute(pulse), 2.0).sum()
     # Make matched filter
-    filt = sp.fft(pulse[::-1]/sp.sqrt(pulsepow),n=Nr)
-    filtmat = sp.repeat(filt[:,sp.newaxis],Np,axis=1)
-    rawfreq = sp.fft(rawbeams,axis=0)
-    outdata = sp.ifft(filtmat*rawfreq,axis=0)
+    filt = sp.fft(pulse[::-1]/sp.sqrt(pulsepow), n=Nr)
+    filtmat = sp.repeat(filt[:, sp.newaxis], Np, axis=1)
+    rawfreq = sp.fft(rawbeams, axis=0)
+    outdata = sp.ifft(filtmat*rawfreq, axis=0)
     outdata = outdata*outdata.conj()
-    outdata = sp.sum(outdata,axis=-1)
+    outdata = sp.sum(outdata, axis=-1)
     #increase the number of axes
-    return outdata[len(pulse)-1:,sp.newaxis]
+    return outdata[len(pulse)-1:, sp.newaxis]
 
-def makesumrule(ptype,nlags,lagtype='centered'):
+def makesumrule(ptype, nlags, lagtype='centered'):
     """ This function will return the sum rule.
         Inputs
             ptype - The type of pulse.
@@ -685,11 +711,11 @@ def readconfigfile(fname):
                                                   simparams['Pulselength'],
                                                   t_s)
     simparams['Pulse'] = pulse
-    simparams['amb_dict'] = make_amb(f_s/ds_fac, int(simparams['ambupsamp']),
-                                     t_s*len(pulse), pulse[::ds_fac], simparams['numpoints'])
+    simparams['amb_dict'] = make_amb(f_s/ds_fac, simparams['declist'], pulse,
+                                     simparams['numpoints'])
     simparams['angles'] = angles
-    rng_lims = sp.array(simparams['datasamples'])*t_s*v_C_0*1e-3/2.
-    rng_gates = sp.arange(rng_lims[0], rng_lims[1], sensdict['t_s']*v_C_0*1e-3/2.)
+    d_len = simparams['datasamples']
+    rng_gates = sp.arange(d_len[0], d_len[1]-(len(pulse)-1))*t_s*v_C_0*1e-3/2.
     rng_gates_ds = rng_gates[::ds_fac]
     simparams['Timevec'] = sp.arange(0, time_lim, simparams['Fitinter'])
     simparams['Rangegates'] = rng_gates
@@ -704,7 +730,8 @@ def readconfigfile(fname):
 
     simparams['Rangegatesfinal'] = sp.array([sp.mean(rng_gates_ds[irng+sumrule[0, 0]:irng+sumrule[1, 0]+1])
                                              for irng in range(minrg, maxrg)])
-
+    # HACK need to move this to the sensor constants part
+    sensdict['CalDiodeTemp'] = 1689.21
     # Set the number of noise samples to IPP
 
     if ('startfile' in simparams.keys() and simparams['startfile']) and simparams['Pulsetype'].lower() != 'barker':
