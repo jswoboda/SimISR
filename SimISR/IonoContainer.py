@@ -677,7 +677,7 @@ class IonoContainer(object):
         (omeg,outspecs) = self.makeallspectrums(sensdict,npts)
         # XXX velocity is from original parameters
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
-    def makespectruminstanceopen(self,func,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
+    def makespectruminstanceopen(self, func, sensdict, simparams, ifile=0., nfiles=1., print_line=True):
         """
         This will create another instance of the Ionocont class
         Inputs:
@@ -688,7 +688,7 @@ class IonoContainer(object):
             Iono1 - An instance of the IonoContainer class with the spectrums as the
                 param vectors and the param names will be the the frequency points
         """
-        (omeg, outspecs) = self.makeallspectrumsopen(func, sensdict, npts, 0., 1., print_line)
+        (omeg, outspecs) = self.makeallspectrumsopen(func, sensdict, simparams, 0., 1., print_line)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
     def getDoppler(self,sensorloc=np.zeros(3)):
         """

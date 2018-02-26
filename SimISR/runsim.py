@@ -69,8 +69,8 @@ def makespectrums(basedir, configfile, printlines=True):
         curiono = IonoContainer.readh5(str(curfile))
 
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake, sensdict,
-                                         int(simparams['numpoints']), float(inum),
-                                         float(len(slist)), printlines).saveh5(str(outfile))
+                                         simparams, float(inum), float(len(slist)),
+                                         printlines).saveh5(str(outfile))
         update_progress(float(inum+1)/float(len(slist)),
                         'Finished file {} starting at {}'.format(curfile.name, datetime.now()))
 

@@ -13,7 +13,7 @@ from ISRSpectrum.ISRSpectrum import ISRSpectrum
 from SimISR.utilFunctions import spect2acf, update_progress
 
 
-def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
+def ISRSspecmake(ionocont,sensdict, simparams, npts,ifile=0.,nfiles=1.,print_line=True):
     """ This function will take an ionocontainer instance of plasma parameters and create
         ISR spectra for each object.
 
@@ -28,7 +28,11 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
                 weighting is npts^2 *rcs.
     """
     Vi = ionocont.getDoppler()
-    specobj = ISRSpectrum(centerFrequency = sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
+    sample_rate_numerator = simparams['fsnum']
+    sample_rate_denominator = simparams['fsden']
+    f_s = float(sample_rate_numerator)/sample_rate_denominator
+    npts = simparams['numpoints']
+    specobj = ISRSpectrum(centerFrequency=sensdict['fc'],nspec = npts,sampfreq=f_s)
 
     if ionocont.Time_Vector is None:
         N_x = ionocont.Param_List.shape[0]
@@ -56,13 +60,13 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
                 cur_vel = Vi[i_x,i_t]
             else:
                 cur_params = ionocont.Param_List[i_x]
-            (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,ionocont.Species,cur_vel,rcsflag=True)
+            (omeg, cur_spec, rcs) = specobj.getspecsep(cur_params,ionocont.Species,cur_vel,rcsflag=True)
             specsum = np.absolute(cur_spec).sum()
             cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/specsum
-            outspecsorig[i_x,i_t] = cur_spec
-            outrcs[i_x,i_t] = rcs
-            outspecs[i_x,i_t] = cur_spec_weighted
-    return (omeg,outspecs)
+            outspecsorig[i_x, i_t] = cur_spec
+            outrcs[i_x, i_t] = rcs
+            outspecs[i_x, i_t] = cur_spec_weighted
+    return (omeg, outspecs)
 
 def ISRspecmakeout(paramvals,fc,fs,species,npts):
     """ This will make a spectra for a set a param values. This is mainly used

@@ -208,7 +208,7 @@ def acf2spect(tau,acf,n=None,initshift = False):
     omeg = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*fs
     return omeg, spec
 #%% making pulse data
-def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex128):
+def MakePulseDataRep(pulse_shape, filt_freq, delay=16, rep=1, numtype=sp.complex128):
     """ This function will create a repxLp numpy array, where rep is number of independent
         repeats and Lp is number of pulses, of noise shaped by the filter who's frequency
         response is passed as the parameter filt_freq. The pulse shape is delayed by the parameter
@@ -249,7 +249,7 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     data_out = shaperep*data[:, delay:(delay+len(pulse_shape))]
     return data_out
 
-def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
+def MakePulseDataRepLPC(pulse, spec, N, rep1, numtype=sp.complex128):
     """ This will make data by assuming the data is an autoregressive process.
         Inputs
             spec - The properly weighted spectrum.
@@ -270,12 +270,18 @@ def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
     G = sp.sqrt(sp.sum(sp.conjugate(r1[:N+1])*lpc))
     Gvec = sp.r_[G, sp.zeros(N)]
     Npnt = (N+1)*3+lp
+    nfft = scfft.next_fast_len(Npnt)
+
+    _, h_filt = sp.signal.freqz(Gvec, lpc, worN=nfft, whole=True)
+    h_tile = sp.tile(h_filt[sp.newaxis, :], (rep1, 1))
     # Create the noise vector and normalize
-    xin = sp.random.randn(rep1,Npnt)+1j*sp.random.randn(rep1, Npnt)
-    xinsum = sp.tile(sp.sqrt(sp.sum(xin.real**2+xin.imag**2,axis=1))[:,sp.newaxis],(1,Npnt))
-    xin = xin/xinsum/sp.sqrt(2.)
-    outdata = sp.signal.lfilter(Gvec,lpc,xin,axis=1)
-    outpulse = sp.tile(pulse[sp.newaxis],(rep1,1))
+    xin = sp.random.randn(rep1, nfft)+1j*sp.random.randn(rep1, nfft)
+    xinsum = sp.tile(sp.sqrt(sp.sum(xin.real**2+xin.imag**2, axis=1))[:, sp.newaxis],(1, nfft))
+    xinsum = xinsum/sp.sqrt(nfft)
+    xin = sp.sqrt(nfft)*xin/xinsum
+    outdata = sp.ifft(h_tile*xin, axis=1)
+    #outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
+    outpulse = sp.tile(pulse[sp.newaxis],(rep1, 1))
     outdata = outpulse*outdata[:,N:N+lp]
     return outdata
 #%% Pulse shapes

@@ -62,7 +62,6 @@ class RadarDataFile(object):
         self.simparams = simparams
         N_angles = len(self.simparams['angles'])
 
-        NNs = int(self.simparams['NNs'])
         self.sensdict = sensdict
         Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
         Npall = int(sp.floor(Npall/N_angles)*N_angles)
@@ -90,7 +89,7 @@ class RadarDataFile(object):
         sample_rate_denominator = self.simparams['fsden']
         sample_rate = sp.longdouble(sample_rate_numerator) / sample_rate_denominator
         start_global_index = int(sample_rate*filetimes[0])
-        dtype_str = 'i2'  # short int
+        dtype_str = 'f'  # short int
         sub_cadence_secs = 1000  # Number of seconds of data in a subdirectory - typically MUCH larger
         file_cadence_millisecs = 10000  # Each file will have up to 400 ms of data
         compression_level = 1  # low level of compression
@@ -174,7 +173,7 @@ class RadarDataFile(object):
                 ifile = Ionodict[ifilet]
                 ifilename = Path(ifile).name
                 update_progress(float(ifn)/Nf,
-                                'Data from {:d} of {:d} being processed Name: {:s}.'.format(ifn, Nf, ifilename))
+                                'Data from {:d} of {:d} being created Name: {:s}.'.format(ifn, Nf, ifilename))
                 curcontainer = IonoContainer.readh5(ifile)
                 if ifn == 0:
                     self.timeoffset = curcontainer.Time_Vector[0, 0]
@@ -198,6 +197,7 @@ class RadarDataFile(object):
                 noisedata_ds = noisedata.copy()/calpwr
 
                 alldata_ds = alldata.copy()
+                pdb.set_trace()
                 for idec in dec_list:
                     rawdata_ds = sp.signal.decimate(rawdata_ds, idec, axis=1, zero_phase=True)
                     noisedata_ds = sp.signal.decimate(noisedata_ds, idec, axis=1, zero_phase=True)
@@ -276,7 +276,9 @@ class RadarDataFile(object):
         out_data = sp.zeros((n_pulses, n_samps), dtype=simdtype)
         weights = {ibn:self.sensdict['ArrayFunc'](Az, El, ib[0], ib[1], sensdict['Angleoffset'])
                    for ibn, ib in enumerate(angles)}
-        for istn, ist in enumerate(spectime):
+        ntime = len(spectime)
+        pdb.set_trace()
+        for istn in range(ntime):
             for ibn in range(n_beams):
                 print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,n_beams))
                 weight = weights[ibn]
@@ -287,7 +289,8 @@ class RadarDataFile(object):
                     rangelog = (rho >= rnglims[0])&(rho < rnglims[1])
                     cur_pnts = samp_num+isamp
 
-                    # This is a nearest neighbors interpolation for the spectrums in the range domain
+                    # This is a nearest neighbors interpolation for the
+                    # spectrums in the range domain
                     if sp.sum(rangelog) == 0:
                         minrng = sp.argmin(sp.absolute(range_g-rho))
                         rangelog[minrng] = True
@@ -311,7 +314,6 @@ class RadarDataFile(object):
                     if len(curdataloc) == 0:
                         print('\t\t No data for {0:d} of {1:d} in this time period'.format(ibn,n_beams))
                         continue
-#                     cur_pulse_data = MakePulseDataRep(pulse,cur_filt,rep=len(curdataloc),numtype = simdtype)
                     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
                                                          len(curdataloc), numtype=simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
@@ -349,8 +351,8 @@ class RadarDataFile(object):
         timevec = self.simparams['Timevec'] +self.timeoffset
         inttime = self.simparams['Tint']
         # Get array sizes
-
-        NNs = int(self.simparams['NNs'])
+        n_samps = self.simparams['noisesamples']
+        NNs = int(n_samps[1]-n_samps[0])
         range_gates = self.simparams['Rangegates']
         N_rg = len(range_gates)# take the size
         pulse = self.simparams['Pulse']

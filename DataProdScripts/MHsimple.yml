@@ -2,12 +2,12 @@
   radarname: millstonez
 - FitType: ACF
   Fitinter: 1.0
-  IPP: 0.01
+  IPP: 0.008910
   IPPsamps: 8910
   Pulselength: 480
   Pulsetype: Long
-  TimeLim: 300.0
-  Tint: 1.0
+  TimeLim: 2.
+  Tint: 2.
   ambupsamp: 1.0
   beamrate: 1
   calsamples: [8180, 8810]

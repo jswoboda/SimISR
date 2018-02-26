@@ -109,7 +109,7 @@ def main(ARGS):
             npulse - Number of pulses for the integration period, default==100.
             functlist - The list of functions for the SimISR to do.
     """
-    curloc = Path(__file__).resolve()
+    curloc = Path(__file__).resolve().parent
     testpath = Path(ARGS.path)
     configfile_org = curloc / 'MHsimple.yml'
 
@@ -123,7 +123,7 @@ def main(ARGS):
 
     config = testpath.joinpath('MHsimple.yml')
     if not config.exists():
-        configfile_org.copy(config)
+        shutil.copy(str(configfile_org), str(config))
 
     inputpath = testpath.joinpath('Origparams')
     ionoout = pyglowinput()
@@ -132,6 +132,21 @@ def main(ARGS):
 
     inputfile = inputpath.joinpath('0 stats.h5')
     ionoout.saveh5(str(inputfile))
+
+    #make digitral rf directories
+    drfdata = testpath/'drfdata'/'rf_data'
+    drfdata.mkdir(parents=True, exist_ok=True)
+    dmddir = testpath/'drfdata'/'metadata'
+    dmddir.mkdir(parents=True, exist_ok=True)
+
+    acmdata = dmddir.joinpath('antenna_control_metadata')
+    acmdata.mkdir(parents=True, exist_ok=True)
+
+    iddir = dmddir.joinpath('id_metadata')
+    iddir.mkdir(parents=True, exist_ok=True)
+
+    pmdir = dmddir.joinpath('powermeter')
+    pmdir.mkdir(parents=True, exist_ok=True)
     if check_run:
         runsimisr(functlist_red, str(testpath), config, True)
 
