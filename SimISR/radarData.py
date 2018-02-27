@@ -89,7 +89,7 @@ class RadarDataFile(object):
         sample_rate_denominator = self.simparams['fsden']
         sample_rate = sp.longdouble(sample_rate_numerator) / sample_rate_denominator
         start_global_index = int(sample_rate*filetimes[0])
-        dtype_str = 'f'  # short int
+        dtype_str = 'complex64'  # complex64
         sub_cadence_secs = 1000  # Number of seconds of data in a subdirectory - typically MUCH larger
         file_cadence_millisecs = 10000  # Each file will have up to 400 ms of data
         compression_level = 1  # low level of compression
@@ -124,18 +124,18 @@ class RadarDataFile(object):
         acmobj = drf.DigitalMetadataWriter(str(acmdir), 3600, 60,
                                            sample_rate_numerator,
                                            sample_rate_denominator,
-                                       'ant')
+                                           'ant')
         # id metadata
         iddir = dmddir.joinpath('id_metadata')
         idmdict = {'sweepid': 300, 'sample_rate': sample_rate,
                    'modeid': 100000001, 'sweepnum': 0}
         idmobj = drf.DigitalMetadataWriter(str(iddir), 3600, 1,
-                                       sample_rate_numerator, sample_rate_denominator,
-                                       'md')
+                                           sample_rate_numerator, sample_rate_denominator,
+                                           'md')
         # power mete metadata
         pmdir = dmddir.joinpath('powermeter')
         pmmdict = {'zenith_power': self.sensdict['Pt'], 'misa_power': 3110.3}
-        pmmobj = drf.DigitalMetadataWriter(str(pmdir), 3600, 5, 1, 1,'power')
+        pmmobj = drf.DigitalMetadataWriter(str(pmdir), 3600, 5, 1, 1, 'power')
         # differentiate between phased arrays and dish antennas
         if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
 
@@ -184,24 +184,27 @@ class RadarDataFile(object):
                 rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
                                             curcontainer.Sphere_Coords,
                                             curcontainer.Param_List, pb)
+                rawdata_us = rawdata.copy()
+                for idec in dec_list:
+                    rawdata_us = sp.signal.resample(rawdata_us, rawdata_us.shape[1]*idec, axis=1)
                 n_pulse_cur = rawdata.shape[0]
                 alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
                 alldata = sp.sqrt(noisepwr/2.)*alldata
                 noisedata = alldata[:, d_samps[0]:d_samps[1]]
-                alldata[:,d_samps[0]:d_samps[1]] = rawdata + alldata[:,d_samps[0]:d_samps[1]]
+                alldata[:, d_samps[0]:d_samps[1]] = rawdata_us + alldata[:, d_samps[0]:d_samps[1]]
                 caldata = sp.sqrt(calpwr/2)*(sp.random.randn(n_pulse_cur, n_cal).astype(simdtype)+
-                        1j*sp.random.randn(n_pulse_cur, n_cal).astype(simdtype))
+                                             1j*sp.random.randn(n_pulse_cur, n_cal).astype(simdtype))
                 alldata[:, c_samps[0]:c_samps[1]] = alldata[:, c_samps[0]:c_samps[1]] + caldata
                 alldata = alldata/calpwr
-                rawdata_ds = rawdata.copy()/calpwr
+                rawdata_ds = rawdata_us.copy()/calpwr
                 noisedata_ds = noisedata.copy()/calpwr
 
                 alldata_ds = alldata.copy()
                 pdb.set_trace()
                 for idec in dec_list:
-                    rawdata_ds = sp.signal.decimate(rawdata_ds, idec, axis=1, zero_phase=True)
-                    noisedata_ds = sp.signal.decimate(noisedata_ds, idec, axis=1, zero_phase=True)
-                    alldata_ds = sp.signal.decimate(alldata_ds, idec, axis=1, zero_phase=True)
+                    rawdata_ds = sp.signal.resample(rawdata_ds, rawdata_ds.shape[1]/idec, axis=1)
+                    noisedata_ds = sp.signal.resample(noisedata_ds, noisedata_ds.shape[1]/idec, axis=1)
+                    alldata_ds = sp.signal.resample(alldata_ds, alldata_ds.shape[1]/idec, axis=1)
                 outdict['AddedNoise'] = noisedata_ds
                 outdict['RawData'] = alldata_ds[:, int(d_samps[0]/ds_fac):int(d_samps[1]/ds_fac)]
                 outdict['RawDatanonoise'] = rawdata_ds
@@ -222,7 +225,7 @@ class RadarDataFile(object):
                 fname_list.append(fname)
 
                 # extend array for digital rf to flattend array
-                data_object.rf_write(alldata.flatten())
+                data_object.rf_write(alldata.flatten().astype('complex64'))
                 acmobj.write(int(acmobj.get_samples_per_second()*ifilet), acmdict)
                 idmobj.write(int(idmobj.get_samples_per_second()*ifilet), idmdict)
                 pmmobj.write(int(pmmobj.get_samples_per_second()*ifilet), pmmdict)
@@ -237,7 +240,7 @@ class RadarDataFile(object):
 
 
 #%% Make functions
-    def __makeTime__(self,pulsetimes,spectime,Sphere_Coords,allspecs,beamcodes):
+    def __makeTime__(self, pulsetimes, spectime, Sphere_Coords, allspecs, beamcodes):
         """This is will make raw radar data for a given time period and set of
         spectrums. This is an internal function called by __init__.
         Inputs-
@@ -250,12 +253,12 @@ class RadarDataFile(object):
         in az el along with a system constant in the array. """
 
         range_gates = self.simparams['Rangegates']
-        pulse = self.simparams['Pulse']
         sensdict = self.sensdict
         samp_range = self.simparams['datasamples']
-        f_s = float(self.simparams['fsnum'])/self.simparams['fsden']
-        t_s = float(self.simparams['fsden'])/self.simparams['fsnum']
-
+        ds_fac = sp.prod(self.simparams['declist'])
+        f_s = float(self.simparams['fsnum'])/self.simparams['fsden']/ds_fac
+        t_s = float(ds_fac*self.simparams['fsden'])/self.simparams['fsnum']
+        pulse = self.simparams['Pulse'][::ds_fac]
         #HACK number of lpc points connected to ratio of sampling frequency and
         # notial ion-line spectra with a factor of 10.
         nlpc = int(10*f_s/20e3) + 1
@@ -263,7 +266,7 @@ class RadarDataFile(object):
         n_pulses = len(pulse2spec)
         lp_pnts = len(pulse)
         samp_num = sp.arange(lp_pnts)
-        n_samps = samp_range[1]-samp_range[0]
+        n_samps = (samp_range[1]-samp_range[0])/ds_fac
         angles = self.simparams['angles']
         n_beams = len(angles)
         rho = Sphere_Coords[:, 0]
@@ -277,18 +280,18 @@ class RadarDataFile(object):
         weights = {ibn:self.sensdict['ArrayFunc'](Az, El, ib[0], ib[1], sensdict['Angleoffset'])
                    for ibn, ib in enumerate(angles)}
         ntime = len(spectime)
-        pdb.set_trace()
         for istn in range(ntime):
             for ibn in range(n_beams):
                 print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,n_beams))
                 weight = weights[ibn]
-                for isamp in sp.arange(len(range_gates)):
-                    range_g = range_gates[isamp]
+                for isamp in sp.arange(n_samps):
+
+                    range_g = range_gates[isamp*ds_fac]
                     range_m = range_g*1e3
                     rnglims = [range_g-rng_len/2.0, range_g+rng_len/2.0]
                     rangelog = (rho >= rnglims[0])&(rho < rnglims[1])
                     cur_pnts = samp_num+isamp
-
+                    cur_pnts = cur_pnts[cur_pnts < n_samps]
                     # This is a nearest neighbors interpolation for the
                     # spectrums in the range domain
                     if sp.sum(rangelog) == 0:
@@ -311,15 +314,16 @@ class RadarDataFile(object):
                     curdataloc = sp.where(sp.logical_and((pulse2spec == istn),
                                                          (beamcodes == ibn)))[0]
                     # create data
-                    if len(curdataloc) == 0:
-                        print('\t\t No data for {0:d} of {1:d} in this time period'.format(ibn,n_beams))
+                    if not sp.any(curdataloc):
+                        outstr = '\t\t No data for {0:d} of {1:d} in this time period'
+                        print(outstr.format(ibn, n_beams))
                         continue
                     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
                                                          len(curdataloc), numtype=simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
                     for idatn, idat in enumerate(curdataloc):
-                        out_data[idat, cur_pnts] = cur_pulse_data[idatn]+out_data[idat, cur_pnts]
+                        out_data[idat, cur_pnts] = cur_pulse_data[idatn,:len(cur_pnts)]+out_data[idat, cur_pnts]
 
         return out_data
         #%% Processing
@@ -391,13 +395,13 @@ class RadarDataFile(object):
         pulsen_list = infodict['Pulses']
         beamn_list = infodict['Beams']
         time_list = infodict['Time']
-        file_loclist = [ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(beamn_list)]
+        file_loclist = [ifn*sp.ones(len(ifl)) for ifn, ifl in enumerate(beamn_list)]
         if 'NoiseTime'in infodict.keys():
             sridata = True
-            tnoiselist=infodict['NoiseTime']
-            nfile_loclist=[ifn*sp.ones(len(ifl)) for ifn,ifl in enumerate(tnoiselist)]
+            tnoiselist = infodict['NoiseTime']
+            nfile_loclist = [ifn*sp.ones(len(ifl)) for ifn, ifl in enumerate(tnoiselist)]
         else:
-            sridata=False
+            sridata = False
 
         pulsen = sp.hstack(pulsen_list).astype(int)# pulse number
         beamn = sp.hstack(beamn_list).astype(int)# beam numbers

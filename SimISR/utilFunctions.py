@@ -249,7 +249,7 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16, rep=1, numtype=sp.complex
     data_out = shaperep*data[:, delay:(delay+len(pulse_shape))]
     return data_out
 
-def MakePulseDataRepLPC(pulse, spec, N, rep1, numtype=sp.complex128):
+def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
     """ This will make data by assuming the data is an autoregressive process.
         Inputs
             spec - The properly weighted spectrum.
@@ -261,28 +261,41 @@ def MakePulseDataRepLPC(pulse, spec, N, rep1, numtype=sp.complex128):
 
     lp = len(pulse)
     r1 = scfft.ifft(scfft.ifftshift(spec))
-    rp1 = r1[:N]
-    rp2 = r1[1:N+1]
+    rp1 = r1[:nlpc]
+    rp2 = r1[1:nlpc+1]
+    # rcs is encoded in the spectrum
+    rcs = spec.sum()/len(spec)**2
     # Use Levinson recursion to find the coefs for the data
     xr1 = sp.linalg.solve_toeplitz(rp1, rp2)
     lpc = sp.r_[sp.ones(1), -xr1]
     # The Gain  term.
-    G = sp.sqrt(sp.sum(sp.conjugate(r1[:N+1])*lpc))
-    Gvec = sp.r_[G, sp.zeros(N)]
-    Npnt = (N+1)*3+lp
-    nfft = scfft.next_fast_len(Npnt)
+    G = sp.sqrt(sp.sum(sp.conjugate(r1[:nlpc+1])*lpc))
+    Gvec = sp.r_[G, sp.zeros(nlpc)]
+    n_pnt = (nlpc+1)*3+lp
 
-    _, h_filt = sp.signal.freqz(Gvec, lpc, worN=nfft, whole=True)
-    h_tile = sp.tile(h_filt[sp.newaxis, :], (rep1, 1))
-    # Create the noise vector and normalize
-    xin = sp.random.randn(rep1, nfft)+1j*sp.random.randn(rep1, nfft)
-    xinsum = sp.tile(sp.sqrt(sp.sum(xin.real**2+xin.imag**2, axis=1))[:, sp.newaxis],(1, nfft))
-    xinsum = xinsum/sp.sqrt(nfft)
-    xin = sp.sqrt(nfft)*xin/xinsum
-    outdata = sp.ifft(h_tile*xin, axis=1)
-    #outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-    outpulse = sp.tile(pulse[sp.newaxis],(rep1, 1))
-    outdata = outpulse*outdata[:,N:N+lp]
+    if n_pnt >= 200:
+        nfft = scfft.next_fast_len(n_pnt)
+        _, h_filt = sp.signal.freqz(Gvec, lpc, worN=nfft, whole=True)
+        h_tile = sp.tile(h_filt[sp.newaxis, :], (rep1, 1))
+        # Create the noise vector and normalize
+        xin = sp.random.randn(rep1, nfft)+1j*sp.random.randn(rep1, nfft)
+        x_vec = sp.sum(xin.real**2+xin.imag**2, axis=1)
+        xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, nfft))
+        xinsum = xinsum
+        xin = sp.sqrt(nfft)*xin/xinsum
+        outdata = sp.ifft(h_tile*xin, axis=1)
+        #outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
+        outpulse = sp.tile(pulse[sp.newaxis], (rep1, 1))
+        outdata = outpulse*outdata[:, nlpc:nlpc+lp]
+    else:
+        xin = sp.random.randn(rep1, n_pnt)+1j*sp.random.randn(rep1, n_pnt)
+        x_vec = sp.sum(xin.real**2+xin.imag**2, axis=1)
+        xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, n_pnt))
+        xin = xin/xinsum
+        outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
+        outpulse = sp.tile(pulse[sp.newaxis], (rep1, 1))
+        outdata = outpulse*outdata[:, nlpc:nlpc+lp]
+    outdata = sp.sqrt(rcs)*outdata/sp.sqrt(sp.mean(outdata.var(axis=1)))
     return outdata
 #%% Pulse shapes
 def GenBarker(blen):
@@ -721,7 +734,8 @@ def readconfigfile(fname):
                                      simparams['numpoints'])
     simparams['angles'] = angles
     d_len = simparams['datasamples']
-    rng_gates = sp.arange(d_len[0], d_len[1]-(len(pulse)-1))*t_s*v_C_0*1e-3/2.
+    #rng_gates = sp.arange(d_len[0], d_len[1]-(len(pulse)-1))*t_s*v_C_0*1e-3/2.
+    rng_gates = sp.arange(d_len[0], d_len[1])*t_s*v_C_0*1e-3/2.
     rng_gates_ds = rng_gates[::ds_fac]
     simparams['Timevec'] = sp.arange(0, time_lim, simparams['Fitinter'])
     simparams['Rangegates'] = rng_gates
