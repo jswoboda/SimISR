@@ -134,8 +134,10 @@ def main(ARGS):
     ionoout.saveh5(str(inputfile))
 
     #make digitral rf directories
-    drfdata = testpath/'drfdata'/'rf_data'
+    drfdata = testpath/'drfdata'/'rf_data'/'zenith-l'
     drfdata.mkdir(parents=True, exist_ok=True)
+    drfdatatx = testpath/'drfdata'/'rf_data'/'tx-h'
+    drfdatatx.mkdir(parents=True, exist_ok=True)
     dmddir = testpath/'drfdata'/'metadata'
     dmddir.mkdir(parents=True, exist_ok=True)
 

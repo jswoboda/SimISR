@@ -81,7 +81,7 @@ class RadarDataFile(object):
         simdtype = self.simparams['dtype']
         pulsetimes = sp.arange(Npall)*self.simparams['IPP'] +ftimes.min()
         pulsefile = sp.array([sp.where(itimes-ftimes >= 0)[0][-1] for itimes in pulsetimes])
-
+        pulse_full = self.simparams['Pulse']
 
         #digital rf stuff
 
@@ -98,15 +98,21 @@ class RadarDataFile(object):
         is_continuous = True
         num_subchannels = 1  # only one subchannel
         marching_periods = False  # no marching periods when writing
-        uuid = "Fake UUID - use a better one!"
-        drfdir = outdir.parent.joinpath('drfdata', 'rf_data')
+        uuid = "SimISRDRFZenith"
+        drfdir = outdir.parent.joinpath('drfdata', 'rf_data', 'zenith-l')
         data_object = drf.DigitalRFWriter(str(drfdir), dtype_str, sub_cadence_secs,
                                           file_cadence_millisecs, start_global_index,
                                           sample_rate_numerator, sample_rate_denominator,
                                           uuid, compression_level, checksum,
                                           is_complex, num_subchannels,
                                           is_continuous, marching_periods)
-
+        drfdirtx = outdir.parent.joinpath('drfdata', 'rf_data', 'tx-h')
+        data_object_tx = drf.DigitalRFWriter(str(drfdirtx), dtype_str, sub_cadence_secs,
+                                          file_cadence_millisecs, start_global_index,
+                                          sample_rate_numerator, sample_rate_denominator,
+                                          uuid, compression_level, checksum,
+                                          is_complex, num_subchannels,
+                                          is_continuous, marching_periods)
         # Noise Scaling
         noisepwr = v_Boltz*sensdict['Tsys']*sample_rate
         calpwr = v_Boltz*sensdict['CalDiodeTemp']*sample_rate
@@ -172,8 +178,8 @@ class RadarDataFile(object):
                 outdict = {}
                 ifile = Ionodict[ifilet]
                 ifilename = Path(ifile).name
-                update_progress(float(ifn)/Nf,
-                                'Data from {:d} of {:d} being created Name: {:s}.'.format(ifn, Nf, ifilename))
+                progstr1 = 'Data from {:d} of {:d} being created Name: {:s}.'
+                update_progress(float(ifn)/Nf, progstr1.format(ifn, Nf, ifilename))
                 curcontainer = IonoContainer.readh5(ifile)
                 if ifn == 0:
                     self.timeoffset = curcontainer.Time_Vector[0, 0]
@@ -195,12 +201,11 @@ class RadarDataFile(object):
                 caldata = sp.sqrt(calpwr/2)*(sp.random.randn(n_pulse_cur, n_cal).astype(simdtype)+
                                              1j*sp.random.randn(n_pulse_cur, n_cal).astype(simdtype))
                 alldata[:, c_samps[0]:c_samps[1]] = alldata[:, c_samps[0]:c_samps[1]] + caldata
-                alldata = alldata/calpwr
-                rawdata_ds = rawdata_us.copy()/calpwr
-                noisedata_ds = noisedata.copy()/calpwr
+                alldata = alldata/sp.sqrt(calpwr)
+                rawdata_ds = rawdata_us.copy()/sp.sqrt(calpwr)
+                noisedata_ds = noisedata.copy()/sp.sqrt(calpwr)
 
                 alldata_ds = alldata.copy()
-                pdb.set_trace()
                 for idec in dec_list:
                     rawdata_ds = sp.signal.resample(rawdata_ds, rawdata_ds.shape[1]/idec, axis=1)
                     noisedata_ds = sp.signal.resample(noisedata_ds, noisedata_ds.shape[1]/idec, axis=1)
@@ -223,15 +228,20 @@ class RadarDataFile(object):
                 pb_list.append(pb)
                 pn_list.append(pn)
                 fname_list.append(fname)
-
+                #transmitdata
+                tx_data = sp.zeros_like(alldata).astype('complex64')
+                tx_data[:,:len(pulse_full)] = pulse_full.astype('complex64')
+                data_object_tx.rf_write(tx_data.flatten())
                 # extend array for digital rf to flattend array
                 data_object.rf_write(alldata.flatten().astype('complex64'))
                 acmobj.write(int(acmobj.get_samples_per_second()*ifilet), acmdict)
                 idmobj.write(int(idmobj.get_samples_per_second()*ifilet), idmdict)
                 pmmobj.write(int(pmmobj.get_samples_per_second()*ifilet), pmmdict)
+
             infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
             dict2h5(str(outdir.joinpath('INFO.h5')), infodict)
             data_object.close()
+            data_object_tx.close()
         else:
             infodict = h52dict(str(outdir.joinpath('INFO.h5')))
             alltime = sp.hstack(infodict['Time'])
@@ -282,7 +292,7 @@ class RadarDataFile(object):
         ntime = len(spectime)
         for istn in range(ntime):
             for ibn in range(n_beams):
-                print('\t\t Making Beam {0:d} of {1:d}'.format(ibn,n_beams))
+                print('\t\t Making Beam {0:d} of {1:d}'.format(ibn, n_beams))
                 weight = weights[ibn]
                 for isamp in sp.arange(n_samps):
 
@@ -352,19 +362,29 @@ class RadarDataFile(object):
         NoiseLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
         the numpy arrays of the data.
         """
-        timevec = self.simparams['Timevec'] +self.timeoffset
+        timevec = self.simparams['Timevec']+self.timeoffset
         inttime = self.simparams['Tint']
+        ds_fac = sp.prod(self.simparams['declist'])
+        f_s = float(self.simparams['fsnum'])/self.simparams['fsden']/ds_fac
+        # get cal info
+        cal_temp = self.sensdict['CalDiodeTemp']
+        calpwr = v_Boltz*cal_temp*f_s
         # Get array sizes
-        n_samps = self.simparams['noisesamples']
-        NNs = int(n_samps[1]-n_samps[0])
+        samp_range = self.simparams['datasamples']
+        d_samps = (samp_range[1]-samp_range[0])/ds_fac
+        noise_range = self.simparams['noisesamples']
+        n_samps = (noise_range[1]-noise_range[0])/ds_fac
+        cal_range = self.simparams['calsamples']
+        c_samps = (cal_range[1]-cal_range[0])/ds_fac
+
         range_gates = self.simparams['Rangegates']
         N_rg = len(range_gates)# take the size
-        pulse = self.simparams['Pulse']
-        Pulselen = len(pulse)
-        n_samps = N_rg +Pulselen-1
+        pulse = self.simparams['Pulse'][::ds_fac]
+        pulselen = len(pulse)
         simdtype = self.simparams['dtype']
         Ntime = len(timevec)
 
+        lagtype = self.simparams['lagtype']
         if 'outangles' in self.simparams.keys():
             n_beams = len(self.simparams['outangles'])
             inttime = inttime
@@ -377,11 +397,12 @@ class RadarDataFile(object):
             Nlag = 1
         else:
             lagfunc = CenteredLagProduct
-            Nlag = Pulselen
+            Nlag = pulselen
         # initialize output arrays
-        outdata = sp.zeros((Ntime, n_beams, N_rg, Nlag), dtype=simdtype)
-        outaddednoise = sp.zeros((Ntime, n_beams, N_rg, Nlag), dtype=simdtype)
-        outnoise = sp.zeros((Ntime, n_beams, NNs-Pulselen+1, Nlag), dtype=simdtype)
+        outdata = sp.zeros((Ntime, n_beams, d_samps-Nlag+1, Nlag), dtype=simdtype)
+        outaddednoise = sp.zeros((Ntime, n_beams, d_samps-Nlag+1, Nlag), dtype=simdtype)
+        outnoise = sp.zeros((Ntime, n_beams, n_samps-Nlag+1, Nlag), dtype=simdtype)
+        outcal = sp.zeros((Ntime, n_beams, c_samps-Nlag+1, Nlag), dtype=simdtype)
         pulses = sp.zeros((Ntime, n_beams))
         pulsesN = sp.zeros((Ntime, n_beams))
         timemat = sp.zeros((Ntime, 2))
@@ -407,35 +428,28 @@ class RadarDataFile(object):
         beamn = sp.hstack(beamn_list).astype(int)# beam numbers
         ptimevec = sp.hstack(time_list).astype(float)# time of each pulse
         file_loc = sp.hstack(file_loclist).astype(int)# location in the file
-        if sridata:
-            ntimevec = sp.vstack(tnoiselist).astype(float)
-            nfile_loc = sp.hstack(nfile_loclist).astype(int)
-            outnoise = sp.zeros((Ntime,n_beams,NNs-Pulselen+1,Nlag),dtype=simdtype)
 
         # run the time loop
         print("Forming ACF estimates")
 
         # For each time go through and read only the necisary files
-        for itn,it in enumerate(timevec):
-            update_progress(float(itn)/Ntime, "Time {0:d} of {1:d}".format(itn,Ntime))
+        for itn, iti in enumerate(timevec):
+            update_progress(float(itn)/Ntime, "Time {0:d} of {1:d}".format(itn, Ntime))
             # do the book keeping to determine locations of data within the files
-            cur_tlim = (it,it+inttime)
-            curcases = sp.logical_and(ptimevec>=cur_tlim[0],ptimevec<cur_tlim[1])
-            # SRI data Hack
-            if sridata:
-                curcases_n=sp.logical_and(ntimevec[:,0]>=cur_tlim[0],ntimevec[:,0]<cur_tlim[1])
-                curfileloc_n = nfile_loc[curcases_n]
-                curfiles_n = set(curfileloc_n)
+            cur_tlim = (iti, iti+inttime)
+            curcases = sp.logical_and(ptimevec >= cur_tlim[0], ptimevec < cur_tlim[1])
+
             if  not sp.any(curcases):
-                update_progress(float(itn)/Ntime, "No pulses for time {0:d} of {1:d}, lagdata adjusted accordinly".format(itn, Ntime))
+                progstr = "No pulses for time {0:d} of {1:d}, lagdata adjusted accordinly"
+                update_progress(float(itn)/Ntime, progstr.format(itn, Ntime))
                 outdata = outdata[:itn]
                 outnoise = outnoise[:itn]
-                pulses=pulses[:itn]
-                pulsesN=pulsesN[:itn]
-                timemat=timemat[:itn]
+                pulses = pulses[:itn]
+                pulsesN = pulsesN[:itn]
+                timemat = timemat[:itn]
                 continue
             pulseset = set(pulsen[curcases])
-            poslist = [sp.where(pulsen==item)[0] for item in pulseset ]
+            poslist = [sp.where(pulsen == item)[0] for item in pulseset]
             pos_all = sp.hstack(poslist)
             try:
                 pos_all = sp.hstack(poslist)
@@ -445,82 +459,88 @@ class RadarDataFile(object):
             # Find the needed files and beam numbers
             curfiles = set(curfileloc)
             beamlocs = beamn[pos_all]
-            timemat[itn,0] = ptimevec[pos_all].min()
-            timemat[itn,1]=ptimevec[pos_all].max()
+            timemat[itn, 0] = ptimevec[pos_all].min()
+            timemat[itn, 1] = ptimevec[pos_all].max()
             # cur data pulls out all data from all of the beams and posisions
-            curdata = sp.zeros((len(pos_all),n_samps),dtype = simdtype)
-            curaddednoise = sp.zeros((len(pos_all),n_samps),dtype = simdtype)
-            curnoise = sp.zeros((len(pos_all),NNs),dtype = simdtype)
+            curdata = sp.zeros((len(pos_all), d_samps), dtype=simdtype)
+            curaddednoise = sp.zeros((len(pos_all), d_samps), dtype=simdtype)
+            curnoise = sp.zeros((len(pos_all), n_samps), dtype=simdtype)
+            curcal = sp.zeros((len(pos_all), c_samps), dtype=simdtype)
             # Open files and get required data
             # XXX come up with way to get open up new files not have to reread in data that is already in memory
             for ifn in curfiles:
-                curfileit =  [sp.where(pulsen_list[ifn]==item)[0] for item in pulseset ]
+                curfileit = [sp.where(pulsen_list[ifn] == item)[0] for item in pulseset]
                 curfileitvec = sp.hstack(curfileit)
                 ifile = file_list[ifn]
                 curh5data = h52dict(ifile)
-                file_arlocs = sp.where(curfileloc==ifn)[0]
+                file_arlocs = sp.where(curfileloc == ifn)[0]
                 curdata[file_arlocs] = curh5data['RawData'][curfileitvec]
-
 
                 curaddednoise[file_arlocs] = curh5data['AddedNoise'].astype(simdtype)[curfileitvec]
                 # Read in noise data when you have don't have ACFs
-                if not sridata:
-                    curnoise[file_arlocs] = curh5data['NoiseData'].astype(simdtype)[curfileitvec]
-            #SRI data
-            if sridata:
-                curnoise = sp.zeros((len(curfileloc_n),n_beams,NNs-Pulselen+1,Pulselen),dtype = simdtype)
-                for ifn in curfiles_n:
-                    curfileit_n = sp.where(sp.logical_and(tnoiselist[ifn][:,0]>=cur_tlim[0],tnoiselist[ifn][:,0]<cur_tlim[1]))[0]
-                    ifile=file_list[ifn]
-                    curh5data_n = h52dict(ifile)
-                    file_arlocs = sp.where(curfileloc_n==ifn)[0]
-                    curnoise[file_arlocs] = curh5data_n['NoiseDataACF'][curfileit_n]
-
+                pdb.set_trace()
+                curnoise[file_arlocs] = curh5data['NoiseData'].astype(simdtype)[curfileitvec]
+                curcal[file_arlocs] = curh5data['CalData'].astype(simdtype)[curfileitvec]
             # differentiate between phased arrays and dish antennas
-            if self.sensdict['Name'].lower() in ['risr','pfisr','risr-n']:
+            if self.sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
                 # After data is read in form lags for each beam
                 for ibeam in range(n_beams):
-                    update_progress(float(itn)/Ntime + float(ibeam)/Ntime/n_beams, "Beam {0:d} of {1:d}".format(ibeam,n_beams))
-                    beamlocstmp = sp.where(beamlocs==ibeam)[0]
-                    pulses[itn,ibeam] = len(beamlocstmp)
+                    progbeamstr = "Beam {0:d} of {1:d}".format(ibeam, n_beams)
+                    update_progress(float(itn)/Ntime + float(ibeam)/Ntime/n_beams, progbeamstr)
+                    beamlocstmp = sp.where(beamlocs == ibeam)[0]
+                    pulses[itn, ibeam] = len(beamlocstmp)
 
-                    outdata[itn,ibeam] = lagfunc(curdata[beamlocstmp].copy(),
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-                    if sridata:
-                        pulsesN[itn,ibeam] = len(curnoise)
-                        outnoise[itn,ibeam] = sp.nansum(curnoise[:,ibeam],axis=0)
-                    else:
-                        pulsesN[itn,ibeam] = len(beamlocstmp)
-                        outnoise[itn,ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
-                            numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-                    outaddednoise[itn,ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
+                    outdata[itn, ibeam] = lagfunc(curdata[beamlocstmp].copy(),
+                                                  numtype=simdtype, pulse=pulse,
+                                                 lagtype=lagtype)
+
+                    pulsesN[itn, ibeam] = len(beamlocstmp)
+                    outnoise[itn, ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
+                                                   numtype=simdtype, pulse=pulse,
+                                                   lagtype=lagtype)
+                    outcal[itn, ibeam] = lagfunc(curcal[beamlocstmp].copy(),
+                                                 numtype=simdtype, pulse=pulse,
+                                                  lagtype=lagtype)
+                    outaddednoise[itn, ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
+                                                        numtype=simdtype,pulse=pulse,
+                                                        lagtype=lagtype)
+
             else:
-                for ibeam,ibeamlist in enumerate(self.simparams['outangles']):
-                    update_progress(float(itn)/Ntime + float(ibeam)/Ntime/n_beams, "Beam {0:d} of {1:d}".format(ibeam,n_beams))
-                    beamlocstmp = sp.where(sp.in1d(beamlocs,ibeamlist))[0]
+                for ibeam, ibeamlist in enumerate(self.simparams['outangles']):
+                    progbeamstr = "Beam {0:d} of {1:d}".format(ibeam, n_beams)
+                    update_progress(float(itn)/Ntime + float(ibeam)/Ntime/n_beams, progbeamstr)
+                    pdb.set_trace()
+                    beamlocstmp = sp.where(sp.in1d(beamlocs, ibeamlist))[0]
                     curbeams = beamlocs[beamlocstmp]
                     ksysmat = Ksysvec[curbeams]
                     ksysmean = Ksysvec[ibeamlist[0]]
                     inputdata = curdata[beamlocstmp].copy()
                     noisedata = curnoise[beamlocstmp].copy()
                     noisedataadd = curaddednoise[beamlocstmp].copy()
-                    ksysmult = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,inputdata.shape[1]))
-                    ksysmultn = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,noisedata.shape[1]))
-                    ksysmultna = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,noisedataadd.shape[1]))
-                    pulses[itn,ibeam] = len(beamlocstmp)
-                    pulsesN[itn,ibeam] = len(beamlocstmp)
-                    outdata[itn,ibeam] = lagfunc(inputdata *ksysmult,
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-                    outnoise[itn,ibeam] = lagfunc(noisedata*ksysmultn,
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-                    outaddednoise[itn,ibeam] = lagfunc(noisedataadd*ksysmultna,
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
+                    caldata = curcal[beamlocstmp].copy()
+                    ksysmult = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, inputdata.shape[1]))
+                    ksysmultn = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, noisedata.shape[1]))
+                    ksysmultna = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, noisedataadd.shape[1]))
+                    pulses[itn, ibeam] = len(beamlocstmp)
+                    pulsesN[itn, ibeam] = len(beamlocstmp)
+                    outdata[itn, ibeam] = lagfunc(inputdata *ksysmult,
+                                                  numtype=simdtype, pulse=pulse,
+                                                  lagtype=lagtype)
+                    outnoise[itn, ibeam] = lagfunc(noisedata*ksysmultn,
+                                                   numtype=simdtype, pulse=pulse,
+                                                   lagtype=lagtype)
+                    outcal[itn, ibeam] = lagfunc(caldata*ksysmultn,
+                                                 numtype=simdtype, pulse=pulse,
+                                                 lagtype=lagtype)
+                    outaddednoise[itn, ibeam] = lagfunc(noisedataadd*ksysmultna,
+                                                        numtype=simdtype, pulse=pulse,
+                                                         agtype=lagtype)
         # Create output dictionaries and output data
-        DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,
-                    'Time':timemat,'AddedNoiseACF':outaddednoise}
-        NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
-        return(DataLags,NoiseLags)
+        data_lags = {'ACF':outdata, 'Pow':outdata[:, :, :, 0].real, 'Pulses':pulses,
+                     'Time':timemat, 'AddedNoiseACF':outaddednoise}
+        noise_lags = {'ACF':outnoise, 'Pow':outnoise[:, :, :, 0].real, 'Pulses':pulsesN,
+                      'Time':timemat}
+        return(data_lags, noise_lags)
 
 #%% Make Lag dict to an iono container
 def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
@@ -562,7 +582,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     coordlist = sp.zeros((len(rng_rep), 3))
     [coordlist[:, 0], coordlist[:, 1:]] = [rng_rep, angtile]
     (Nt, n_beams, Nrng, Nlags) = lagsData.shape
-    rng3d = sp.tile(rng_vec[sp.newaxis, sp.newaxis, :, sp.newaxis],(Nt, n_beams, 1, Nlags))*1e3
+    rng3d = sp.tile(rng_vec[sp.newaxis, sp.newaxis, :, sp.newaxis], (Nt, n_beams, 1, Nlags))*1e3
     ksys3d = sp.tile(Ksysvec[sp.newaxis, :, sp.newaxis, sp.newaxis], (Nt, 1, Nrng, Nlags))
     radar2acfmult = rng3d*rng3d/(pulsewidth*txpower*ksys3d)
     pulses = sp.tile(DataLags['Pulses'][:, :, sp.newaxis, sp.newaxis], (1, 1, Nrng, Nlags))
@@ -572,9 +592,9 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # Set up the noise lags and divid out the noise.
     lagsNoise = NoiseLags['ACF'].copy()
     lagsNoise = sp.mean(lagsNoise,axis=2)
-    pulsesnoise = sp.tile(NoiseLags['Pulses'][:,:,sp.newaxis],(1,1,Nlags))
+    pulsesnoise = sp.tile(NoiseLags['Pulses'][:, :, sp.newaxis],(1, 1, Nlags))
     lagsNoise = lagsNoise/pulsesnoise
-    lagsNoise = sp.tile(lagsNoise[:,:,sp.newaxis,:],(1,1,Nrng,1))
+    lagsNoise = sp.tile(lagsNoise[:, :, sp.newaxis, :],(1, 1, Nrng, 1))
 
 
 
@@ -588,10 +608,10 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
 
     # Apply summation rule
     # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
-    lagsData = sp.transpose(lagsData,axes=(2,3,0,1))
-    lagsNoise = sp.transpose(lagsNoise,axes=(2,3,0,1))
-    lagsDatasum = sp.zeros((Nrng2,Nlags,Nt,n_beams),dtype=lagsData.dtype)
-    lagsNoisesum = sp.zeros((Nrng2,Nlags,Nt,n_beams),dtype=lagsNoise.dtype)
+    lagsData = sp.transpose(lagsData, axes=(2, 3, 0, 1))
+    lagsNoise = sp.transpose(lagsNoise, axes=(2, 3, 0, 1))
+    lagsDatasum = sp.zeros((Nrng2, Nlags, Nt, n_beams), dtype=lagsData.dtype)
+    lagsNoisesum = sp.zeros((Nrng2 ,Nlags, Nt, n_beams), dtype=lagsNoise.dtype)
     for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
         for ilag in range(Nlags):
             lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
