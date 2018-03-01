@@ -1,13 +1,13 @@
-- beamlist: &id001 [23465]
+- beamlist: [23465]
   radarname: millstonez
 - FitType: ACF
   Fitinter: 1.0
-  IPP: 0.008910
+  IPP: 0.00891
   IPPsamps: 8910
-  Pulselength: 480
+  Pulselength: 0.00048
   Pulsetype: Long
-  TimeLim: 2.
-  Tint: 2.
+  TimeLim: 2.0
+  Tint: 2.0
   ambupsamp: 1.0
   beamrate: 1
   calsamples: [8180, 8810]
@@ -18,6 +18,7 @@
   fsnum: 1000000
   noisesamples: [7180, 8180]
   numpoints: 2560
-  outangles: *id001
+  outangles:
+  - [0]
   species: [O+, e-]
   startfile: ''

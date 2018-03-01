@@ -478,7 +478,6 @@ class RadarDataFile(object):
 
                 curaddednoise[file_arlocs] = curh5data['AddedNoise'].astype(simdtype)[curfileitvec]
                 # Read in noise data when you have don't have ACFs
-                pdb.set_trace()
                 curnoise[file_arlocs] = curh5data['NoiseData'].astype(simdtype)[curfileitvec]
                 curcal[file_arlocs] = curh5data['CalData'].astype(simdtype)[curfileitvec]
             # differentiate between phased arrays and dish antennas
@@ -492,7 +491,7 @@ class RadarDataFile(object):
 
                     outdata[itn, ibeam] = lagfunc(curdata[beamlocstmp].copy(),
                                                   numtype=simdtype, pulse=pulse,
-                                                 lagtype=lagtype)
+                                                  lagtype=lagtype)
 
                     pulsesN[itn, ibeam] = len(beamlocstmp)
                     outnoise[itn, ibeam] = lagfunc(curnoise[beamlocstmp].copy(),
@@ -500,16 +499,15 @@ class RadarDataFile(object):
                                                    lagtype=lagtype)
                     outcal[itn, ibeam] = lagfunc(curcal[beamlocstmp].copy(),
                                                  numtype=simdtype, pulse=pulse,
-                                                  lagtype=lagtype)
+                                                 lagtype=lagtype)
                     outaddednoise[itn, ibeam] = lagfunc(curaddednoise[beamlocstmp].copy(),
-                                                        numtype=simdtype,pulse=pulse,
+                                                        numtype=simdtype, pulse=pulse,
                                                         lagtype=lagtype)
 
             else:
                 for ibeam, ibeamlist in enumerate(self.simparams['outangles']):
                     progbeamstr = "Beam {0:d} of {1:d}".format(ibeam, n_beams)
                     update_progress(float(itn)/Ntime + float(ibeam)/Ntime/n_beams, progbeamstr)
-                    pdb.set_trace()
                     beamlocstmp = sp.where(sp.in1d(beamlocs, ibeamlist))[0]
                     curbeams = beamlocs[beamlocstmp]
                     ksysmat = Ksysvec[curbeams]
@@ -521,20 +519,23 @@ class RadarDataFile(object):
                     ksysmult = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, inputdata.shape[1]))
                     ksysmultn = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, noisedata.shape[1]))
                     ksysmultna = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, noisedataadd.shape[1]))
+                    ksysmultc = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, caldata.shape[1]))
                     pulses[itn, ibeam] = len(beamlocstmp)
                     pulsesN[itn, ibeam] = len(beamlocstmp)
+                    pdb.set_trace()
                     outdata[itn, ibeam] = lagfunc(inputdata *ksysmult,
                                                   numtype=simdtype, pulse=pulse,
                                                   lagtype=lagtype)
                     outnoise[itn, ibeam] = lagfunc(noisedata*ksysmultn,
                                                    numtype=simdtype, pulse=pulse,
                                                    lagtype=lagtype)
-                    outcal[itn, ibeam] = lagfunc(caldata*ksysmultn,
-                                                 numtype=simdtype, pulse=pulse,
-                                                 lagtype=lagtype)
+                    outcal[itn, ibeam] = lagfunc(caldata*ksysmultc, numtype=simdtype,
+                                                 pulse=pulse, lagtype=lagtype)
+
                     outaddednoise[itn, ibeam] = lagfunc(noisedataadd*ksysmultna,
                                                         numtype=simdtype, pulse=pulse,
-                                                         agtype=lagtype)
+                                                        lagtype=lagtype)
+
         # Create output dictionaries and output data
         data_lags = {'ACF':outdata, 'Pow':outdata[:, :, :, 0].real, 'Pulses':pulses,
                      'Time':timemat, 'AddedNoiseACF':outaddednoise}

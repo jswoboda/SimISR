@@ -5,6 +5,7 @@ Created on Tue Jul 22 16:18:21 2014
 @author: Bodangles
 """
 from __future__ import print_function
+import pdb
 import sys
 import warnings
 import pickle
@@ -726,8 +727,8 @@ def readconfigfile(fname):
     time_lim = simparams['TimeLim']
     f_s = float(simparams['fsnum'])/simparams['fsden']
     t_s = float(simparams['fsden'])/simparams['fsnum']
-    (pulse, simparams['Pulselength']) = makepulse(simparams['Pulsetype'],
-                                                  simparams['Pulselength'],
+    p_len =  int(sp.round_(f_s*simparams['Pulselength']))
+    (pulse, simparams['Pulselength']) = makepulse(simparams['Pulsetype'], p_len,
                                                   t_s)
     simparams['Pulse'] = pulse
     simparams['amb_dict'] = make_amb(f_s/ds_fac, simparams['declist'], pulse,

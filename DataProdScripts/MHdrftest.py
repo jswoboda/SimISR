@@ -134,6 +134,10 @@ def main(ARGS):
     ionoout.saveh5(str(inputfile))
 
     #make digitral rf directories
+    drfdirone = drfdata = testpath/'drfdata'
+    if drfdirone.exists():
+        shutil.rmtree(str(drfdirone))
+
     drfdata = testpath/'drfdata'/'rf_data'/'zenith-l'
     drfdata.mkdir(parents=True, exist_ok=True)
     drfdatatx = testpath/'drfdata'/'rf_data'/'tx-h'
