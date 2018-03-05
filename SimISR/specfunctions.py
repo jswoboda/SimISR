@@ -136,6 +136,11 @@ def ISRSfitfunction(x, y_acf, sensdict, simparams, Niratios,  y_err=None ):
     elif simparams['fitmode'] == 1:
         (Ti, Ne, TeoTi, v_i) = x
         Te = TeoTi*Ti
+    elif simparams['fitmode'] == 2:
+        (Ti, acfnorm, TeoTi, v_i) = x
+        Te = TeoTi*Ti
+        Ne = acfnorm*(1+TeoTi)
+
     datablock = np.zeros((nspecs, 2), dtype=x.dtype)
     datablock[:-1, 0] = Ne*Niratios
     datablock[:-1, 1] = Ti
@@ -153,7 +158,7 @@ def ISRSfitfunction(x, y_acf, sensdict, simparams, Niratios,  y_err=None ):
     (omeg, cur_spec, rcs) = specobj.getspecsep(datablock, specs, v_i, rcsflag=True)
     cur_spec.astype(numtype)
     # Create spectrum guess
-    (tau, acf) = spect2acf(omeg,cur_spec)
+    (_, acf) = spect2acf(omeg, cur_spec)
 
     if amb_dict['WttMatrix'].shape[-1] != acf.shape[0]:
         pdb.set_trace()
