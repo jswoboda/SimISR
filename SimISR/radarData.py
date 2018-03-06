@@ -222,7 +222,6 @@ class RadarDataFile(object):
                 newfn = self.datadir/fname
                 self.outfilelist.append(str(newfn))
                 dict2h5(str(newfn), outdict)
-
                 #Listing info
                 pt_list.append(pt)
                 pb_list.append(pb)
@@ -230,12 +229,14 @@ class RadarDataFile(object):
                 fname_list.append(fname)
                 #transmitdata
                 tx_data = sp.zeros_like(alldata).astype('complex64')
-                tx_data[:,:len(pulse_full)] = pulse_full.astype('complex64')
+                tx_data[:, :len(pulse_full)] = pulse_full.astype('complex64')
                 data_object_tx.rf_write(tx_data.flatten())
                 # extend array for digital rf to flattend array
                 data_object.rf_write(alldata.flatten().astype('complex64'))
+                id_strt = int(idmobj.get_samples_per_second()*ifilet)
+                dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
                 acmobj.write(int(acmobj.get_samples_per_second()*ifilet), acmdict)
-                idmobj.write(int(idmobj.get_samples_per_second()*ifilet), idmdict)
+                idmobj.write(dmdplist, idmdict)
                 pmmobj.write(int(pmmobj.get_samples_per_second()*ifilet), pmmdict)
 
             infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
@@ -522,7 +523,6 @@ class RadarDataFile(object):
                     ksysmultc = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, caldata.shape[1]))
                     pulses[itn, ibeam] = len(beamlocstmp)
                     pulsesN[itn, ibeam] = len(beamlocstmp)
-                    pdb.set_trace()
                     outdata[itn, ibeam] = lagfunc(inputdata *ksysmult,
                                                   numtype=simdtype, pulse=pulse,
                                                   lagtype=lagtype)
