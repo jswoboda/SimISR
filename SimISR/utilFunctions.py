@@ -20,7 +20,7 @@ from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
 from beamtools.bcotools import getangles
 from isrutilities import Path
-
+import ipdb
 # utility functions
 
 # update_progress() : Displays or updates a console progress bar
@@ -352,7 +352,7 @@ def makesumrule(ptype,plen,ts,lagtype='centered'):
         Output
             sumrule - A 2 x nlags numpy array that holds the summation rule.
     """
-    nlags = sp.floor(plen/ts)
+    nlags = sp.round_(plen/ts)
     if ptype.lower()=='long':
         if lagtype=='forward':
             arback=-sp.arange(nlags,dtype=int)
@@ -379,7 +379,7 @@ def makepulse(ptype,plen,ts):
             pulse - The pulse array that will be used as the window in the data formation.
             plen - The length of the pulse with the sampling time taken into account.
     """
-    nsamps = int(sp.floor(plen/ts))
+    nsamps = int(sp.round_(plen/ts))
 
     if ptype.lower()=='long':
         pulse = sp.ones(nsamps)
@@ -724,19 +724,19 @@ def readconfigfile(fname):
                             pass
     if 't_s' in simparams.keys():
         sensdict['t_s'] = simparams['t_s']
-        sensdict['fs'] =1.0/simparams['t_s']
+        sensdict['fs'] = 1.0/simparams['t_s']
         sensdict['BandWidth'] = sensdict['fs']*0.5 #used for the noise bandwidth
 
     for ikey in sensdict.keys():
         if ikey  in simparams.keys():
-            sensdict[ikey]=simparams[ikey]
+            sensdict[ikey] = simparams[ikey]
 #            del simparams[ikey]
-    simparams['Beamlist']=beamlist
+    simparams['Beamlist'] = beamlist
     time_lim = simparams['TimeLim']
-    (pulse,simparams['Pulselength'])  = makepulse(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'])
+    (pulse, _) = makepulse(simparams['Pulsetype'], simparams['Pulselength'], sensdict['t_s'])
     simparams['Pulse'] = pulse
-    simparams['amb_dict'] = make_amb(sensdict['fs'],int(simparams['ambupsamp']),
-        sensdict['t_s']*len(pulse),pulse,simparams['numpoints'])
+    simparams['amb_dict'] = make_amb(sensdict['fs'], int(simparams['ambupsamp']),
+                                     sensdict['t_s']*len(pulse), pulse,simparams['numpoints'])
     simparams['angles']=angles
     rng_lims = simparams['RangeLims']
     rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3/2.)

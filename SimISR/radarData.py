@@ -5,7 +5,7 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 @author: John Swoboda
 """
-import pdb
+import ipdb
 import scipy as sp
 # My modules
 from isrutilities.physConstants import v_C_0, v_Boltz
@@ -345,7 +345,7 @@ class RadarDataFile(object):
                 pos_all = sp.hstack(poslist)
                 curfileloc = file_loc[pos_all]
             except:
-                pdb.set_trace()
+                ipdb.set_trace()
             # Find the needed files and beam numbers
             curfiles = set(curfileloc)
             beamlocs = beamn[pos_all]
@@ -490,14 +490,14 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
 
     # Apply summation rule
     # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
-    lagsData = sp.transpose(lagsData,axes=(2,3,0,1))
-    lagsNoise = sp.transpose(lagsNoise,axes=(2,3,0,1))
-    lagsDatasum = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsData.dtype)
-    lagsNoisesum = sp.zeros((Nrng2,Nlags,Nt,Nbeams),dtype=lagsNoise.dtype)
-    for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
+    lagsData = sp.transpose(lagsData, axes=(2, 3, 0, 1))
+    lagsNoise = sp.transpose(lagsNoise, axes=(2, 3, 0, 1))
+    lagsDatasum = sp.zeros((Nrng2, Nlags, Nt, Nbeams), dtype=lagsData.dtype)
+    lagsNoisesum = sp.zeros((Nrng2, Nlags, Nt, Nbeams), dtype=lagsNoise.dtype)
+    for irngnew, irng in enumerate(sp.arange(minrg, maxrg)):
         for ilag in range(Nlags):
-            lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
-            lagsNoisesum[irngnew,ilag] = lagsNoise[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
+            lagsDatasum[irngnew, ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
+            lagsNoisesum[irngnew, ilag] = lagsNoise[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
     # Put everything in a parameter list
     Paramdata = sp.zeros((Nbeams*Nrng2,Nt,Nlags),dtype=lagsData.dtype)
     # Put everything in a parameter list
