@@ -18,7 +18,6 @@ import scipy.interpolate as spinterp
 #
 from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
-from beamtools.bcotools import getangles
 from isrutilities import Path
 import ipdb
 # utility functions
@@ -664,33 +663,24 @@ def readconfigfile(fname):
 
     ftype = fname.suffix
     curpath = fname.parent
-    if ftype=='.pickle':
-        with fname.open('r') as f:
-            dictlist = pickle.load(f)
 
-        angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
-        beamlist = [float(i) for i in dictlist[0]['beamlist']]
-        ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
-        sensdict = sensconst.getConst(dictlist[0]['radarname'],ang_data)
-
-        simparams = dictlist[1]
-    elif ftype=='.yml':
+    if ftype=='.yml':
         with fname.open('r') as f:
             dictlist = yaml.load(f)
 
-        angles = getangles(dictlist[0]['beamlist'],dictlist[0]['radarname'])
+        angles = sensconst.getangles(dictlist[0]['beamlist'], dictlist[0]['radarname'])
         beamlist = [float(i) for i in dictlist[0]['beamlist']]
         ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
         sensdict = sensconst.getConst(dictlist[0]['radarname'],ang_data)
 
         simparams = dictlist[1]
-    if ftype=='.ini':
+    elif ftype=='.ini':
 
         config = ConfigParser()
         config.read(str(fname))
         beamlist = config.get('section 1','beamlist').split()
         beamlist = [float(i) for i in beamlist]
-        angles = getangles(beamlist,config.get('section 1','radarname'))
+        angles = angles = sensconst.getangles(dictlist[0]['beamlist'], dictlist[0]['radarname'])
         ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
 
         sensdict = sensconst.getConst(config.get('section 1','radarname'),ang_data)

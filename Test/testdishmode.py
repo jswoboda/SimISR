@@ -83,8 +83,8 @@ def makeinputh5(Iono,basedir):
     #  Do the averaging across space
     for izn,iz in enumerate(zlist):
         arr = sp.argwhere(idx==izn)
-        outdata[izn]=sp.mean(Param_List[arr],axis=0)
-        outvel[izn]=sp.mean(velocity[arr],axis=0)
+        outdata[izn] = sp.mean(Param_List[arr],axis=0)
+        outvel[izn] = sp.mean(velocity[arr],axis=0)
 
     Ionoout = IonoContainer(datalocsave,outdata,times,Iono.Sensor_loc,ver=0,
                             paramnames=Iono.Param_Names, species=Iono.Species,velocity=outvel)
@@ -99,7 +99,7 @@ def main(funcnamelist):
     origparamsdir = testpath/'Origparams'
 
     testpath.mkdir(exist_ok=True,parents=True)
-    
+
     origparamsdir.mkdir(exist_ok=True,parents=True)
 
     if 'configupdate' in funcnamelist:
@@ -129,20 +129,20 @@ def main(funcnamelist):
     failflag=runsim.main(funcnamelist,testpath,testpath/'DishExample.ini',True)
     if not failflag:
         analysisdump(testpath,testpath/'DishExample.ini')
-        
+
 if __name__== '__main__':
     from argparse import ArgumentParser
     p = ArgumentParser(description='Planeproc.py -f <function: configupdate, origdata, spectrums, radardata, fitting or all>')
     p.add_argument('-f','--funcnamelist',nargs='+')
     p.add_argument('-r','--re',action='store_true')
     p = p.parse_args()
-    
-    
+
+
     curpath = Path(__file__).resolve().parent
 
     remakealldata = p.re
-    
+
     if p.funcnamelist is None or 'all' in p.funcnamelist:
         funcnamelist=['configupdate','origdata','spectrums','radardata','fitting']
-        
+
     main(funcnamelist)

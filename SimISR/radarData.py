@@ -403,28 +403,22 @@ class RadarDataFile(object):
                 for ibeam,ibeamlist in enumerate(self.simparams['outangles']):
                     update_progress(float(itn)/Ntime + float(ibeam)/Ntime/Nbeams, "Beam {0:d} of {1:d}".format(ibeam,Nbeams))
                     beamlocstmp = sp.where(sp.in1d(beamlocs,ibeamlist))[0]
-                    curbeams = beamlocs[beamlocstmp]
-                    ksysmat = Ksysvec[curbeams]
-                    ksysmean = Ksysvec[ibeamlist[0]]
                     inputdata = curdata[beamlocstmp].copy()
                     noisedata = curnoise[beamlocstmp].copy()
                     noisedataadd = curaddednoise[beamlocstmp].copy()
-                    ksysmult = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,inputdata.shape[1]))
-                    ksysmultn = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,noisedata.shape[1]))
-                    ksysmultna = ksysmean/sp.tile(ksysmat[:,sp.newaxis],(1,noisedataadd.shape[1]))
                     pulses[itn,ibeam] = len(beamlocstmp)
                     pulsesN[itn,ibeam] = len(beamlocstmp)
-                    outdata[itn,ibeam] = lagfunc(inputdata *ksysmult,
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-                    outnoise[itn,ibeam] = lagfunc(noisedata*ksysmultn,
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
-                    outaddednoise[itn,ibeam] = lagfunc(noisedataadd*ksysmultna,
-                        numtype=self.simparams['dtype'], pulse=pulse,lagtype=self.simparams['lagtype'])
+                    outdata[itn,ibeam] = lagfunc(inputdata, numtype=self.simparams['dtype'],
+                                                 pulse=pulse,lagtype=self.simparams['lagtype'])
+                    outnoise[itn,ibeam] = lagfunc(noisedata, numtype=self.simparams['dtype'],
+                                                pulse=pulse, lagtype=self.simparams['lagtype'])
+                    outaddednoise[itn,ibeam] = lagfunc(noisedataadd, numtype=self.simparams['dtype'],
+                                                       pulse=pulse,lagtype=self.simparams['lagtype'])
         # Create output dictionaries and output data
         DataLags = {'ACF':outdata,'Pow':outdata[:,:,:,0].real,'Pulses':pulses,
                     'Time':timemat,'AddedNoiseACF':outaddednoise}
         NoiseLags = {'ACF':outnoise,'Pow':outnoise[:,:,:,0].real,'Pulses':pulsesN,'Time':timemat}
-        return(DataLags,NoiseLags)
+        return(DataLags, NoiseLags)
 
 #%% Make Lag dict to an iono container
 def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):

@@ -10,9 +10,10 @@ from SimISR.utilFunctions import readconfigfile,makeconfigfile
 from SimISR.IonoContainer import IonoContainer
 from  SimISR.runsim import main as runsim
 from SimISR.analysisplots import analysisdump
+import ipdb
 
 
-def configfilesetup(testpath, npulses):
+def configfilesetup(testpath, npulses, radar='PFISR'):
     """ This will create the configureation file given the number of pulses for
         the test. This will make it so that there will be 12 integration periods
         for a given number of pulses.
@@ -22,8 +23,10 @@ def configfilesetup(testpath, npulses):
     """
     testpath = Path(testpath).expanduser()
     curloc = Path(__file__).resolve().parent
-    defcon = curloc/'statsbase.ini'
-
+    if radar.lower() == 'pfisr':
+        defcon = curloc/'statsbase.ini'
+    elif radar.lower() == 'millstonez':
+        defcon = curloc/'statsbasemhz.yml'
     (sensdict, simparams) = readconfigfile(defcon)
     tint = simparams['IPP']*npulses
     ratio1 = tint/simparams['Tint']
@@ -32,7 +35,7 @@ def configfilesetup(testpath, npulses):
     simparams['TimeLim'] = 2*tint
     simparams['fitmode'] = 1
     simparams['startfile'] = 'startfile.h5'
-    makeconfigfile(str(testpath/'stats.ini'), simparams['Beamlist'],
+    makeconfigfile(str(testpath/'stats.yml'), simparams['Beamlist'],
                    sensdict['Name'], simparams)
 
 def makedata(testpath,tint):
@@ -78,7 +81,7 @@ def makedata(testpath,tint):
     Icontstart.saveh5(str(testpath.joinpath('startfile.h5')))
 
 
-def main(npulse=100, functlist=['spectrums', 'radardata', 'fitting', 'analysis']):
+def main(npulse=100, functlist=['spectrums', 'radardata', 'fitting', 'analysis'],radar='pfisr'):
     """ This function will call other functions to create the input data, config
         file and run the radar data sim. The path for the simulation will be
         created in the Testdata directory in the SimISR module. The new
@@ -98,11 +101,11 @@ def main(npulse=100, functlist=['spectrums', 'radardata', 'fitting', 'analysis']
     check_run = sp.any(check_list)
     functlist_red = sp.array(functlist_default)[check_list].tolist()
 
-    config = testpath.joinpath('stats.ini')
+    config = testpath.joinpath('stats.yml')
     if not config.exists():
-        configfilesetup(str(testpath), npulse)
+        configfilesetup(str(testpath), npulse, radar)
 
-    (sensdict, simparams) = readconfigfile(str(config))
+    (_, simparams) = readconfigfile(str(config))
     makedata(testpath, simparams['Tint'])
     if check_run:
         runsim(functlist_red, str(testpath), config, True)
@@ -119,5 +122,6 @@ if __name__== '__main__':
     PAR1.add_argument("-p", "--npulses", help='Number of pulses.', type=int, default=100)
     PAR1.add_argument('-f', '--funclist', help='Functions to be uses', nargs='+',
                       default=['spectrums', 'radardata', 'fitting', 'analysis'])
+    PAR1.add_argument("-r", "--radar", help='Radar system.', type=str, default='pfisr')
     PAR1 = PAR1.parse_args()
-    main(PAR1.npulses, PAR1.funclist)
+    main(PAR1.npulses, PAR1.funclist,PAR1.radar)
