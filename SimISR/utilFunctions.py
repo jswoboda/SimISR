@@ -19,7 +19,7 @@ import scipy.interpolate as spinterp
 from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
 from isrutilities import Path
-import ipdb
+#import ipdb
 # utility functions
 
 # update_progress() : Displays or updates a console progress bar
@@ -176,8 +176,8 @@ def acf2spect(tau,acf,n=None,initshift = False):
     dt = tau[1]-tau[0]
 
     if initshift:
-        acf = scfft.iffthsift(acf,axes=-1)
-    spec = scfft.fftshift(scfft.fft(acf,n=n,axis=-1),axes=-1)
+        acf = scfft.iffthsift(acf, axes=-1)
+    spec = scfft.fftshift(scfft.fft(acf, n=n, axis=-1), axes=-1)
     fs = 1/dt
     omeg = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*fs
     return omeg, spec
@@ -234,6 +234,8 @@ def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
             outdata - A numpy Array with the shape of the """
 
     lp = len(pulse)
+    lenspec = len(spec)
+    rcs = sp.sum(spec)/lenspec**2
     r1 = scfft.ifft(scfft.ifftshift(spec))
     rp1 = r1[:N]
     rp2 = r1[1:N+1]
@@ -245,12 +247,12 @@ def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
     Gvec = sp.r_[G, sp.zeros(N)]
     Npnt = (N+1)*3+lp
     # Create the noise vector and normalize
-    xin = sp.random.randn(rep1,Npnt)+1j*sp.random.randn(rep1, Npnt)
-    xinsum = sp.tile(sp.sqrt(sp.sum(xin.real**2+xin.imag**2,axis=1))[:,sp.newaxis],(1,Npnt))
-    xin = xin/xinsum/sp.sqrt(2.)
+    xin = sp.random.randn(rep1, Npnt)+1j*sp.random.randn(rep1, Npnt)
+    xinsum = sp.tile(sp.sqrt(sp.mean(xin.real**2+xin.imag**2, axis=1))[:, sp.newaxis],(1, Npnt))
+    xin = xin/xinsum
     outdata = sp.signal.lfilter(Gvec,lpc,xin,axis=1)
-    outpulse = sp.tile(pulse[sp.newaxis],(rep1,1))
-    outdata = outpulse*outdata[:,N:N+lp]
+    outpulse = sp.tile(pulse[sp.newaxis], (rep1,1))
+    outdata = outpulse*outdata[:, 2*N:2*N+lp]
     return outdata
 #%% Pulse shapes
 def GenBarker(blen):

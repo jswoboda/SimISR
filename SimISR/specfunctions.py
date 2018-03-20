@@ -28,21 +28,22 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
                 weighting is npts^2 *rcs.
     """
     Vi = ionocont.getDoppler()
-    specobj = ISRSpectrum(centerFrequency = sensdict['fc'],nspec = npts,sampfreq=sensdict['fs'])
+    specobj = ISRSpectrum(centerFrequency=sensdict['fc'], nspec=npts,
+                          sampfreq=sensdict['fs'])
 
     if ionocont.Time_Vector is None:
         N_x = ionocont.Param_List.shape[0]
         N_t = 1
-        outspecs = np.zeros((N_x,1,npts))
+        outspecs = np.zeros((N_x, 1, npts))
         full_grid = False
     else:
-        (N_x,N_t) = ionocont.Param_List.shape[:2]
-        outspecs = np.zeros((N_x,N_t,npts))
+        (N_x, N_t) = ionocont.Param_List.shape[:2]
+        outspecs = np.zeros((N_x, N_t, npts))
         full_grid = True
 
     (N_x, N_t) = outspecs.shape[:2]
     outspecsorig = np.zeros_like(outspecs)
-    outrcs = np.zeros((N_x,N_t))
+    outrcs = np.zeros((N_x, N_t))
     #pdb.set_trace()
     for i_x in np.arange(N_x):
         for i_t in np.arange(N_t):
@@ -52,17 +53,18 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
                 update_progress(curnum, outstr)
 
             if full_grid:
-                cur_params = ionocont.Param_List[i_x,i_t]
-                cur_vel = Vi[i_x,i_t]
+                cur_params = ionocont.Param_List[i_x, i_t]
+                cur_vel = Vi[i_x, i_t]
             else:
                 cur_params = ionocont.Param_List[i_x]
-            (omeg,cur_spec,rcs) = specobj.getspecsep(cur_params,ionocont.Species,cur_vel,rcsflag=True)
+            (omeg, cur_spec, rcs) = specobj.getspecsep(cur_params, ionocont.Species,
+                                                       cur_vel, rcsflag=True)
             specsum = np.absolute(cur_spec).sum()
-            cur_spec_weighted = len(cur_spec)**2*cur_spec*rcs/specsum
-            outspecsorig[i_x,i_t] = cur_spec
-            outrcs[i_x,i_t] = rcs
-            outspecs[i_x,i_t] = cur_spec_weighted
-    return (omeg,outspecs)
+            cur_spec_weighted = len(cur_spec)*cur_spec*rcs/specsum
+            outspecsorig[i_x, i_t] = cur_spec
+            outrcs[i_x, i_t] = rcs
+            outspecs[i_x, i_t] = cur_spec_weighted
+    return (omeg, outspecs)
 
 def ISRspecmakeout(paramvals,fc,fs,species,npts):
     """ This will make a spectra for a set a param values. This is mainly used

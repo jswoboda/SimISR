@@ -115,7 +115,7 @@ def main(npulse=100, functlist=['spectrums', 'radardata', 'fitting', 'analysis']
 if __name__== '__main__':
     from argparse import ArgumentParser
     descr = '''
-             This script will perform the basic run est for ISR sim.
+             This script will perform the basic run est for SimISR.
             '''
     PAR1 = ArgumentParser(description=descr)
 
@@ -124,4 +124,4 @@ if __name__== '__main__':
                       default=['spectrums', 'radardata', 'fitting', 'analysis'])
     PAR1.add_argument("-r", "--radar", help='Radar system.', type=str, default='pfisr')
     PAR1 = PAR1.parse_args()
-    main(PAR1.npulses, PAR1.funclist,PAR1.radar)
+    main(PAR1.npulses, PAR1.funclist, PAR1.radar)

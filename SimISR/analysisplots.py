@@ -473,7 +473,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
                 else:
                     tempin = Ionoin.getclosestsphere(ic,times)[0]
 
-                specin[icn,itn] = tempin[0,:]/npts/npts
+                specin[icn,itn] = tempin[0,:]/npts
     fs = sensdict['fs']
 
     if acfdisp:
@@ -629,7 +629,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                     tempin = Ionoin.getclosestsphere(ic,times)[0]
 #                if sp.ndim(tempin)==1:
 #                    tempin = tempin[sp.newaxis,:]
-                specin[icn,itn] = tempin[0,:]/npts
+                specin[icn,itn] = tempin[0,:]
     if acfdisp:
         Ionoacf = IonoContainer.readh5(str(acfname))
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
