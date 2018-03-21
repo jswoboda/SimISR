@@ -81,12 +81,14 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     nlags = len(pulse)
     # make the sinc
     nsamps = sp.floor(8.5*m_up)
-    nsamps = int(nsamps-(1-sp.mod(nsamps,2)))
+    nsamps = int(nsamps-(1-sp.mod(nsamps, 2)))
     # need to incorporate summation rule
     vol = 1.
-    nvec = sp.arange(-sp.floor(nsamps/2.0),sp.floor(nsamps/2.0)+1)
-    pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann']
-    curwin = scisig.get_window(winname,nsamps)
+    nvec = sp.arange(-sp.floor(nsamps/2.0), sp.floor(nsamps/2.0)+1)
+    pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann',
+                   'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris',
+                   'nuttall', 'barthann']
+    curwin = scisig.get_window(winname, nsamps)
     # Apply window to the sinc function. This will act as the impulse respons of the filter
     outsinc = curwin*sp.sinc(nvec/m_up)
     outsinc = outsinc/sp.sum(outsinc)
@@ -95,51 +97,54 @@ def make_amb(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
     Delay_num = sp.arange(-(len(nvec)-1),m_up*(nlags+5))
     Delay = Delay_num*dt
 
-    t_rng = sp.arange(0,1.5*plen,dt)
-    if len(t_rng)>2e4:
+    t_rng = sp.arange(0, 1.5*plen, dt)
+    if len(t_rng) > 2e4:
         raise ValueError('The time array is way too large. plen should be in seconds.')
     numdiff = len(Delay)-len(outsinc)
-    numback= int(nvec.min()/m_up-Delay_num.min())
+    numback = int(nvec.min()/m_up-Delay_num.min())
     numfront = numdiff-numback
 #    outsincpad  = sp.pad(outsinc,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
-    outsincpad  = sp.pad(outsinc,(numback,numfront),mode='constant',constant_values=(0.0,0.0))
-    (d2d,srng)=sp.meshgrid(Delay,t_rng)
+    outsincpad  = sp.pad(outsinc,(numback, numfront), mode='constant',
+                         constant_values=(0.0, 0.0))
+    (d2d, srng)=sp.meshgrid(Delay, t_rng)
     # envelop function
     t_p = sp.arange(nlags)/Fsorg
-    envfunc = sp.interp(sp.ravel(srng-d2d),t_p,pulse,left=0.,right=0.).reshape(d2d.shape)
+    envfunc = sp.interp(sp.ravel(srng-d2d), t_p,pulse, left=0., right=0.).reshape(d2d.shape)
 #    envfunc = sp.zeros(d2d.shape)
 #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
     envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
-    Wtt = sp.zeros((nlags,d2d.shape[0],d2d.shape[1]))
-    cursincrep = sp.tile(outsincpad[sp.newaxis,:],(len(t_rng),1))
+    Wtt = sp.zeros((nlags, d2d.shape[0], d2d.shape[1]))
+    cursincrep = sp.tile(outsincpad[sp.newaxis, :], (len(t_rng), 1))
     Wt0 = cursincrep*envfunc
-    Wt0fft = sp.fft(Wt0,axis=1)
+    Wt0fft = sp.fft(Wt0, axis=1)
     for ilag in sp.arange(nlags):
-        cursinc = sp.roll(outsincpad,ilag*m_up)
-        cursincrep = sp.tile(cursinc[sp.newaxis,:],(len(t_rng),1))
+        cursinc = sp.roll(outsincpad, ilag*m_up)
+        cursincrep = sp.tile(cursinc[sp.newaxis, :], (len(t_rng), 1))
         Wta = cursincrep*envfunc
         #do fft based convolution, probably best method given sizes
-        Wtafft = scfft.fft(Wta,axis=1)
+        Wtafft = scfft.fft(Wta, axis=1)
 
         nmove = len(nvec)-1
-        Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft),axis=1).real,nmove,axis=1)
+        Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real,
+                            nmove, axis=1)
 
     # make matrix to take
     imat = sp.eye(nspec)
-    tau = sp.arange(-sp.floor(nspec/2.),sp.ceil(nspec/2.))/Fsorg
+    tau = sp.arange(-sp.floor(nspec/2.), sp.ceil(nspec/2.))/Fsorg
     tauint = Delay
-    interpmat = spinterp.interp1d(tau,imat,bounds_error=0,axis=0)(tauint)
-    lagmat = sp.dot(Wtt.sum(axis=1),interpmat)
-    W0=lagmat[0].sum()
+    interpmat = spinterp.interp1d(tau, imat, bounds_error=0, axis=0)(tauint)
+    lagmat = sp.dot(Wtt.sum(axis=1), interpmat)
+    W0 = lagmat[0].sum()
     for ilag in range(nlags):
-       lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
+        lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
 
-    Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),
-               'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
+    Wttdict = {'WttAll':Wtt, 'Wtt':Wtt.max(axis=0), 'Wrange':Wtt.sum(axis=1),
+               'Wlag':Wtt.sum(axis=2), 'Delay':Delay, 'Range':v_C_0*t_rng/2.0,
+               'WttMatrix':lagmat}
     return Wttdict
 
-def spect2acf(omeg,spec,n=None):
+def spect2acf(omeg, spec, n_s=None):
     """ Creates acf and time array associated with the given frequency vector and spectrum
     Inputs:
     omeg: The frequency sampling vector
@@ -148,19 +153,16 @@ def spect2acf(omeg,spec,n=None):
     Output:
     tau: The time sampling array.
     acf: The acf from the original spectrum."""
-    if n is None:
-        n=float(spec.shape[-1])
-#    padnum = sp.floor(len(spec)/2)
-    df = omeg[1]-omeg[0]
+    if n_s is None:
+        n_s = float(spec.shape[-1])
+    d_f = omeg[1]-omeg[0]
+    d_t = 1./n_s/d_f
+    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec, axes=-1), n_s, axis=-1), axes=-1)
 
-#    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
-    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec,axes=-1),n,axis=-1),axes=-1)
-    acf = acf/n
-    dt = 1/(df*n)
-    tau = sp.arange(-sp.ceil(float(n-1)/2.),sp.floor(float(n-1)/2.)+1)*dt
+    tau = sp.arange(-sp.ceil(float(n_s-1)/2.), sp.floor(float(n_s-1)/2.)+1)*d_t
     return tau, acf
 
-def acf2spect(tau,acf,n=None,initshift = False):
+def acf2spect(tau, acf , n_s=None, initshift=False):
     """ Creates spectrum and frequency vector associated with the given time array and acf.
     Inputs:
     tau: The time sampling array.
@@ -171,18 +173,17 @@ def acf2spect(tau,acf,n=None,initshift = False):
     spec: The spectrum array.
     """
 
-    if n is None:
-        n=float(acf.shape[-1])
-    dt = tau[1]-tau[0]
+    if n_s is None:
+        n_s = float(acf.shape[-1])
+    d_t = tau[1]-tau[0]
 
     if initshift:
-        acf = scfft.iffthsift(acf, axes=-1)
-    spec = scfft.fftshift(scfft.fft(acf, n=n, axis=-1), axes=-1)
-    fs = 1/dt
-    omeg = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*fs
+        acf = scfft.ifftshift(acf, axes=-1)
+    spec = scfft.fftshift(scfft.fft(acf, n=n_s, axis=-1), axes=-1)
+    omeg = scfft.fftshift(scfft.fftfreq(n_s, d_t))
     return omeg, spec
 #%% making pulse data
-def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex128):
+def MakePulseDataRep(pulse_shape, filt_freq, delay=16, rep=1, numtype = sp.complex128):
     """ This function will create a repxLp numpy array, where rep is number of independent
         repeats and Lp is number of pulses, of noise shaped by the filter who's frequency
         response is passed as the parameter filt_freq. The pulse shape is delayed by the parameter
@@ -208,19 +209,19 @@ def MakePulseDataRep(pulse_shape, filt_freq, delay=16,rep=1,numtype = sp.complex
     npts = len(filt_freq)
     multforimag = sp.ones_like(filt_freq)
     hpnt = int(sp.ceil(npts/2.))
-    multforimag[hpnt:]=-1
+    multforimag[hpnt:] =- 1
     tmp = scfft.ifft(filt_freq)
-    tmp[hpnt:]=0.
+    tmp[hpnt:] = 0.
     #comp_filt = scfft.fft(tmp)*sp.sqrt(2.)
-    filt_tile = sp.tile(filt_freq[sp.newaxis,:],(rep,1))
-    shaperep = sp.tile(pulse_shape[sp.newaxis,:],(rep,1))
-    noisereal = sp.random.randn(rep,npts).astype(numtype)
-    noiseimag = sp.random.randn(rep,npts).astype(numtype)
-    noise_vec =(noisereal+1j*noiseimag)/sp.sqrt(2.0)
+    filt_tile = sp.tile(filt_freq[sp.newaxis,:], (rep, 1))
+    shaperep = sp.tile(pulse_shape[sp.newaxis,:], (rep, 1))
+    noisereal = sp.random.randn(rep, npts).astype(numtype)
+    noiseimag = sp.random.randn(rep, npts).astype(numtype)
+    noise_vec = (noisereal+1j*noiseimag)/sp.sqrt(2.0)
 #    noise_vec = noisereal
     mult_freq = filt_tile.astype(numtype)*noise_vec
-    data = scfft.ifft(mult_freq,axis=-1)
-    data_out = shaperep*data[:,delay:(delay+len(pulse_shape))]
+    data = scfft.ifft(mult_freq, axis=-1)
+    data_out = shaperep*data[:, delay:(delay+len(pulse_shape))]
     return data_out
 
 def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
@@ -235,7 +236,6 @@ def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
 
     lp = len(pulse)
     lenspec = len(spec)
-    rcs = sp.sum(spec)/lenspec**2
     r1 = scfft.ifft(scfft.ifftshift(spec))
     rp1 = r1[:N]
     rp2 = r1[1:N+1]
@@ -250,8 +250,8 @@ def MakePulseDataRepLPC(pulse,spec,N,rep1,numtype = sp.complex128):
     xin = sp.random.randn(rep1, Npnt)+1j*sp.random.randn(rep1, Npnt)
     xinsum = sp.tile(sp.sqrt(sp.mean(xin.real**2+xin.imag**2, axis=1))[:, sp.newaxis],(1, Npnt))
     xin = xin/xinsum
-    outdata = sp.signal.lfilter(Gvec,lpc,xin,axis=1)
-    outpulse = sp.tile(pulse[sp.newaxis], (rep1,1))
+    outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
+    outpulse = sp.tile(pulse[sp.newaxis], (rep1, 1))
     outdata = outpulse*outdata[:, 2*N:2*N+lp]
     return outdata
 #%% Pulse shapes
