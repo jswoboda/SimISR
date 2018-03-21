@@ -166,7 +166,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
                'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
     return Wttdict
 
-def spect2acf(omeg,spec,n=None):
+def spect2acf(omeg, spec, n_s=None):
     """ Creates acf and time array associated with the given frequency vector and spectrum
     Inputs:
     omeg: The frequency sampling vector
@@ -175,19 +175,18 @@ def spect2acf(omeg,spec,n=None):
     Output:
     tau: The time sampling array.
     acf: The acf from the original spectrum."""
-    if n is None:
-        n=float(spec.shape[-1])
+    if n_s is None:
+        n_s = float(spec.shape[-1])
 #    padnum = sp.floor(len(spec)/2)
-    df = omeg[1]-omeg[0]
+    d_f = omeg[1]-omeg[0]
 
 #    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
-    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec,axes=-1),n,axis=-1),axes=-1)
-    acf = acf/n
-    d_t = 1/(df*n)
-    tau = sp.arange(-sp.ceil(float(n-1)/2.),sp.floor(float(n-1)/2.)+1)*d_t
+    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec, axes=-1), n_s, axis=-1), axes=-1)
+    d_t = 1/(d_f*n_s)
+    tau = sp.arange(-sp.ceil(float(n_s-1)/2.), sp.floor(float(n_s-1)/2.)+1)*d_t
     return tau, acf
 
-def acf2spect(tau,acf,n=None,initshift = False):
+def acf2spect(tau, acf, n_s=None, initshift=False):
     """ Creates spectrum and frequency vector associated with the given time array and acf.
     Inputs:
     tau: The time sampling array.
@@ -198,15 +197,15 @@ def acf2spect(tau,acf,n=None,initshift = False):
     spec: The spectrum array.
     """
 
-    if n is None:
-        n=float(acf.shape[-1])
+    if n_s is None:
+        n_s = float(acf.shape[-1])
     d_t = tau[1]-tau[0]
 
     if initshift:
-        acf = scfft.iffthsift(acf,axes=-1)
-    spec = scfft.fftshift(scfft.fft(acf,n=n,axis=-1),axes=-1)
+        acf = scfft.ifftshift(acf, axes=-1)
+    spec = scfft.fftshift(scfft.fft(acf, n=n_s, axis=-1), axes=-1)
     fs = 1/d_t
-    omeg = sp.arange(-sp.ceil(n/2.),sp.floor(n/2.)+1)*fs
+    omeg = sp.arange(-sp.ceil(n_s/2.), sp.floor(n_s/2.)+1)*fs
     return omeg, spec
 #%% making pulse data
 def MakePulseDataRep(pulse_shape, filt_freq, delay=16, rep=1, numtype=sp.complex128):
@@ -265,7 +264,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
     rp1 = r1[:nlpc]
     rp2 = r1[1:nlpc+1]
     # rcs is encoded in the spectrum
-    rcs = spec.sum()/len(spec)**2
+    rcs = spec.sum()/len(spec)
     # Use Levinson recursion to find the coefs for the data
     xr1 = sp.linalg.solve_toeplitz(rp1, rp2)
     lpc = sp.r_[sp.ones(1), -xr1]
@@ -280,7 +279,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         h_tile = sp.tile(h_filt[sp.newaxis, :], (rep1, 1))
         # Create the noise vector and normalize
         xin = sp.random.randn(rep1, nfft)+1j*sp.random.randn(rep1, nfft)
-        x_vec = sp.sum(xin.real**2+xin.imag**2, axis=1)
+        x_vec = sp.mean(xin.real**2+xin.imag**2, axis=1)
         xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, nfft))
         xinsum = xinsum
         xin = sp.sqrt(nfft)*xin/xinsum
@@ -290,13 +289,13 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     else:
         xin = sp.random.randn(rep1, n_pnt)+1j*sp.random.randn(rep1, n_pnt)
-        x_vec = sp.sum(xin.real**2+xin.imag**2, axis=1)
+        x_vec = sp.mean(xin.real**2+xin.imag**2, axis=1)
         xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, n_pnt))
         xin = xin/xinsum
         outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
         outpulse = sp.tile(pulse[sp.newaxis], (rep1, 1))
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
-    outdata = sp.sqrt(rcs)*outdata/sp.sqrt(sp.mean(outdata.var(axis=1)))
+    #outdata = sp.sqrt(rcs)*outdata/sp.sqrt(sp.mean(outdata.var(axis=1)))
     return outdata
 #%% Pulse shapes
 def GenBarker(blen):
@@ -308,7 +307,7 @@ def GenBarker(blen):
     """
     bdict = {1:[-1], 2:[-1, 1], 3:[-1, -1, 1], 4:[-1, -1, 1, -1], 5:[-1, -1, -1, 1, -1],
              7:[-1, -1, -1, 1, 1, -1, 1], 11:[-1, -1, -1, 1, 1, 1, -1, 1, 1, -1, 1],
-            13:[-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1]}
+             13:[-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1]}
     outar = sp.array(bdict[blen])
     outar.astype(sp.float64)
     return outar

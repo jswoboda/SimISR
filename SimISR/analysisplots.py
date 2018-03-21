@@ -8,7 +8,6 @@ problems. This is also helpful for presentations.
 """
 from . import Path
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import scipy as sp
