@@ -264,7 +264,6 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
     rp1 = r1[:nlpc]
     rp2 = r1[1:nlpc+1]
     # rcs is encoded in the spectrum
-    rcs = spec.sum()/len(spec)
     # Use Levinson recursion to find the coefs for the data
     xr1 = sp.linalg.solve_toeplitz(rp1, rp2)
     lpc = sp.r_[sp.ones(1), -xr1]
