@@ -47,23 +47,23 @@ def makedata(testpath,tint):
             testpath - Directory that will hold the data.
             tint - The integration time in seconds.
     """
-    testpath=Path(testpath).expanduser()
+    testpath = Path(testpath).expanduser()
     finalpath = testpath.joinpath('Origparams')
     if not finalpath.is_dir():
         finalpath.mkdir()
-    data = sp.array([[1e11,1100.],[1e11,2100.]])
+    data = sp.array([[1e11,1100.], [1e11,2100.]])
     z = (50.+sp.arange(50)*10.)
     nz = len(z)
-    params = sp.tile(data[sp.newaxis,sp.newaxis],(nz,1,1,1))
+    params = sp.tile(data[sp.newaxis, sp.newaxis],(nz, 1, 1, 1))
     epnt = range(20,22)
     p2 = sp.tile(params, (1, 4, 1, 1))
     #enhancement in Ne
-    p2[epnt,1,:,0]=5e11
+    p2[epnt, 1, :, 0] = 5e11
     #enhancement in Ti
-    p2[epnt,2,0,1]=2200.
+    p2[epnt,2,0,1] = 2200.
     #enhancement in Te
-    p2[epnt,3,1,1]=4200.
-    coords = sp.column_stack((sp.ones(nz),sp.ones(nz),z))
+    p2[epnt,3,1,1] = 4200.
+    coords = sp.column_stack((sp.zeros(nz), sp.zeros(nz), z))
     species=['O+', 'e-']
     times = sp.array([[0, 1e3]])
     times2 = sp.column_stack((sp.arange(0, 4), sp.arange(1, 5)))*3*tint

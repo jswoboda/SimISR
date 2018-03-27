@@ -15,7 +15,7 @@ import scipy as sp
 import scipy.fftpack as scfft
 import numpy as np
 import seaborn as sns
-
+import ipdb
 
 from .IonoContainer import IonoContainer
 from .utilFunctions import readconfigfile,spect2acf,acf2spect
@@ -396,12 +396,11 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
             # get and plot the input data
 
             numplots = len(time2file[itime])
-
             # set the limit for the parameter
             if curparm == 'vi':
-                 ax.set(xlim=[-1.25*sp.amax(sp.absolute(curfit)), 1.25*sp.amax(sp.absolute(curfit))])
+                 ax.set(xlim=[-1.25*sp.nanmax(sp.absolute(curfit)), 1.25*sp.nanmax(sp.absolute(curfit))])
             elif curparm_in != 'ne':
-                ax.set(xlim=[0.75*sp.amin(curfit), sp.minimum(1.25*sp.amax(curfit), 8000.)])
+                ax.set(xlim=[0.75*sp.nanmin(curfit), sp.minimum(1.25*sp.nanmax(curfit), 8000.)])
             elif (curparm_in == 'ne') and nelog:
                 ax.set_xscale('log')
 

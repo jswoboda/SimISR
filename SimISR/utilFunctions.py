@@ -264,61 +264,62 @@ def GenBarker(blen):
     """
     bdict = {1:[-1], 2:[-1, 1], 3:[-1, -1, 1], 4:[-1, -1, 1, -1], 5:[-1, -1, -1, 1, -1],
              7:[-1, -1, -1, 1, 1, -1, 1], 11:[-1, -1, -1, 1, 1, 1, -1, 1, 1, -1, 1],
-            13:[-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1]}
+             13:[-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1]}
     outar = sp.array(bdict[blen])
     outar.astype(sp.float64)
     return outar
 #%% Lag Functions
-def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14),lagtype='centered'):
-    """ This function will create a centered lag product for each range using the
-    raw IQ given to it.  It will form each lag for each pulse and then integrate
-    all of the pulses.
-    Inputs:
-        rawbeams - This is a NpxNs complex numpy array where Ns is number of
-        samples per pulse and Npu is number of pulses
-        N - The number of lags that will be created, default is 14.
-        numtype - The type of numbers used to create the data. Default is sp.complex128
-        lagtype - Can be centered forward or backward.
-    Output:
-        acf_cent - This is a NrxNl complex numpy array where Nr is number of
-        range gate and Nl is number of lags.
+def CenteredLagProduct(rawbeams, numtype=sp.complex128, pulse=sp.ones(14), lagtype='centered'):
     """
-    N=len(pulse)
-    # It will be assumed the data will be pulses vs rangne
+        This function will create a centered lag product for each range using the
+        raw IQ given to it.  It will form each lag for each pulse and then integrate
+        all of the pulses.
+        Inputs:
+            rawbeams - This is a NpxNs complex numpy array where Ns is number of
+            samples per pulse and Npu is number of pulses
+            N - The number of lags that will be created, default is 14.
+            numtype - The type of numbers used to create the data. Default is sp.complex128
+            lagtype - Can be centered forward or backward.
+        Output:
+            acf_cent - This is a NrxNl complex numpy array where Nr is number of
+            range gate and Nl is number of lags.
+    """
+    n_pulse = len(pulse)
+    # It will be assumed the data will be pulses vs range
     rawbeams = rawbeams.transpose()
-    (Nr,Np) = rawbeams.shape
+    n_range = rawbeams.shape[0]
 
     # Make masks for each piece of data
-    if lagtype=='forward':
-        arback = sp.zeros(N,dtype=int)
-        arfor = sp.arange(N,dtype=int)
+    if lagtype == 'forward':
+        arback = sp.zeros(n_pulse, dtype=int)
+        arfor = sp.arange(n_pulse, dtype=int)
 
-    elif lagtype=='backward':
-        arback = sp.arange(N,dtype=int)
-        arfor = sp.zeros(N,dtype=int)
+    elif lagtype == 'backward':
+        arback = sp.arange(n_pulse, dtype=int)
+        arfor = sp.zeros(n_pulse, dtype=int)
     else:
        # arex = sp.arange(0,N/2.0,0.5);
-        arback = -sp.floor(sp.arange(0,N/2.0,0.5)).astype(int)
-        arfor = sp.ceil(sp.arange(0,N/2.0,0.5)).astype(int)
+        arback = -sp.floor(sp.arange(0, n_pulse/2.0, 0.5)).astype(int)
+        arfor = sp.ceil(sp.arange(0, n_pulse/2.0, 0.5)).astype(int)
 
     # figure out how much range space will be kept
-    ap = sp.nanmax(abs(arback));
-    ep = Nr- sp.nanmax(arfor);
-    rng_ar_all = sp.arange(ap,ep);
+    a_p = sp.nanmax(abs(arback))
+    e_p = n_range - sp.nanmax(arfor)
+    rng_ar_all = sp.arange(a_p, e_p)
 #    wearr = (1./(N-sp.tile((arfor-arback)[:,sp.newaxis],(1,Np)))).astype(numtype)
     #acf_cent = sp.zeros((ep-ap,N))*(1+1j)
-    acf_cent = sp.zeros((ep-ap,N),dtype=numtype)
-    for irng, curange in  enumerate(rng_ar_all):
+    acf_cent = sp.zeros((e_p-a_p, n_pulse), dtype=numtype)
+    for irng, curange in enumerate(rng_ar_all):
         rng_ar1 = int(curange) + arback
         rng_ar2 = int(curange) + arfor
         # get all of the acfs across pulses # sum along the pulses
-        acf_tmp = sp.conj(rawbeams[rng_ar1,:])*rawbeams[rng_ar2,:]#*wearr
-        acf_ave = sp.sum(acf_tmp,1)
-        acf_cent[irng,:] = acf_ave# might need to transpose this
+        acf_tmp = sp.conj(rawbeams[rng_ar1, :])*rawbeams[rng_ar2, :]#*wearr
+        acf_ave = sp.sum(acf_tmp, 1)
+        acf_cent[irng, :] = acf_ave# might need to transpose this
     return acf_cent
 
 
-def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13),lagtype=None):
+def BarkerLag(rawbeams, numtype=sp.complex128, pulse=GenBarker(13), lagtype=None):
     """This will process barker code data by filtering it with a barker code pulse and
     then sum up the pulses.
     Inputs
@@ -331,15 +332,15 @@ def BarkerLag(rawbeams,numtype=sp.complex128,pulse=GenBarker(13),lagtype=None):
         of range gates  """
      # It will be assumed the data will be pulses vs rangne
     rawbeams = rawbeams.transpose()
-    (Nr,Np) = rawbeams.shape
-    pulsepow = sp.power(sp.absolute(pulse),2.0).sum()
+    (Nr, Np) = rawbeams.shape
+    pulsepow = sp.power(sp.absolute(pulse), 2.0).sum()
     # Make matched filter
-    filt = sp.fft(pulse[::-1]/sp.sqrt(pulsepow),n=Nr)
-    filtmat = sp.repeat(filt[:,sp.newaxis],Np,axis=1)
-    rawfreq = sp.fft(rawbeams,axis=0)
-    outdata = sp.ifft(filtmat*rawfreq,axis=0)
+    filt = sp.fft(pulse[::-1]/sp.sqrt(pulsepow), n=Nr)
+    filtmat = sp.repeat(filt[:, sp.newaxis], Np, axis=1)
+    rawfreq = sp.fft(rawbeams, axis=0)
+    outdata = sp.ifft(filtmat*rawfreq, axis=0)
     outdata = outdata*outdata.conj()
-    outdata = sp.sum(outdata,axis=-1)
+    outdata = sp.sum(outdata, axis=-1)
     #increase the number of axes
     return outdata[len(pulse)-1:,sp.newaxis]
 
@@ -693,25 +694,26 @@ def readconfigfile(fname):
             simparams[rname] = config.get('simparams',param)
 
         for param in simparams:
-            if simparams[param]=="<type 'numpy.complex128'>":
-                simparams[param]=sp.complex128
-            elif simparams[param]=="<type 'numpy.complex64'>":
-                simparams[param]=sp.complex64
-            elif param=='outangles':
+            if simparams[param] == "<type 'numpy.complex128'>":
+                simparams[param] = sp.complex128
+            elif simparams[param] == "<type 'numpy.complex64'>":
+                simparams[param] = sp.complex64
+            elif param == 'outangles':
                 outlist1 = simparams[param].split(',')
-                simparams[param]=[[ float(j) for j in  i.lstrip().rstrip().split(' ')] for i in outlist1]
+                simparams[param] = [[float(j) for j in  i.lstrip().rstrip().split(' ')]
+                                    for i in outlist1]
             else:
-                simparams[param]=simparams[param].split(" ")
-                if len(simparams[param])==1:
-                    simparams[param]=simparams[param][0]
+                simparams[param] = simparams[param].split(" ")
+                if len(simparams[param]) == 1:
+                    simparams[param] = simparams[param][0]
                     try:
-                        simparams[param]=float(simparams[param])
+                        simparams[param] = float(simparams[param])
                     except:
                         pass
                 else:
                     for a in range(len(simparams[param])):
                         try:
-                            simparams[param][a]=float(simparams[param][a])
+                            simparams[param][a] = float(simparams[param][a])
                         except:
                             pass
     if 't_s' in simparams.keys():
@@ -723,46 +725,67 @@ def readconfigfile(fname):
         if ikey  in simparams.keys():
             sensdict[ikey] = simparams[ikey]
 #            del simparams[ikey]
+
     simparams['Beamlist'] = beamlist
     time_lim = simparams['TimeLim']
     (pulse, _) = makepulse(simparams['Pulsetype'], simparams['Pulselength'], sensdict['t_s'])
     simparams['Pulse'] = pulse
+    psamps = len(pulse)
     simparams['amb_dict'] = make_amb(sensdict['fs'], int(simparams['ambupsamp']),
-                                     sensdict['t_s']*len(pulse), pulse,simparams['numpoints'])
-    simparams['angles']=angles
+                                     sensdict['t_s']*len(pulse), pulse, simparams['numpoints'])
+    simparams['angles'] = angles
+
+    simparams['Timevec'] = sp.arange(0, time_lim, simparams['Fitinter'])
+
+    rng_samp = simparams['t_s']*v_C_0*1e-3/2.
+    ipp_samps = sp.floor(simparams['IPP']*sensdict['fs'])
+    ipp_rng = sp.arange(0, ipp_samps, dtype=float)*rng_samp
     rng_lims = simparams['RangeLims']
-    rng_gates = sp.arange(rng_lims[0],rng_lims[1],sensdict['t_s']*v_C_0*1e-3/2.)
-    simparams['Timevec']=sp.arange(0,time_lim,simparams['Fitinter'])
-    simparams['Rangegates']=rng_gates
+
+    # XXX Set up range gates differently
+    min_rng = sp.where(ipp_rng >= rng_lims[0])[0][0]
+    max_rng = sp.where(ipp_rng <= rng_lims[1])[0][-1]
+    rng_all = sp.arange(min_rng-(2*psamps-1), max_rng+(2*psamps-1), dtype=float)*rng_samp
+    rng_all[rng_all <= 0] = rng_samp
+
+
+    simparams['Rangegates'] = rng_all
+    simparams['Rangegatesfinal'] = sp.arange(min_rng,max_rng,dtype=float)*rng_samp
     if not 'lagtype' in simparams.keys():
-        simparams['lagtype']='centered'
-    sumrule = makesumrule(simparams['Pulsetype'],simparams['Pulselength'],sensdict['t_s'],simparams['lagtype'])
+        simparams['lagtype'] = 'centered'
+    sumrule = makesumrule(simparams['Pulsetype'], simparams['Pulselength'],
+                          sensdict['t_s'], simparams['lagtype'])
     simparams['SUMRULE'] = sumrule
-    minrg = -sumrule[0].min()
-    maxrg = len(rng_gates)-sumrule[1].max()
+    # minrg = -sumrule[0].min()
+    # maxrg = len(rng_gates)-sumrule[1].max()-1
+    # n_pulse = len(pulse)
+    # arback = -sp.floor(sp.arange(0, n_pulse/2.0, 0.5)).astype(int)
+    # arfor = sp.ceil(sp.arange(0, n_pulse/2.0, 0.5)).astype(int)
+    # rnglist = [sp.mean(rng_gates[irng+arback]**2+ rng_gates[irng+arfor]**2)
+    #            for irng in range(minrg, maxrg)]
 
-    simparams['Rangegatesfinal'] = sp.array([ sp.mean(rng_gates[irng+sumrule[0,0]:irng+sumrule[1,0]+1]) for irng in range(minrg,maxrg)])
 
 
-    if ('startfile' in simparams.keys() and len(simparams['startfile']) >0 )and simparams['Pulsetype'].lower()!='barker':
+    if ('startfile' in simparams.keys() and len(simparams['startfile']) > 0 ) and simparams['Pulsetype'].lower() !=' barker':
         relpath = Path(simparams['startfile'])
         if not relpath.is_absolute():
-            # Some times the ini files may split the strings of the start file because of white space in file names.
-            if type(simparams['startfile'])is list:
-                startfile=" ".join(simparams['startfile'])
+            # Some times the ini files may split the strings of the start file
+            # because of white space in file names.
+            if type(simparams['startfile']) is list:
+                startfile = " ".join(simparams['startfile'])
             else:
-                startfile=simparams['startfile']
+                startfile = simparams['startfile']
 
             fullfilepath = curpath.joinpath(startfile)
             simparams['startfile'] = str(fullfilepath)
 
         else:
-            fullfilepath=simparams['startfile']
+            fullfilepath = simparams['startfile']
         stext = Path(fullfilepath).is_file()
         if not stext:
-            warnings.warn('The given start file does not exist',UserWarning)
+            warnings.warn('The given start file does not exist', UserWarning)
 
-    elif simparams['Pulsetype'].lower()!='barker':
-        warnings.warn('No start file given',UserWarning)
+    elif simparams['Pulsetype'].lower() != 'barker':
+        warnings.warn('No start file given', UserWarning)
 
-    return(sensdict,simparams)
+    return(sensdict, simparams)

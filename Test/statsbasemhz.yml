@@ -6,7 +6,7 @@
   NNs: 28.0
   Pulselength: 0.00028
   Pulsetype: Long
-  RangeLims: [50.0, 550.0]
+  RangeLims: [150.0, 550.0]
   TimeLim: 300.0
   Tint: 1.0
   ambupsamp: 1.0
