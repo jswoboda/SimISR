@@ -334,7 +334,7 @@ class RadarDataFile(object):
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
                     for idatn, idat in enumerate(curdataloc):
-                        out_data[idat, cur_pnts] = cur_pulse_data[idatn,:len(cur_pnts)]+out_data[idat, cur_pnts]
+                        out_data[idat, cur_pnts] = cur_pulse_data[idatn, cur_pnts-isamp]+out_data[idat, cur_pnts]
 
         return out_data
         #%% Processing
@@ -418,12 +418,7 @@ class RadarDataFile(object):
         beamn_list = infodict['Beams']
         time_list = infodict['Time']
         file_loclist = [ifn*sp.ones(len(ifl)) for ifn, ifl in enumerate(beamn_list)]
-        if 'NoiseTime'in infodict.keys():
-            sridata = True
-            tnoiselist = infodict['NoiseTime']
-            nfile_loclist = [ifn*sp.ones(len(ifl)) for ifn, ifl in enumerate(tnoiselist)]
-        else:
-            sridata = False
+
 
         pulsen = sp.hstack(pulsen_list).astype(int)# pulse number
         beamn = sp.hstack(beamn_list).astype(int)# beam numbers
@@ -511,34 +506,29 @@ class RadarDataFile(object):
                     update_progress(float(itn)/Ntime + float(ibeam)/Ntime/n_beams, progbeamstr)
                     beamlocstmp = sp.where(sp.in1d(beamlocs, ibeamlist))[0]
                     curbeams = beamlocs[beamlocstmp]
-                    ksysmat = Ksysvec[curbeams]
-                    ksysmean = Ksysvec[ibeamlist[0]]
                     inputdata = curdata[beamlocstmp].copy()
                     noisedata = curnoise[beamlocstmp].copy()
                     noisedataadd = curaddednoise[beamlocstmp].copy()
                     caldata = curcal[beamlocstmp].copy()
-                    ksysmult = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, inputdata.shape[1]))
-                    ksysmultn = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, noisedata.shape[1]))
-                    ksysmultna = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, noisedataadd.shape[1]))
-                    ksysmultc = ksysmean/sp.tile(ksysmat[:, sp.newaxis], (1, caldata.shape[1]))
+
                     pulses[itn, ibeam] = len(beamlocstmp)
                     pulsesN[itn, ibeam] = len(beamlocstmp)
-                    outdata[itn, ibeam] = lagfunc(inputdata *ksysmult,
+                    outdata[itn, ibeam] = lagfunc(inputdata,
                                                   numtype=simdtype, pulse=pulse,
                                                   lagtype=lagtype)
-                    outnoise[itn, ibeam] = lagfunc(noisedata*ksysmultn,
+                    outnoise[itn, ibeam] = lagfunc(noisedata,
                                                    numtype=simdtype, pulse=pulse,
                                                    lagtype=lagtype)
-                    outcal[itn, ibeam] = lagfunc(caldata*ksysmultc, numtype=simdtype,
+                    outcal[itn, ibeam] = lagfunc(caldata, numtype=simdtype,
                                                  pulse=pulse, lagtype=lagtype)
 
-                    outaddednoise[itn, ibeam] = lagfunc(noisedataadd*ksysmultna,
+                    outaddednoise[itn, ibeam] = lagfunc(noisedataadd,
                                                         numtype=simdtype, pulse=pulse,
                                                         lagtype=lagtype)
 
         # Create output dictionaries and output data
         data_lags = {'ACF':outdata, 'Pow':outdata[:, :, :, 0].real, 'Pulses':pulses,
-                     'Time':timemat, 'AddedNoiseACF':outaddednoise}
+                     'Time':timemat, 'AddedNoiseACF':outaddednoise, "CalACF":outcal}
         noise_lags = {'ACF':outnoise, 'Pow':outnoise[:, :, :, 0].real, 'Pulses':pulsesN,
                       'Time':timemat}
         return(data_lags, noise_lags)
@@ -553,10 +543,12 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     angles = simparams['angles']
     ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
     rng_vec = simparams['Rangegates']
+    n_samps = len(rng_vec)
     # pull in other data
     t_s = float(simparams['fsden'])/simparams['fsnum']
     ds_fac = sp.prod(simparams['declist'])
-    pulsewidth = len(simparams['Pulse'])*t_s
+    p_samps = len(simparams['Pulse'])
+    pulsewidth = p_samps*t_s
     txpower = sensdict['Pt']
     if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
         Ksysvec = sensdict['Ksys']
@@ -566,16 +558,18 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
         inplist = sp.array([i[0] for i in beamlistlist])
         Ksysvec = sensdict['Ksys'][inplist]
         ang_data_temp = ang_data.copy()
-        ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist ])
+        ang_data = sp.array([ang_data_temp[i].mean(axis=0) for i in beamlistlist ])
 
     sumrule = simparams['SUMRULE']
     rng_vec2 = simparams['Rangegatesfinal']
-    minrg = -sumrule[0].min()
-    maxrg = len(rng_vec)-sumrule[1].max()
     Nrng2 = len(rng_vec2)
+    minrg = -sumrule[0].min()
+    maxrg = Nrng2 + minrg
+    calpwr = v_Boltz*sensdict['CalDiodeTemp']*float(simparams['fsnum'])/simparams['fsden']
 
     # Copy the lags
     lagsData = DataLags['ACF'].copy()
+    lagscal = DataLags['CalACFGui'].copy()
     # Set up the constants for the lags so they are now
     # in terms of density fluxtuations.
     angtile = sp.tile(ang_data, (Nrng2, 1))
@@ -583,29 +577,51 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     coordlist = sp.zeros((len(rng_rep), 3))
     [coordlist[:, 0], coordlist[:, 1:]] = [rng_rep, angtile]
     (Nt, n_beams, Nrng, Nlags) = lagsData.shape
-    rng3d = sp.tile(rng_vec[sp.newaxis, sp.newaxis, :, sp.newaxis], (Nt, n_beams, 1, Nlags))*1e3
-    ksys3d = sp.tile(Ksysvec[sp.newaxis, :, sp.newaxis, sp.newaxis], (Nt, 1, Nrng, Nlags))
-    radar2acfmult = rng3d*rng3d/(pulsewidth*txpower*ksys3d)
+    plen2 = float(p_samps-1)/2
+    samps = sp.arange(0, p_samps, dtype=int)
+    rng_ave = sp.ones_like(rng_vec)
+    rng_vectemp = rng_vec.copy()
+    rng_vectemp[rng_vec <= 0] = 0
+    for isamp in range(n_samps):
+        cursamps = isamp-samps
+        keepsamps = cursamps >= 0
+        cursamps = cursamps[keepsamps]
+        rng_samps = rng_vectemp[cursamps]
+        keepsamps2 = rng_samps > 0
+        if keepsamps2.sum() == 0:
+            continue
+        rng_samps = rng_samps[keepsamps2]
+        rng_ave[isamp] = 1./sp.sqrt(sp.sum(1./sp.power(rng_samps*1e3, 2))/p_samps)
+    rng_ave_temp = rng_ave.copy()
+    rng_ave = rng_ave[int(sp.floor(plen2)):-int(sp.ceil(plen2))]
+    rng_ave = rng_ave[minrg:maxrg]
+
+
     pulses = sp.tile(DataLags['Pulses'][:, :, sp.newaxis, sp.newaxis], (1, 1, Nrng, Nlags))
     time_vec = time_vec[:Nt]
     # Divid lags by number of pulses
     lagsData = lagsData/pulses
     # Set up the noise lags and divid out the noise.
     lagsNoise = NoiseLags['ACF'].copy()
-    lagsNoise = sp.mean(lagsNoise,axis=2)
-    pulsesnoise = sp.tile(NoiseLags['Pulses'][:, :, sp.newaxis],(1, 1, Nlags))
+    lagsNoise = sp.mean(lagsNoise, axis=2)
+    pulsesnoise = sp.tile(NoiseLags['Pulses'][:, :, sp.newaxis], (1, 1, Nlags))
     lagsNoise = lagsNoise/pulsesnoise
     lagsNoise = sp.tile(lagsNoise[:, :, sp.newaxis, :],(1, 1, Nrng, 1))
+    lagscal = lagscal/pulsesnoise
+    cal_den = sp.mean(lagscal[:,0] - lagsNoise[:,0])
+    cal_fac = calpwr/cal_den
 
-
+    rng3d = sp.tile(rng_ave[:, sp.newaxis, sp.newaxis, sp.newaxis], (1, Nlags, Nt, n_beams))
+    ksys3d = sp.tile(Ksysvec[sp.newaxis, sp.newaxis, sp.newaxis, :], (Nrng2, Nlags, Nt, 1))
+    radar2acfmult = cal_fac*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
 
     # subtract out noise lags
     lagsData = lagsData-lagsNoise
     # Calculate a variance using equation 2 from Hysell's 2008 paper. Done use full covariance matrix because assuming nearly diagonal.
 
     # multiply the data and the sigma by inverse of the scaling from the radar
-    lagsData = lagsData*radar2acfmult
-    lagsNoise = lagsNoise*radar2acfmult
+    # lagsData = lagsData*radar2acfmult
+    # lagsNoise = lagsNoise*radar2acfmult
 
     # Apply summation rule
     # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
@@ -615,10 +631,12 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsNoisesum = sp.zeros((Nrng2 ,Nlags, Nt, n_beams), dtype=lagsNoise.dtype)
     for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
         for ilag in range(Nlags):
-            lagsDatasum[irngnew,ilag] = lagsData[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
-            lagsNoisesum[irngnew,ilag] = lagsNoise[irng+sumrule[0,ilag]:irng+sumrule[1,ilag]+1,ilag].sum(axis=0)
+            lagsDatasum[irngnew, ilag] = lagsData[irng+sumrule[0, ilag]:irng+sumrule[1, ilag]+1, ilag].sum(axis=0)
+            lagsNoisesum[irngnew, ilag] = lagsNoise[irng+sumrule[0, ilag]:irng+sumrule[1, ilag]+1, ilag].sum(axis=0)
     # Put everything in a parameter list
-    Paramdata = sp.zeros((n_beams*Nrng2,Nt,Nlags),dtype=lagsData.dtype)
+    Paramdata = sp.zeros((n_beams*Nrng2, Nt, Nlags), dtype=lagsData.dtype)
+    lagsDatasum = lagsDatasum*radar2acfmult
+    lagsNoisesum = lagsNoisesum*radar2acfmult
     # Put everything in a parameter list
     # transpose from (range,lag,time,beams) to (beams,range,time,lag)
     lagsDatasum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
