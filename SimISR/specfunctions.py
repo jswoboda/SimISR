@@ -146,13 +146,16 @@ def ISRSfitfunction(x, y_acf, sensdict, simparams, Niratios,  y_err=None ):
     grt0 = np.exp(-datablock)
     pentsum = np.zeros(grt0.size+1)
     pentsum[:-1] = grt0.flatten()
+    ds_fac = int(np.prod(simparams['declist']))
 
-
-    specobj = ISRSpectrum(centerFrequency=sensdict['fc'], nspec=npts, sampfreq=sensdict['fs'])
+    f_s = float(simparams['fsnum'])/simparams['fsden']
+    sampfreq = f_s/ds_fac
+    npts = int(npts/ds_fac)
+    specobj = ISRSpectrum(centerFrequency=sensdict['fc'], nspec=npts, sampfreq=sampfreq)
     (omeg, cur_spec, rcs) = specobj.getspecsep(datablock, specs, v_i, rcsflag=True)
     cur_spec.astype(numtype)
     # Create spectrum guess
-    (tau, acf) = spect2acf(omeg,cur_spec)
+    (_, acf) = spect2acf(omeg, cur_spec)
 
     if amb_dict['WttMatrix'].shape[-1] != acf.shape[0]:
         pdb.set_trace()

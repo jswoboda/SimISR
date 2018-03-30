@@ -5,7 +5,7 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 @author: John Swoboda
 """
-import pdb
+import ipdb
 import scipy as sp
 # My modules
 from isrutilities.physConstants import v_C_0, v_Boltz
@@ -563,13 +563,14 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     sumrule = simparams['SUMRULE']
     rng_vec2 = simparams['Rangegatesfinal']
     Nrng2 = len(rng_vec2)
+
     minrg = -sumrule[0].min()
     maxrg = Nrng2 + minrg
     calpwr = v_Boltz*sensdict['CalDiodeTemp']*float(simparams['fsnum'])/simparams['fsden']
 
     # Copy the lags
     lagsData = DataLags['ACF'].copy()
-    lagscal = DataLags['CalACFGui'].copy()
+    lagscal = DataLags['CalACF'].copy()
     # Set up the constants for the lags so they are now
     # in terms of density fluxtuations.
     angtile = sp.tile(ang_data, (Nrng2, 1))
@@ -607,10 +608,16 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     pulsesnoise = sp.tile(NoiseLags['Pulses'][:, :, sp.newaxis], (1, 1, Nlags))
     lagsNoise = lagsNoise/pulsesnoise
     lagsNoise = sp.tile(lagsNoise[:, :, sp.newaxis, :],(1, 1, Nrng, 1))
-    lagscal = lagscal/pulsesnoise
-    cal_den = sp.mean(lagscal[:,0] - lagsNoise[:,0])
-    cal_fac = calpwr/cal_den
 
+    # Set up calibration
+    lagscal = lagscal/pulsesnoise
+    cal_lag0 = lagscal.mean(axis=2)[:, :, 0]
+    noise_lag0 = lagsNoise.mean(axis=2)[:, :, 0]
+    cal_den = cal_lag0 - noise_lag0
+    cal_fac = calpwr/cal_den
+    cal_fac = sp.tile(cal_fac[sp.newaxis, sp.newaxis, :, :], (Nrng2, Nlags, 1, 1))
+
+    # Set Up arrays for range adjustment
     rng3d = sp.tile(rng_ave[:, sp.newaxis, sp.newaxis, sp.newaxis], (1, Nlags, Nt, n_beams))
     ksys3d = sp.tile(Ksysvec[sp.newaxis, sp.newaxis, sp.newaxis, :], (Nrng2, Nlags, Nt, 1))
     radar2acfmult = cal_fac*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
@@ -629,6 +636,8 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsNoise = sp.transpose(lagsNoise, axes=(2, 3, 0, 1))
     lagsDatasum = sp.zeros((Nrng2, Nlags, Nt, n_beams), dtype=lagsData.dtype)
     lagsNoisesum = sp.zeros((Nrng2 ,Nlags, Nt, n_beams), dtype=lagsNoise.dtype)
+
+
     for irngnew,irng in enumerate(sp.arange(minrg,maxrg)):
         for ilag in range(Nlags):
             lagsDatasum[irngnew, ilag] = lagsData[irng+sumrule[0, ilag]:irng+sumrule[1, ilag]+1, ilag].sum(axis=0)
@@ -639,13 +648,13 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsNoisesum = lagsNoisesum*radar2acfmult
     # Put everything in a parameter list
     # transpose from (range,lag,time,beams) to (beams,range,time,lag)
-    lagsDatasum = sp.transpose(lagsDatasum,axes=(3,0,2,1))
-    lagsNoisesum = sp.transpose(lagsNoisesum,axes=(3,0,2,1))
+    lagsDatasum = sp.transpose(lagsDatasum, axes=(3, 0, 2, 1))
+    lagsNoisesum = sp.transpose(lagsNoisesum, axes=(3, 0, 2, 1))
     # Get the covariance matrix
-    pulses_s=sp.transpose(pulses,axes=(1,2,0,3))[:,:Nrng2]
-    Cttout=makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags)
+    pulses_s=sp.transpose(pulses, axes=(1, 2, 0, 3))[:, :Nrng2]
+    Cttout=makeCovmat(lagsDatasum, lagsNoisesum, pulses_s, Nlags)
 
-    Paramdatasig = sp.zeros((n_beams*Nrng2,Nt,Nlags,Nlags),dtype=Cttout.dtype)
+    Paramdatasig = sp.zeros((n_beams*Nrng2, Nt, Nlags, Nlags), dtype=Cttout.dtype)
 
     curloc = 0
     for irng in range(Nrng2):

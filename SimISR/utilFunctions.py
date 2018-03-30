@@ -5,7 +5,7 @@ Created on Tue Jul 22 16:18:21 2014
 @author: Bodangles
 """
 from __future__ import print_function
-import pdb
+import ipdb
 import sys
 import warnings
 import pickle
@@ -83,18 +83,23 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
     # For default case use chebychev 1 order 8 and take the power of the
     # original frequency response of each decmination filter because it is run as
     # a zero phase filter using filtfilt.
-    curfreq = sp.ones(nspec)
-    curds = 1
+    curfreq = sp.zeros(nspec, dtype=float)
+    # curds = 1
     m_up = sp.prod(ds_list)
-    for i_ds in ds_list:
-        # taken from decimate command
-        dtisys1 =  scisig.dlti(*sp.signal.cheby1(8, 0.05, 0.8 / i_ds))
-        w,hf = scisig.freqz(dtisys1.num,dtisys1.den,nspec/curds,True)
-        Hf = sp.absolute(hf)**2
-        f_1 = int(sp.ceil(float(nspec/curds)/2))
-        curfreq[:f_1] = curfreq[:f_1]*Hf[:f_1]
-        curfreq[-f_1:] = curfreq[-f_1:]*Hf[-f_1:]
-        curds *= i_ds
+    # for i_ds in ds_list:
+    #     # taken from decimate command
+    #     dtisys1 =  scisig.dlti(*sp.signal.cheby1(8, 0.05, 0.8 / i_ds))
+    #     w,hf = scisig.freqz(dtisys1.num,dtisys1.den,nspec/curds,True)
+    #     Hf = sp.absolute(hf)**2
+    #     f_1 = int(sp.ceil(float(nspec/curds)/2))
+    #     curfreq[:f_1] = curfreq[:f_1]*Hf[:f_1]
+    #     curfreq[-f_1:] = curfreq[-f_1:]*Hf[-f_1:]
+    #     curds *= i_ds
+
+    nout = nspec/m_up
+    curfreq[:nout/2] = 1
+    curfreq[-nout/2:] = 1
+
     curh = sp.ifft(curfreq)
     nspec = int(nspec)
     plen = len(pulse)
@@ -156,12 +161,12 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
     imat = sp.eye(nspec)
     tau = sp.arange(-sp.floor(nspec/2.), sp.ceil(nspec/2.))/Fsorg
     tauint = Delay
-    interpmat = spinterp.interp1d(tau,imat, bounds_error=0, axis=0)(tauint)
+    interpmat = spinterp.interp1d(tau, imat, bounds_error=0, axis=0)(tauint)
     lagmat = sp.dot(Wtt.sum(axis=1),interpmat)
     W0 = lagmat[0].sum()
     for ilag in range(nlags):
        lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
-
+    lagmat = lagmat[:,::m_up]
     Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),
                'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
     return Wttdict
@@ -733,22 +738,24 @@ def readconfigfile(fname):
                                      simparams['numpoints'])
     simparams['angles'] = angles
     d_len = simparams['datasamples']
+
     #rng_gates = sp.arange(d_len[0], d_len[1]-(len(pulse)-1))*t_s*v_C_0*1e-3/2.
-    rng_gates = sp.arange(d_len[0], d_len[1])*t_s*v_C_0*1e-3/2.
+    rng_samprate = t_s*v_C_0*1e-3/2.
+    rng_samprateds = rng_samprate/ds_fac
+    rng_gates = sp.arange(d_len[0], d_len[1])*rng_samprate
     rng_gates_ds = rng_gates[::ds_fac]
     simparams['Timevec'] = sp.arange(0, time_lim, simparams['Fitinter'])
     simparams['Rangegates'] = rng_gates
     if 'lagtype' not in simparams.keys():
         simparams['lagtype'] = 'centered'
 
-    plen_ds = simparams['Pulselength']/ds_fac
+    plen_ds = int(len(pulse)/ds_fac)
     sumrule = makesumrule(simparams['Pulsetype'], plen_ds, simparams['lagtype'])
     simparams['SUMRULE'] = sumrule
-    minrg = -sumrule[0].min()
-    maxrg = len(rng_gates_ds)-sumrule[1].max()
+    minrg = plen_ds-1
+    maxrg = len(rng_gates_ds)-plen_ds+1
 
-    simparams['Rangegatesfinal'] = sp.array([sp.mean(rng_gates_ds[irng+sumrule[0, 0]:irng+sumrule[1, 0]+1])
-                                             for irng in range(minrg, maxrg)])
+    simparams['Rangegatesfinal'] = rng_gates_ds[minrg:maxrg]
     # HACK need to move this to the sensor constants part
     sensdict['CalDiodeTemp'] = 1689.21
     # Set the number of noise samples to IPP

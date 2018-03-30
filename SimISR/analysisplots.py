@@ -599,8 +599,10 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
     Nloc = coords.shape[0]
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-    pulse = simparams['Pulse']
-    ts = float(simparams['fsden']*sp.prod(simparams['declist']))/simparams['fsnum']
+    ds_fac = sp.prod(simparams['declist'])
+    pulse = simparams['Pulse'][::ds_fac]
+    p_samps = len(pulse)
+    ts = float(simparams['fsden']*ds_fac)/simparams['fsnum']
 
     tau1 = sp.arange(pulse.shape[-1])*ts
 
@@ -699,7 +701,7 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
                 # apply ambiguity funciton to spectrum
                 curin = specin[iloc,itime]
                 (tau,acf) = spect2acf(omeg,curin)
-                acf1 = scfft.ifftshift(acf)[:len(pulse)]*len(curin)
+                acf1 = scfft.ifftshift(acf)[:p_samps]*len(curin)
                 rcs = acf1[0].real
                 guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
                 guess_acf = guess_acf*rcs/guess_acf[0].real

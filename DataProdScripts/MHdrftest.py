@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pyglow.pyglow import Point
 from SimISR.IonoContainer import IonoContainer
-from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigfile
+from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigfile, readconfigfile
 from SimISR.analysisplots import analysisdump
 from SimISR.runsim import main as runsimisr
 from SimISR import Path
@@ -28,7 +28,7 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     time_arr = sp.column_stack((timelist, sp.roll(timelist, -1)))
     time_arr[-1, -1] = time_arr[-1, 0]+dn_diff_sec
 
-    v=[]
+    v = []
     coords = sp.column_stack((sp.zeros((len(z), 2), dtype=z.dtype), z))
     all_spec = ['O+', 'NO+', 'O2+', 'H+', 'HE+']
     Param_List = sp.zeros((len(z), len(dn_list),len(all_spec),2))
@@ -57,8 +57,30 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     species = sp.array(all_spec)[spec_keep[:-1]].tolist()
     species.append('e-')
     Param_List[:, :] = Param_List[:, :, spec_keep]
-    Iono_out = IonoContainer(coords, Param_List, times = time_arr, species=species)
+    Iono_out = IonoContainer(coords, Param_List, times=time_arr, species=species)
     return Iono_out
+
+def configfilesetup(testpath, npulses):
+    """ This will create the configureation file given the number of pulses for
+        the test. This will make it so that there will be 12 integration periods
+        for a given number of pulses.
+        Input
+            testpath - The location of the data.
+            npulses - The number of pulses.
+    """
+    curloc = Path(__file__).resolve().parent
+    defcon = curloc/'MHsimple.yml'
+    (sensdict, simparams) = readconfigfile(defcon)
+    # tint = simparams['IPP']*npulses
+    # ratio1 = tint/simparams['Tint']
+    # simparams['Tint'] = ratio1*simparams['Tint']
+    # simparams['Fitinter'] = ratio1 * simparams['Fitinter']
+    # simparams['TimeLim'] = 2*tint
+    simparams['fitmode'] = 1
+    simparams['startfile'] = 'startfile.h5'
+    makeconfigfile(str(testpath/'MHsimple.yml'), simparams['Beamlist'],
+                   sensdict['Name'], simparams)
+
 
 def plotiono(ionoin,fileprefix):
 
@@ -121,9 +143,8 @@ def main(ARGS):
     check_run = sp.any(check_list)
     functlist_red = sp.array(functlist_default)[check_list].tolist()
 
-    config = testpath.joinpath('MHsimple.yml')
-    if not config.exists():
-        shutil.copy(str(configfile_org), str(config))
+    configfilesetup(testpath, ARGS.npulses)
+    config = str(testpath.joinpath('MHsimple.yml'))
 
     inputpath = testpath.joinpath('Origparams')
     ionoout = pyglowinput()
@@ -132,6 +153,7 @@ def main(ARGS):
 
     inputfile = inputpath.joinpath('0 stats.h5')
     ionoout.saveh5(str(inputfile))
+    ionoout.saveh5(str(testpath.joinpath('startfile.h5')))
 
     #make digitral rf directories
     drfdirone = drfdata = testpath/'drfdata'
@@ -164,6 +186,7 @@ if __name__== '__main__':
     PAR1 = argparse.ArgumentParser(description=descr)
 
     PAR1.add_argument("-p", "--path", help='Path.', type=str, default='')
+    PAR1.add_argument('-j', "--npulses", help='Number of pulses', type=int,default=10000)
     PAR1.add_argument('-f', '--funclist', help='Functions to be uses', nargs='+',
                       default=['spectrums', 'radardata', 'fitting', 'analysis'])
     PAR1 = PAR1.parse_args()

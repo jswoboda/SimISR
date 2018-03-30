@@ -20,5 +20,5 @@
   numpoints: 2560
   outangles:
   - [0]
-  species: [O+, e-]
+  species: ['O+', 'NO+', 'O2+', 'H+', 'e-']
   startfile: ''
