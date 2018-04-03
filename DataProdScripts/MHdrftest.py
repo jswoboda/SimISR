@@ -133,7 +133,6 @@ def main(ARGS):
     """
     curloc = Path(__file__).resolve().parent
     testpath = Path(ARGS.path)
-    configfile_org = curloc / 'MHsimple.yml'
 
     if not testpath.is_dir():
         testpath.mkdir(parents=True)
@@ -178,7 +177,8 @@ def main(ARGS):
     if check_run:
         runsimisr(functlist_red, str(testpath), config, True)
 
-
+    if 'analysis' in functlist:
+        analysisdump(str(testpath), config)
 if __name__== '__main__':
     descr = '''
              This script will perform the basic run est for ISR sim.

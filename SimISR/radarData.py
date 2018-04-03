@@ -74,7 +74,8 @@ class RadarDataFile(object):
         n_cal = c_samps[1] - c_samps[0]
 
         dec_list = self.simparams['declist']
-        ds_fac = float(sp.prod(dec_list))
+        ds_fac = sp.prod(dec_list)
+        ipp_lim = ds_fac*(ippsamps/ds_fac)
         filetimes = Ionodict.keys()
         filetimes.sort()
         ftimes = sp.array(filetimes)
@@ -190,10 +191,10 @@ class RadarDataFile(object):
                 rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
                                             curcontainer.Sphere_Coords,
                                             curcontainer.Param_List, pb)
-                rawdata_us = rawdata.copy()
-                for idec in dec_list:
-                    rawdata_us = sp.signal.resample(rawdata_us, rawdata_us.shape[1]*idec, axis=1)
-                n_pulse_cur = rawdata.shape[0]
+
+                n_pulse_cur, n_raw = rawdata.shape
+                rawdata_us = sp.signal.resample(rawdata, n_raw*ds_fac, axis=1)
+
                 alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
                 alldata = sp.sqrt(noisepwr/2.)*alldata
                 noisedata = alldata[:, d_samps[0]:d_samps[1]]
@@ -202,19 +203,18 @@ class RadarDataFile(object):
                                              1j*sp.random.randn(n_pulse_cur, n_cal).astype(simdtype))
                 alldata[:, c_samps[0]:c_samps[1]] = alldata[:, c_samps[0]:c_samps[1]] + caldata
                 alldata = alldata/sp.sqrt(calpwr)
-                rawdata_ds = rawdata_us.copy()/sp.sqrt(calpwr)
-                noisedata_ds = noisedata.copy()/sp.sqrt(calpwr)
+                rawdata = rawdata_us.copy()/sp.sqrt(calpwr)
+                noisedata = noisedata.copy()/sp.sqrt(calpwr)
 
-                alldata_ds = alldata.copy()
-                for idec in dec_list:
-                    rawdata_ds = sp.signal.resample(rawdata_ds, rawdata_ds.shape[1]/idec, axis=1)
-                    noisedata_ds = sp.signal.resample(noisedata_ds, noisedata_ds.shape[1]/idec, axis=1)
-                    alldata_ds = sp.signal.resample(alldata_ds, alldata_ds.shape[1]/idec, axis=1)
+                # Down sample data using resample, keeps
+                rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
+                noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
+                alldata_ds = sp.signal.resample(alldata[:, :ipp_lim], ipp_lim/ds_fac, axis=1)
                 outdict['AddedNoise'] = noisedata_ds
-                outdict['RawData'] = alldata_ds[:, int(d_samps[0]/ds_fac):int(d_samps[1]/ds_fac)]
+                outdict['RawData'] = alldata_ds[:, d_samps[0]/ds_fac:d_samps[1]/ds_fac]
                 outdict['RawDatanonoise'] = rawdata_ds
-                outdict['NoiseData'] = alldata_ds[:, int(n_samps[0]/ds_fac):int(n_samps[1]/ds_fac)]
-                outdict['CalData'] = alldata_ds[:, int(c_samps[0]/ds_fac):int(c_samps[1]/ds_fac)]
+                outdict['NoiseData'] = alldata_ds[:, n_samps[0]/ds_fac:n_samps[1]/ds_fac]
+                outdict['CalData'] = alldata_ds[:, c_samps[0]/ds_fac:c_samps[1]/ds_fac]
                 outdict['Pulses'] = pn
                 outdict['Beams'] = pb
                 outdict['Time'] = pt
@@ -334,7 +334,8 @@ class RadarDataFile(object):
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
                     for idatn, idat in enumerate(curdataloc):
-                        out_data[idat, cur_pnts] = cur_pulse_data[idatn, cur_pnts-isamp]+out_data[idat, cur_pnts]
+                        cdat = cur_pulse_data[idatn, cur_pnts-isamp]+out_data[idat, cur_pnts]
+                        out_data[idat, cur_pnts] = cdat
 
         return out_data
         #%% Processing
@@ -451,7 +452,7 @@ class RadarDataFile(object):
                 pos_all = sp.hstack(poslist)
                 curfileloc = file_loc[pos_all]
             except:
-                pdb.set_trace()
+                ipdb.set_trace()
             # Find the needed files and beam numbers
             curfiles = set(curfileloc)
             beamlocs = beamn[pos_all]
