@@ -108,11 +108,11 @@ class RadarDataFile(object):
                                           is_continuous, marching_periods)
         drfdirtx = outdir.parent.joinpath('drfdata', 'rf_data', 'tx-h')
         data_object_tx = drf.DigitalRFWriter(str(drfdirtx), dtype_str, sub_cadence_secs,
-                                          file_cadence_millisecs, start_global_index,
-                                          sample_rate_numerator, sample_rate_denominator,
-                                          uuid, compression_level, checksum,
-                                          is_complex, num_subchannels,
-                                          is_continuous, marching_periods)
+                                             file_cadence_millisecs, start_global_index,
+                                             sample_rate_numerator, sample_rate_denominator,
+                                             uuid, compression_level, checksum,
+                                             is_complex, num_subchannels,
+                                             is_continuous, marching_periods)
         # Noise Scaling
         noisepwr = v_Boltz*sensdict['Tsys']*sample_rate
         calpwr = v_Boltz*sensdict['CalDiodeTemp']*sample_rate
@@ -553,7 +553,6 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
         Ksysvec = sensdict['Ksys']
     else:
-
         beamlistlist = sp.array(simparams['outangles']).astype(int)
         inplist = sp.array([i[0] for i in beamlistlist])
         Ksysvec = sensdict['Ksys'][inplist]
@@ -651,8 +650,8 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     lagsDatasum = sp.transpose(lagsDatasum, axes=(3, 0, 2, 1))
     lagsNoisesum = sp.transpose(lagsNoisesum, axes=(3, 0, 2, 1))
     # Get the covariance matrix
-    pulses_s=sp.transpose(pulses, axes=(1, 2, 0, 3))[:, :Nrng2]
-    Cttout=makeCovmat(lagsDatasum, lagsNoisesum, pulses_s, Nlags)
+    pulses_s = sp.transpose(pulses, axes=(1, 2, 0, 3))[:, :Nrng2]
+    Cttout = makeCovmat(lagsDatasum, lagsNoisesum, pulses_s, Nlags)
 
     Paramdatasig = sp.zeros((n_beams*Nrng2, Nt, Nlags, Nlags), dtype=Cttout.dtype)
 

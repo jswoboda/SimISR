@@ -53,7 +53,7 @@ def update_progress(progress, extstr=""):
         status = status + extstr + '\n'
     text = "\rPercent: [{0}] {1}% {2}".format("#"*block + "-"*(bar_length-block),
                                               progress*100, status)
-    print(text,end="")
+    print(text, end="")
     sys.stdout.flush()
 
 
@@ -86,15 +86,6 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
     curfreq = sp.zeros(nspec, dtype=float)
     # curds = 1
     m_up = sp.prod(ds_list)
-    # for i_ds in ds_list:
-    #     # taken from decimate command
-    #     dtisys1 =  scisig.dlti(*sp.signal.cheby1(8, 0.05, 0.8 / i_ds))
-    #     w,hf = scisig.freqz(dtisys1.num,dtisys1.den,nspec/curds,True)
-    #     Hf = sp.absolute(hf)**2
-    #     f_1 = int(sp.ceil(float(nspec/curds)/2))
-    #     curfreq[:f_1] = curfreq[:f_1]*Hf[:f_1]
-    #     curfreq[-f_1:] = curfreq[-f_1:]*Hf[-f_1:]
-    #     curds *= i_ds
 
     nout = nspec/m_up
     curfreq[:nout/2] = 1
@@ -132,8 +123,8 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
     numback = int(nvec.min()/m_up-Delay_num.min())
     numfront = numdiff-numback
 #    imprespad  = sp.pad(impres,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
-    imprespad  = sp.pad(impres, (numback, numfront), mode='constant',
-                        constant_values=(0.0, 0.0))
+    imprespad = sp.pad(impres, (numback, numfront), mode='constant',
+                       constant_values=(0.0, 0.0))
     (d2d, srng) = sp.meshgrid(Delay, t_rng)
     # envelop function
     t_p = sp.arange(plen)/Fsorg
@@ -143,10 +134,10 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
 #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
     envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
-    Wtt = sp.zeros((nlags,d2d.shape[0],d2d.shape[1]))
-    cursincrep = sp.tile(imprespad[sp.newaxis,:],(len(t_rng),1))
+    Wtt = sp.zeros((nlags, d2d.shape[0],d2d.shape[1]))
+    cursincrep = sp.tile(imprespad[sp.newaxis, :], (len(t_rng), 1))
     Wt0 = cursincrep*envfunc
-    Wt0fft = sp.fft(Wt0,axis=1)
+    Wt0fft = sp.fft(Wt0, axis=1)
     for ilag in sp.arange(nlags):
         cursinc = sp.roll(imprespad, ilag*m_up)
         cursincrep = sp.tile(cursinc[sp.newaxis, :], (len(t_rng), 1))
@@ -162,13 +153,14 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
     tau = sp.arange(-sp.floor(nspec/2.), sp.ceil(nspec/2.))/Fsorg
     tauint = Delay
     interpmat = spinterp.interp1d(tau, imat, bounds_error=0, axis=0)(tauint)
-    lagmat = sp.dot(Wtt.sum(axis=1),interpmat)
+    lagmat = sp.dot(Wtt.sum(axis=1), interpmat)
     W0 = lagmat[0].sum()
     for ilag in range(nlags):
-       lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
-    lagmat = lagmat[:,::m_up]
-    Wttdict = {'WttAll':Wtt,'Wtt':Wtt.max(axis=0),'Wrange':Wtt.sum(axis=1),'Wlag':Wtt.sum(axis=2),
-               'Delay':Delay,'Range':v_C_0*t_rng/2.0,'WttMatrix':lagmat}
+        lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
+    lagmat = lagmat[:, ::m_up]
+    Wttdict = {'WttAll':Wtt, 'Wtt':Wtt.max(axis=0), 'Wrange':Wtt.sum(axis=1),
+               'Wlag':Wtt.sum(axis=2), 'Delay':Delay, 'Range':v_C_0*t_rng/2.0,
+               'WttMatrix':lagmat}
     return Wttdict
 
 def spect2acf(omeg, spec, n_s=None):
@@ -316,7 +308,7 @@ def GenBarker(blen):
     outar.astype(sp.float64)
     return outar
 #%% Lag Functions
-def CenteredLagProduct(rawbeams,numtype=sp.complex128,pulse =sp.ones(14),lagtype='centered'):
+def CenteredLagProduct(rawbeams, numtype=sp.complex128, pulse=sp.ones(14), lagtype='centered'):
     """ This function will create a centered lag product for each range using the
     raw IQ given to it.  It will form each lag for each pulse and then integrate
     all of the pulses.
@@ -416,7 +408,7 @@ def makesumrule(ptype, nlags, lagtype='centered'):
     return sumrule
 
 #%% Make pulse
-def makepulse(ptype,nsamps,ts,nbauds=13):
+def makepulse(ptype, nsamps, ts, nbauds=13):
     """ This will make the pulse array.
         Inputs
             ptype - The type of pulse used.
@@ -448,7 +440,7 @@ def makepulse(ptype,nsamps,ts,nbauds=13):
 
 
 #%% dictionary file
-def dict2h5(fn,dictin):
+def dict2h5(fn, dictin):
     """A function that will save a dictionary to a h5 file.
     Inputs
         filename - The file name in a string.
@@ -462,14 +454,13 @@ def dict2h5(fn,dictin):
             # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
             # Make group for each dictionary
             for cvar in dictin.keys():
-    #            pdb.set_trace()
                 if type(dictin[cvar]) is list:
-                    f.create_group('/',cvar)
+                    f.create_group('/', cvar)
                     lenzeros= len(str(len(dictin[cvar])))-1
                     for inum, datapnts in enumerate(dictin[cvar]):
-                        f.create_array('/'+cvar,'Inst{0:0{1:d}d}'.format(inum,lenzeros),datapnts,'Static array')
+                        f.create_array('/'+cvar, 'Inst{0:0{1:d}d}'.format(inum,lenzeros),datapnts, 'Static array')
                 elif type(dictin[cvar]) is sp.ndarray:
-                    f.create_array('/',cvar,dictin[cvar],'Static array')
+                    f.create_array('/', cvar, dictin[cvar],'Static array')
                 else:
                     raise ValueError('Values in list must be lists or numpy arrays')
             f.close()
@@ -492,14 +483,14 @@ def h52dict(filename):
     for group in h5file.walk_groups('/'):
             output[group._v_pathname]={}
             for array in h5file.list_nodes(group, classname = 'Array'):
-                output[group._v_pathname][array.name]=array.read()
+                output[group._v_pathname][array.name] = array.read()
     h5file.close()
 
     outdict= {}
     # first get the
     base_arrs = output['/']
 
-    outdict={ikey.strip('/'):base_arrs[ikey] for ikey in base_arrs.keys()}
+    outdict = {ikey.strip('/'):base_arrs[ikey] for ikey in base_arrs.keys()}
 
     del output['/']
     for ikey in output.keys():
@@ -508,7 +499,7 @@ def h52dict(filename):
 
     return outdict
         #%% Test functions
-def Chapmanfunc(z,H_0,Z_0,N_0):
+def Chapmanfunc(z, H_0, Z_0, N_0):
     """This function will return the Chapman function for a given altitude
     vector z.  All of the height values are assumed km.
     Inputs
@@ -522,7 +513,7 @@ def Chapmanfunc(z,H_0,Z_0,N_0):
     return Ne
 
 
-def TempProfile(z,T0=1000.,z0=100.):
+def TempProfile(z, T0=1000., z0=100.):
     """
     This function creates a tempreture profile using arc tan functions for test purposes.
     Inputs
@@ -544,7 +535,7 @@ def TempProfile(z,T0=1000.,z0=100.):
 
 #%% Config files
 
-def makeconfigfile(fname,beamlist,radarname,simparams_orig):
+def makeconfigfile(fname, beamlist, radarname, simparams_orig):
     """This will make the config file based off of the desired input parmeters.
     Inputs
         fname - Name of the file as a string.
@@ -720,7 +711,6 @@ def readconfigfile(fname):
     if 'declist' not in simparams.keys():
         simparams['declist'] = []
 
-
     for ikey in sensdict.keys():
         if ikey  in simparams.keys():
             sensdict[ikey] = simparams[ikey]
@@ -765,7 +755,7 @@ def readconfigfile(fname):
         if not relpath.is_absolute():
             # Some times the ini files may split the strings of the start
             # file because of white space in file names.
-            if type(simparams['startfile'])is list:
+            if type(simparams['startfile']) is list:
                 startfile = " ".join(simparams['startfile'])
             else:
                 startfile = simparams['startfile']
