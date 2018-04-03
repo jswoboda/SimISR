@@ -683,7 +683,7 @@ def readconfigfile(fname):
         config.read(str(fname))
         beamlist = config.get('section 1','beamlist').split()
         beamlist = [float(i) for i in beamlist]
-        angles = angles = sensconst.getangles(dictlist[0]['beamlist'], dictlist[0]['radarname'])
+        angles = sensconst.getangles(dictlist[0]['beamlist'], dictlist[0]['radarname'])
         ang_data = sp.array([[iout[0],iout[1]] for iout in angles])
 
         sensdict = sensconst.getConst(config.get('section 1','radarname'),ang_data)
