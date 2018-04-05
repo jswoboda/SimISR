@@ -192,10 +192,9 @@ class RadarDataFile(object):
             for ibn in range(Nbeams):
                 #print('\t\t Making Beam {0:d} of {1:d}'.format(ibn, Nbeams))
                 weight = weights[ibn]
-                for isamp in range(-lp_pnts, N_samps):
+                for isamp in range(N_samps):
                     range_g = range_gates[isamp]
                     # if isamp >= :
-                    #     ipdb.set_trace()
                     if range_g <= 0:
                         continue
                     range_m = range_g*1e3
@@ -420,7 +419,8 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     rng_vec = simparams['Rangegates']
     n_samps = len(rng_vec)
     # pull in other data
-    p_samps = len(simparams['Pulse'])
+    pulse = simparams['Pulse']
+    p_samps = len(pulse)
     pulsewidth = p_samps*sensdict['t_s']
     txpower = sensdict['Pt']
     if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
@@ -437,7 +437,7 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     rng_vec2 = simparams['Rangegatesfinal']
     Nrng2 = len(rng_vec2)
     minrg = 2*p_samps-1+sumrule[0].min()
-    maxrg = maxrg=Nrng2+minrg
+    maxrg = Nrng2+minrg
 
 
     # Copy the lags
@@ -449,33 +449,36 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     coordlist = sp.zeros((len(rng_rep), 3))
     [coordlist[:, 0], coordlist[:, 1:]] = [rng_rep, angtile]
     (Nt, Nbeams, Nrng, Nlags) = lagsData.shape
-    # rng3d = sp.tile(rng_vec2[sp.newaxis, :, sp.newaxis, sp.newaxis], (Nbeams, 1, Nt, Nlags))*1e3
-    # ksys3d = sp.tile(Ksysvec[:, sp.newaxis, sp.newaxis, sp.newaxis], (1, Nrng2, Nt, Nlags))
+
     # make a range average to equalize out the conntributions from each gate
 
-    plen2 = float(p_samps-1)/2
+    plen2 = int(sp.floor(float(p_samps-1)/2))
     samps = sp.arange(0, p_samps, dtype=int)
-    rng_ave = sp.ones_like(rng_vec)
-    rng_vectemp = rng_vec.copy()
-    rng_vectemp[rng_vec <= 0] = 0
-    for isamp in range(n_samps):
-        cursamps = isamp-samps
-        keepsamps = cursamps >= 0
-        cursamps = cursamps[keepsamps]
-        rng_samps = rng_vectemp[cursamps]
-        keepsamps2 = rng_samps > 0
-        if keepsamps2.sum() == 0:
-            continue
-        rng_samps = rng_samps[keepsamps2]
-        rng_ave[isamp] = 1./sp.sqrt(sp.sum(1./sp.power(rng_samps*1e3, 2))/p_samps)
+    rng_lags = CenteredLagProduct(rng_vec[sp.newaxis, :]*1e3, numtype=sp.float64,
+                                  pulse=pulse)
+    rng_ave = sp.ones_like(rng_lags)
+
+    for isamp in range(Nrng):
+        for ilag in range(p_samps):
+            sampsred = samps[:p_samps-ilag]
+            cursamps = isamp-sampsred
+
+            keepsamps = sp.logical_and(cursamps >= 0, cursamps < Nrng)
+            cursamps = cursamps[keepsamps]
+            rng_samps = rng_lags[cursamps, ilag]
+            keepsamps2 = rng_samps > 0
+            if keepsamps2.sum() == 0:
+                continue
+            rng_samps = rng_samps[keepsamps2]
+            rng_ave[isamp, ilag] = 1./(sp.mean(1./(rng_samps)))
     rng_ave_temp = rng_ave.copy()
-    rng_ave = rng_ave[int(sp.floor(plen2)):-int(sp.ceil(plen2))]
-    rng_ave = rng_ave[minrg:maxrg]
-    # rng3d = sp.tile(rng_ave[sp.newaxis, sp.newaxis, :, sp.newaxis], (Nt, Nbeams, 1, Nlags))
-    # ksys3d = sp.tile(Ksysvec[:, sp.newaxis, sp.newaxis, sp.newaxis], (Nt, 1, Nrng, Nlags))
-    rng3d = sp.tile(rng_ave[:, sp.newaxis, sp.newaxis, sp.newaxis], (1, Nlags, Nt, Nbeams))
-    ksys3d = sp.tile(Ksysvec[sp.newaxis, sp.newaxis, sp.newaxis, :], (Nrng2, Nlags, Nt, 1))
-    radar2acfmult = rng3d*rng3d/(pulsewidth*txpower*ksys3d)
+    # rng_ave = rng_ave[int(sp.floor(plen2)):-int(sp.ceil(plen2))]
+    # rng_ave = rng_ave[minrg:maxrg]
+    rng3d = sp.tile(rng_ave[sp.newaxis, sp.newaxis, :, :], (Nt, Nbeams, 1, 1))
+    ksys3d = sp.tile(Ksysvec[:, sp.newaxis, sp.newaxis, sp.newaxis], (Nt, 1, Nrng, Nlags))
+    # rng3d = sp.tile(rng_ave[:, sp.newaxis, sp.newaxis, sp.newaxis], (1, Nlags, Nt, Nbeams))
+    # ksys3d = sp.tile(Ksysvec[sp.newaxis, sp.newaxis, sp.newaxis, :], (Nrng2, Nlags, Nt, 1))
+    radar2acfmult = rng3d/(pulsewidth*txpower*ksys3d)
     pulses = sp.tile(DataLags['Pulses'][:, :, sp.newaxis, sp.newaxis], (1, 1, Nrng, Nlags))
     time_vec = time_vec[:Nt]
     # Divid lags by number of pulses
@@ -489,8 +492,8 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
 
     #ipdb.set_trace()
     # multiply the data and the sigma by inverse of the scaling from the radar
-    # lagsData = lagsData*radar2acfmult
-    # lagsNoise = lagsNoise*radar2acfmult
+    lagsData = lagsData*radar2acfmult
+    lagsNoise = lagsNoise*radar2acfmult
     # Apply summation rule
     # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
     lagsData = sp.transpose(lagsData, axes=(2, 3, 0, 1))
@@ -511,8 +514,8 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     Paramdata = sp.zeros((Nbeams*Nrng2, Nt, Nlags), dtype=lagsData.dtype)
     # Put everything in a parameter list
     # transpose from (range,lag,time,beams) to (beams,range,time,lag)
-    lagsDatasum = lagsDatasum*radar2acfmult
-    lagsNoisesum = lagsNoisesum*radar2acfmult
+    # lagsDatasum = lagsDatasum*radar2acfmult
+    # lagsNoisesum = lagsNoisesum*radar2acfmult
     lagsDatasum = sp.transpose(lagsDatasum, axes=(3, 0, 2, 1))
     lagsNoisesum = sp.transpose(lagsNoisesum, axes=(3, 0, 2, 1))
 
@@ -522,10 +525,10 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
 
     # Calculate a variance using equation 2 from Hysell's 2008 paper. Done use full covariance matrix because assuming nearly diagonal.
     # Get the covariance matrix
-    pulses_s = sp.transpose(pulses,axes=(1, 2 ,0, 3))[:, :Nrng2]
-    Cttout=makeCovmat(lagsDatasum, lagsNoisesum, pulses_s, Nlags)
+    pulses_s = sp.transpose(pulses, axes=(1, 2 ,0, 3))[:, :Nrng2]
+    Cttout = makeCovmat(lagsDatasum, lagsNoisesum, pulses_s, Nlags)
 
-    Paramdatasig = sp.zeros((Nbeams*Nrng2 ,Nt, Nlags, Nlags),dtype=Cttout.dtype)
+    Paramdatasig = sp.zeros((Nbeams*Nrng2 ,Nt, Nlags, Nlags), dtype=Cttout.dtype)
 
     curloc = 0
     for irng in range(Nrng2):
@@ -535,30 +538,30 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
             curloc += 1
     ionodata = IonoContainer(coordlist, Paramdata, times=time_vec, ver=1,
                              paramnames=sp.arange(Nlags)*sensdict['t_s'])
-    ionosigs = IonoContainer(coordlist, Paramdatasig, times = time_vec,ver=1,
-                             paramnames=sp.arange(Nlags*Nlags).reshape(Nlags, Nlags)*sensdict['t_s'])
+    ionosigs = IonoContainer(coordlist, Paramdatasig, times=time_vec, ver=1,
+                             paramnames=sp.arange(Nlags**2).reshape(Nlags, Nlags)*sensdict['t_s'])
     return (ionodata, ionosigs)
 
-def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
+def makeCovmat(lagsDatasum, lagsNoisesum, pulses_s, Nlags):
     """
         Makes the covariance matrix for the lags given the noise acf and number
         of pulses.
     """
-    axvec=sp.roll(sp.arange(lagsDatasum.ndim),1)
+    axvec = sp.roll(sp.arange(lagsDatasum.ndim), 1)
     # Get the covariance matrix
-    R=sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s),axes=axvec)
-    Rw=sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s),axes=axvec)
-    l=sp.arange(Nlags)
-    T1,T2=sp.meshgrid(l,l)
-    R0=R[sp.zeros_like(T1)]
-    Rw0=Rw[sp.zeros_like(T1)]
-    Td=sp.absolute(T1-T2)
+    R = sp.transpose(lagsDatasum/sp.sqrt(2.*pulses_s), axes=axvec)
+    Rw = sp.transpose(lagsNoisesum/sp.sqrt(2.*pulses_s), axes=axvec)
+    l = sp.arange(Nlags)
+    T1, T2 = sp.meshgrid(l, l)
+    R0 = R[sp.zeros_like(T1)]
+    Rw0 = Rw[sp.zeros_like(T1)]
+    Td = sp.absolute(T1-T2)
     Tl = T1>T2
-    R12 =R[Td]
-    R12[Tl]=sp.conjugate(R12[Tl])
-    Rw12 =Rw[Td]
-    Rw12[Tl]=sp.conjugate(Rw12[Tl])
-    Ctt=R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
-    avecback=sp.roll(sp.arange(Ctt.ndim),-2)
-    Cttout = sp.transpose(Ctt,avecback)
+    R12 = R[Td]
+    R12[Tl] = sp.conjugate(R12[Tl])
+    Rw12 = Rw[Td]
+    Rw12[Tl] = sp.conjugate(Rw12[Tl])
+    Ctt = R0*R12+R[T1]*sp.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*sp.conjugate(Rw[T2])
+    avecback = sp.roll(sp.arange(Ctt.ndim), -2)
+    Cttout = sp.transpose(Ctt, avecback)
     return Cttout
