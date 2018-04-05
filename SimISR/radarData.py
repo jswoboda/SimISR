@@ -76,7 +76,6 @@ class RadarDataFile(object):
 
         dec_list = self.simparams['declist']
         ds_fac = sp.prod(dec_list)
-        ipp_lim = ds_fac*(ippsamps/ds_fac)
         filetimes = Ionodict.keys()
         filetimes.sort()
         ftimes = sp.array(filetimes)
@@ -377,16 +376,13 @@ class RadarDataFile(object):
         inttime = self.simparams['Tint']
         ds_fac = sp.prod(self.simparams['declist'])
         f_s = float(self.simparams['fsnum'])/self.simparams['fsden']/ds_fac
-        # get cal info
-        cal_temp = self.sensdict['CalDiodeTemp']
-        calpwr = v_Boltz*cal_temp*f_s
+
         # Get array sizes
         samp_range = self.simparams['datasamples']
         d_samps = (samp_range[1]-samp_range[0])/ds_fac
         noise_range = self.simparams['noisesamples']
         n_samps = (noise_range[1]-noise_range[0])/ds_fac
         cal_range = self.simparams['calsamples']
-        c_samps = (cal_range[1]-cal_range[0])/ds_fac
 
         range_gates = self.simparams['Rangegates']
         N_rg = len(range_gates)# take the size
@@ -417,7 +413,6 @@ class RadarDataFile(object):
         pulses = sp.zeros((Ntime, n_beams))
         pulsesN = sp.zeros((Ntime, n_beams))
         timemat = sp.zeros((Ntime, 2))
-        Ksysvec = self.sensdict['Ksys']
         # set up arrays that hold the location of pulses that are to be processed together
         infoname = self.datadir / 'INFO.h5'
         # Just going to assume that the info file is in the directory
@@ -515,7 +510,6 @@ class RadarDataFile(object):
                     progbeamstr = "Beam {0:d} of {1:d}".format(ibeam, n_beams)
                     update_progress(float(itn)/Ntime + float(ibeam)/Ntime/n_beams, progbeamstr)
                     beamlocstmp = sp.where(sp.in1d(beamlocs, ibeamlist))[0]
-                    curbeams = beamlocs[beamlocstmp]
                     inputdata = curdata[beamlocstmp].copy()
                     noisedata = curnoise[beamlocstmp].copy()
                     noisedataadd = curaddednoise[beamlocstmp].copy()
@@ -550,13 +544,15 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     # Pull in Location Data
     angles = simparams['angles']
     ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
-    rng_vec = simparams['Rangegates']
-    n_samps = len(rng_vec)
+
     # pull in other data
     t_s = float(simparams['fsden'])/simparams['fsnum']
     ds_fac = sp.prod(simparams['declist'])
-    p_samps = len(simparams['Pulse'])
-    pulsewidth = p_samps*t_s
+
+    rng_vec = simparams['Rangegates'][::ds_fac]
+    n_samps = len(rng_vec)
+    p_samps = len(simparams['Pulse'][::ds_fac])
+    pulsewidth = p_samps*t_s*ds_fac
     txpower = sensdict['Pt']
     if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
         Ksysvec = sensdict['Ksys']
@@ -664,7 +660,7 @@ def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
     ionodata = IonoContainer(coordlist, Paramdata, times=time_vec, ver=1,
                              paramnames=sp.arange(Nlags)*t_s*ds_fac)
     ionosigs = IonoContainer(coordlist, Paramdatasig, times=time_vec, ver=1,
-                             paramnames=sp.arange(Nlags*Nlags).reshape(Nlags,Nlags)*t_s*ds_fac)
+                             paramnames=sp.arange(Nlags*Nlags).reshape(Nlags, Nlags)*t_s*ds_fac)
     return (ionodata,ionosigs)
 
 def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
