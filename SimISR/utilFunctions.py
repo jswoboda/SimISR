@@ -745,7 +745,7 @@ def readconfigfile(fname):
     # XXX Set up range gates differently
     min_rng = sp.where(ipp_rng >= rng_lims[0])[0][0]
     max_rng = sp.where(ipp_rng <= rng_lims[1])[0][-1]
-    rng_all = sp.arange(min_rng-(2*psamps-1), max_rng+(2*psamps-1), dtype=float)*rng_samp
+    rng_all = sp.arange(min_rng-(psamps-1), max_rng+(psamps-1), dtype=float)*rng_samp
     rng_all[rng_all <= 0] = rng_samp
 
 

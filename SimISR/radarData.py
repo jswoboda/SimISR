@@ -194,7 +194,7 @@ class RadarDataFile(object):
                 weight = weights[ibn]
                 for isamp in range(N_samps):
                     range_g = range_gates[isamp]
-                    # if isamp >= :
+
                     if range_g <= 0:
                         continue
                     range_m = range_g*1e3
@@ -232,9 +232,9 @@ class RadarDataFile(object):
                     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, 20,
                                                          len(curdataloc), numtype=simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
-
                     for idatn, idat in enumerate(curdataloc):
-                        cursum = cur_pulse_data[idatn, cur_pnts-isamp]+out_data[idat, cur_pnts]
+                        d_pnts = cur_pnts[::-1]-isamp
+                        cursum = cur_pulse_data[idatn, d_pnts]+out_data[idat, cur_pnts]
                         out_data[idat, cur_pnts] = cursum
         return out_data
         #%% Processing
@@ -436,7 +436,7 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     sumrule = simparams['SUMRULE']
     rng_vec2 = simparams['Rangegatesfinal']
     Nrng2 = len(rng_vec2)
-    minrg = 2*p_samps-1+sumrule[0].min()
+    minrg = p_samps-1+sumrule[0].min()
     maxrg = Nrng2+minrg
 
 
@@ -454,23 +454,27 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
 
     plen2 = int(sp.floor(float(p_samps-1)/2))
     samps = sp.arange(0, p_samps, dtype=int)
-    rng_lags = CenteredLagProduct(rng_vec[sp.newaxis, :]*1e3, numtype=sp.float64,
-                                  pulse=pulse)
-    rng_ave = sp.ones_like(rng_lags)
 
-    for isamp in range(Nrng):
+    rng_ave = sp.zeros((Nrng, p_samps))
+
+    for isamp in range(plen2, Nrng+plen2):
         for ilag in range(p_samps):
-            sampsred = samps[:p_samps-ilag]
+            toplag = int(sp.floor(float(ilag)/2))
+            blag = int(sp.ceil(float(ilag)/2))
+            if toplag == 0:
+                sampsred = samps[blag:]
+            else:
+                sampsred = samps[blag:-toplag]
             cursamps = isamp-sampsred
 
             keepsamps = sp.logical_and(cursamps >= 0, cursamps < Nrng)
             cursamps = cursamps[keepsamps]
-            rng_samps = rng_lags[cursamps, ilag]
+            rng_samps = rng_vec[cursamps]**2*1e6
             keepsamps2 = rng_samps > 0
             if keepsamps2.sum() == 0:
                 continue
             rng_samps = rng_samps[keepsamps2]
-            rng_ave[isamp, ilag] = 1./(sp.mean(1./(rng_samps)))
+            rng_ave[isamp-plen2, ilag] = 1./(sp.mean(1./(rng_samps)))
     rng_ave_temp = rng_ave.copy()
     # rng_ave = rng_ave[int(sp.floor(plen2)):-int(sp.ceil(plen2))]
     # rng_ave = rng_ave[minrg:maxrg]
