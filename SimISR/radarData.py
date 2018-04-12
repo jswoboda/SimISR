@@ -91,7 +91,7 @@ class RadarDataFile(object):
         sample_rate = sp.longdouble(sample_rate_numerator) / sample_rate_denominator
         start_global_index = int(sample_rate*filetimes[0])
         dtype_str = 'complex64'  # complex64
-        sub_cadence_secs = 1000  # Number of seconds of data in a subdirectory - typically MUCH larger
+        sub_cadence_secs = 3600  # Number of seconds of data in a subdirectory - typically MUCH larger
         file_cadence_millisecs = 10000  # Each file will have up to 400 ms of data
         compression_level = 1  # low level of compression
         checksum = False  # no checksum
