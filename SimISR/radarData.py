@@ -93,7 +93,7 @@ class RadarDataFile(object):
         dtype_str = 'complex64'  # complex64
         sub_cadence_secs = 3600  # Number of seconds of data in a subdirectory - typically MUCH larger
         file_cadence_millisecs = 10000  # Each file will have up to 400 ms of data
-        compression_level = 1  # low level of compression
+        compression_level = 0  # nocompression
         checksum = False  # no checksum
         is_complex = True  # complex values
         is_continuous = True
