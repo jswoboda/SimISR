@@ -93,7 +93,7 @@ class RadarDataFile(object):
         dtype_str = 'complex64'  # complex64
         sub_cadence_secs = 3600  # Number of seconds of data in a subdirectory - typically MUCH larger
         file_cadence_millisecs = 10000  # Each file will have up to 400 ms of data
-        compression_level = 0  # nocompression
+        compression_level = 0  # no compression
         checksum = False  # no checksum
         is_complex = True  # complex values
         is_continuous = True
@@ -235,12 +235,16 @@ class RadarDataFile(object):
                 pb_list.append(pb)
                 pn_list.append(pn)
                 fname_list.append(fname)
+
+                #HACK Add a constant to set the noise level to be atleast 1 bit
+                num_const = 200.
                 #transmitdata
                 tx_data = sp.zeros_like(alldata).astype('complex64')
                 tx_data[:, :len(pulse_full)] = pulse_full.astype('complex64')
-                data_object_tx.rf_write(tx_data.flatten())
+                data_object_tx.rf_write(tx_data.flatten()*num_const)
                 # extend array for digital rf to flattend array
-                data_object.rf_write(alldata.flatten().astype('complex64'))
+
+                data_object.rf_write(alldata.flatten().astype('complex64')*num_const)
                 id_strt = int(idmobj.get_samples_per_second()*ifilet)
                 dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
                 acmobj.write(int(acmobj.get_samples_per_second()*ifilet), acmdict)
