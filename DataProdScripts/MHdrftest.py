@@ -100,11 +100,13 @@ def plotiono(ionoin,fileprefix):
         maxden = 10**sp.ceil(sp.log10(params[:, -1, 0].max()))
         for iplot, ispec in enumerate(species):
             axmat[0].plot(params[:, iplot, 0], zvec, label=ispec +'Density')
-            axmat[1].plot(params[:, iplot, 1], zvec, label=ispec+'Temperature')
 
+
+        axmat[1].plot(params[:, 0, 1], zvec, label='Ion Temperature')
+        axmat[1].plot(params[:, -1, 1], zvec, label='Electron Temperature')
         axmat[0].set_title('Number Density')
         axmat[0].set_xscale('log')
-        axmat[0].set_ylim([50, 1000])
+        axmat[0].set_ylim([50, 800])
         axmat[0].set_xlim([maxden*1e-5, maxden])
         axmat[0].set_xlabel(r'Densities in m$^{-3}$')
         axmat[0].set_ylabel('Alt in km')
