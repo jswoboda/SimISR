@@ -28,10 +28,17 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     time_arr = sp.column_stack((timelist, sp.roll(timelist, -1)))
     time_arr[-1, -1] = time_arr[-1, 0]+dn_diff_sec
 
-    v = []
+    v = sp.zeros((len(z), len(dn_list), 3))
     coords = sp.column_stack((sp.zeros((len(z), 2), dtype=z.dtype), z))
     all_spec = ['O+', 'NO+', 'O2+', 'H+', 'HE+']
     Param_List = sp.zeros((len(z), len(dn_list),len(all_spec),2))
+
+    # for velocities
+    a = 150.
+    b = 200.
+    c = -200.
+    d = -200.
+    h_0 = 50
     for idn, dn in enumerate(dn_list):
         for iz, zcur in enumerate(z):
             latlonalt[2] = zcur
@@ -43,7 +50,8 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
             # so the zonal pt.u and meriodinal winds pt.v  will coorispond to x and y even though they are
             # supposed to be east west and north south. Pyglow does not seem to have
             # vertical winds.
-            v.append([pt.u, pt.v, 0])
+            v0 = c* sp.exp(-(zcur-h_0)/a)*sp.sin(sp.pi*(zcur-h_0)/b)+d
+            v[iz, idn] = sp.array([pt.u, pt.v, v0])
 
             for is1, ispec in enumerate(all_spec):
                 Param_List[iz, idn, is1, 0] = pt.ni[ispec]*1e6
@@ -54,10 +62,11 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
             Param_List[iz, idn, -1, 1] = pt.Te
     Param_sum = Param_List[:, :, :, 0].sum(0).sum(0)
     spec_keep = Param_sum > 0.
+    v[sp.isnan(v)] = 0.
     species = sp.array(all_spec)[spec_keep[:-1]].tolist()
     species.append('e-')
     Param_List[:, :] = Param_List[:, :, spec_keep]
-    Iono_out = IonoContainer(coords, Param_List, times=time_arr, species=species)
+    Iono_out = IonoContainer(coords, Param_List, times=time_arr, species=species, velocity=v)
     return Iono_out
 
 def configfilesetup(testpath, npulses):
@@ -93,30 +102,37 @@ def plotiono(ionoin,fileprefix):
         t1 = itime[0]
         d_1 = datetime.utcfromtimestamp(t1)
         timestr = d_1.strftime("%Y-%m-%d %H:%M:%S")
-        (figmplf, axmat) = plt.subplots(1, 2, figsize=(10, 5), facecolor='w', sharey=True)
+        (figmplf, axmat) = plt.subplots(2, 2, figsize=(10, 10), facecolor='w', sharey=True)
+        axvec = axmat.flatten()
         species = ionoin.Species
         zvec = ionoin.Cart_Coords[:, 2]
         params = ionoin.Param_List[:, itn]
         maxden = 10**sp.ceil(sp.log10(params[:, -1, 0].max()))
         for iplot, ispec in enumerate(species):
-            axmat[0].plot(params[:, iplot, 0], zvec, label=ispec +'Density')
+            axvec[0].plot(params[:, iplot, 0], zvec, label=ispec +'Density')
 
 
-        axmat[1].plot(params[:, 0, 1], zvec, label='Ion Temperature')
-        axmat[1].plot(params[:, -1, 1], zvec, label='Electron Temperature')
-        axmat[0].set_title('Number Density')
-        axmat[0].set_xscale('log')
-        axmat[0].set_ylim([50, 800])
-        axmat[0].set_xlim([maxden*1e-5, maxden])
-        axmat[0].set_xlabel(r'Densities in m$^{-3}$')
-        axmat[0].set_ylabel('Alt in km')
-        axmat[0].legend()
+        axvec[1].plot(params[:, 0, 1], zvec, label='Ion Temperature')
+        axvec[1].plot(params[:, -1, 1], zvec, label='Electron Temperature')
+        axvec[0].set_title('Number Density')
+        axvec[0].set_xscale('log')
+        axvec[0].set_ylim([50, 800])
+        axvec[0].set_xlim([maxden*1e-5, maxden])
+        axvec[0].set_xlabel(r'Densities in m$^{-3}$')
+        axvec[0].set_ylabel('Alt in km')
+        axvec[0].legend()
 
-        axmat[1].set_title('Temperature')
-        axmat[1].set_xlim([100., 3500.])
-        axmat[1].set_xlabel(r'Temp in $^{\circ}$ K')
-        axmat[1].set_ylabel('Alt in km')
-        axmat[1].legend()
+        axvec[1].set_title('Temperature')
+        axvec[1].set_xlim([100., 3500.])
+        axvec[1].set_xlabel(r'Temp in $^{\circ}$ K')
+        axvec[1].set_ylabel('Alt in km')
+        axvec[1].legend()
+
+        axvec[2].plot(ionoin.Velocity[:, itn, -1], zvec, label='Velocity')
+        axvec[2].set_title('Velocity')
+        axvec[2].set_xlim([-300., 300.])
+        axvec[2].set_xlabel(r'Velocity m/s')
+        axvec[2].set_ylabel('Alt in km')
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         figmplf.suptitle('Parameters at Time: '+timestr, fontsize=12)
 
