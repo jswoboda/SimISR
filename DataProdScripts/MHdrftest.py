@@ -166,7 +166,7 @@ def main(ARGS):
 
     inputpath = testpath.joinpath('Origparams')
     d_1 = datetime(2015, 3, 21, 8, 00)
-    dn_list = [d_1+timedelta(i) for i in sp.linspace(0.,.5,2)]
+    dn_list = [d_1+timedelta(i) for i in sp.linspace(0., .5, ARGS.ntimes)]
     ionoout = pyglowinput(dn_list=dn_list)
     if not inputpath.is_dir():
         inputpath.mkdir()
