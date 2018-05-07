@@ -3,7 +3,7 @@
 
 """
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import calendar
 
 import scipy as sp
@@ -69,7 +69,7 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     Iono_out = IonoContainer(coords, Param_List, times=time_arr, species=species, velocity=v)
     return Iono_out
 
-def configfilesetup(testpath, npulses):
+def configfilesetup(testpath, simtime_mins=4):
     """ This will create the configureation file given the number of pulses for
         the test. This will make it so that there will be 12 integration periods
         for a given number of pulses.
@@ -80,6 +80,7 @@ def configfilesetup(testpath, npulses):
     curloc = Path(__file__).resolve().parent
     defcon = curloc/'MHsimple.yml'
     (sensdict, simparams) = readconfigfile(defcon)
+    simparams['TimeLim'] = simtime_mins*60
     # tint = simparams['IPP']*npulses
     # ratio1 = tint/simparams['Tint']
     # simparams['Tint'] = ratio1*simparams['Tint']
@@ -164,7 +165,9 @@ def main(ARGS):
     config = str(testpath.joinpath('MHsimple.yml'))
 
     inputpath = testpath.joinpath('Origparams')
-    ionoout = pyglowinput()
+    d_1 = datetime(2015, 3, 21, 8, 00)
+    dn_list = [d_1+timedelta(i) for i in sp.linspace(0.,.5,2)]
+    ionoout = pyglowinput(dn_list=dn_list)
     if not inputpath.is_dir():
         inputpath.mkdir()
 
@@ -204,7 +207,9 @@ if __name__== '__main__':
     PAR1 = argparse.ArgumentParser(description=descr)
 
     PAR1.add_argument("-p", "--path", help='Path.', type=str, default='')
-    PAR1.add_argument('-j', "--npulses", help='Number of pulses', type=int,default=10000)
+    PAR1.add_argument('-n', '--ntimes', help='The number of times in the original',
+                      type=int, default=2)
+    PAR1.add_argument('-j', "--npulses", help='Number of pulses', type=int, default=4)
     PAR1.add_argument('-f', '--funclist', help='Functions to be uses', nargs='+',
                       default=['spectrums', 'radardata', 'fitting', 'analysis'])
     PAR1 = PAR1.parse_args()
