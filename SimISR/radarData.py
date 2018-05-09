@@ -74,6 +74,11 @@ class RadarDataFile(object):
         n_ns = n_samps[1] - n_samps[0]
         n_cal = c_samps[1] - c_samps[0]
 
+        ## HACK: Set max number of pulses per write based off of ippsamps
+        max_write = 7*2**30 # 7 gigabye Write
+        bps = 16 # byte per sample for complex128 in numpy array
+        nippw = max_write/bps/ippsamps # number of ipps per write
+
         dec_list = self.simparams['declist']
         ds_fac = sp.prod(dec_list)
         filetimes = Ionodict.keys()
@@ -179,77 +184,84 @@ class RadarDataFile(object):
                 outdict = {}
                 ifile = Ionodict[ifilet]
                 ifilename = Path(ifile).name
-                progstr1 = 'Data from {:d} of {:d} being created Name: {:s}.'
-                update_progress(float(ifn)/Nf, progstr1.format(ifn, Nf, ifilename))
+
                 curcontainer = IonoContainer.readh5(ifile)
                 if ifn == 0:
                     self.timeoffset = curcontainer.Time_Vector[0, 0]
-                pnts = pulsefile == ifn
-                pt = pulsetimes[pnts]
-                pb = beams[pnts]
-                pn = pulsen[pnts].astype(int)
-                rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
-                                            curcontainer.Sphere_Coords,
-                                            curcontainer.Param_List, pb)
+                f_pulses = sp.where(pulsefile == ifn)[0]
+                nwrites = float(len(f_pulses))/nippw
+                for ifwrite, i_pstart in enumerate(range(0, len(f_pulses), nippw)):
+                    progstr1 = 'Data for write {:d} of {:d} being created.'
 
-                n_pulse_cur, n_raw = rawdata.shape
-                rawdata_us = sp.signal.resample(rawdata, n_raw*ds_fac, axis=1)
+                    prog_level = float(ifn)/Nf+ifwrite/Nf/nwrites
+                    update_progress(prog_level, progstr1.format(ifn*nwrites+ifwrite+1, Nf*nwrites))
+                    i_pend = sp.minimum(i_pstart+nippw, len(f_pulses))
+                    cur_fpulses = f_pulses[i_pstart:i_pend]
+                    pt = pulsetimes[cur_fpulses]
+                    pb = beams[cur_fpulses]
+                    pn = pulsen[cur_fpulses].astype(int)
+                    rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
+                                                curcontainer.Sphere_Coords,
+                                                curcontainer.Param_List, pb)
 
-                alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
-                alldata = sp.sqrt(noisepwr/2.)*alldata
-                noisedata = alldata[:, d_samps[0]:d_samps[1]]
-                alldata[:, d_samps[0]:d_samps[1]] = rawdata_us + alldata[:, d_samps[0]:d_samps[1]]
-                caldata = sp.sqrt(calpwr/2)*(sp.random.randn(n_pulse_cur, n_cal).astype(simdtype)+
-                                             1j*sp.random.randn(n_pulse_cur, n_cal).astype(simdtype))
-                alldata[:, c_samps[0]:c_samps[1]] = alldata[:, c_samps[0]:c_samps[1]] + caldata
-                alldata = alldata/sp.sqrt(calpwr)
-                rawdata = rawdata_us.copy()/sp.sqrt(calpwr)
-                noisedata = noisedata.copy()/sp.sqrt(calpwr)
+                    n_pulse_cur, n_raw = rawdata.shape
+                    rawdata_us = sp.signal.resample(rawdata, n_raw*ds_fac, axis=1)
 
-                cal_samps = alldata[:, c_samps[0]:c_samps[1]]
-                data_samps = alldata[:, d_samps[0]:d_samps[1]]
-                data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
-                noise_samps = alldata[:, n_samps[0]:n_samps[1]]
-                noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
-                # Down sample data using resample, keeps
-                rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
-                noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
+                    alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
+                    alldata = sp.sqrt(noisepwr/2.)*alldata
+                    noisedata = alldata[:, d_samps[0]:d_samps[1]]
+                    alldata[:, d_samps[0]:d_samps[1]] = rawdata_us + alldata[:, d_samps[0]:d_samps[1]]
+                    caldata = sp.sqrt(calpwr/2)*(sp.random.randn(n_pulse_cur, n_cal).astype(simdtype)+
+                                                 1j*sp.random.randn(n_pulse_cur, n_cal).astype(simdtype))
+                    alldata[:, c_samps[0]:c_samps[1]] = alldata[:, c_samps[0]:c_samps[1]] + caldata
+                    alldata = alldata/sp.sqrt(calpwr)
+                    rawdata = rawdata_us.copy()/sp.sqrt(calpwr)
+                    noisedata = noisedata.copy()/sp.sqrt(calpwr)
 
-                noise_est = sp.mean(sp.mean(noise_samps.real**2+noise_samps.imag**2))
-                cal_est = sp.mean(sp.mean(cal_samps.real**2+cal_samps.imag**2))
-                calfac = calpwr/(cal_est-noise_est)
-                outdict['AddedNoise'] = noisedata_ds
-                outdict['RawData'] = data_samps
-                outdict['RawDatanonoise'] = rawdata_ds
-                outdict['NoiseData'] = noise_samps_ds
-                outdict['CalFactor'] = sp.array([calfac])
-                outdict['Pulses'] = pn
-                outdict['Beams'] = pb
-                outdict['Time'] = pt
-                fname = '{0:d} RawData.h5'.format(ifn)
-                newfn = self.datadir/fname
-                self.outfilelist.append(str(newfn))
-                dict2h5(str(newfn), outdict)
-                #Listing info
-                pt_list.append(pt)
-                pb_list.append(pb)
-                pn_list.append(pn)
-                fname_list.append(fname)
+                    cal_samps = alldata[:, c_samps[0]:c_samps[1]]
+                    data_samps = alldata[:, d_samps[0]:d_samps[1]]
+                    data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
+                    noise_samps = alldata[:, n_samps[0]:n_samps[1]]
+                    noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
+                    # Down sample data using resample, keeps
+                    rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
+                    noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
 
-                #HACK Add a constant to set the noise level to be atleast 1 bit
-                num_const = 200.
-                #transmitdata
-                tx_data = sp.zeros_like(alldata).astype('complex64')
-                tx_data[:, :len(pulse_full)] = pulse_full.astype('complex64')
-                data_object_tx.rf_write(tx_data.flatten()*num_const)
-                # extend array for digital rf to flattend array
+                    noise_est = sp.mean(sp.mean(noise_samps.real**2+noise_samps.imag**2))
+                    cal_est = sp.mean(sp.mean(cal_samps.real**2+cal_samps.imag**2))
+                    calfac = calpwr/(cal_est-noise_est)
+                    outdict['AddedNoise'] = noisedata_ds
+                    outdict['RawData'] = data_samps
+                    outdict['RawDatanonoise'] = rawdata_ds
+                    outdict['NoiseData'] = noise_samps_ds
+                    outdict['CalFactor'] = sp.array([calfac])
+                    outdict['Pulses'] = pn
+                    outdict['Beams'] = pb
+                    outdict['Time'] = pt
+                    fname = '{0:d} RawData.h5'.format(ifwrite)
+                    newfn = self.datadir/fname
+                    self.outfilelist.append(str(newfn))
+                    dict2h5(str(newfn), outdict)
+                    #Listing info
+                    pt_list.append(pt)
+                    pb_list.append(pb)
+                    pn_list.append(pn)
+                    fname_list.append(fname)
 
-                data_object.rf_write(alldata.flatten().astype('complex64')*num_const)
-                id_strt = int(idmobj.get_samples_per_second()*ifilet)
-                dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
-                acmobj.write(int(acmobj.get_samples_per_second()*ifilet), acmdict)
-                idmobj.write(dmdplist, idmdict)
-                pmmobj.write(int(pmmobj.get_samples_per_second()*ifilet), pmmdict)
+                    #HACK Add a constant to set the noise level to be atleast 1 bit
+                    num_const = 200.
+                    #transmitdata
+                    tx_data = sp.zeros_like(alldata).astype('complex64')
+                    tx_data[:, :len(pulse_full)] = pulse_full.astype('complex64')
+                    data_object_tx.rf_write(tx_data.flatten()*num_const)
+                    # extend array for digital rf to flattend array
+
+                    data_object.rf_write(alldata.flatten().astype('complex64')*num_const)
+                    id_strt = int(idmobj.get_samples_per_second()*pt[0])
+                    dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
+                    acmobj.write(int(acmobj.get_samples_per_second()*pt[0]), acmdict)
+                    idmobj.write(dmdplist, idmdict)
+                    pmmobj.write(int(pmmobj.get_samples_per_second()*pt[0]), pmmdict)
 
             infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
             dict2h5(str(outdir.joinpath('INFO.h5')), infodict)
@@ -305,7 +317,7 @@ class RadarDataFile(object):
         ntime = len(spectime)
         for istn in range(ntime):
             for ibn in range(n_beams):
-                print('\t\t Making Beam {0:d} of {1:d}'.format(ibn, n_beams))
+                #print('\t\t Making Beam {0:d} of {1:d}'.format(ibn, n_beams))
                 weight = weights[ibn]
                 for isamp in sp.arange(n_samps):
 
@@ -338,8 +350,8 @@ class RadarDataFile(object):
                                                          (beamcodes == ibn)))[0]
                     # create data
                     if not sp.any(curdataloc):
-                        outstr = '\t\t No data for {0:d} of {1:d} in this time period'
-                        print(outstr.format(ibn, n_beams))
+                        # outstr = '\t\t No data for {0:d} of {1:d} in this time period'
+                        # print(outstr.format(ibn, n_beams))
                         continue
                     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
                                                          len(curdataloc), numtype=simdtype)
