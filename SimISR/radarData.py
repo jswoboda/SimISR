@@ -194,7 +194,7 @@ class RadarDataFile(object):
                     progstr1 = 'Data for write {:d} of {:d} being created.'
 
                     prog_level = float(ifn)/Nf+ifwrite/Nf/nwrites
-                    update_progress(prog_level, progstr1.format(ifn*nwrites+ifwrite+1, int(Nf*nwrites)))
+                    update_progress(prog_level, progstr1.format(int(ifn*nwrites+ifwrite+1), int(Nf*nwrites)))
                     i_pend = sp.minimum(i_pstart+nippw, len(f_pulses))
                     cur_fpulses = f_pulses[i_pstart:i_pend]
                     pt = pulsetimes[cur_fpulses]
