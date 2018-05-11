@@ -75,7 +75,7 @@ class RadarDataFile(object):
         n_cal = c_samps[1] - c_samps[0]
 
         ## HACK: Set max number of pulses per write based off of ippsamps
-        max_write = 7*2**30 # 7 gigabye Write
+        max_write = 2*2**30 # 7 gigabye Write
         bps = 16 # byte per sample for complex128 in numpy array
         nippw = max_write/bps/ippsamps # number of ipps per write
 
