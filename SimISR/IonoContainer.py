@@ -9,13 +9,14 @@ import glob
 import inspect
 import posixpath
 import copy
+from datetime import datetime
 from SimISR import Path
 import numpy as np
 import scipy.io as sio
 import scipy.interpolate
 import tables
 import numbers
-from datetime import datetime
+import pandas as pd
 # From my
 from SimISR.utilFunctions import Chapmanfunc, TempProfile
 
@@ -718,6 +719,35 @@ class IonoContainer(object):
 
     def deepcopy(self):
         return copy.deepcopy(self)
+
+    def get_dataframe(self):
+        """
+            Outputs a pandas data frame in same format at madgrigal
+        """
+
+        #
+        time_list = np.array([datetime.fromtimestamp(i[0]) for i in self.Time_Vector])
+        t_len = len(time_list)
+        plist = ['ne', 'te', 'ti']
+        pout = ['NE', 'TE', 'TI', 'VO', 'GDALT', 'Time']
+        pnshape = self.Param_Names.shape
+        paramsf = self.Param_Names.flatten().tolist()
+        params_list = []
+        for iparam in plist:
+            ploc = [iparam in i.lower() for i in paramsf]
+            loc1 = np.where(ploc)[0][0]
+            subs = np.unravel_index(loc1, pnshape)
+            outparam = self.Param_List.copy()
+            for i in subs:
+                outparam = outparam[:, :, i]
+            params_list.append(outparam)
+        params_list.append(self.getDoppler())
+        gdalt = self.Cart_Coords[:,2]
+        nlocs = len(gdalt)
+        params_list.append(np.repeat(gdalt[:,np.newaxis], t_len, axis=1))
+        params_list.append(np.repeat(time_list[np.newaxis,:], nlocs, axis=0))
+        param_dict = {pout[i]:params_list[i].flatten() for i in range(len(pout))}
+        return pd.DataFrame(data=param_dict)
 #%%    utility functions
 def makeionocombined(datapath,ext='.h5'):
     """ This function make an ionocontainer for all of the points in a folder or a list
@@ -765,7 +795,6 @@ def pathparts(path):
             components.reverse()
             return components
         components.append(tail)
-
 def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times =np.array([[0,1e6]])):
     """
     This function will create a test ionoclass with an electron density that
