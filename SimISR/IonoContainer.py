@@ -27,8 +27,8 @@ class IonoContainer(object):
         point in time and space a spectra will be created.
     """
     #%% Init function
-    def __init__(self,coordlist,paramlist,times = None,sensor_loc = np.zeros(3),ver =0,coordvecs =
-            None,paramnames=None,species=None,velocity=None):
+    def __init__(self, coordlist, paramlist, times=None, sensor_loc=np.zeros(3), ver=0,
+                 coordvecs=None, paramnames=None, species=None, velocity=None):
         """ This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
         Inputs:
@@ -49,54 +49,51 @@ class IonoContainer(object):
         Ndims = paramlist.ndim
         psizetup = paramlist.shape
         if times is None:
-            if Ndims==3:
+            if Ndims == 3:
                 times = np.arange(psizetup[1])
             else:
                 times = np.arange(1)
-        if Ndims==2:
-            paramlist = paramlist[:,np.newaxis,:]
+        if Ndims == 2:
+            paramlist = paramlist[:, np.newaxis, :]
 
-        # Assume that the
+        if ver == 0:
+            x_vec = coordlist[:, 0]
+            y_vec = coordlist[:, 1]
+            z_vec = coordlist[:, 2]
 
-        if ver==0:
-
-            X_vec = coordlist[:,0]
-            Y_vec = coordlist[:,1]
-            Z_vec = coordlist[:,2]
-
-            R_vec = np.sqrt(X_vec**2+Y_vec**2+Z_vec**2)
-            Az_vec = np.degrees(np.arctan2(X_vec,Y_vec))
-            El_vec = np.degrees(np.arcsin(Z_vec/R_vec))
+            r_vec = np.sqrt(x_vec**2+y_vec**2+y_vec**2)
+            az_vec = np.degrees(np.arctan2(x_vec, x_vec))
+            el_vec = np.degrees(np.arcsin(z_vec/r_vec))
 
             self.Cart_Coords = coordlist
-            self.Sphere_Coords = np.array([R_vec,Az_vec,El_vec]).transpose()
+            self.Sphere_Coords = np.array([r_vec, az_vec, el_vec]).transpose()
             if coordvecs is not None:
-                if set(coordvecs)!={'x','y','z'}:
+                if set(coordvecs)!={'x', 'y', 'z'}:
                     raise NameError("Keys for coordvecs need to be 'x','y','z' ")
             else:
-                coordvecs = ['x','y','z']
+                coordvecs = ['x', 'y', 'z']
 
-        elif ver==1:
-            R_vec = coordlist[:,0]
-            Az_vec = np.radians(coordlist[:,1])
-            El_vec = np.radians(coordlist[:,2])
+        elif ver == 1:
+            r_vec = coordlist[:, 0]
+            az_vec = np.radians(coordlist[:, 1])
+            el_vec = np.radians(coordlist[:, 2])
 
-            xvecmult = np.sin(Az_vec)*np.cos(El_vec)
-            yvecmult = np.cos(Az_vec)*np.cos(El_vec)
-            zvecmult = np.sin(El_vec)
-            X_vec = R_vec*xvecmult
-            Y_vec = R_vec*yvecmult
-            Z_vec = R_vec*zvecmult
+            xvecmult = np.sin(az_vec)*np.cos(el_vec)
+            yvecmult = np.cos(az_vec)*np.cos(el_vec)
+            zvecmult = np.sin(el_vec)
+            x_vec = r_vec*xvecmult
+            y_vec = r_vec*yvecmult
+            z_vec = r_vec*zvecmult
 
-            self.Cart_Coords = np.column_stack((X_vec,Y_vec,Z_vec))
+            self.Cart_Coords = np.column_stack((x_vec, y_vec, z_vec))
             self.Sphere_Coords = coordlist
             if coordvecs is not None:
-                if set(coordvecs)!={'r','theta','phi'}:
+                if set(coordvecs) != {'r', 'theta', 'phi'}:
                     raise NameError("Keys for coordvecs need to be 'r','theta','phi' ")
             else:
-                 coordvecs = ['r','theta','phi']
+                 coordvecs = ['r', 'theta', 'phi']
         # used to deal with the change in the files
-        if type(coordvecs)==np.ndarray:
+        if type(coordvecs) == np.ndarray:
             coordvecs = [str(ic) for ic in coordvecs]
 
         self.Param_List = paramlist
@@ -104,35 +101,35 @@ class IonoContainer(object):
         self.Coord_Vecs = coordvecs
         self.Sensor_loc = sensor_loc
         self.Species = species
-        (Nloc,Nt) = paramlist.shape[:2]
+        (Nloc, Nt) = paramlist.shape[:2]
         #set up a Velocity measurement
         if velocity is None:
-            self.Velocity=np.zeros((Nloc,Nt,3))
+            self.Velocity=np.zeros((Nloc, Nt, 3))
         else:
             # if in sperical coordinates and you have a velocity
-            if velocity.ndim ==2 and ver==1:
-                veltup = (velocity*np.tile(xvecmult[:,np.newaxis],(1,Nt)),
-                          velocity*np.tile(yvecmult[:,np.newaxis],(1,Nt)),
-                        velocity*np.tile(zvecmult[:,np.newaxis],(1,Nt)))
-                self.Velocity=  np.dstack(veltup)
+            if velocity.ndim == 2 and ver == 1:
+                veltup = (velocity*np.tile(xvecmult[:, np.newaxis], (1, Nt)),
+                          velocity*np.tile(yvecmult[:, np.newaxis], (1, Nt)),
+                          velocity*np.tile(zvecmult[:, np.newaxis], (1, Nt)))
+                self.Velocity = np.dstack(veltup)
             else:
-                self.Velocity=velocity
+                self.Velocity = velocity
         # set up a params name
         if paramnames is None:
             partparam = paramlist.shape[2:]
             if species is not None:
-                paramnames = [['Ni_'+isp,'Ti_'+isp] for isp in species[:-1]]
-                paramnames.append(['Ne','Te'])
-                self.Param_Names=np.array(paramnames,dtype=str)
+                paramnames = [['Ni_'+isp, 'Ti_'+isp] for isp in species[:-1]]
+                paramnames.append(['Ne', 'Te'])
+                self.Param_Names = np.array(paramnames, dtype=str)
             else:
 
                 paramnums = np.arange(np.product(partparam))
-                self.Param_Names = np.reshape(paramnums,partparam)
+                self.Param_Names = np.reshape(paramnums, partparam)
         else:
             self.Param_Names = paramnames
 
     #%% Getting closest objects
-    def getclosestsphere(self,coords,timelist=None):
+    def getclosestsphere(self, coords, timelist=None):
         """
             This method will get the closest point in space to given spherical coordinates from the
             IonoContainer.

@@ -16,7 +16,7 @@ from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigf
 from SimISR.analysisplots import analysisdump
 from SimISR.runsim import main as runsimisr
 from SimISR import Path
-
+import ipdb
 def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)], z=None):
 
 
@@ -69,7 +69,7 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     Iono_out = IonoContainer(coords, Param_List, times=time_arr, species=species, velocity=v)
     return Iono_out
 
-def configfilesetup(testpath, simtime_mins=4):
+def configfilesetup(testpath, config, simtime_mins=4):
     """ This will create the configureation file given the number of pulses for
         the test. This will make it so that there will be 12 integration periods
         for a given number of pulses.
@@ -78,7 +78,7 @@ def configfilesetup(testpath, simtime_mins=4):
             npulses - The number of pulses.
     """
     curloc = Path(__file__).resolve().parent
-    defcon = curloc/'MHsimple.yml'
+    defcon = curloc/config
     (sensdict, simparams) = readconfigfile(defcon)
     simparams['TimeLim'] = simtime_mins*60
     # tint = simparams['IPP']*npulses
@@ -88,7 +88,7 @@ def configfilesetup(testpath, simtime_mins=4):
     # simparams['TimeLim'] = 2*tint
     simparams['fitmode'] = 1
     simparams['startfile'] = 'startfile.h5'
-    makeconfigfile(str(testpath/'MHsimple.yml'), simparams['Beamlist'],
+    makeconfigfile(str(testpath/config), simparams['Beamlist'],
                    sensdict['Name'], simparams)
 
 
@@ -161,8 +161,8 @@ def main(ARGS):
     check_run = sp.any(check_list)
     functlist_red = sp.array(functlist_default)[check_list].tolist()
 
-    configfilesetup(testpath, ARGS.npulses)
-    config = str(testpath.joinpath('MHsimple.yml'))
+    configfilesetup(testpath, ARGS.config, ARGS.nminutes)
+    config = str(testpath.joinpath(ARGS.config))
 
     inputpath = testpath.joinpath('Origparams')
     d_1 = datetime(2015, 3, 21, 8, 00)
@@ -207,9 +207,12 @@ if __name__== '__main__':
     PAR1 = argparse.ArgumentParser(description=descr)
 
     PAR1.add_argument("-p", "--path", help='Path.', type=str, default='')
+    PAR1.add_argument("-c", "--config",
+                      help='Name of config file in data prod scripts directory.',
+                      type=str, default='MHsimple.yml')
     PAR1.add_argument('-n', '--ntimes', help='The number of times in the original',
                       type=int, default=2)
-    PAR1.add_argument('-j', "--npulses", help='Number of pulses', type=int, default=4)
+    PAR1.add_argument('-j', "--nminutes", help='Number minutes', type=int, default=4)
     PAR1.add_argument('-f', '--funclist', help='Functions to be uses', nargs='+',
                       default=['spectrums', 'radardata', 'fitting', 'analysis'])
     PAR1 = PAR1.parse_args()

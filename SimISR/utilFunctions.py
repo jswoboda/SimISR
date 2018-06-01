@@ -57,7 +57,7 @@ def update_progress(progress, extstr=""):
     sys.stdout.flush()
 
 
-def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
+def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'):
     """
         Make the ambiguity function dictionary that holds the lag ambiguity and
         range ambiguity. Uses a sinc function weighted by a blackman window. Currently
@@ -93,9 +93,15 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
 
     curh = sp.ifft(curfreq)
     nspec = int(nspec)
-    plen = len(pulse)
+    plen = pulse.shape[-1]
     nlags = plen/m_up
 
+    # find alternating codes and long pulse
+    sweepu, u_ind = sp.unique(sweepid, return_index=True)
+    ac_ind = u_ind[sp.where(sp.logical_and(sweepu >= 1, sweepu <= 32))[0]]
+    ac_pulses = pulse[ac_ind]
+    lp_ind = u_ind[sp.where(sweepu == 300)[0]]
+    lp_pulse = pulse[lp_ind].flatten()
     # make the sinc
     nsamps = sp.floor(23.*m_up)
     nsamps = int(nsamps-(1-sp.mod(nsamps, 2)))
@@ -113,28 +119,28 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
     impres = curh[nvec]
     d_t = 1./Fsorg
     #make delay vector
-    Delay_num = sp.arange(-(len(nvec)-1), m_up*(nlags+5))
-    Delay = Delay_num*d_t
+    delay_num = sp.arange(-(len(nvec)-1), m_up*(nlags+5))
+    delay = delay_num*d_t
 
     t_rng = sp.arange(0, 1.5*plen)*d_t
     if len(t_rng) > 2e4:
         raise ValueError('The time array is way too large. plen should be in seconds.')
-    numdiff = len(Delay)-len(impres)
-    numback = int(nvec.min()/m_up-Delay_num.min())
+    numdiff = len(delay)-len(impres)
+    numback = int(nvec.min()/m_up-delay_num.min())
     numfront = numdiff-numback
 #    imprespad  = sp.pad(impres,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
     imprespad = sp.pad(impres, (numback, numfront), mode='constant',
                        constant_values=(0.0, 0.0))
-    (d2d, srng) = sp.meshgrid(Delay, t_rng)
+    (d2d, srng) = sp.meshgrid(delay, t_rng)
     # envelop function
     t_p = sp.arange(plen)/Fsorg
 
-    envfunc = sp.interp(sp.ravel(srng-d2d), t_p, pulse, left=0., right=0.).reshape(d2d.shape)
+    envfunc = sp.interp(sp.ravel(srng-d2d), t_p, lp_pulse, left=0., right=0.).reshape(d2d.shape)
 #    envfunc = sp.zeros(d2d.shape)
 #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
     envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
-    Wtt = sp.zeros((nlags, d2d.shape[0],d2d.shape[1]))
+    Wtt = sp.zeros((nlags, d2d.shape[0], d2d.shape[1]))
     cursincrep = sp.tile(imprespad[sp.newaxis, :], (len(t_rng), 1))
     Wt0 = cursincrep*envfunc
     Wt0fft = sp.fft(Wt0, axis=1)
@@ -148,20 +154,52 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, winname='boxcar'):
         nmove = len(nvec)-1
         Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, nmove, axis=1)
 
-    # make matrix to take
+
+    # make matrix for application of
     imat = sp.eye(nspec)
     tau = sp.arange(-sp.floor(nspec/2.), sp.ceil(nspec/2.))/Fsorg
-    tauint = Delay
+    tauint = delay
     interpmat = spinterp.interp1d(tau, imat, bounds_error=0, axis=0)(tauint)
     lagmat = sp.dot(Wtt.sum(axis=1), interpmat)
     W0 = lagmat[0].sum()
     for ilag in range(nlags):
         lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
     lagmat = lagmat[:, ::m_up]
-    Wttdict = {'WttAll':Wtt, 'Wtt':Wtt.max(axis=0), 'Wrange':Wtt.sum(axis=1),
-               'Wlag':Wtt.sum(axis=2), 'Delay':Delay, 'Range':v_C_0*t_rng/2.0,
-               'WttMatrix':lagmat}
-    return Wttdict
+
+
+    Wttac = sp.zeros((nlags, d2d.shape[0], d2d.shape[1]))
+    for i_pulse in ac_pulses:
+        envfunc = sp.interp(sp.ravel(srng-d2d), t_p, i_pulse, left=0., right=0.).reshape(d2d.shape)
+    #    envfunc = sp.zeros(d2d.shape)
+    #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
+        envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
+        #create the ambiguity function for everything
+
+        cursincrep = sp.tile(imprespad[sp.newaxis, :], (len(t_rng), 1))
+        Wt0 = cursincrep*envfunc
+        Wt0fft = sp.fft(Wt0, axis=1)
+        for ilag in sp.arange(nlags):
+            cursinc = sp.roll(imprespad, ilag*m_up)
+            cursincrep = sp.tile(cursinc[sp.newaxis, :], (len(t_rng), 1))
+            Wta = cursincrep*envfunc
+            #do fft based convolution, probably best method given sizes
+            Wtafft = scfft.fft(Wta, axis=1)
+
+            nmove = len(nvec)-1
+            curwt =  sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, nmove, axis=1)
+            Wttac[ilag] = Wttac[ilag] + curwt
+
+    lagmatac = sp.dot(Wttac.sum(axis=1), interpmat)
+    W0ac = lagmatac[0].sum()
+    for ilag in range(nlags):
+        lagmatac[ilag] = ((vol+ilag)/(vol*W0ac))*lagmatac[ilag]
+    lagmatac = lagmatac[:, ::m_up]
+    wttdict = {'WttAll':Wtt, 'Wtt':Wtt.max(axis=0), 'Wrange':Wtt.sum(axis=1),
+               'Wlag':Wtt.sum(axis=2), 'Delay':delay, 'Range':v_C_0*t_rng/2.0,
+               'WttMatrix':lagmat, 'WttAllac':Wttac, 'Wttac':Wttac.max(axis=0),
+               'Wrangeac':Wttac.sum(axis=1), 'Wlagac':Wttac.sum(axis=2),
+               'WttMatrixac':lagmatac}
+    return wttdict
 
 def spect2acf(omeg, spec, n_s=None):
     """ Creates acf and time array associated with the given frequency vector and spectrum
@@ -205,46 +243,6 @@ def acf2spect(tau, acf, n_s=None, initshift=False):
     omeg = sp.arange(-sp.ceil(n_s/2.), sp.floor(n_s/2.)+1)*fs
     return omeg, spec
 #%% making pulse data
-def MakePulseDataRep(pulse_shape, filt_freq, delay=16, rep=1, numtype=sp.complex128):
-    """ This function will create a repxLp numpy array, where rep is number of independent
-        repeats and Lp is number of pulses, of noise shaped by the filter who's frequency
-        response is passed as the parameter filt_freq. The pulse shape is delayed by the parameter
-        delay into the data. The noise vector that will be multiplied by the filter's frequency
-        response will be zero mean complex white Gaussian noise with a power of 1. The user
-        then will need to multiply the filter by its size to get the desired power from using
-        the function.
-        Inputs:
-            pulse_shape: A numpy array that holds the shape of the single pulse.
-            filt_freq - a numpy array that holds the complex frequency response of the filter
-                that will be used to shape the noise data. It is assumed that the
-                filter has been correctly scaled so the noise will have the
-                desired energy/variance.
-            delay - The number of samples that the pulse will be delayed into the
-                array of noise data to avoid any problems with filter overlap.
-            rep - Number of independent samples/pulses shaped by the filter.
-            numtype - The type of numbers used for the output.
-        Output
-            data_out - A repxLp of data that has been shaped by the filter. Points along
-            The first axis are independent of each other while samples along the second
-            axis are colored using the filter and multiplied by the pulse shape.
-    """
-    npts = len(filt_freq)
-    multforimag = sp.ones_like(filt_freq)
-    hpnt = int(sp.ceil(npts/2.))
-    multforimag[hpnt:] = -1
-    tmp = scfft.ifft(filt_freq)
-    tmp[hpnt:] = 0.
-    #comp_filt = scfft.fft(tmp)*sp.sqrt(2.)
-    filt_tile = sp.tile(filt_freq[sp.newaxis, :], (rep, 1))
-    shaperep = sp.tile(pulse_shape[sp.newaxis, :], (rep, 1))
-    noisereal = sp.random.randn(rep, npts).astype(numtype)
-    noiseimag = sp.random.randn(rep, npts).astype(numtype)
-    noise_vec = (noisereal+1j*noiseimag)/sp.sqrt(2.0)
-#    noise_vec = noisereal
-    mult_freq = filt_tile.astype(numtype)*noise_vec
-    data = scfft.ifft(mult_freq, axis=-1)
-    data_out = shaperep*data[:, delay:(delay+len(pulse_shape))]
-    return data_out
 
 def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
     """ This will make data by assuming the data is an autoregressive process.
@@ -254,9 +252,12 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
             pulse - The pulse shape.
             rep1 - The number of repeats of the process.
         Outputs
-            outdata - A numpy Array with the shape of the """
+            outdata - A numpy array with the shape of the rep1xlen(pulse)
+    """
 
-    lp = len(pulse)
+    npulse, lp = pulse.shape
+    # repeat the pulse pattern
+    pprep = sp.ceil(float(rep1)/npulse).astype(int)
     r1 = scfft.ifft(scfft.ifftshift(spec))
     rp1 = r1[:nlpc]
     rp2 = r1[1:nlpc+1]
@@ -281,7 +282,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         xin = sp.sqrt(nfft)*xin/xinsum
         outdata = sp.ifft(h_tile*xin, axis=1)
         #outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-        outpulse = sp.tile(pulse[sp.newaxis], (rep1, 1))
+        outpulse = sp.tile(pulse, (pprep, 1))[rep1]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     else:
         xin = sp.random.randn(rep1, n_pnt)+1j*sp.random.randn(rep1, n_pnt)
@@ -289,7 +290,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, n_pnt))
         xin = xin/xinsum
         outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-        outpulse = sp.tile(pulse[sp.newaxis], (rep1, 1))
+        outpulse = sp.tile(pulse, (pprep, 1))[rep1]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     #outdata = sp.sqrt(rcs)*outdata/sp.sqrt(sp.mean(outdata.var(axis=1)))
     return outdata
@@ -392,7 +393,7 @@ def makesumrule(ptype, nlags, lagtype='centered'):
         Output
             sumrule - A 2 x nlags numpy array that holds the summation rule.
     """
-    if ptype.lower() == 'long':
+    if ptype.lower() == 'long' or ptype.lower() == 'interleaved':
         if lagtype == 'forward':
             arback = -sp.arange(nlags, dtype=int)
             arforward = sp.zeros(nlags, dtype=int)
@@ -408,7 +409,7 @@ def makesumrule(ptype, nlags, lagtype='centered'):
     return sumrule
 
 #%% Make pulse
-def makepulse(ptype, nsamps, ts, nbauds=13):
+def makepulse(ptype, nsamps, t_s, nbauds=16):
     """ This will make the pulse array.
         Inputs
             ptype - The type of pulse used.
@@ -418,12 +419,12 @@ def makepulse(ptype, nsamps, ts, nbauds=13):
             pulse - The pulse array that will be used as the window in the data formation.
             plen - The length of the pulse with the sampling time taken into account.
     """
+    plen = nsamps*t_s
     if ptype.lower() == 'long':
-        pulse = sp.ones(nsamps)
-        plen = nsamps*ts
-
+        pulse = sp.ones(nsamps)[sp.newaxis]
+        sweepid = sp.array([300])
+        sweepnum = sp.array([0])
     elif ptype.lower() == 'barker':
-
         blen = sp.array([1, 2, 3, 4, 5, 7, 11, 13])
         nsampsarg = sp.argmin(sp.absolute(blen-nbauds))
         nbauds = blen[nsampsarg]
@@ -432,13 +433,40 @@ def makepulse(ptype, nsamps, ts, nbauds=13):
         pulse_samps = sp.floor(sp.arange(nsamps)*baudratio)
         pulse = pulse[pulse_samps]
         plen = nsamps*ts
-#elif ptype.lower()=='ac':
+        sweepid = sp.array([400])
+        sweepnum = sp.array([0])
+    elif ptype.lower() == 'ac':
+        pulse, sweepid, sweepnum = gen_ac(nsamps, nbauds)
+
+    elif ptype.lower() == 'interleaved':
+        pulse, acsweepid, acsweepnum = gen_ac(nsamps, nbauds)
+        pulse = pulse.repeat(3, axis=0)
+        pulse[2::3, :] = 1
+        sweepid = acsweepid.repeat(3)
+        sweepnum = acsweepnum.repeat(3)
+        sweepid[2::3] = 300
+        sweepnum[2::3] = 0
     else:
         raise ValueError('The pulse type %s is not a valide pulse type.' % (ptype))
 
-    return (pulse, plen)
+    return (pulse, plen, sweepid, sweepnum)
 
+def gen_ac(nsamps, nbauds):
+    """
 
+    """
+    blen = sp.array([4, 8, 16])
+    nsampsarg = sp.argmin(sp.absolute(blen-nbauds))
+    nbauds = blen[nsampsarg]
+    samp_mat = sp.arange(nbauds).repeat(nsamps/nbauds)
+    phasefile = Path(__file__).resolve().parent / 'acphase.txt'
+    all_phase = sp.genfromtxt(str(phasefile))
+    pulse = sp.zeros((nbauds*2, len(samp_mat)))
+    for ipulse in range(nbauds*2):
+        pulse[ipulse] = sp.cos(sp.pi*all_phase[ipulse, samp_mat]/180.)
+    sweepnum = sp.arange(nbauds*2)
+    sweepid = sweepnum+1
+    return pulse, sweepid, sweepnum
 #%% dictionary file
 def dict2h5(fn, dictin):
     """A function that will save a dictionary to a h5 file.
@@ -449,18 +477,18 @@ def dict2h5(fn, dictin):
     fn = Path(fn).expanduser()
     if fn.is_file():
         fn.unlink()
-    with tables.open_file(str(fn), mode = "w", title = "RadarDataFile out.") as f:
+    with tables.open_file(str(fn), mode="w", title="RadarDataFile out.") as f:
         try:
             # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
             # Make group for each dictionary
             for cvar in dictin.keys():
                 if type(dictin[cvar]) is list:
                     f.create_group('/', cvar)
-                    lenzeros= len(str(len(dictin[cvar])))-1
+                    lenzeros = len(str(len(dictin[cvar])))-1
                     for inum, datapnts in enumerate(dictin[cvar]):
-                        f.create_array('/'+cvar, 'Inst{0:0{1:d}d}'.format(inum,lenzeros),datapnts, 'Static array')
+                        f.create_array('/'+cvar, 'Inst{0:0{1:d}d}'.format(inum, lenzeros),datapnts, 'Static array')
                 elif type(dictin[cvar]) is sp.ndarray:
-                    f.create_array('/', cvar, dictin[cvar],'Static array')
+                    f.create_array('/', cvar, dictin[cvar], 'Static array')
                 else:
                     raise ValueError('Values in list must be lists or numpy arrays')
             f.close()
@@ -478,12 +506,12 @@ def h52dict(filename):
     Output
     outdict - A dictionary where the keys are the group names and the values are lists
     or numpy arrays."""
-    h5file = tables.open_file(filename, mode = "r")
-    output ={}
+    h5file = tables.open_file(filename, mode="r")
+    output = {}
     for group in h5file.walk_groups('/'):
-            output[group._v_pathname]={}
-            for array in h5file.list_nodes(group, classname = 'Array'):
-                output[group._v_pathname][array.name] = array.read()
+        output[group._v_pathname] = {}
+        for array in h5file.list_nodes(group, classname='Array'):
+            output[group._v_pathname][array.name] = array.read()
     h5file.close()
 
     outdict= {}
@@ -549,9 +577,9 @@ def makeconfigfile(fname, beamlist, radarname, simparams_orig):
     fext = fname.suffix
 
     # reduce the number of stuff needed to be saved and avoid problems with writing
-    keys2save = ['IPP', 'IPPsamps', 'TimeLim', 'datasamples', 'calsamples', 'noisesamples',
-                 'Pulselength', 'Pulsetype', 'fsnum', 'fsden', 'Tint', 'Fitinter',
-                 'dtype', 'ambupsamp', 'species', 'numpoints', 'startfile',
+    keys2save = ['IPP', 'IPPsamps', 'TimeLim', 'Pulselength', 'Pulsetype', 'fsnum',
+                 'fsden', 'Tint', 'Fitinter',
+                 'dtype', 'species', 'numpoints', 'startfile',
                  'FitType', 'beamrate', 'outangles', 'declist']
 
     if not 'beamrate' in simparams_orig.keys():
@@ -720,16 +748,28 @@ def readconfigfile(fname):
     time_lim = simparams['TimeLim']
     f_s = float(simparams['fsnum'])/simparams['fsden']
     t_s = float(simparams['fsden'])/simparams['fsnum']
-    p_len =  int(sp.round_(f_s*simparams['Pulselength']))
-    (pulse, simparams['Pulselength']) = makepulse(simparams['Pulsetype'], p_len,
-                                                  t_s)
+    p_len = int(sp.round_(f_s*simparams['Pulselength']))
+    (pulse, simparams['Pulselength'], sweepid, sweepnums) = makepulse(simparams['Pulsetype'],
+                                                                      p_len, t_s)
+    simparams['sweepids'] = sweepid
+    simparams['sweepnums'] = sweepnums
     simparams['Pulse'] = pulse
     simparams['amb_dict'] = make_amb(f_s/ds_fac, simparams['declist'], pulse,
-                                     simparams['numpoints'])
+                                     simparams['numpoints'], sweepid)
     simparams['angles'] = angles
-    d_len = simparams['datasamples']
+    timing_dict = get_timing_dict()
+    usweeps = sp.unique(sweepid)
 
-    #rng_gates = sp.arange(d_len[0], d_len[1]-(len(pulse)-1))*t_s*v_C_0*1e-3/2.
+    sig_list = sp.vstack([list(timing_dict[i][1]['signal']) for i in usweeps])
+    no_list = sp.vstack([list(timing_dict[i][1]['noise']) for i in usweeps])
+    cal_list = sp.vstack([list(timing_dict[i][1]['calibration']) for i in usweeps])
+    d_len = [sig_list[:, 0].min(), sig_list[:, 1].max()]
+    n_len = [no_list[:, 0].min(), no_list[:, 1].max()]
+    c_len = [cal_list[:, 0].min(), cal_list[:, 1].max()]
+    simparams['datasamples'] = d_len
+    simparams['noisesamples'] = n_len
+    simparams['calsamples'] = c_len
+    simparams['Timing_Dict'] = {i:timing_dict[i][1] for i in usweeps}
     rng_samprate = t_s*v_C_0*1e-3/2.
     rng_samprateds = rng_samprate/ds_fac
     rng_gates = sp.arange(d_len[0], d_len[1])*rng_samprate
@@ -739,7 +779,7 @@ def readconfigfile(fname):
     if 'lagtype' not in simparams.keys():
         simparams['lagtype'] = 'centered'
 
-    plen_ds = int(len(pulse)/ds_fac)
+    plen_ds = int(p_len/ds_fac)
     sumrule = makesumrule(simparams['Pulsetype'], plen_ds, simparams['lagtype'])
     simparams['SUMRULE'] = sumrule
     minrg = plen_ds-1
@@ -773,3 +813,110 @@ def readconfigfile(fname):
         warnings.warn('No start file given', UserWarning)
 
     return(sensdict, simparams)
+# Millstone specific things
+
+def get_timing_dict():
+    return         {-1   : ('zero_mode', {'full' : (0,0), 'tx' : (0,0), 'blank' : (0,0), 'clutter' : (0,0), 'signal' : (0,0), 'noise' : (0,0), 'txnoise' : (0,0), 'calibration' : (0,0)}),
+
+                    # Alternating Code, for the moment it is good we only use one...
+                    1    : ('a480_30_8910_1', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    2    : ('a480_30_8910_2', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    3    : ('a480_30_8910_3', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    4    : ('a480_30_8910_4', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    5    : ('a480_30_8910_5', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    6    : ('a480_30_8910_6', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    7    : ('a480_30_8910_7', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    8    : ('a480_30_8910_8', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    9    : ('a480_30_8910_9', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    10   : ('a480_30_8910_10', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    11   : ('a480_30_8910_11', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    12   : ('a480_30_8910_12', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    13   : ('a480_30_8910_13', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    14   : ('a480_30_8910_14', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    15   : ('a480_30_8910_15', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    16   : ('a480_30_8910_16', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    17   : ('a480_30_8910_17', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    18   : ('a480_30_8910_18', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    19   : ('a480_30_8910_19', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    20   : ('a480_30_8910_20', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    21   : ('a480_30_8910_21', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    22   : ('a480_30_8910_22', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    23   : ('a480_30_8910_23', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    24   : ('a480_30_8910_24', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    25   : ('a480_30_8910_25', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    26   : ('a480_30_8910_26', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    27   : ('a480_30_8910_27', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    28   : ('a480_30_8910_28', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    29   : ('a480_30_8910_29', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    30   : ('a480_30_8910_30', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    31   : ('a480_30_8910_31', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+                    32   : ('a480_30_8910_32', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,540), 'clutter' : (540,1100), 'signal' : (1200,6100), 'noise' : (7180,7800), 'txnoise' : (7180,7800), 'calibration' : (8180,8810)}),
+
+                    # 480 usec single pulse, used interleaved with alternating code
+                    300 : ('s480_8910', {'full' : (0,8910), 'tx' : (0,480), 'blank' : (0,700), 'clutter' : (700,800), 'signal' : (800,7100), 'noise' : (7100,7700), 'txnoise' : (7100,7700), 'calibration' : (7700,8300)}),
+
+                    # 2000 usec single pulse
+                    500 : ('std_s2000_34600', {'full' : (0,34599), 'tx' : (100,2101), 'blank' : (0,2500), 'clutter' : (2501,2700), 'signal' : (2701,28100), 'noise' : (28101,30100),'txnoise' : (28101,30100),  'calibration' : (30101,32100)}),
+
+                    # 2000 usec single pulse extended blank
+                    800 : ('scan_s2000_34600', {'full' : (0,34599), 'tx' : (100,2101), 'blank' : (0,3600), 'clutter' : (3601,3700), 'signal' : (3701,28100), 'noise' : (28101,30100),'txnoise' : (28101,30100),  'calibration' : (30101,32100)}),
+
+                    # 1280 usec single pulse
+                    502 : ('std_s1280_22400', {'full' : (0,22399), 'tx' : (100,1381), 'blank' : (0,1500), 'clutter' : (1501,2780), 'signal' : (2781,18100), 'noise' : (18101,20100), 'txnoise' : (18101,20100), 'calibration' : (20101,20700)}),
+
+                    # 1280 usec single pulse extended blank
+                    802 : ('scan_s1280_22400', {'full' : (0,22399), 'tx' : (100,1381), 'blank' : (0,2300), 'clutter' : (2301,2780), 'signal' : (2781,18100), 'noise' : (18101,20100), 'txnoise' : (18101,20100), 'calibration' : (20101,20700)}),
+
+                    # 960 usec single pulse
+                    516 : ('s960_17000', {'full' : (0,16999), 'tx' : (100,1061), 'blank' : (0,962), 'clutter' : (962,2660), 'signal' : (2661,13000), 'noise' : (13001,16000), 'txnoise' : (13001,16000), 'calibration' : (16001,16600)}),
+
+                    # 960 usec single pulse extended blank
+                    816 : ('scan_s960_17000', {'full' : (0,16999), 'tx' : (100,1061), 'blank' : (0,1700), 'clutter' : (1701,2660), 'signal' : (2661,13000), 'noise' : (13001,16000), 'txnoise' : (13001,16000), 'calibration' : (16001,16600)}),
+
+                    # 640 usec single pulse
+                    504 : ('std_s640_11600', {'full' : (0,11599), 'tx' : (100,741), 'blank' : (0,900), 'clutter' : (901,1540), 'signal' : (1541,9100), 'noise' : (9101,10100), 'txnoise' : (9101,10100), 'calibration' : (10101,10700)}),
+
+                    # 410 usec single pulse
+                    506 : ('std_s410_8000', {'full' : (0,7999), 'tx' : (100,511), 'blank' : (0,700), 'clutter' : (701,1100), 'signal' : (1101,6100), 'noise' : (7180,7300), 'txnoise' : (7180,7300), 'calibration' : (7301,7800)}),
+
+                    # 410 usec single pulse alternate IPP length
+                    508 : ('std_s410_7700', {'full' : (0,7699), 'tx' : (100,511), 'blank' : (0,700), 'clutter' : (701,1100), 'signal' : (1101,5900), 'noise' : (5901,7100), 'txnoise' : (5901,7100), 'calibration' : (7101,7600)}),
+
+                    # 400 usec single pulse mode to replace the 410
+
+                    524 : ('s400_7700', {'full' : (0,7699), 'tx' : (100,501), 'blank' : (0,700), 'clutter' : (701,1100), 'signal' : (1101,5900), 'noise' : (5901,7100), 'txnoise' : (5901,7100), 'calibration' : (7101,7600)}),
+
+                    # 40 usec single pulse
+                    514 : ('std_s40_3800', {'full' : (0,3799), 'tx' : (100,141), 'blank' : (0,300), 'clutter' : (301,350), 'signal' : (351,2800), 'noise' : (2801,3200), 'txnoise' : (2801,3200), 'calibration' : (3201,3700)}),
+
+                    # 40 usec single pulse
+                    1027 : ('s40_2000', {'full' : (0,1999), 'tx' : (100,141), 'blank' : (0,200), 'clutter' : (201,600), 'signal' : (601,1100), 'noise' : (1101,1400), 'txnoise' : (1101,1400), 'calibration' : (1401,1700)}),
+
+                    # 40 usec single pulse extended IPP
+                    1028 : ('s40_3000', {'full' : (0,2999), 'tx' : (100,141), 'blank' : (0,200), 'clutter' : (201,600), 'signal' : (601,2100), 'noise' : (2101,2400), 'txnoise' : (2101,2400), 'calibration' : (2401,2700)}),
+
+                    # 40 usec single pulse extended IPP
+                    1029 : ('s40_3600', {'full' : (0,3599), 'tx' : (100,141), 'blank' : (0,200), 'clutter' : (201,600), 'signal' : (601,3100), 'noise' : (3101,3400), 'txnoise' : (3101,3400), 'calibration' : (3401,3550)}),
+
+                    # 60 usec single pulse duty cycle matched to s40_2000 for interleaving
+                    1038 : ('s60_3000', {'full' : (0,2999), 'tx' : (100,161), 'blank' : (0,200), 'clutter' : (201,600), 'signal' : (601,2100), 'noise' : (2101,2400), 'txnoise' : (2101,2400), 'calibration' : (2401,2700)}),
+
+                    # 300 usec single pulse
+                    510 : ('std_s300_6200', {'full' : (0,6199), 'tx' : (100,300), 'blank' : (0,600), 'clutter' : (601,1000), 'signal' : (1001,5200), 'noise' : (5201,5600), 'txnoise' : (5201,5600), 'calibration' : (5601,6100)}),
+
+                    # 40 usec single pulse
+                    1027 : ('s40_2000', {'full' : (0,1999), 'tx' : (10,40), 'blank' : (0,100), 'clutter' : (101,450), 'signal' : (451,1100), 'noise' : (1101,1400), 'txnoise' : (1101,1400), 'calibration' : (1401,1700)}),
+
+                    # 390 usec single pulse
+                    521 : ('s390_7300', {'full' : (0,7299), 'tx' : (100,401), 'blank' : (0,700), 'clutter' : (701,1100),  'signal' : (1101, 5299), 'noise' : (5300,6669), 'txnoise': (5300,6669), 'calibration' : (6670,7200)}),
+
+                    # 390 usec Barker code
+                    621 : ('b390_30_7300', {'full' : (0,7299), 'tx' : (100,401), 'blank' : (0,700), 'clutter' : (701,1100),  'signal' : (1101, 5299), 'noise' : (5300,6669), 'txnoise': (5300,6669), 'calibration' : (6670,7200)}),
+
+                    # calibration mode
+                    2147483647 : ('calibration', {'full' : (0,34599), 'tx' : (0,100), 'blank' : (0,2500), 'clutter' : (0,100), 'signal' : (0,100), 'noise' : (2501,17100), 'txnoise' : (2501,17100), 'calibration' : (17101,32100)}),
+
+                    # standby mode
+                    0 : ('standby', {'full' : (0,34599), 'tx' : (100,2101), 'blank' : (0,2500), 'clutter' : (2501,2700), 'signal' : (2701,28100), 'noise' : (28101,30100),'txnoise' : (28101,30100),  'calibration' : (30101,32100)})
+
+                    }

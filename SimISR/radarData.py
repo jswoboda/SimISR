@@ -67,15 +67,19 @@ class RadarDataFile(object):
         Npall = int(sp.floor(Npall/N_angles)*N_angles)
         Np = Npall/N_angles
 
+        sweepids = simparams['sweepids']
+        sweepnums = simparams['sweepnums']
+        nseq = len(sweepids)
+        usweep = sp.unique(sweepids)
         ippsamps = self.simparams['IPPsamps']
         d_samps = self.simparams['datasamples']
         n_samps = self.simparams['noisesamples']
         c_samps = self.simparams['calsamples']
         n_ns = n_samps[1] - n_samps[0]
         n_cal = c_samps[1] - c_samps[0]
-
+        t_dict = simparams['Timing_Dict']
         ## HACK: Set max number of pulses per write based off of ippsamps
-        max_write = 2*2**30 # 7 gigabye Write
+        max_write = 2*2**30 # 2 gigabye Write
         bps = 16 # byte per sample for complex128 in numpy array
         nippw = max_write/bps/ippsamps # number of ipps per write
 
@@ -89,6 +93,7 @@ class RadarDataFile(object):
         pulsefile = sp.array([sp.where(itimes-ftimes >= 0)[0][-1] for itimes in pulsetimes])
         pulse_full = self.simparams['Pulse']
 
+
         #digital rf stuff
 
         sample_rate_numerator = self.simparams['fsnum']
@@ -96,7 +101,7 @@ class RadarDataFile(object):
         sample_rate = sp.longdouble(sample_rate_numerator) / sample_rate_denominator
         start_global_index = int(sample_rate*filetimes[0])
         dtype_str = 'complex64'  # complex64
-        sub_cadence_secs = 3600  # Number of seconds of data in a subdirectory - typically MUCH larger
+        sub_cadence_secs = 3600  # Number of seconds of data in a subdirectory
         file_cadence_millisecs = 10000  # Each file will have up to 400 ms of data
         compression_level = 0  # no compression
         checksum = False  # no checksum
@@ -139,8 +144,7 @@ class RadarDataFile(object):
                                            'ant')
         # id metadata
         iddir = dmddir.joinpath('id_metadata')
-        idmdict = {'sweepid': 300, 'sample_rate': sample_rate,
-                   'modeid': 100000001, 'sweepnum': 0}
+
         idmobj = drf.DigitalMetadataWriter(str(iddir), 3600, 1,
                                            sample_rate_numerator, sample_rate_denominator,
                                            'md')
@@ -166,11 +170,13 @@ class RadarDataFile(object):
             else:
                 beams = beam3[:leftover]
 
-        pulsen = sp.repeat(sp.arange(Np), N_angles)
+        pulsen = sp.repeat(sp.arange(Np), N_angles).astype(int)
         pt_list = []
         pb_list = []
         pn_list = []
         fname_list = []
+        si_list = []
+        sn_list = []
         self.datadir = outdir
         self.maindir = outdir.parent
         self.procdir = self.maindir/'ACF'
@@ -199,7 +205,9 @@ class RadarDataFile(object):
                     cur_fpulses = f_pulses[i_pstart:i_pend]
                     pt = pulsetimes[cur_fpulses]
                     pb = beams[cur_fpulses]
-                    pn = pulsen[cur_fpulses].astype(int)
+                    pn = pulsen[cur_fpulses]
+                    s_i = sweepids[pn % nseq]
+                    s_n = sweepnums[pn % nseq]
                     rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
                                                 curcontainer.Sphere_Coords,
                                                 curcontainer.Param_List, pb)
@@ -209,19 +217,38 @@ class RadarDataFile(object):
 
                     alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
                     alldata = sp.sqrt(noisepwr/2.)*alldata
+                    caldata = sp.random.randn(n_pulse_cur, n_cal) + 1j*sp.random.randn(n_pulse_cur, n_cal)
+                    caldata = sp.sqrt(calpwr/2)*caldata.astype(simdtype)
                     noisedata = alldata[:, d_samps[0]:d_samps[1]]
-                    alldata[:, d_samps[0]:d_samps[1]] = rawdata_us + alldata[:, d_samps[0]:d_samps[1]]
-                    caldata = sp.sqrt(calpwr/2)*(sp.random.randn(n_pulse_cur, n_cal).astype(simdtype)+
-                                                 1j*sp.random.randn(n_pulse_cur, n_cal).astype(simdtype))
-                    alldata[:, c_samps[0]:c_samps[1]] = alldata[:, c_samps[0]:c_samps[1]] + caldata
-                    alldata = alldata/sp.sqrt(calpwr)
-                    rawdata = rawdata_us.copy()/sp.sqrt(calpwr)
-                    noisedata = noisedata.copy()/sp.sqrt(calpwr)
+                    for i_swid in usweep:
+                        sw_ind = sp.where(s_i == i_swid)[0]
+                        cur_tdict = t_dict[i_swid]
+                        cur_d = cur_tdict['signal']
+                        d_sampsraw = [cur_d[0]-d_samps[0], cur_d[1]-d_samps[0]]
+                        cur_c = cur_tdict['calibration']
+                        cur_csamps = sp.diff(cur_c)[0]
+                        alldata[sw_ind, cur_d[0]:cur_d[1]] += rawdata_us[sw_ind, d_sampsraw[0]:d_sampsraw[1]]
 
-                    cal_samps = alldata[:, c_samps[0]:c_samps[1]]
-                    data_samps = alldata[:, d_samps[0]:d_samps[1]]
+                        alldata[sw_ind, cur_c[0]:cur_c[1]] += caldata[sw_ind, :cur_csamps]
+                    alldata = alldata/sp.sqrt(calpwr/2.)
+                    rawdata = rawdata_us.copy()/sp.sqrt(calpwr/2.)
+                    noisedata = noisedata.copy()/sp.sqrt(calpwr/2.)
+                    cal_samps = sp.zeros_like(caldata)
+                    data_samps = sp.zeros_like(rawdata_us)
+                    noise_samps = sp.zeros((n_pulse_cur, n_ns))
+                    for i_swid in usweep:
+                        sw_ind = sp.where(s_i == i_swid)[0]
+                        cur_tdict = t_dict[i_swid]
+                        cur_d = cur_tdict['signal']
+                        cur_c = cur_tdict['calibration']
+                        cur_csamps = sp.diff(cur_c)
+                        cur_n = cur_tdict['noise']
+                        cur_nsamps = sp.diff(cur_n)
+                        data_samps[sw_ind] = alldata[sw_ind, cur_d[0]:cur_d[1]]
+                        cal_samps[sw_ind, :cur_csamps] = alldata[sw_ind, cur_c[0]:cur_c[1]]
+                        noise_samps[sw_ind, :cur_nsamps] = alldata[sw_ind, cur_n[0]:cur_n[1]]
+                        
                     data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
-                    noise_samps = alldata[:, n_samps[0]:n_samps[1]]
                     noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
                     # Down sample data using resample, keeps
                     rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
@@ -246,13 +273,15 @@ class RadarDataFile(object):
                     pt_list.append(pt)
                     pb_list.append(pb)
                     pn_list.append(pn)
+                    si_list.append(s_i)
+                    sn_list.append(s_n)
                     fname_list.append(fname)
 
                     #HACK Add a constant to set the noise level to be atleast 1 bit
                     num_const = 200.
                     #transmitdata
                     tx_data = sp.zeros_like(alldata).astype('complex64')
-                    tx_data[:, :len(pulse_full)] = pulse_full.astype('complex64')
+                    tx_data[:, :len(pulse_full)] = pulse_full[pn % nseq].astype('complex64')
                     data_object_tx.rf_write(tx_data.flatten()*num_const)
                     # extend array for digital rf to flattend array
 
@@ -260,6 +289,8 @@ class RadarDataFile(object):
                     id_strt = int(idmobj.get_samples_per_second()*pt[0])
                     dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
                     acmobj.write(int(acmobj.get_samples_per_second()*pt[0]), acmdict)
+                    idmdict = {'sweepid': s_i, 'sample_rate': [sample_rate]*len(s_n),
+                               'modeid': [100000001]*len(s_n), 'sweepnum': s_n}
                     idmobj.write(dmdplist, idmdict)
                     pmmobj.write(int(pmmobj.get_samples_per_second()*pt[0]), pmmdict)
 
@@ -293,13 +324,13 @@ class RadarDataFile(object):
         ds_fac = sp.prod(self.simparams['declist'])
         f_s = float(self.simparams['fsnum'])/self.simparams['fsden']/ds_fac
         t_s = float(ds_fac*self.simparams['fsden'])/self.simparams['fsnum']
-        pulse = self.simparams['Pulse'][::ds_fac]
+        pulse = self.simparams['Pulse'][:,::ds_fac]
         #HACK number of lpc points connected to ratio of sampling frequency and
         # notial ion-line spectra with a factor of 10.
         nlpc = int(10*f_s/20e3) + 1
         pulse2spec = sp.array([sp.where(itimes-spectime >= 0)[0][-1] for itimes in pulsetimes])
         n_pulses = len(pulse2spec)
-        lp_pnts = len(pulse)
+        lp_pnts = pulse.shape[-1]
         samp_num = sp.arange(lp_pnts)
         n_samps = (samp_range[1]-samp_range[0])/ds_fac
         angles = self.simparams['angles']
