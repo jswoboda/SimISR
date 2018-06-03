@@ -667,12 +667,14 @@ def getdefualtparams():
     (sensdict, simparams) = readconfigfile(str(d_file))
     return sensdict, simparams
 
-def readconfigfile(fname):
+def readconfigfile(fname, make_amb=False):
     """
         This funciton will read in the ini or yaml files that are used for configuration.
 
         Args:
             fname - A string containing the file name and location.
+            make_amb - A bool to determine if the ambiguity functions should be
+                       calculated because they take a lot of time.
 
         Returns:
             sensdict - A dictionary that holds the sensor parameters.
@@ -754,8 +756,9 @@ def readconfigfile(fname):
     simparams['sweepids'] = sweepid
     simparams['sweepnums'] = sweepnums
     simparams['Pulse'] = pulse
-    simparams['amb_dict'] = make_amb(f_s/ds_fac, simparams['declist'], pulse,
-                                     simparams['numpoints'], sweepid)
+    if make_amb:
+        simparams['amb_dict'] = make_amb(f_s/ds_fac, simparams['declist'], pulse,
+                                         simparams['numpoints'], sweepid)
     simparams['angles'] = angles
     timing_dict = get_timing_dict()
     usweeps = sp.unique(sweepid)

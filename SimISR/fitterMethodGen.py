@@ -35,7 +35,7 @@ class Fitterionoconainer(object):
             Ionosig:
             sensdict: The dictionary that holds the sensor info.
             simparams: The dictionary that hold the specific simulation params"""
-        (self.sensdict, self.simparams) = readconfigfile(inifile)
+        (self.sensdict, self.simparams) = readconfigfile(inifile, make_amb=True)
         self.acf = ionoacf
         self.sig = Ionosig
     def fitNE(self, Tratio=1):

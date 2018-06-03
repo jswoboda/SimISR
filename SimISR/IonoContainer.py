@@ -61,7 +61,7 @@ class IonoContainer(object):
             y_vec = coordlist[:, 1]
             z_vec = coordlist[:, 2]
 
-            r_vec = np.sqrt(x_vec**2+y_vec**2+y_vec**2)
+            r_vec = np.sqrt(x_vec**2+y_vec**2+z_vec**2)
             az_vec = np.degrees(np.arctan2(x_vec, x_vec))
             el_vec = np.degrees(np.arcsin(z_vec/r_vec))
 

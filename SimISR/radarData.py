@@ -223,31 +223,29 @@ class RadarDataFile(object):
                     for i_swid in usweep:
                         sw_ind = sp.where(s_i == i_swid)[0]
                         cur_tdict = t_dict[i_swid]
-                        cur_d = cur_tdict['signal']
-                        d_sampsraw = [cur_d[0]-d_samps[0], cur_d[1]-d_samps[0]]
                         cur_c = cur_tdict['calibration']
                         cur_csamps = sp.diff(cur_c)[0]
-                        alldata[sw_ind, cur_d[0]:cur_d[1]] += rawdata_us[sw_ind, d_sampsraw[0]:d_sampsraw[1]]
-
+                        alldata[sw_ind, d_samps[0]:d_samps[1]] += rawdata_us[sw_ind]
                         alldata[sw_ind, cur_c[0]:cur_c[1]] += caldata[sw_ind, :cur_csamps]
+
                     alldata = alldata/sp.sqrt(calpwr/2.)
                     rawdata = rawdata_us.copy()/sp.sqrt(calpwr/2.)
                     noisedata = noisedata.copy()/sp.sqrt(calpwr/2.)
                     cal_samps = sp.zeros_like(caldata)
                     data_samps = sp.zeros_like(rawdata_us)
-                    noise_samps = sp.zeros((n_pulse_cur, n_ns))
+                    noise_samps = sp.zeros((n_pulse_cur, n_ns), dtype=alldata.dtype)
+
                     for i_swid in usweep:
                         sw_ind = sp.where(s_i == i_swid)[0]
                         cur_tdict = t_dict[i_swid]
-                        cur_d = cur_tdict['signal']
                         cur_c = cur_tdict['calibration']
-                        cur_csamps = sp.diff(cur_c)
+                        cur_csamps = sp.diff(cur_c)[0]
                         cur_n = cur_tdict['noise']
-                        cur_nsamps = sp.diff(cur_n)
-                        data_samps[sw_ind] = alldata[sw_ind, cur_d[0]:cur_d[1]]
+                        cur_nsamps = sp.diff(cur_n)[0]
+                        data_samps[sw_ind] = alldata[sw_ind, d_samps[0]:d_samps[1]]
                         cal_samps[sw_ind, :cur_csamps] = alldata[sw_ind, cur_c[0]:cur_c[1]]
                         noise_samps[sw_ind, :cur_nsamps] = alldata[sw_ind, cur_n[0]:cur_n[1]]
-                        
+
                     data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
                     noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
                     # Down sample data using resample, keeps
@@ -281,7 +279,7 @@ class RadarDataFile(object):
                     num_const = 200.
                     #transmitdata
                     tx_data = sp.zeros_like(alldata).astype('complex64')
-                    tx_data[:, :len(pulse_full)] = pulse_full[pn % nseq].astype('complex64')
+                    tx_data[:, :pulse_full.shape[-1]] = pulse_full[pn % nseq].astype('complex64')
                     data_object_tx.rf_write(tx_data.flatten()*num_const)
                     # extend array for digital rf to flattend array
 
