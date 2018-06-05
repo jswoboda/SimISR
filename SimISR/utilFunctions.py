@@ -282,7 +282,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         xin = sp.sqrt(nfft)*xin/xinsum
         outdata = sp.ifft(h_tile*xin, axis=1)
         #outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-        outpulse = sp.tile(pulse, (pprep, 1))[rep1]
+        outpulse = sp.tile(pulse, (pprep, 1))
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     else:
         xin = sp.random.randn(rep1, n_pnt)+1j*sp.random.randn(rep1, n_pnt)
@@ -290,7 +290,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, n_pnt))
         xin = xin/xinsum
         outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-        outpulse = sp.tile(pulse, (pprep, 1))[rep1]
+        outpulse = sp.tile(pulse, (pprep, 1))
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     #outdata = sp.sqrt(rcs)*outdata/sp.sqrt(sp.mean(outdata.var(axis=1)))
     return outdata
