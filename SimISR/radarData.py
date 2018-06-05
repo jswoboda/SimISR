@@ -195,7 +195,7 @@ class RadarDataFile(object):
                 if ifn == 0:
                     self.timeoffset = curcontainer.Time_Vector[0, 0]
                 f_pulses = sp.where(pulsefile == ifn)[0]
-                nwrites = float(len(f_pulses))/nippw
+                nwrites = sp.ceil(float(len(f_pulses))/nippw).astype(int)
                 for ifwrite, i_pstart in enumerate(range(0, len(f_pulses), nippw)):
                     progstr1 = 'Data for write {:d} of {:d} being created.'
 
