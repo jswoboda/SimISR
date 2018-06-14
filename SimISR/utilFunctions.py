@@ -257,7 +257,6 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
 
     npulse, lp = pulse.shape
     # repeat the pulse pattern
-    pprep = sp.ceil(float(rep1)/npulse).astype(int)
     r1 = scfft.ifft(scfft.ifftshift(spec))
     rp1 = r1[:nlpc]
     rp2 = r1[1:nlpc+1]
@@ -269,7 +268,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
     G = sp.sqrt(sp.sum(sp.conjugate(r1[:nlpc+1])*lpc))
     Gvec = sp.r_[G, sp.zeros(nlpc)]
     n_pnt = (nlpc+1)*3+lp
-
+    p_ind = sp.arange(rep1)%npulse
     if n_pnt >= 200:
         nfft = scfft.next_fast_len(n_pnt)
         _, h_filt = sp.signal.freqz(Gvec, lpc, worN=nfft, whole=True)
@@ -282,7 +281,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         xin = sp.sqrt(nfft)*xin/xinsum
         outdata = sp.ifft(h_tile*xin, axis=1)
         #outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-        outpulse = sp.tile(pulse, (pprep, 1))
+        outpulse = pulse[p_ind]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     else:
         xin = sp.random.randn(rep1, n_pnt)+1j*sp.random.randn(rep1, n_pnt)
@@ -290,7 +289,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, n_pnt))
         xin = xin/xinsum
         outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-        outpulse = sp.tile(pulse, (pprep, 1))
+        outpulse = pulse[p_ind]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     #outdata = sp.sqrt(rcs)*outdata/sp.sqrt(sp.mean(outdata.var(axis=1)))
     return outdata
@@ -298,7 +297,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
 def GenBarker(blen):
     """This function will output a barker code pulse.
     Inputs
-        blen -An integer for number of bauds in barker code.
+        blen - An integer for number of bauds in barker code.
     Output
         outar - A blen length numpy array.
     """

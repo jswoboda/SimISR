@@ -189,8 +189,6 @@ class RadarDataFile(object):
 
                 outdict = {}
                 ifile = Ionodict[ifilet]
-                ifilename = Path(ifile).name
-
                 curcontainer = IonoContainer.readh5(ifile)
                 if ifn == 0:
                     self.timeoffset = curcontainer.Time_Vector[0, 0]
@@ -199,7 +197,7 @@ class RadarDataFile(object):
                 for ifwrite, i_pstart in enumerate(range(0, len(f_pulses), nippw)):
                     progstr1 = 'Data for write {:d} of {:d} being created.'
 
-                    prog_level = float(ifn)/Nf+ifwrite/Nf/nwrites
+                    prog_level = float(ifn)/Nf+float(ifwrite)/Nf/nwrites
                     update_progress(prog_level, progstr1.format(int(ifn*nwrites+ifwrite+1), int(Nf*nwrites)))
                     i_pend = sp.minimum(i_pstart+nippw, len(f_pulses))
                     cur_fpulses = f_pulses[i_pstart:i_pend]

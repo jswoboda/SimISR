@@ -10,14 +10,11 @@
   Tint: 120.0
   ambupsamp: 1.0
   beamrate: 1
-  calsamples: [7700, 8300]
-  datasamples: [800, 7100]
-  declist: [4, 5]
+  declist: [6, 5]
   dtype: !!python/name:numpy.complex128 ''
   fsden: 1
   fsnum: 1000000
-  noisesamples: [7100, 7700]
-  numpoints: 2560
+  numpoints: 3840
   outangles:
   - [0]
   species: ['O+', 'NO+', 'O2+', 'H+', 'e-']
