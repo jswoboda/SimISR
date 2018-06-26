@@ -246,7 +246,7 @@ class RadarDataFile(object):
 
                     data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
                     noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
-                    # Down sample data using resample, keeps
+                    # Down sample data using resample, keeps variance correct
                     rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
                     noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
 
@@ -401,6 +401,126 @@ class RadarDataFile(object):
         (datalags, noiselags) = self.processdata()
         return lagdict2ionocont(datalags, noiselags, self.sensdict, self.simparams,
                                 datalags['Time'])
+
+    def processdatadrf(self):
+        """ Process digital_rf channels
+
+        """
+
+        outdir = self.datadir
+        t_dict = self.simparams['Timing_Dict']
+        drfdir = outdir.parent.joinpath('drfdata', 'rf_data')
+
+        simdtype = self.simparams['dtype']
+        lagtype = self.simparams['lagtype']
+        dmddir = outdir.parent.joinpath('drfdata', 'metadata')
+        acmdir = dmddir.joinpath('antenna_control_metadata')
+        iddir = dmddir.joinpath('id_metadata')
+
+        dec_list = self.simparams['declist']
+        ds_fac = sp.prod(dec_list)
+        pulse_arr = self.simparams['Pulse'][:,::ds_fac]
+        s_id_p1 = self.simparams['sweepids']
+        pulse_dict = {i:j for i, j in zip(s_id_p1, pulse_arr)}
+        idmobj = drf.DigitalMetadataReader(str(iddir))
+        drfObj = drf.DigitalRFReader(str(drfdir))
+        objprop = drfObj.get_properties('zenith-l')
+        sps = objprop['samples_per_second']
+        d_bnds = drfObj.get_bounds('zenith-l')
+
+        time_list = self.simparams['Timevec']*sps + d_bnds[0]
+        time_list = time_list.astype(int)
+        calpwr = v_Boltz*self.sensdict['CalDiodeTemp']*sps/ds_fac
+        pulse_dict = {i:j for i, j in zip(s_id_p1, pulse_arr)}
+        data_dict = {'AC':{'sig':[],'cal':[], 'noise':[], 'NIPP':[] },
+                     'LP':{'sig':None,'cal':None, 'noise':None, 'NIPP':None }}
+
+        acode_swid = sp.arange(1, 33)
+        lp_swid = 300
+
+        mode_dict = {'AC':{'swid':acode_swid.tolist()}, 'LP':{'swid':[lp_swid]}}
+        # make data lags
+        Ntime = len(time_list)
+        n_beams = 1
+        time_mat = sp.column_stack((time_list/sps, time_list/sps+int(self.simparams['Tint'])))
+        for i_type in mode_dict.keys():
+            swid_1 = mode_dict[i_type]['swid'][0]
+            t_info = t_dict[swid_1]
+            d_samps = int(sp.diff(t_info['signal'])[0]/ds_fac)
+            n_samps = int(sp.diff(t_info[['noise'])[0]/ds_fac)
+            Nlag = pulse_dict[swid_1].shape[0]
+            outdata = sp.zeros((Ntime, n_beams, d_samps-Nlag+1, Nlag), dtype=simdtype)
+            outnoise = sp.zeros((Ntime, n_beams, n_samps-Nlag+1, Nlag), dtype=simdtype)
+            pulses = sp.zeros((Ntime, n_beams))
+            outcal = sp.zeros((Ntime, n_beams))
+            data_lags = {'ACF':outdata, 'Pulses':pulses,
+                         'Time':timemat, "CalFactor":outcal}
+            noise_lags = {'ACF':outnoise, 'Pulses':pulses,
+                         'Time':timemat}
+            mode_dict[i_type]['datalags']=data_lags
+            mode_dict[i_type]['noiselags']=noise_lags
+
+        for itn, itb in (time_list):
+            ite = itb + int(self.simparams['Tint']*sps)
+            id_dict = idmobj.read_flatdict(itb, ite)
+
+            un_id, id_ind = sp.unique(id_dict['sweepid'], return_inverse=True)
+            p_indx = id_dict['index']
+            for i_idn, i_id in enumerate(un_id):
+                t_info = t_dict[i_id]
+                ipp_samp = t_info['full'][1]
+                sig_bnd = t_info['signal']
+                noise_bnd = t_info['noise']
+                cal_bnd = t_info['calibration']
+                cur_pulse = pulse_dict[i_id]
+                curlocs = sp.where(id_ind == i_idn)[0]
+                sig_data = sp.zeros((len(curlocs), sp.diff(sig_bnd)[0]), dtype=sp.complex64)
+                cal_data = sp.zeros((len(curlocs), sp.diff(cal_bnd)[0]), dtype=sp.complex64)
+                n_data = sp.zeros((len(curlocs), sp.diff(noise_bnd)[0]), dtype=sp.complex64)
+                # HACK Need to come up with clutter cancellation
+                for ar_id, id_ind in enumerate(curlocs):
+                    dr_ind = p_indx[id_ind]
+                    raw_data = drfObj.read_vector(dr_ind, 'zenith-l', ipp_samp, 0)
+                    sig_data[ar_id] = raw_data[sig_bnd[0]:sig_bnd[1]]
+                    cal_data[ar_id] = raw_data[cal_bnd[0]:cal_bnd[1]]
+                    n_data[ar_id] = raw_data[noise_bnd[0]:noise_bnd[1]]
+                # Down sample data
+                sig_data = sp.signal.resample(sig_data, sig_data.shape[1]/ds_fac, axis=1)
+                cal_data = sp.signal.resample(cal_data, cal_data.shape[1]/ds_fac, axis=1)
+                n_data = sp.signal.resample(n_data, n_data.shape[1]/ds_fac, axis=1)
+                # make lag products
+                sig_acf = lagfunc(sig_data, numtype=simdtype, pulse=cur_pulse,
+                                  lagtype=lagtype)
+                n_acf = lagfunc(n_data, numtype=simdtype, pulse=cur_pulse,
+                                lagtype=lagtype)
+                cal_acf = lagfunc(cal_data, numtype=simdtype, pulse=cur_pulse,
+                                  lagtype=lagtype)
+                cal_acf = sp.median(cal_acf, axis=0)[0]
+                if i_id in acode_swid:
+                    data_dict['AC']['sig'].append(sig_acf)
+                    data_dict['AC']['cal'].append(cal_acf)
+                    data_dict['AC']['noise'].append(n_acf)
+                    data_dict['AC']['NIPP'].append(len(curlocs))
+                elif i_id == lp_swid:
+                    data_dict['LP'] = {"sig":sig_acf, "cal":cal_acf, "noise":n_acf, 'NIPP': len(curlocs)}
+
+            # AC stuff
+            data_dict['AC'] = {ikey:sum(data_dict['AC'][ikey]) for ikey in data_dict['AC'].keys()}
+            mode_dict['AC']['datalags']['ACF'][itn, 0] = data_dict['AC']['sig']
+            mode_dict['AC']['datalags']['Pulses'][itn, 0] = data_dict['AC']['NIPP']
+            mode_dict['AC']['datalags']['CalFactor'][itn, 0] = data_dict['AC']['cal']
+
+            mode_dict['AC']['noiselags']['ACF'][itn, 0] = data_dict['AC']['sig']
+            mode_dict['AC']['noiselags']['Pulses'][itn, 0] = data_dict['AC']['NIPP']
+            # LP stuff
+            mode_dict['LP']['datalags']['ACF'][itn, 0] = data_dict['LP']['sig']
+            mode_dict['LP']['datalags']['Pulses'][itn, 0] = data_dict['LP']['NIPP']
+            mode_dict['LP']['datalags']['CalFactor'][itn, 0] = data_dict['LP']['cal']
+
+            mode_dict['LP']['noiselags']['ACF'][itn, 0] = data_dict['LP']['sig']
+            mode_dict['LP']['noiselags']['Pulses'][itn, 0] = data_dict['LP']['NIPP']
+
+        return mode_dict
 
     def processdata(self):
         """ This will perform the the data processing and create the ACF estimates
