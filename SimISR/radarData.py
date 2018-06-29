@@ -428,6 +428,7 @@ class RadarDataFile(object):
         t_dict = self.simparams['Timing_Dict']
         t_s = float(self.simparams['fsden'])/self.simparams['fsnum']
         rng_samprate = t_s*v_C_0*1e-3/2.
+        plen_ds = self.simparams['Pulse'].shape[-1]/ds_fac
         if 'LP' in outdict:
             datalagslp = outdict['LP']['datalags']
             noiselagslp = outdict['LP']['noiselags']
@@ -436,6 +437,8 @@ class RadarDataFile(object):
 
             rng_gates_ds = rng_gates[::ds_fac]
             self.simparams['Rangegates'] = rng_gates
+            minrg = plen_ds-1
+            maxrg = len(rng_gates_ds)-plen_ds+1
             self.simparams['Rangegatesfinal'] = rng_gates_ds[minrg:maxrg]
             (ionoout, ionosig) = lagdict2ionocont(datalagslp, noiselagslp, self.sensdict,
                                                   self.simparams, datalagslp['Time'])
@@ -449,6 +452,8 @@ class RadarDataFile(object):
 
             rng_gates_ds = rng_gates[::ds_fac]
             self.simparams['Rangegates'] = rng_gates
+            minrg = plen_ds-1
+            maxrg = len(rng_gates_ds)-plen_ds+1
             self.simparams['Rangegatesfinal'] = rng_gates_ds[minrg:maxrg]
             ionoout, ionosig = lagdict2ionocont(datalagsac, noiselagsac, self.sensdict,
                                                 self.simparams, datalagsac['Time'])
