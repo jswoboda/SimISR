@@ -41,7 +41,7 @@ class RadarDataFile(object):
     """
 
 
-    def __init__(self, Ionodict, inifile, outdir, outfilelist=None):
+    def __init__(self, config, outdir, outfilelist=None):
         """
             This function will create an instance of the RadarData class.  It will
             take in the values and create the class and make raw IQ data.
@@ -58,17 +58,46 @@ class RadarDataFile(object):
             rng_lims - A numpy array of length 2 that holds the min and max range
                 that the radar will cover.
         """
-        (sensdict, simparams) = readconfigfile(inifile)
-        self.simparams = simparams
-        N_angles = len(self.simparams['angles'])
+        (self.sensdict, self.simparams) = readconfigfile(config)
 
-        self.sensdict = sensdict
+
+        self.datadir = Path(outdir)
+        self.maindir = self.datadir.parent
+        self.procdir = self.maindir/'ACF'
+        self.drfdir = self.maindir/'drfdata'
+        # HACK Need to clean up for mulitple channels
+        self.drfdir_rf = self.drfdir.joinpath('rf_data')
+        self.drfdir_md = self.drfdir.joinpath('metadata')
+        #Make data
+        self.outfilelist = []
+        self.timeoffset = 0
+        if not outfilelist is None:
+            self.premadesetup(outfilelist)
+
+    def premadesetup(self, outfilelist):
+        """
+            If data has been previously made set it up accordinly
+        """
+        infodict = h52dict(str(self.datadir.joinpath('INFO.h5')))
+        alltime = sp.hstack(infodict['Time'])
+        self.timeoffset = alltime.min()
+        self.outfilelist = outfilelist
+
+    def makerfdata(self, ionodict):
+        """
+            The function will create the RF
+        """
+
+        filetimes = ionodict.keys()
+        filetimes.sort()
+        ftimes = sp.array(filetimes)
+        N_angles = len(self.simparams['angles'])
         Npall = sp.floor(self.simparams['TimeLim']/self.simparams['IPP'])
         Npall = int(sp.floor(Npall/N_angles)*N_angles)
         Np = Npall/N_angles
 
-        sweepids = simparams['sweepids']
-        sweepnums = simparams['sweepnums']
+        sweepids = self.simparams['sweepids']
+        sweepnums = self.simparams['sweepnums']
         nseq = len(sweepids)
         usweep = sp.unique(sweepids)
         ippsamps = self.simparams['IPPsamps']
@@ -77,7 +106,7 @@ class RadarDataFile(object):
         c_samps = self.simparams['calsamples']
         n_ns = n_samps[1] - n_samps[0]
         n_cal = c_samps[1] - c_samps[0]
-        t_dict = simparams['Timing_Dict']
+        t_dict = self.simparams['Timing_Dict']
         ## HACK: Set max number of pulses per write based off of ippsamps
         max_write = 2*2**30 # 2 gigabye Write
         bps = 16 # byte per sample for complex128 in numpy array
@@ -85,15 +114,15 @@ class RadarDataFile(object):
 
         dec_list = self.simparams['declist']
         ds_fac = sp.prod(dec_list)
-        filetimes = Ionodict.keys()
-        filetimes.sort()
-        ftimes = sp.array(filetimes)
+
         simdtype = self.simparams['dtype']
         pulsetimes = sp.arange(Npall)*self.simparams['IPP'] +ftimes.min()
         pulsefile = sp.array([sp.where(itimes-ftimes >= 0)[0][-1] for itimes in pulsetimes])
         pulse_full = self.simparams['Pulse']
-
-
+        print('\nData Now being created.')
+        filetimes = ionodict.keys()
+        filetimes.sort()
+        ftimes = sp.array(filetimes)
         #digital rf stuff
 
         sample_rate_numerator = self.simparams['fsnum']
@@ -110,14 +139,14 @@ class RadarDataFile(object):
         num_subchannels = 1  # only one subchannel
         marching_periods = False  # no marching periods when writing
         uuid = "SimISRDRFZenith"
-        drfdir = outdir.parent.joinpath('drfdata', 'rf_data', 'zenith-l')
-        data_object = drf.DigitalRFWriter(str(drfdir), dtype_str, sub_cadence_secs,
+        zndatadir = self.drfdir_rf.joinpath('zenith-l')
+        data_object = drf.DigitalRFWriter(str(zndatadir), dtype_str, sub_cadence_secs,
                                           file_cadence_millisecs, start_global_index,
                                           sample_rate_numerator, sample_rate_denominator,
                                           uuid, compression_level, checksum,
                                           is_complex, num_subchannels,
                                           is_continuous, marching_periods)
-        drfdirtx = outdir.parent.joinpath('drfdata', 'rf_data', 'tx-h')
+        drfdirtx = self.drfdir_rf.joinpath('tx-h')
         data_object_tx = drf.DigitalRFWriter(str(drfdirtx), dtype_str, sub_cadence_secs,
                                              file_cadence_millisecs, start_global_index,
                                              sample_rate_numerator, sample_rate_denominator,
@@ -125,13 +154,13 @@ class RadarDataFile(object):
                                              is_complex, num_subchannels,
                                              is_continuous, marching_periods)
         # Noise Scaling
-        noisepwr = v_Boltz*sensdict['Tsys']*sample_rate
-        calpwr = v_Boltz*sensdict['CalDiodeTemp']*sample_rate
+        noisepwr = v_Boltz*self.sensdict['Tsys']*sample_rate
+        calpwr = v_Boltz*self.sensdict['CalDiodeTemp']*sample_rate
         # digital metadata
         #TODO temp for original data
         # antenna control
 
-        dmddir = outdir.parent.joinpath('drfdata', 'metadata')
+        dmddir = self.datadir.parent.joinpath('drfdata', 'metadata')
         acmdir = dmddir.joinpath('antenna_control_metadata')
         acmdict = {'misa_elevation': 88.000488281200006,
                    'cycle_name': 'zenith_record_cycle_0',
@@ -153,13 +182,13 @@ class RadarDataFile(object):
         pmmdict = {'zenith_power': self.sensdict['Pt'], 'misa_power': 3110.3}
         pmmobj = drf.DigitalMetadataWriter(str(pmdir), 3600, 5, 1, 1, 'power')
         # differentiate between phased arrays and dish antennas
-        if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
+        if self.sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
 
             beams = sp.tile(sp.arange(N_angles), Npall/N_angles)
         else:
 
             # for dish arrays
-            brate = simparams['beamrate']
+            brate = self.simparams['beamrate']
             beams2 = sp.repeat(sp.arange(N_angles), brate)
             beam3 = sp.concatenate((beams2, beams2[::-1]))
             ntile = int(sp.ceil(Npall/len(beam3)))
@@ -177,128 +206,121 @@ class RadarDataFile(object):
         fname_list = []
         si_list = []
         sn_list = []
-        self.datadir = outdir
-        self.maindir = outdir.parent
-        self.procdir = self.maindir/'ACF'
+
         Nf = len(filetimes)
-        if outfilelist is None:
-            print('\nData Now being created.')
 
-            self.outfilelist = []
-            for ifn, ifilet in enumerate(filetimes):
 
-                outdict = {}
-                ifile = Ionodict[ifilet]
-                curcontainer = IonoContainer.readh5(ifile)
-                if ifn == 0:
-                    self.timeoffset = curcontainer.Time_Vector[0, 0]
-                f_pulses = sp.where(pulsefile == ifn)[0]
-                nwrites = sp.ceil(float(len(f_pulses))/nippw).astype(int)
-                for ifwrite, i_pstart in enumerate(range(0, len(f_pulses), nippw)):
-                    progstr1 = 'Data for write {:d} of {:d} being created.'
 
-                    prog_level = float(ifn)/Nf+float(ifwrite)/Nf/nwrites
-                    update_progress(prog_level, progstr1.format(int(ifn*nwrites+ifwrite+1), int(Nf*nwrites)))
-                    i_pend = sp.minimum(i_pstart+nippw, len(f_pulses))
-                    cur_fpulses = f_pulses[i_pstart:i_pend]
-                    pt = pulsetimes[cur_fpulses]
-                    pb = beams[cur_fpulses]
-                    pn = pulsen[cur_fpulses]
-                    s_i = sweepids[pn % nseq]
-                    s_n = sweepnums[pn % nseq]
-                    rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
-                                                curcontainer.Sphere_Coords,
-                                                curcontainer.Param_List, pb)
+        for ifn, ifilet in enumerate(filetimes):
 
-                    n_pulse_cur, n_raw = rawdata.shape
-                    rawdata_us = sp.signal.resample(rawdata, n_raw*ds_fac, axis=1)
+            outdict = {}
+            ifile = ionodict[ifilet]
+            curcontainer = IonoContainer.readh5(ifile)
+            if ifn == 0:
+                self.timeoffset = curcontainer.Time_Vector[0, 0]
+            f_pulses = sp.where(pulsefile == ifn)[0]
+            nwrites = sp.ceil(float(len(f_pulses))/nippw).astype(int)
+            for ifwrite, i_pstart in enumerate(range(0, len(f_pulses), nippw)):
+                progstr1 = 'Data for write {:d} of {:d} being created.'
 
-                    alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
-                    alldata = sp.sqrt(noisepwr/2.)*alldata
-                    caldata = sp.random.randn(n_pulse_cur, n_cal) + 1j*sp.random.randn(n_pulse_cur, n_cal)
-                    caldata = sp.sqrt(calpwr/2)*caldata.astype(simdtype)
-                    noisedata = alldata[:, d_samps[0]:d_samps[1]]
-                    for i_swid in usweep:
-                        sw_ind = sp.where(s_i == i_swid)[0]
-                        cur_tdict = t_dict[i_swid]
-                        cur_c = cur_tdict['calibration']
-                        cur_csamps = sp.diff(cur_c)[0]
-                        alldata[sw_ind, d_samps[0]:d_samps[1]] += rawdata_us[sw_ind]
-                        alldata[sw_ind, cur_c[0]:cur_c[1]] += caldata[sw_ind, :cur_csamps]
+                prog_level = float(ifn)/Nf+float(ifwrite)/Nf/nwrites
+                update_progress(prog_level, progstr1.format(int(ifn*nwrites+ifwrite+1), int(Nf*nwrites)))
+                i_pend = sp.minimum(i_pstart+nippw, len(f_pulses))
+                cur_fpulses = f_pulses[i_pstart:i_pend]
+                pt = pulsetimes[cur_fpulses]
+                pb = beams[cur_fpulses]
+                pn = pulsen[cur_fpulses]
+                s_i = sweepids[pn % nseq]
+                s_n = sweepnums[pn % nseq]
+                rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
+                                            curcontainer.Sphere_Coords,
+                                            curcontainer.Param_List, pb)
 
-                    alldata = alldata/sp.sqrt(calpwr/2.)
-                    rawdata = rawdata_us.copy()/sp.sqrt(calpwr/2.)
-                    noisedata = noisedata.copy()/sp.sqrt(calpwr/2.)
-                    cal_samps = sp.zeros_like(caldata)
-                    data_samps = sp.zeros_like(rawdata_us)
-                    noise_samps = sp.zeros((n_pulse_cur, n_ns), dtype=alldata.dtype)
+                n_pulse_cur, n_raw = rawdata.shape
+                rawdata_us = sp.signal.resample(rawdata, n_raw*ds_fac, axis=1)
 
-                    for i_swid in usweep:
-                        sw_ind = sp.where(s_i == i_swid)[0]
-                        cur_tdict = t_dict[i_swid]
-                        cur_c = cur_tdict['calibration']
-                        cur_csamps = sp.diff(cur_c)[0]
-                        cur_n = cur_tdict['noise']
-                        cur_nsamps = sp.diff(cur_n)[0]
-                        data_samps[sw_ind] = alldata[sw_ind, d_samps[0]:d_samps[1]]
-                        cal_samps[sw_ind, :cur_csamps] = alldata[sw_ind, cur_c[0]:cur_c[1]]
-                        noise_samps[sw_ind, :cur_nsamps] = alldata[sw_ind, cur_n[0]:cur_n[1]]
+                alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
+                alldata = sp.sqrt(noisepwr/2.)*alldata
+                caldata = sp.random.randn(n_pulse_cur, n_cal) + 1j*sp.random.randn(n_pulse_cur, n_cal)
+                caldata = sp.sqrt(calpwr/2)*caldata.astype(simdtype)
+                noisedata = alldata[:, d_samps[0]:d_samps[1]]
+                for i_swid in usweep:
+                    sw_ind = sp.where(s_i == i_swid)[0]
+                    cur_tdict = t_dict[i_swid]
+                    cur_c = cur_tdict['calibration']
+                    cur_csamps = sp.diff(cur_c)[0]
+                    alldata[sw_ind, d_samps[0]:d_samps[1]] += rawdata_us[sw_ind]
+                    alldata[sw_ind, cur_c[0]:cur_c[1]] += caldata[sw_ind, :cur_csamps]
 
-                    data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
-                    noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
-                    # Down sample data using resample, keeps variance correct
-                    rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
-                    noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
+                alldata = alldata/sp.sqrt(calpwr/2.)
+                rawdata = rawdata_us.copy()/sp.sqrt(calpwr/2.)
+                noisedata = noisedata.copy()/sp.sqrt(calpwr/2.)
+                cal_samps = sp.zeros_like(caldata)
+                data_samps = sp.zeros_like(rawdata_us)
+                noise_samps = sp.zeros((n_pulse_cur, n_ns), dtype=alldata.dtype)
 
-                    noise_est = sp.mean(sp.mean(noise_samps.real**2+noise_samps.imag**2))
-                    cal_est = sp.mean(sp.mean(cal_samps.real**2+cal_samps.imag**2))
-                    calfac = calpwr/(cal_est-noise_est)
-                    outdict['AddedNoise'] = noisedata_ds
-                    outdict['RawData'] = data_samps
-                    outdict['RawDatanonoise'] = rawdata_ds
-                    outdict['NoiseData'] = noise_samps_ds
-                    outdict['CalFactor'] = sp.array([calfac])
-                    outdict['Pulses'] = pn
-                    outdict['Beams'] = pb
-                    outdict['Time'] = pt
-                    fname = '{0:d} RawData.h5'.format(ifwrite)
-                    newfn = self.datadir/fname
-                    self.outfilelist.append(str(newfn))
-                    dict2h5(str(newfn), outdict)
-                    #Listing info
-                    pt_list.append(pt)
-                    pb_list.append(pb)
-                    pn_list.append(pn)
-                    si_list.append(s_i)
-                    sn_list.append(s_n)
-                    fname_list.append(fname)
+                for i_swid in usweep:
+                    sw_ind = sp.where(s_i == i_swid)[0]
+                    cur_tdict = t_dict[i_swid]
+                    cur_c = cur_tdict['calibration']
+                    cur_csamps = sp.diff(cur_c)[0]
+                    cur_n = cur_tdict['noise']
+                    cur_nsamps = sp.diff(cur_n)[0]
+                    data_samps[sw_ind] = alldata[sw_ind, d_samps[0]:d_samps[1]]
+                    cal_samps[sw_ind, :cur_csamps] = alldata[sw_ind, cur_c[0]:cur_c[1]]
+                    noise_samps[sw_ind, :cur_nsamps] = alldata[sw_ind, cur_n[0]:cur_n[1]]
 
-                    #HACK Add a constant to set the noise level to be atleast 1 bit
-                    num_const = 200.
-                    #transmitdata
-                    tx_data = sp.zeros_like(alldata).astype('complex64')
-                    tx_data[:, :pulse_full.shape[-1]] = pulse_full[pn % nseq].astype('complex64')
-                    data_object_tx.rf_write(tx_data.flatten()*num_const)
-                    # extend array for digital rf to flattend array
+                data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
+                noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
+                # Down sample data using resample, keeps variance correct
+                rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
+                noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
 
-                    data_object.rf_write(alldata.flatten().astype('complex64')*num_const)
-                    id_strt = int(idmobj.get_samples_per_second()*pt[0])
-                    dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
-                    acmobj.write(int(acmobj.get_samples_per_second()*pt[0]), acmdict)
-                    idmdict = {'sweepid': s_i, 'sample_rate': [sample_rate]*len(s_n),
-                               'modeid': [100000001]*len(s_n), 'sweepnum': s_n}
-                    idmobj.write(dmdplist, idmdict)
-                    pmmobj.write(int(pmmobj.get_samples_per_second()*pt[0]), pmmdict)
+                noise_est = sp.mean(sp.mean(noise_samps.real**2+noise_samps.imag**2))
+                cal_est = sp.mean(sp.mean(cal_samps.real**2+cal_samps.imag**2))
+                calfac = calpwr/(cal_est-noise_est)
+                outdict['AddedNoise'] = noisedata_ds
+                outdict['RawData'] = data_samps
+                outdict['RawDatanonoise'] = rawdata_ds
+                outdict['NoiseData'] = noise_samps_ds
+                outdict['CalFactor'] = sp.array([calfac])
+                outdict['Pulses'] = pn
+                outdict['Beams'] = pb
+                outdict['Time'] = pt
+                fname = '{0:d} RawData.h5'.format(ifwrite)
+                newfn = self.datadir/fname
+                self.outfilelist.append(str(newfn))
+                dict2h5(str(newfn), outdict)
+                #Listing info
+                pt_list.append(pt)
+                pb_list.append(pb)
+                pn_list.append(pn)
+                si_list.append(s_i)
+                sn_list.append(s_n)
+                fname_list.append(fname)
 
-            infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
-            dict2h5(str(outdir.joinpath('INFO.h5')), infodict)
-            data_object.close()
-            data_object_tx.close()
-        else:
-            infodict = h52dict(str(outdir.joinpath('INFO.h5')))
-            alltime = sp.hstack(infodict['Time'])
-            self.timeoffset = alltime.min()
-            self.outfilelist = outfilelist
+                #HACK Add a constant to set the noise level to be atleast 1 bit
+                num_const = 200.
+                #transmitdata
+                tx_data = sp.zeros_like(alldata).astype('complex64')
+                tx_data[:, :pulse_full.shape[-1]] = pulse_full[pn % nseq].astype('complex64')
+                data_object_tx.rf_write(tx_data.flatten()*num_const)
+                # extend array for digital rf to flattend array
+
+                data_object.rf_write(alldata.flatten().astype('complex64')*num_const)
+                id_strt = int(idmobj.get_samples_per_second()*pt[0])
+                dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
+                acmobj.write(int(acmobj.get_samples_per_second()*pt[0]), acmdict)
+                idmdict = {'sweepid': s_i, 'sample_rate': [sample_rate]*len(s_n),
+                           'modeid': [100000001]*len(s_n), 'sweepnum': s_n}
+                idmobj.write(dmdplist, idmdict)
+                pmmobj.write(int(pmmobj.get_samples_per_second()*pt[0]), pmmdict)
+
+        infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
+        dict2h5(str(self.datadir.joinpath('INFO.h5')), infodict)
+        data_object.close()
+        data_object_tx.close()
+
 
 
 #%% Make functions
@@ -385,8 +407,8 @@ class RadarDataFile(object):
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
                     for idatn, idat in enumerate(curdataloc):
-                        cdat = cur_pulse_data[idatn, cur_pnts-isamp]+out_data[idat, cur_pnts]
-                        out_data[idat, cur_pnts] = cdat
+                        out_data[idat, cur_pnts] += cur_pulse_data[idatn, cur_pnts-isamp]
+
 
         return out_data
         #%% Processing
@@ -398,9 +420,40 @@ class RadarDataFile(object):
         Outputs:
         Ionocontainer- This is an instance of the ionocontainer class that will hold the acfs.
         """
-        (datalags, noiselags) = self.processdata()
-        return lagdict2ionocont(datalags, noiselags, self.sensdict, self.simparams,
-                                datalags['Time'])
+        outdict = self.processdatadrf()
+        alldata = {}
+
+        dec_list =self.simparams['declist']
+        ds_fac = sp.prod(dec_list)
+        t_dict = self.simparams['Timing_Dict']
+        t_s = float(self.simparams['fsden'])/self.simparams['fsnum']
+        rng_samprate = t_s*v_C_0*1e-3/2.
+        if 'LP' in outdict:
+            datalagslp = outdict['LP']['datalags']
+            noiselagslp = outdict['LP']['noiselags']
+            d_len = t_dict[300]['signal']
+            rng_gates = sp.arange(d_len[0], d_len[1])*rng_samprate
+
+            rng_gates_ds = rng_gates[::ds_fac]
+            self.simparams['Rangegates'] = rng_gates
+            self.simparams['Rangegatesfinal'] = rng_gates_ds[minrg:maxrg]
+            (ionoout, ionosig) = lagdict2ionocont(datalagslp, noiselagslp, self.sensdict,
+                                                  self.simparams, datalagslp['Time'])
+            alldata['LP'] = [ionoout, ionosig]
+        if 'AC' in outdict:
+            datalagsac = outdict['AC']['datalags']
+            noiselagsac = outdict['AC']['noiselags']
+
+            d_len = t_dict[1]['signal']
+            rng_gates = sp.arange(d_len[0], d_len[1])*rng_samprate
+
+            rng_gates_ds = rng_gates[::ds_fac]
+            self.simparams['Rangegates'] = rng_gates
+            self.simparams['Rangegatesfinal'] = rng_gates_ds[minrg:maxrg]
+            ionoout, ionosig = lagdict2ionocont(datalagsac, noiselagsac, self.sensdict,
+                                                self.simparams, datalagsac['Time'])
+            alldata['AC'] = [ionoout, ionosig]
+        return alldata
 
     def processdatadrf(self):
         """ Process digital_rf channels
@@ -409,7 +462,7 @@ class RadarDataFile(object):
 
         outdir = self.datadir
         t_dict = self.simparams['Timing_Dict']
-        drfdir = outdir.parent.joinpath('drfdata', 'rf_data')
+        rfdir = self.drfdir_rf
 
         simdtype = self.simparams['dtype']
         lagtype = self.simparams['lagtype']
@@ -423,7 +476,7 @@ class RadarDataFile(object):
         s_id_p1 = self.simparams['sweepids']
         pulse_dict = {i:j for i, j in zip(s_id_p1, pulse_arr)}
         idmobj = drf.DigitalMetadataReader(str(iddir))
-        drfObj = drf.DigitalRFReader(str(drfdir))
+        drfObj = drf.DigitalRFReader(str(rfdir))
         objprop = drfObj.get_properties('zenith-l')
         sps = objprop['samples_per_second']
         d_bnds = drfObj.get_bounds('zenith-l')
@@ -432,22 +485,27 @@ class RadarDataFile(object):
         time_list = time_list.astype(int)
         calpwr = v_Boltz*self.sensdict['CalDiodeTemp']*sps/ds_fac
         pulse_dict = {i:j for i, j in zip(s_id_p1, pulse_arr)}
-        data_dict = {'AC':{'sig':[],'cal':[], 'noise':[], 'NIPP':[] },
-                     'LP':{'sig':None,'cal':None, 'noise':None, 'NIPP':None }}
+
 
         acode_swid = sp.arange(1, 33)
         lp_swid = 300
+        # Choose type of processing
+        if self.simparams['Pulsetype'].lower() == 'barker':
+            lagfunc = BarkerLag
+            Nlag = 1
+        else:
+            lagfunc = CenteredLagProduct
 
         mode_dict = {'AC':{'swid':acode_swid.tolist()}, 'LP':{'swid':[lp_swid]}}
         # make data lags
         Ntime = len(time_list)
         n_beams = 1
-        time_mat = sp.column_stack((time_list/sps, time_list/sps+int(self.simparams['Tint'])))
+        timemat = sp.column_stack((time_list/sps, time_list/sps+int(self.simparams['Tint'])))
         for i_type in mode_dict.keys():
             swid_1 = mode_dict[i_type]['swid'][0]
             t_info = t_dict[swid_1]
             d_samps = int(sp.diff(t_info['signal'])[0]/ds_fac)
-            n_samps = int(sp.diff(t_info[['noise'])[0]/ds_fac)
+            n_samps = int(sp.diff(t_info['noise'])[0]/ds_fac)
             Nlag = pulse_dict[swid_1].shape[0]
             outdata = sp.zeros((Ntime, n_beams, d_samps-Nlag+1, Nlag), dtype=simdtype)
             outnoise = sp.zeros((Ntime, n_beams, n_samps-Nlag+1, Nlag), dtype=simdtype)
@@ -457,15 +515,17 @@ class RadarDataFile(object):
                          'Time':timemat, "CalFactor":outcal}
             noise_lags = {'ACF':outnoise, 'Pulses':pulses,
                          'Time':timemat}
-            mode_dict[i_type]['datalags']=data_lags
-            mode_dict[i_type]['noiselags']=noise_lags
+            mode_dict[i_type]['datalags'] = data_lags
+            mode_dict[i_type]['noiselags'] = noise_lags
 
-        for itn, itb in (time_list):
+        for itn, itb in enumerate(time_list):
             ite = itb + int(self.simparams['Tint']*sps)
             id_dict = idmobj.read_flatdict(itb, ite)
 
-            un_id, id_ind = sp.unique(id_dict['sweepid'], return_inverse=True)
+            un_id, id_ind_list = sp.unique(id_dict['sweepid'], return_inverse=True)
             p_indx = id_dict['index']
+            data_dict = {'AC':{'sig':[], 'cal':[], 'noise':[], 'NIPP':[]},
+                         'LP':{'sig':None, 'cal':None, 'noise':None, 'NIPP':None}}
             for i_idn, i_id in enumerate(un_id):
                 t_info = t_dict[i_id]
                 ipp_samp = t_info['full'][1]
@@ -473,14 +533,14 @@ class RadarDataFile(object):
                 noise_bnd = t_info['noise']
                 cal_bnd = t_info['calibration']
                 cur_pulse = pulse_dict[i_id]
-                curlocs = sp.where(id_ind == i_idn)[0]
+                curlocs = sp.where(id_ind_list == i_idn)[0]
                 sig_data = sp.zeros((len(curlocs), sp.diff(sig_bnd)[0]), dtype=sp.complex64)
                 cal_data = sp.zeros((len(curlocs), sp.diff(cal_bnd)[0]), dtype=sp.complex64)
                 n_data = sp.zeros((len(curlocs), sp.diff(noise_bnd)[0]), dtype=sp.complex64)
                 # HACK Need to come up with clutter cancellation
                 for ar_id, id_ind in enumerate(curlocs):
                     dr_ind = p_indx[id_ind]
-                    raw_data = drfObj.read_vector(dr_ind, 'zenith-l', ipp_samp, 0)
+                    raw_data = drfObj.read_vector(dr_ind, ipp_samp, 'zenith-l', 0)
                     sig_data[ar_id] = raw_data[sig_bnd[0]:sig_bnd[1]]
                     cal_data[ar_id] = raw_data[cal_bnd[0]:cal_bnd[1]]
                     n_data[ar_id] = raw_data[noise_bnd[0]:noise_bnd[1]]
@@ -495,30 +555,44 @@ class RadarDataFile(object):
                                 lagtype=lagtype)
                 cal_acf = lagfunc(cal_data, numtype=simdtype, pulse=cur_pulse,
                                   lagtype=lagtype)
-                cal_acf = sp.median(cal_acf, axis=0)[0]
+                cal_acf = sp.median(cal_acf, axis=0)[0].real
+
                 if i_id in acode_swid:
                     data_dict['AC']['sig'].append(sig_acf)
                     data_dict['AC']['cal'].append(cal_acf)
                     data_dict['AC']['noise'].append(n_acf)
                     data_dict['AC']['NIPP'].append(len(curlocs))
                 elif i_id == lp_swid:
-                    data_dict['LP'] = {"sig":sig_acf, "cal":cal_acf, "noise":n_acf, 'NIPP': len(curlocs)}
+                    data_dict['LP'] = {"sig":sig_acf, "cal":cal_acf,
+                                       "noise":n_acf, 'NIPP':len(curlocs)}
 
             # AC stuff
-            data_dict['AC'] = {ikey:sum(data_dict['AC'][ikey]) for ikey in data_dict['AC'].keys()}
-            mode_dict['AC']['datalags']['ACF'][itn, 0] = data_dict['AC']['sig']
-            mode_dict['AC']['datalags']['Pulses'][itn, 0] = data_dict['AC']['NIPP']
-            mode_dict['AC']['datalags']['CalFactor'][itn, 0] = data_dict['AC']['cal']
+            if data_dict['AC']['sig']:
+                data_dict['AC'] = {ikey:sum(data_dict['AC'][ikey]) for ikey in data_dict['AC']}
+                cal_est = data_dict['AC']['cal']/data_dict['AC']['NIPP']
+                noise_est = sp.median(data_dict['AC']['noise'].real,axis=0)[0]/data_dict['AC']['NIPP']
+                calfac = calpwr/(cal_est-noise_est)
+                mode_dict['AC']['datalags']['ACF'][itn, 0] = data_dict['AC']['sig']
+                mode_dict['AC']['datalags']['Pulses'][itn, 0] = data_dict['AC']['NIPP']
+                mode_dict['AC']['datalags']['CalFactor'][itn, 0] = calfac
 
-            mode_dict['AC']['noiselags']['ACF'][itn, 0] = data_dict['AC']['sig']
-            mode_dict['AC']['noiselags']['Pulses'][itn, 0] = data_dict['AC']['NIPP']
+                mode_dict['AC']['noiselags']['ACF'][itn, 0] = data_dict['AC']['noise']
+                mode_dict['AC']['noiselags']['Pulses'][itn, 0] = data_dict['AC']['NIPP']
+            else:
+                del mode_dict['AC']
             # LP stuff
-            mode_dict['LP']['datalags']['ACF'][itn, 0] = data_dict['LP']['sig']
-            mode_dict['LP']['datalags']['Pulses'][itn, 0] = data_dict['LP']['NIPP']
-            mode_dict['LP']['datalags']['CalFactor'][itn, 0] = data_dict['LP']['cal']
+            if data_dict['LP']['sig'] is None:
+                del mode_dict['LP']
+            else:
+                cal_est = data_dict['LP']['cal']/data_dict['LP']['NIPP']
+                noise_est = sp.median(data_dict['LP']['noise'].real,axis=0)[0]/data_dict['LP']['NIPP']
+                calfac = calpwr/(cal_est-noise_est)
+                mode_dict['LP']['datalags']['ACF'][itn, 0] = data_dict['LP']['sig']
+                mode_dict['LP']['datalags']['Pulses'][itn, 0] = data_dict['LP']['NIPP']
+                mode_dict['LP']['datalags']['CalFactor'][itn, 0] = calfac
 
-            mode_dict['LP']['noiselags']['ACF'][itn, 0] = data_dict['LP']['sig']
-            mode_dict['LP']['noiselags']['Pulses'][itn, 0] = data_dict['LP']['NIPP']
+                mode_dict['LP']['noiselags']['ACF'][itn, 0] = data_dict['LP']['noise']
+                mode_dict['LP']['noiselags']['Pulses'][itn, 0] = data_dict['LP']['NIPP']
 
         return mode_dict
 
@@ -699,7 +773,7 @@ class RadarDataFile(object):
         return(data_lags, noise_lags)
 
 #%% Make Lag dict to an iono container
-def lagdict2ionocont(DataLags,NoiseLags,sensdict,simparams,time_vec):
+def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     """This function will take the data and noise lags and create an instance of the
     Ionocontanier class. This function will also apply the summation rule to the lags.
     Inputs

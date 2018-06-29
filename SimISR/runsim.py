@@ -106,12 +106,17 @@ def makeradardata(basedir,configfile,remakealldata):
         outlist2 = None
 
     # create the radar data file class
-    rdata = RadarDataFile(Ionodict, configfile, outputdir, outfilelist=outlist2)
+    rdata = RadarDataFile(configfile, outputdir)
+    rdata.makerfdata(Ionodict)
     # From the ACFs and uncertainties
-    (ionoout, ionosig) = rdata.processdataiono()
+
+    outdict = rdata.processdataiono()
     # save the acfs and uncertianties in ionocontainer h5 files.
-    ionoout.saveh5(str(outputdir2.joinpath('00lags.h5')))
-    ionosig.saveh5(str(outputdir2.joinpath('00sigs.h5')))
+    for i_ptype in outdict:
+        ionoout, ionosig = outdict[i_ptype]
+
+        ionoout.saveh5(str(outputdir2.joinpath('00'+i_ptype+'lags.h5')))
+        ionosig.saveh5(str(outputdir2.joinpath('00'+i_ptype+'sigs.h5')))
     return ()
 #%% Fit data
 def fitdata(basedir,configfile,optinputs):
