@@ -17,7 +17,7 @@ from SimISR.analysisplots import analysisdump
 from SimISR.runsim import main as runsimisr
 from SimISR import Path
 import ipdb
-def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)], z=None):
+def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)], z=None, spike=False):
 
 
     if z is None:
@@ -66,10 +66,11 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     species = sp.array(all_spec)[spec_keep[:-1]].tolist()
     species.append('e-')
     Param_List[:, :] = Param_List[:, :, spec_keep]
-    ne_all = Param_List[:, :, -1, 0]
-    maxarg = sp.argmax(ne_all, axis=0)
-    t_ar = sp.arange(len(dn_list))
-    Param_List[maxarg, t_ar, -1, 0] = 5.*ne_all[maxarg, t_ar]
+    if spike:
+        ne_all = Param_List[:, :, -1, 0]
+        maxarg = sp.argmax(ne_all, axis=0)
+        t_ar = sp.arange(len(dn_list))
+        Param_List[maxarg, t_ar, -1, 0] = 5.*ne_all[maxarg, t_ar]
     Iono_out = IonoContainer(coords, Param_List, times=time_arr, species=species, velocity=v)
     return Iono_out
 
@@ -171,7 +172,7 @@ def main(ARGS):
     inputpath = testpath.joinpath('Origparams')
     d_1 = datetime(2015, 3, 21, 8, 00)
     dn_list = [d_1+timedelta(i) for i in sp.linspace(0., .5, ARGS.ntimes)]
-    ionoout = pyglowinput(dn_list=dn_list)
+    ionoout = pyglowinput(dn_list=dn_list, spike=ARGS.nespike)
     if not inputpath.is_dir():
         inputpath.mkdir()
 
@@ -219,5 +220,7 @@ if __name__== '__main__':
     PAR1.add_argument('-j', "--nminutes", help='Number minutes', type=int, default=4)
     PAR1.add_argument('-f', '--funclist', help='Functions to be uses', nargs='+',
                       default=['spectrums', 'radardata', 'fitting', 'analysis'])
+    PAR1.add_argument('-e', '-nespike', dest='nespike', action='store_true',
+                      help='''Adds a spike in electron density at peak''',)
     PAR1 = PAR1.parse_args()
     main(PAR1)
