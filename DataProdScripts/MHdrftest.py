@@ -66,6 +66,10 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     species = sp.array(all_spec)[spec_keep[:-1]].tolist()
     species.append('e-')
     Param_List[:, :] = Param_List[:, :, spec_keep]
+    ne_all = Param_List[:, :, -1, 0]
+    maxarg = sp.argmax(ne_all, axis=0)
+    t_ar = sp.arange(len(dn_list))
+    Param_List[maxarg, t_ar, -1, 0] = 5.*ne_all[maxarg, t_ar]
     Iono_out = IonoContainer(coords, Param_List, times=time_arr, species=species, velocity=v)
     return Iono_out
 
