@@ -30,7 +30,7 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
 
     v = sp.zeros((len(z), len(dn_list), 3))
     coords = sp.column_stack((sp.zeros((len(z), 2), dtype=z.dtype), z))
-    all_spec = ['O+', 'NO+', 'O2+', 'H+', 'HE+']
+    all_spec = ['O+', 'NO+', 'O2+', 'H+'] #'HE+']
     Param_List = sp.zeros((len(z), len(dn_list), len(all_spec)+1,2))
 
     # for velocities
