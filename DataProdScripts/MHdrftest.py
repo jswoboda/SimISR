@@ -31,7 +31,7 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     v = sp.zeros((len(z), len(dn_list), 3))
     coords = sp.column_stack((sp.zeros((len(z), 2), dtype=z.dtype), z))
     all_spec = ['O+', 'NO+', 'O2+', 'H+', 'HE+']
-    Param_List = sp.zeros((len(z), len(dn_list),len(all_spec),2))
+    Param_List = sp.zeros((len(z), len(dn_list), len(all_spec)+1,2))
 
     # for velocities
     a = 150.
@@ -56,14 +56,14 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
             for is1, ispec in enumerate(all_spec):
                 Param_List[iz, idn, is1, 0] = pt.ni[ispec]*1e6
 
-            Param_List[iz, idn, :, 1] = pt.Ti
+            Param_List[iz, idn, :-1, 1] = pt.Ti
 
             Param_List[iz, idn, -1, 0] = pt.ne*1e6
             Param_List[iz, idn, -1, 1] = pt.Te
     Param_sum = Param_List[:, :, :, 0].sum(0).sum(0)
     spec_keep = Param_sum > 0.
     v[sp.isnan(v)] = 0.
-    species = sp.array(all_spec)[spec_keep[:-1]].tolist()
+    species = sp.array(all_spec)[spec_keep].tolist()
     species.append('e-')
     Param_List[:, :] = Param_List[:, :, spec_keep]
     if spike:
