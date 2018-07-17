@@ -63,7 +63,7 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
     Param_sum = Param_List[:, :, :, 0].sum(0).sum(0)
     spec_keep = Param_sum > 0.
     v[sp.isnan(v)] = 0.
-    species = sp.array(all_spec)[spec_keep].tolist()
+    species = sp.array(all_spec)[spec_keep[:-1]].tolist()
     species.append('e-')
     Param_List[:, :] = Param_List[:, :, spec_keep]
     if spike:
