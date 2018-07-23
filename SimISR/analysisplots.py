@@ -8,14 +8,12 @@ problems. This is also helpful for presentations.
 """
 from . import Path
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import scipy as sp
 import scipy.fftpack as scfft
 import numpy as np
 import seaborn as sns
-import ipdb
 
 from .IonoContainer import IonoContainer
 from .utilFunctions import readconfigfile,spect2acf,acf2spect

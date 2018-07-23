@@ -5,7 +5,6 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 @author: John Swoboda
 """
-import ipdb
 import scipy as sp
 # My modules
 from isrutilities.physConstants import v_C_0, v_Boltz
@@ -494,7 +493,6 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     lagsNoise = lagsNoise/pulsesnoise
     lagsNoise = sp.tile(lagsNoise[:, :, sp.newaxis, :], (1, 1, Nrng, 1))
 
-    #ipdb.set_trace()
     # multiply the data and the sigma by inverse of the scaling from the radar
     lagsData = lagsData*radar2acfmult
     lagsNoise = lagsNoise*radar2acfmult
