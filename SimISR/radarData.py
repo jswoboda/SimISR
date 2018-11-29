@@ -5,6 +5,7 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 @author: John Swoboda
 """
+import ipdb
 import scipy as sp
 # My modules
 from isrutilities.physConstants import v_C_0, v_Boltz
@@ -475,10 +476,13 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
             rng_samps = rng_samps[keepsamps2]
             rng_ave[isamp-plen2, ilag] = 1./(sp.mean(1./(rng_samps)))
     rng_ave_temp = rng_ave.copy()
+    if simparams['Pulsetype'].lower() is 'barker':
+        rng_ave_temp = rng_ave[:,0][:,sp.newaxis]
     # rng_ave = rng_ave[int(sp.floor(plen2)):-int(sp.ceil(plen2))]
     # rng_ave = rng_ave[minrg:maxrg]
-    rng3d = sp.tile(rng_ave[sp.newaxis, sp.newaxis, :, :], (Nt, Nbeams, 1, 1))
-    ksys3d = sp.tile(Ksysvec[:, sp.newaxis, sp.newaxis, sp.newaxis], (Nt, 1, Nrng, Nlags))
+    rng3d = sp.tile(rng_ave_temp[sp.newaxis, sp.newaxis, :, :], (Nt, Nbeams, 1, 1))
+    ksys3d = sp.tile(Ksysvec[sp.newaxis,:, sp.newaxis, sp.newaxis], (Nt, 1, Nrng, Nlags))
+
     # rng3d = sp.tile(rng_ave[:, sp.newaxis, sp.newaxis, sp.newaxis], (1, Nlags, Nt, Nbeams))
     # ksys3d = sp.tile(Ksysvec[sp.newaxis, sp.newaxis, sp.newaxis, :], (Nrng2, Nlags, Nt, 1))
     radar2acfmult = rng3d/(pulsewidth*txpower*ksys3d)

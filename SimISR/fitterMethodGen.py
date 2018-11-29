@@ -63,9 +63,9 @@ class Fitterionoconainer(object):
         Ne_start, Ne_sig = self.fitNE()
         if self.simparams['Pulsetype'].lower() == 'barker':
             if Ne_sig is None:
-                return (Ne_start[:, :, sp.newaxis], None, None)
+                return (Ne_start[:, :, sp.newaxis], None, None, None)
             else:
-                return(Ne_start[:, :, sp.newaxis], Ne_sig[:, :, sp.newaxis], None)
+                return(Ne_start[:, :, sp.newaxis], Ne_sig[:, :, sp.newaxis], None, None)
         # get the data and noise lags
         lagsData= self.acf.Param_List.copy()
         (Nloc, Nt, Nlags) = lagsData.shape
