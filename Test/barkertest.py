@@ -20,7 +20,7 @@ def makeconfigfilebarker(testpath):
                 64049,64046,64043,64067,64040,64037,64034]
     radarname = 'pfisr'
 
-    Tint=4.0*60.0
+    Tint = 4.0*60.0
     time_lim = 3.0*Tint
     pulse = GenBarker(7)
     rng_lims = [75.0,250.0]
