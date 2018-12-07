@@ -83,15 +83,12 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     # For default case use chebychev 1 order 8 and take the power of the
     # original frequency response of each decmination filter because it is run as
     # a zero phase filter using filtfilt.
-    curfreq = sp.zeros(nspec, dtype=float)
     # curds = 1
     m_up = sp.prod(ds_list)
 
     nout = nspec/m_up
-    curfreq[:nout/2] = 1
-    curfreq[-nout/2:] = 1
 
-    curh = sp.ifft(curfreq)
+
     nspec = int(nspec)
     plen = pulse.shape[-1]
     nlags = plen/m_up
@@ -100,11 +97,19 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     sweepu, u_ind = sp.unique(sweepid, return_index=True)
     ac_ind = u_ind[sp.where(sp.logical_and(sweepu >= 1, sweepu <= 32))[0]]
     ac_pulses = pulse[ac_ind]
+    n_codes = ac_pulses.shape[0]
+    ac_codes = ac_pulses[:,::m_up]
+
+    decode_arr = sp.zeros((n_codes, nlags))
+    for ilag in range(nlags):
+        if ilag==0:
+            decode_arr[:,ilag] = sp.sum(ac_codes*ac_codes,axis=-1)
+        else:
+            decode_arr[:,ilag] = sp.sum(ac_codes[:,:-ilag]*ac_codes[:,ilag:],axis=-1)
     lp_ind = u_ind[sp.where(sweepu == 300)[0]]
     lp_pulse = pulse[lp_ind].flatten()
     # make the sinc
-    nsamps = sp.floor(23.*m_up)
-    nsamps = int(nsamps-(1-sp.mod(nsamps, 2)))
+    nsamps = int(plen-(1-sp.mod(plen, 2)))
 
     # need to incorporate summation rule
     vol = 1.
@@ -114,26 +119,28 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
                    'barthann']
     curwin = scisig.get_window(winname, nsamps)
     # Apply window to the sinc function. This will act as the impulse respons of the filter
-    impres = curwin*sp.sinc(nvec/m_up)
+
+    impres = curwin*sp.sinc(nvec.astype(float)/m_up)
     impres = impres/sp.sum(impres)
-    impres = curh[nvec]
-    d_t = 1./Fsorg
+    d_t = 1./Fsorg/m_up
     #make delay vector
-    delay_num = sp.arange(-(len(nvec)-1), m_up*(nlags+5))
+    delay_num = sp.arange(-m_up*(nlags+2), m_up*(nlags+2)+1)
     delay = delay_num*d_t
 
-    t_rng = sp.arange(0, 1.5*plen)*d_t
+    t_rng = sp.arange(-sp.floor(.5*plen), sp.ceil(1.5*plen))*d_t
     if len(t_rng) > 2e4:
         raise ValueError('The time array is way too large. plen should be in seconds.')
-    numdiff = len(delay)-len(impres)
-    numback = int(nvec.min()/m_up-delay_num.min())
-    numfront = numdiff-numback
+    numdiff = len(delay)-nsamps
+    # numback = int(nvec.min()/m_up-delay_num.min())
+    # numfront = numdiff-numback
 #    imprespad  = sp.pad(impres,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
-    imprespad = sp.pad(impres, (numback, numfront), mode='constant',
+    imprespad = sp.pad(impres, (numdiff/2, numdiff/2), mode='constant',
                        constant_values=(0.0, 0.0))
+    cursincrep = sp.tile(imprespad[sp.newaxis, :], (len(t_rng), 1))
+
     (d2d, srng) = sp.meshgrid(delay, t_rng)
     # envelop function
-    t_p = sp.arange(plen)/Fsorg
+    t_p = sp.arange(plen)*d_t
 
     envfunc = sp.interp(sp.ravel(srng-d2d), t_p, lp_pulse, left=0., right=0.).reshape(d2d.shape)
 #    envfunc = sp.zeros(d2d.shape)
@@ -141,23 +148,17 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
     Wtt = sp.zeros((nlags, d2d.shape[0], d2d.shape[1]))
-    cursincrep = sp.tile(imprespad[sp.newaxis, :], (len(t_rng), 1))
-    Wt0 = cursincrep*envfunc
-    Wt0fft = sp.fft(Wt0, axis=1)
+    Wt0 = scfft.ifftshift(cursincrep*envfunc, axes=1)
+    Wt0fft = scfft.fft(Wt0, axis=1)
     for ilag in sp.arange(nlags):
-        cursinc = sp.roll(imprespad, ilag*m_up)
-        cursincrep = sp.tile(cursinc[sp.newaxis, :], (len(t_rng), 1))
-        Wta = cursincrep*envfunc
-        #do fft based convolution, probably best method given sizes
-        Wtafft = scfft.fft(Wta, axis=1)
-
-        nmove = len(nvec)-1
-        Wtt[ilag] = sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, nmove, axis=1)
+        Wtafft = sp.roll(Wt0fft, ilag*m_up, axis=0)
+        curwt =  scfft.ifftshift(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, axes=1)
+        Wtt[ilag] = sp.roll(curwt, ilag*m_up, axis=1)
 
 
     # make matrix for application of
     imat = sp.eye(nspec)
-    tau = sp.arange(-sp.floor(nspec/2.), sp.ceil(nspec/2.))/Fsorg
+    tau = sp.arange(-sp.floor(nspec/2.), sp.ceil(nspec/2.))*d_t
     tauint = delay
     interpmat = spinterp.interp1d(tau, imat, bounds_error=0, axis=0)(tauint)
     lagmat = sp.dot(Wtt.sum(axis=1), interpmat)
@@ -166,29 +167,26 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
         lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
     lagmat = lagmat[:, ::m_up]
 
-
+    #%% Alt. code ambigutity
     Wttac = sp.zeros((nlags, d2d.shape[0], d2d.shape[1]))
-    for i_pulse in ac_pulses:
+
+    for icn, i_pulse in enumerate(ac_pulses):
         envfunc = sp.interp(sp.ravel(srng-d2d), t_p, i_pulse, left=0., right=0.).reshape(d2d.shape)
     #    envfunc = sp.zeros(d2d.shape)
     #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
-        envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
+        envfunc = envfunc/sp.sqrt(sp.absolute(envfunc).sum(axis=0).max())
         #create the ambiguity function for everything
 
-        cursincrep = sp.tile(imprespad[sp.newaxis, :], (len(t_rng), 1))
-        Wt0 = cursincrep*envfunc
+        Wt0 = scfft.ifftshift(cursincrep*envfunc, axes=1)
         Wt0fft = sp.fft(Wt0, axis=1)
-        for ilag in sp.arange(nlags):
-            cursinc = sp.roll(imprespad, ilag*m_up)
-            cursincrep = sp.tile(cursinc[sp.newaxis, :], (len(t_rng), 1))
-            Wta = cursincrep*envfunc
-            #do fft based convolution, probably best method given sizes
-            Wtafft = scfft.fft(Wta, axis=1)
+        for ilag in range(nlags):
+            Wtafft = sp.roll(Wt0fft, ilag*m_up, axis=0)
+            curwt =  scfft.ifftshift(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, axes=1)
+            curwt = sp.roll(curwt, ilag*m_up, axis=1)
+            Wttac[ilag] = Wttac[ilag] + curwt*decode_arr[icn, ilag]
 
-            nmove = len(nvec)-1
-            curwt =  sp.roll(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, nmove, axis=1)
-            Wttac[ilag] = Wttac[ilag] + curwt
-
+    Wttac[0] = Wttac[0]/nlags
+    Wttac = Wttac/ac_pulses.shape[0]
     lagmatac = sp.dot(Wttac.sum(axis=1), interpmat)
     W0ac = lagmatac[0].sum()
     for ilag in range(nlags):
@@ -245,14 +243,17 @@ def acf2spect(tau, acf, n_s=None, initshift=False):
 #%% making pulse data
 
 def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
-    """ This will make data by assuming the data is an autoregressive process.
-        Inputs
-            spec - The properly weighted spectrum.
-            N - The size of the ar process used to model the filter.
-            pulse - The pulse shape.
-            rep1 - The number of repeats of the process.
-        Outputs
-            outdata - A numpy array with the shape of the rep1xlen(pulse)
+    """
+        This will make shaped noise data using linear predictive coding windowed
+        by the pulse function.
+        Args:
+            spec (:obj:'ndarray'): The properly weighted spectrum.
+            N (:obj:'int'): The size of the ar process used to model the filter.
+            pulse (:obj:'ndarray'): The pulse shape. The pulse is flipped in this so the first sample
+                    will be the leading in range.
+            rep1 (:obj:'int'): The number of repeats of the process.
+        Returns:
+            outdata (:obj:'ndarray'): A numpy array with the shape of the rep1xlen(pulse)
     """
 
     npulse, lp = pulse.shape
@@ -280,8 +281,8 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         xinsum = xinsum
         xin = sp.sqrt(nfft)*xin/xinsum
         outdata = sp.ifft(h_tile*xin, axis=1)
-        #outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-        outpulse = pulse[p_ind]
+        # Flipping pulse
+        outpulse = pulse[p_ind,::-1]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     else:
         xin = sp.random.randn(rep1, n_pnt)+1j*sp.random.randn(rep1, n_pnt)
@@ -289,7 +290,8 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
         xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, n_pnt))
         xin = xin/xinsum
         outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
-        outpulse = pulse[p_ind]
+        # Flipping pulse
+        outpulse = pulse[p_ind,::-1]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     #outdata = sp.sqrt(rcs)*outdata/sp.sqrt(sp.mean(outdata.var(axis=1)))
     return outdata
@@ -452,7 +454,17 @@ def makepulse(ptype, nsamps, t_s, nbauds=16):
 
 def gen_ac(nsamps, nbauds):
     """
+        This will generate a set of alternating code pulses and their sweep ids.
 
+        Args:
+            nsamps:``int``: The length of the pulse in samples.
+            nbauds:``int``: The number of bauds for each code.
+
+        Returns:
+            outdict:``array``: A numpy array of shape 2nbaudsxnsamps holding the
+            pulsesself.
+            sweepid:``array``: Array of sweep ids.
+            sweepnum:``array``: Array of sweep numbers.
     """
     blen = sp.array([4, 8, 16])
     nsampsarg = sp.argmin(sp.absolute(blen-nbauds))
@@ -460,18 +472,17 @@ def gen_ac(nsamps, nbauds):
     samp_mat = sp.arange(nbauds).repeat(nsamps/nbauds)
     phasefile = Path(__file__).resolve().parent / 'acphase.txt'
     all_phase = sp.genfromtxt(str(phasefile))
-    pulse = sp.zeros((nbauds*2, len(samp_mat)))
-    for ipulse in range(nbauds*2):
-        pulse[ipulse] = sp.cos(sp.pi*all_phase[ipulse, samp_mat]/180.)
+    pulse = sp.cos(sp.pi*all_phase[:nbauds*2, samp_mat]/180.)
     sweepnum = sp.arange(nbauds*2)
     sweepid = sweepnum+1
     return pulse, sweepid, sweepnum
 #%% dictionary file
 def dict2h5(fn, dictin):
-    """A function that will save a dictionary to a h5 file.
-    Inputs
-        filename - The file name in a string.
-        dictin - A dictionary that will be saved out.
+    """
+        A function that will save a dictionary to a h5 file.
+        Args:
+            filename:``str``:The file name in a string.
+            dictin:``dict``: A flat dictionary that will be saved out.
     """
     fn = Path(fn).expanduser()
     if fn.is_file():
@@ -666,13 +677,13 @@ def getdefualtparams():
     (sensdict, simparams) = readconfigfile(str(d_file))
     return sensdict, simparams
 
-def readconfigfile(fname, make_amb=False):
+def readconfigfile(fname, make_amb_bool=False):
     """
         This funciton will read in the ini or yaml files that are used for configuration.
 
         Args:
             fname - A string containing the file name and location.
-            make_amb - A bool to determine if the ambiguity functions should be
+            make_amb_bool - A bool to determine if the ambiguity functions should be
                        calculated because they take a lot of time.
 
         Returns:
@@ -755,7 +766,7 @@ def readconfigfile(fname, make_amb=False):
     simparams['sweepids'] = sweepid
     simparams['sweepnums'] = sweepnums
     simparams['Pulse'] = pulse
-    if make_amb:
+    if make_amb_bool:
         simparams['amb_dict'] = make_amb(f_s/ds_fac, simparams['declist'], pulse,
                                          simparams['numpoints'], sweepid)
     simparams['angles'] = angles
