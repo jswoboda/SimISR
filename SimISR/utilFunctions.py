@@ -461,8 +461,8 @@ def gen_ac(nsamps, nbauds):
             nbauds:``int``: The number of bauds for each code.
 
         Returns:
-            outdict:``array``: A numpy array of shape 2nbaudsxnsamps holding the
-            pulsesself.
+            pulse:``array``: A numpy array of shape 2nbaudsxnsamps holding the
+            pulses.
             sweepid:``array``: Array of sweep ids.
             sweepnum:``array``: Array of sweep numbers.
     """
@@ -470,9 +470,22 @@ def gen_ac(nsamps, nbauds):
     nsampsarg = sp.argmin(sp.absolute(blen-nbauds))
     nbauds = blen[nsampsarg]
     samp_mat = sp.arange(nbauds).repeat(nsamps/nbauds)
-    phasefile = Path(__file__).resolve().parent / 'acphase.txt'
-    all_phase = sp.genfromtxt(str(phasefile))
-    pulse = sp.cos(sp.pi*all_phase[:nbauds*2, samp_mat]/180.)
+    walshmat = sp.linalg.hadamard(nbauds*2)
+    # Strong codes found in Hysell 2018 textbook
+    if nbauds == 4:
+        colsoct = ['00','01','02','04']
+    elif nbauds == 8:
+        colsoct = ['00','01','02','04','10','03','07','16']
+    elif nbauds == 16:
+        colsoct = ['00','01','03','04','10','20','17','37','21','14','31','35','24','06','15','32']
+    cols = [int(i, 8) for i in colsoct]
+    pulse = walshmat[:,cols]
+    # List of alternating code phases are not the same as the order in the textbooks
+    if nbauds == 16:
+        phasefile = Path(__file__).resolve().parent / 'acphase.txt'
+        all_phase = sp.genfromtxt(str(phasefile))
+        pulse = sp.cos(sp.pi*all_phase/180.)
+    pulse = pulse[:, samp_mat]
     sweepnum = sp.arange(nbauds*2)
     sweepid = sweepnum+1
     return pulse, sweepid, sweepnum
