@@ -459,21 +459,22 @@ class IonoContainer(object):
         self.Param_List=self.Param_List[ckeep]
         self.Velocity=self.Velocity[ckeep]
 
-    def timereduce(self, timelims=None,timesselected=None):
+    def timereduce(self, timelims=None, timesselected=None, tkeep=None):
         """
         Given set of time limits or list of times the data the IonoContainer will be
         pruned accordinly.
-        Input
-            timelims - A two point list with the desired time limits.
-            timesselected - A list of times that are desired from the overall group
-                times.
+
+        Args:
+            timelims:``list``: A two point list with the desired time limits.
+            timesselected:``list``: Start times that will be kept.
+            tkeep: ``list``: Indexes of times from the Time_Vector array that will be kept.
         """
-        assert (timelims is not None) or (timesselected is not None), "Need a set of limits or selected set of times"
+        assert (tkeep is not None) or (timelims is not None) or (timesselected is not None), "Need a set of limits or selected set of times"
 
         if timelims is not None:
-            tkeep = np.logical_and(self.Time_Vector>=timelims[0],self.Time_Vector<timelims[1])
+            tkeep = np.logical_and(self.Time_Vector[:,0]>=timelims[0],self.Time_Vector[:,1]<timelims[1])
         if timesselected is not None:
-            tkeep = np.in1d(self.Time_Vector,timesselected)
+            tkeep = np.in1d(self.Time_Vector[:,0],timesselected)
         # prune the arrays
         self.Time_Vector=self.Time_Vector[tkeep]
         self.Param_List=self.Param_List[:,tkeep]
