@@ -11,7 +11,7 @@
   ambupsamp: 1.0
   beamrate: 1
   declist: [6, 5]
-  dtype: !!python/name:numpy.complex128 ''
+  dtype: !!python/name:numpy.complex64 ''
   fsden: 1
   fsnum: 1000000
   numpoints: 3840
