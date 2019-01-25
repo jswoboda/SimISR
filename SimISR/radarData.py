@@ -85,7 +85,8 @@ class RadarDataFile(object):
 
     def makerfdata(self, ionodict):
         """
-            The function will create the RF
+            This method will take an ionocontainer object and create the associated
+            RF data assoicated with the parameters from it.
         """
 
         filetimes = ionodict.keys()
@@ -127,7 +128,7 @@ class RadarDataFile(object):
 
         sample_rate_numerator = self.simparams['fsnum']
         sample_rate_denominator = self.simparams['fsden']
-        sample_rate = sp.longdouble(sample_rate_numerator) / sample_rate_denominator
+        sample_rate = sp.double(sample_rate_numerator) / sample_rate_denominator
         start_global_index = int(sample_rate*filetimes[0])
         dtype_str = 'complex64'  # complex64
         sub_cadence_secs = 3600  # Number of seconds of data in a subdirectory
@@ -230,11 +231,13 @@ class RadarDataFile(object):
                 pt = pulsetimes[cur_fpulses]
                 pb = beams[cur_fpulses]
                 pn = pulsen[cur_fpulses]
-                s_i = sweepids[pn % nseq]
-                s_n = sweepnums[pn % nseq]
+                pulse_idx = pn%nseq
+                s_i = sweepids[pulse_idx]
+                s_n = sweepnums[pulse_idx]
+
                 rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
                                             curcontainer.Sphere_Coords,
-                                            curcontainer.Param_List, pb)
+                                            curcontainer.Param_List, pb, pulse_idx)
 
                 n_pulse_cur, n_raw = rawdata.shape
                 rawdata_us = sp.signal.resample(rawdata, n_raw*ds_fac, axis=1)
@@ -311,8 +314,8 @@ class RadarDataFile(object):
                 id_strt = int(idmobj.get_samples_per_second()*pt[0])
                 dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
                 acmobj.write(int(acmobj.get_samples_per_second()*pt[0]), acmdict)
-                idmdict = {'sweepid': s_i, 'sample_rate': [sample_rate]*len(s_n),
-                           'modeid': [100000001]*len(s_n), 'sweepnum': s_n}
+                idmdict = {'sweepid': s_i, 'sample_rate': sp.array([sample_rate]*len(s_n)),
+                           'modeid': sp.array([100000001]*len(s_n)), 'sweepnum': s_n}
                 idmobj.write(dmdplist, idmdict)
                 pmmobj.write(int(pmmobj.get_samples_per_second()*pt[0]), pmmdict)
 
@@ -324,18 +327,21 @@ class RadarDataFile(object):
 
 
 #%% Make functions
-    def __makeTime__(self, pulsetimes, spectime, Sphere_Coords, allspecs, beamcodes):
-        """This is will make raw radar data for a given time period and set of
-        spectrums. This is an internal function called by __init__.
-        Inputs-
-        self - RadarDataFile object.
-        pulsetimes - The time the pulses are sent out in reference to the spectrums.
-        spectime - The times for the spectrums.
-        Sphere_Coords - An Nlx3 array that holds the spherical coordinates of the spectrums.
-        allspecs - An NlxNdtimexNspec array that holds the spectrums.
-        beamcodes - A NBx4 array that holds the beam codes along with the beam location
-        in az el along with a system constant in the array. """
-
+    def __makeTime__(self, pulsetimes, spectime, Sphere_Coords, allspecs, beamcodes, pulse_idx):
+        """
+            This will make raw radar data for a given time period and set of
+            spectrums. This is an internal function called by __init__.
+            Args:
+                self (:obj:'RadarDataFile'): RadarDataFile object.
+                pulsetimes (:obj:'ndarray'): The time the pulses are sent out in reference to the spectrums.
+                spectime (:obj:'ndarray'): The times for the spectrums.
+                Sphere_Coords (:obj:'ndarray'): An Nlx3 array that holds the spherical coordinates of the spectrums.
+                allspecs (:obj:'ndarray'): An NlxNdtimexNspec array that holds the spectrums.
+                beamcodes (:obj:'ndarray'): The index of the beams that are used.
+                pulse_idx (:obj:'ndarray'): The index of the pulses that will be used.
+            Returns:
+                outdata (:obj:'ndarray'): A numpy array with the shape of the rep1xlen(pulse)
+        """
         range_gates = self.simparams['Rangegates']
         sensdict = self.sensdict
         samp_range = self.simparams['datasamples']
@@ -397,13 +403,15 @@ class RadarDataFile(object):
                     pow_den = range_m**2
                     curdataloc = sp.where(sp.logical_and((pulse2spec == istn),
                                                          (beamcodes == ibn)))[0]
+                    cur_pidx = pulse_idx[curdataloc]
+
                     # create data
                     if not sp.any(curdataloc):
                         # outstr = '\t\t No data for {0:d} of {1:d} in this time period'
                         # print(outstr.format(ibn, n_beams))
                         continue
                     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
-                                                         len(curdataloc), numtype=simdtype)
+                                                         cur_pidx, numtype=simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
 
                     for idatn, idat in enumerate(curdataloc):
@@ -413,12 +421,13 @@ class RadarDataFile(object):
         return out_data
         #%% Processing
     def processdataiono(self):
-        """ This will perform the the data processing and create the ACF estimates
-        for both the data and noise but put it in an Ionocontainer.
-        Inputs:
+        """
+            This will call the data processing function and place the resulting
+            ACFs in an Ionocontainer so it can be saved out.
 
-        Outputs:
-        Ionocontainer- This is an instance of the ionocontainer class that will hold the acfs.
+            Returns:
+                Ionocontainer (:obj:'IonoContainer') This is an instance of the
+                    ionocontainer class that will hold the acfs.
         """
         outdict = self.processdatadrf()
         alldata = {}
@@ -461,8 +470,13 @@ class RadarDataFile(object):
         return alldata
 
     def processdatadrf(self):
-        """ Process digital_rf channels
+        """
+            From the digital_rf channel data create ACFs and place them in a dictionary.
 
+            Returns:
+                mode_dict (:obj:'dict') This holds the processed ACFs before they're put into
+                    the ionocontainer. The dictionary keys are the different modes that are
+                    avalible. The sub dictionary is then data and noise lags.
         """
 
         outdir = self.datadir
@@ -602,17 +616,16 @@ class RadarDataFile(object):
         return mode_dict
 
     def processdata(self):
-        """ This will perform the the data processing and create the ACF estimates
+        """
+        This will perform the the data processing and create the ACF estimates
         for both the data and noise.
-        Inputs:
-        timevec - A numpy array of times in seconds where the integration will begin.
-        inttime - The integration time in seconds.
-        lagfunc - A function that will make the desired lag products.
-        Outputs:
-        DataLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
-        the numpy arrays of the data.
-        NoiseLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
-        the numpy arrays of the data.
+            Inputs:
+
+            Outputs:
+                DataLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
+                the numpy arrays of the data.
+                NoiseLags: A dictionary with keys 'Power' 'ACF','RG','Pulses' that holds
+                the numpy arrays of the data.
         """
         timevec = self.simparams['Timevec']+self.timeoffset
         inttime = self.simparams['Tint']

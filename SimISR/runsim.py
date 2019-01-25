@@ -76,12 +76,13 @@ def makespectrums(basedir, configfile, printlines=True):
 
 #%% Make Radar Data
 def makeradardata(basedir,configfile,remakealldata):
-    """ This function will make the radar data and create the acf estimates.
-    Inputs:
-        basedir: A string for the directory that will hold all of the data for the simulation.
-        configfile: The configuration file for the simulation.
-        remakealldata: A bool that determines if the radar data is remade. If false
-            only the acfs will be estimated using the radar that is already made."""
+    """
+        This function will make the radar data and create the acf estimates.
+        Inputs:
+            basedir: A string for the directory that will hold all of the data for the simulation.
+            configfile: The configuration file for the simulation.
+            remakealldata: A bool that determines if the radar data is remade. If false
+                only the acfs will be estimated using the radar that is already made."""
 
     dirio = ('Spectrums', 'Radardata', 'ACF')
     inputdir = basedir/dirio[0]
@@ -120,12 +121,13 @@ def makeradardata(basedir,configfile,remakealldata):
     return ()
 #%% Fit data
 def fitdata(basedir,configfile,optinputs):
-    """ This function will run the fitter on the estimated ACFs saved in h5 files.
+    """
+        This function will run the fitter on the estimated ACFs saved in h5 files.
         Inputs:
-        basedir: A string for the directory that will hold all of the data for the simulation.
-        configfile: The configuration file for the simulation.
-        optinputs:A string that helps determine the what type of acfs will be fitted.
-         """
+            basedir: A string for the directory that will hold all of the data for the simulation.
+            configfile: The configuration file for the simulation.
+            optinputs:A string that helps determine the what type of acfs will be fitted.
+     """
     # determine the input folders which can be ACFs from the full simulation
     dirdict = {'fitting':('ACF', 'Fitted'), 'fittingmat':('ACFMat', 'FittedMat'),
                'fittinginv':('ACFInv', 'FittedInv'), 'fittingmatinv':('ACFMatInv', 'FittedMatInv')}

@@ -171,6 +171,7 @@ def main(ARGS):
 
     inputpath = testpath.joinpath('Origparams')
     d_1 = datetime(2015, 3, 21, 8, 00)
+    #HACK May be should make this over the time period of the simulation?
     dn_list = [d_1+timedelta(i) for i in sp.linspace(0., .5, ARGS.ntimes)]
     ionoout = pyglowinput(dn_list=dn_list, spike=ARGS.nespike)
     if not inputpath.is_dir():
@@ -215,10 +216,10 @@ if __name__== '__main__':
     PAR1.add_argument("-c", "--config",
                       help='Name of config file in data prod scripts directory.',
                       type=str, default='MHsimple.yml')
-    PAR1.add_argument('-n', '--ntimes', help='The number of times in the original',
-                      type=int, default=2)
-    PAR1.add_argument('-j', "--nminutes", help='Number minutes', type=int, default=4)
-    PAR1.add_argument('-f', '--funclist', help='Functions to be uses', nargs='+',
+    PAR1.add_argument('-n', '--ntimes', type=int, default=2,
+                      help='The number evenly distributed of samples over 1/2 day that will be created parameter truth data.')
+    PAR1.add_argument('-j', "--nminutes", help='Number minutes of data created.', type=int, default=4)
+    PAR1.add_argument('-f', '--funclist', help='Functions to be used.', nargs='+',
                       default=['spectrums', 'radardata', 'fitting', 'analysis'])
     PAR1.add_argument('-e', '-nespike', dest='nespike', action='store_true',
                       help='''Adds a spike in electron density at peak''',)

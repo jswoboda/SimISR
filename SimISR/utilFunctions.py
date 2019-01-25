@@ -242,16 +242,16 @@ def acf2spect(tau, acf, n_s=None, initshift=False):
     return omeg, spec
 #%% making pulse data
 
-def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
+def MakePulseDataRepLPC(pulse, spec, nlpc, p_ind, numtype=sp.complex128):
     """
         This will make shaped noise data using linear predictive coding windowed
         by the pulse function.
         Args:
             spec (:obj:'ndarray'): The properly weighted spectrum.
             N (:obj:'int'): The size of the ar process used to model the filter.
-            pulse (:obj:'ndarray'): The pulse shape. The pulse is flipped in this so the first sample
+            p_ind (:obj:'ndarray'): The pulse shape. The pulse is flipped in this so the first sample
                     will be the leading in range.
-            rep1 (:obj:'int'): The number of repeats of the process.
+            p_ind (:obj:'int'): The index of the pulses in the pulse array that will be used.
         Returns:
             outdata (:obj:'ndarray'): A numpy array with the shape of the rep1xlen(pulse)
     """
@@ -269,7 +269,8 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, rep1, numtype=sp.complex128):
     G = sp.sqrt(sp.sum(sp.conjugate(r1[:nlpc+1])*lpc))
     Gvec = sp.r_[G, sp.zeros(nlpc)]
     n_pnt = (nlpc+1)*3+lp
-    p_ind = sp.arange(rep1)%npulse
+    rep1 = len(p_ind)
+
     if n_pnt >= 200:
         nfft = scfft.next_fast_len(n_pnt)
         _, h_filt = sp.signal.freqz(Gvec, lpc, worN=nfft, whole=True)

@@ -422,11 +422,11 @@ class IonoContainer(object):
     #%% Reduce numbers
     def coordreduce(self,coorddict):
         """
-        Given a dictionary of coordinates the location points in the IonoContainer
-        object will be reduced.
-        Inputs
-            corrddict - A dictionary with keys 'x','y','z','r','theta','phi'. The
-                values in the dictionary are coordinate values that will be kept.
+            Given a dictionary of coordinates the location points in the IonoContainer
+            object will be reduced.
+            Inputs
+                corrddict - A dictionary with keys 'x','y','z','r','theta','phi'. The
+                    values in the dictionary are coordinate values that will be kept.
         """
         assert type(coorddict)==dict, "Coorddict needs to be a dictionary"
         ncoords = self.Cart_Coords.shape[0]
@@ -461,13 +461,13 @@ class IonoContainer(object):
 
     def timereduce(self, timelims=None, timesselected=None, tkeep=None):
         """
-        Given set of time limits or list of times the data the IonoContainer will be
-        pruned accordinly.
+            Given set of time limits or list of times the data the IonoContainer will be
+            pruned accordinly.
 
-        Args:
-            timelims:``list``: A two point list with the desired time limits.
-            timesselected:``list``: Start times that will be kept.
-            tkeep: ``list``: Indexes of times from the Time_Vector array that will be kept.
+            Args:
+                timelims:``list``: A two point list with the desired time limits.
+                timesselected:``list``: Start times that will be kept.
+                tkeep: ``list``: Indexes of times from the Time_Vector array that will be kept.
         """
         assert (tkeep is not None) or (timelims is not None) or (timesselected is not None), "Need a set of limits or selected set of times"
 
