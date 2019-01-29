@@ -270,7 +270,6 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, p_ind, numtype=sp.complex128):
     Gvec = sp.r_[G, sp.zeros(nlpc)]
     n_pnt = (nlpc+1)*3+lp
     rep1 = len(p_ind)
-
     if n_pnt >= 200:
         nfft = scfft.next_fast_len(n_pnt)
         _, h_filt = sp.signal.freqz(Gvec, lpc, worN=nfft, whole=True)
@@ -788,9 +787,10 @@ def readconfigfile(fname, make_amb_bool=False):
     usweeps = sp.unique(sweepid)
 
     sig_list = sp.vstack([list(timing_dict[i][1]['signal']) for i in usweeps])
+    blank_list = sp.vstack([list(timing_dict[i][1]['blank']) for i in usweeps])
     no_list = sp.vstack([list(timing_dict[i][1]['noise']) for i in usweeps])
     cal_list = sp.vstack([list(timing_dict[i][1]['calibration']) for i in usweeps])
-    d_len = [sig_list[:, 0].min(), sig_list[:, 1].max()]
+    d_len = [blank_list[:, 1].min(), sig_list[:, 1].max()]
     n_len = [no_list[:, 0].min(), no_list[:, 1].max()]
     c_len = [cal_list[:, 0].min(), cal_list[:, 1].max()]
     simparams['datasamples'] = d_len

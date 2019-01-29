@@ -199,7 +199,6 @@ class RadarDataFile(object):
                 beams = sp.concatenate((beams, beam3[:leftover]))
             else:
                 beams = beam3[:leftover]
-
         pulsen = sp.repeat(sp.arange(Np), N_angles).astype(int)
         pt_list = []
         pb_list = []
@@ -241,7 +240,8 @@ class RadarDataFile(object):
 
                 n_pulse_cur, n_raw = rawdata.shape
                 rawdata_us = sp.signal.resample(rawdata, n_raw*ds_fac, axis=1)
-
+                r_samps = sp.diff(d_samps)[0]
+                rawdata_us = rawdata_us[:,:r_samps]
                 alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
                 alldata = sp.sqrt(noisepwr/2.)*alldata
                 caldata = sp.random.randn(n_pulse_cur, n_cal) + 1j*sp.random.randn(n_pulse_cur, n_cal)
@@ -306,7 +306,7 @@ class RadarDataFile(object):
                 num_const = 200.
                 #transmitdata
                 tx_data = sp.zeros_like(alldata).astype('complex64')
-                tx_data[:, :pulse_full.shape[-1]] = pulse_full[pn % nseq].astype('complex64')
+                tx_data[:, :pulse_full.shape[-1]] = pulse_full[pulse_idx].astype('complex64')
                 data_object_tx.rf_write(tx_data.flatten()*num_const)
                 # extend array for digital rf to flattend array
 
@@ -356,7 +356,7 @@ class RadarDataFile(object):
         n_pulses = len(pulse2spec)
         lp_pnts = pulse.shape[-1]
         samp_num = sp.arange(lp_pnts)
-        n_samps = (samp_range[1]-samp_range[0])/ds_fac
+        n_samps = int(sp.ceil(float(samp_range[1]-samp_range[0])/ds_fac))
         angles = self.simparams['angles']
         n_beams = len(angles)
         rho = Sphere_Coords[:, 0]
@@ -413,9 +413,9 @@ class RadarDataFile(object):
                     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
                                                          cur_pidx, numtype=simdtype)
                     cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
-
-                    for idatn, idat in enumerate(curdataloc):
-                        out_data[idat, cur_pnts] += cur_pulse_data[idatn, cur_pnts-isamp]
+                    out_data[curdataloc][:, cur_pnts] += cur_pulse_data[:, cur_pnts-isamp]
+                    # for idatn, idat in enumerate(curdataloc):
+                    #     out_data[idat, cur_pnts] += cur_pulse_data[idatn, cur_pnts-isamp]
 
 
         return out_data
