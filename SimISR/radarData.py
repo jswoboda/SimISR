@@ -247,6 +247,7 @@ class RadarDataFile(object):
                 caldata = sp.random.randn(n_pulse_cur, n_cal) + 1j*sp.random.randn(n_pulse_cur, n_cal)
                 caldata = sp.sqrt(calpwr/2)*caldata.astype(simdtype)
                 noisedata = alldata[:, d_samps[0]:d_samps[1]]
+
                 for i_swid in usweep:
                     sw_ind = sp.where(s_i == i_swid)[0]
                     cur_tdict = t_dict[i_swid]
@@ -278,7 +279,6 @@ class RadarDataFile(object):
                 # Down sample data using resample, keeps variance correct
                 rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
                 noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
-
                 noise_est = sp.mean(sp.mean(noise_samps.real**2+noise_samps.imag**2))
                 cal_est = sp.mean(sp.mean(cal_samps.real**2+cal_samps.imag**2))
                 calfac = calpwr/(cal_est-noise_est)
@@ -412,10 +412,10 @@ class RadarDataFile(object):
                         continue
                     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
                                                          cur_pidx, numtype=simdtype)
-                    cur_pulse_data = cur_pulse_data*sp.sqrt(pow_num/pow_den)
-                    out_data[curdataloc][:, cur_pnts] += cur_pulse_data[:, cur_pnts-isamp]
-                    # for idatn, idat in enumerate(curdataloc):
-                    #     out_data[idat, cur_pnts] += cur_pulse_data[idatn, cur_pnts-isamp]
+                    cur_pulse_data = cur_pulse_data[:, cur_pnts-isamp]*sp.sqrt(pow_num/pow_den)
+                    # Need to do the adding in a loop, can't find a way to get a round this.
+                    for idatn, idat in enumerate(curdataloc):
+                        out_data[idat, cur_pnts] += cur_pulse_data[idatn]
 
 
         return out_data
