@@ -161,7 +161,7 @@ def main(ARGS):
     if not testpath.is_dir():
         testpath.mkdir(parents=True)
     functlist = ARGS.funclist
-    functlist_default = ['spectrums', 'radardata', 'fitting']
+    functlist_default = ['spectrums', 'radardata', 'process', 'fitting']
     check_list = sp.array([i in functlist for i in functlist_default])
     check_run = sp.any(check_list)
     functlist_red = sp.array(functlist_default)[check_list].tolist()
@@ -183,24 +183,24 @@ def main(ARGS):
 
     #make digitral rf directories
     drfdirone = drfdata = testpath/'drfdata'
-    if drfdirone.exists():
+    if drfdirone.exists() and 'radardata' in functlist_red:
         shutil.rmtree(str(drfdirone))
+    if not drfdirone.exists():
+        drfdata = testpath/'drfdata'/'rf_data'/'zenith-l'
+        drfdata.mkdir(parents=True, exist_ok=True)
+        drfdatatx = testpath/'drfdata'/'rf_data'/'tx-h'
+        drfdatatx.mkdir(parents=True, exist_ok=True)
+        dmddir = testpath/'drfdata'/'metadata'
+        dmddir.mkdir(parents=True, exist_ok=True)
 
-    drfdata = testpath/'drfdata'/'rf_data'/'zenith-l'
-    drfdata.mkdir(parents=True, exist_ok=True)
-    drfdatatx = testpath/'drfdata'/'rf_data'/'tx-h'
-    drfdatatx.mkdir(parents=True, exist_ok=True)
-    dmddir = testpath/'drfdata'/'metadata'
-    dmddir.mkdir(parents=True, exist_ok=True)
+        acmdata = dmddir.joinpath('antenna_control_metadata')
+        acmdata.mkdir(parents=True, exist_ok=True)
 
-    acmdata = dmddir.joinpath('antenna_control_metadata')
-    acmdata.mkdir(parents=True, exist_ok=True)
+        iddir = dmddir.joinpath('id_metadata')
+        iddir.mkdir(parents=True, exist_ok=True)
 
-    iddir = dmddir.joinpath('id_metadata')
-    iddir.mkdir(parents=True, exist_ok=True)
-
-    pmdir = dmddir.joinpath('powermeter')
-    pmdir.mkdir(parents=True, exist_ok=True)
+        pmdir = dmddir.joinpath('powermeter')
+        pmdir.mkdir(parents=True, exist_ok=True)
     if check_run:
         runsimisr(functlist_red, str(testpath), config, True)
 
@@ -220,7 +220,7 @@ if __name__== '__main__':
                       help='The number evenly distributed of samples over 1/2 day that will be created parameter truth data.')
     PAR1.add_argument('-j', "--nminutes", help='Number minutes of data created.', type=int, default=4)
     PAR1.add_argument('-f', '--funclist', help='Functions to be used.', nargs='+',
-                      default=['spectrums', 'radardata', 'fitting', 'analysis'])
+                      default=['spectrums', 'radardata', 'process', 'fitting', 'analysis'])
     PAR1.add_argument('-e', '-nespike', dest='nespike', action='store_true',
                       help='''Adds a spike in electron density at peak''',)
     PAR1 = PAR1.parse_args()

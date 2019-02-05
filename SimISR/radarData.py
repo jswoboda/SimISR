@@ -488,10 +488,13 @@ class RadarDataFile(object):
         dmddir = outdir.parent.joinpath('drfdata', 'metadata')
         acmdir = dmddir.joinpath('antenna_control_metadata')
         iddir = dmddir.joinpath('id_metadata')
+        acode_swid = sp.arange(1, 33)
+        lp_swid = 300
 
         dec_list = self.simparams['declist']
         ds_fac = sp.prod(dec_list)
         pulse_arr = self.simparams['Pulse'][:,::ds_fac]
+        nlags = pulse_arr.shape[-1]
         s_id_p1 = self.simparams['sweepids']
         pulse_dict = {i:j for i, j in zip(s_id_p1, pulse_arr)}
         idmobj = drf.DigitalMetadataReader(str(iddir))
@@ -505,9 +508,19 @@ class RadarDataFile(object):
         calpwr = v_Boltz*self.sensdict['CalDiodeTemp']*sps/ds_fac
         pulse_dict = {i:j for i, j in zip(s_id_p1, pulse_arr)}
 
-
-        acode_swid = sp.arange(1, 33)
-        lp_swid = 300
+        ac_in_swid = [i in pulse_dict.keys() for i in acode_swid]
+        if sp.any(ac_in_swid):
+            ac_ind = sp.where(ac_in_swid)[0]
+            ac_swid = sp.array(pulse_dict.keys())[ac_ind]
+            ac_codes = sp.array([pulse_dict[iac] for iac in ac_swid])
+            num_codes = len(ac_codes)
+            decode_arr = sp.zeros((num_codes, nlags))
+            for ilag in range(nlags):
+                if ilag==0:
+                    decode_arr[:,ilag] = sp.sum(ac_codes*ac_codes,axis=-1)
+                else:
+                    decode_arr[:,ilag] = sp.sum(ac_codes[:,:-ilag]*ac_codes[:,ilag:],axis=-1)
+            decode_dict = {ac_swid[i]:decode_arr[i] for i in range(num_codes)}
         # Choose type of processing
         if self.simparams['Pulsetype'].lower() == 'barker':
             lagfunc = BarkerLag
@@ -577,9 +590,12 @@ class RadarDataFile(object):
                 cal_acf = sp.median(cal_acf, axis=0)[0].real
 
                 if i_id in acode_swid:
-                    data_dict['AC']['sig'].append(sig_acf)
+                    decode_ar = decode_dict[i_id]
+                    dcsig_acf = sig_acf*sp.repeat(decode_ar[sp.newaxis],sig_acf.shape[0],axis=0)
+                    data_dict['AC']['sig'].append(dcsig_acf)
                     data_dict['AC']['cal'].append(cal_acf)
-                    data_dict['AC']['noise'].append(n_acf)
+                    dc_n_acf = n_acf*sp.repeat(decode_ar[sp.newaxis],n_acf.shape[0],axis=0)
+                    data_dict['AC']['noise'].append(dc_n_acf)
                     data_dict['AC']['NIPP'].append(len(curlocs))
                 elif i_id == lp_swid:
                     data_dict['LP'] = {"sig":sig_acf, "cal":cal_acf,

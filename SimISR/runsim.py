@@ -110,6 +110,25 @@ def makeradardata(basedir,configfile,remakealldata):
     rdata = RadarDataFile(configfile, outputdir)
     rdata.makerfdata(Ionodict)
     # From the ACFs and uncertainties
+    #
+    # outdict = rdata.processdataiono()
+    # # save the acfs and uncertianties in ionocontainer h5 files.
+    # for i_ptype in outdict:
+    #     ionoout, ionosig = outdict[i_ptype]
+    #
+    #     ionoout.saveh5(str(outputdir2.joinpath('00'+i_ptype+'lags.h5')))
+    #     ionosig.saveh5(str(outputdir2.joinpath('00'+i_ptype+'sigs.h5')))
+    return ()
+def processdata(basedir, configfile, optinputs):
+    """
+        Creates the ACFs from the digital_rf data
+    """
+    dirio = ('Radardata', 'ACF')
+    outputdir = basedir/dirio[0]
+    outputdir2 = basedir/dirio[1]
+    # create the radar data file class
+    rdata = RadarDataFile(configfile, outputdir)
+    # From the ACFs and uncertainties
 
     outdict = rdata.processdataiono()
     # save the acfs and uncertianties in ionocontainer h5 files.
@@ -274,8 +293,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype='',p
                 the full simulation. The user can also start with a directory
                 from a later stage of the simulation instead though.
 
-        configfile: The configuration used for the simulation. Can be an ini file or
-                a pickle file.
+        configfile: The configuration yaml file used for the simulation. 
 
         remakealldata: A bool to determine if the raw radar data will be remade. If
                 this is False the radar data will only be made if it does
@@ -288,7 +306,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype='',p
 
     inputsep = '***************************************************************\n'
 
-    funcdict = {'spectrums':makespectrums, 'radardata':makeradardata, 'fitting':fitdata,'fittingmat':fitdata,
+    funcdict = {'spectrums':makespectrums, 'radardata':makeradardata, 'process':processdata,'fitting':fitdata,'fittingmat':fitdata,
                 'fittinginv':fitdata,'applymat':applymat,'fittingmatinv':fitdata}
     #inout = {'spectrums':('Origparams','Spectrums'),'radardata':('Spectrums','Radardata'),'fitting':('ACF','Fitted')}
     #pdb.set_trace()
