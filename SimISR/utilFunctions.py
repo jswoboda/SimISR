@@ -5,7 +5,6 @@ Created on Tue Jul 22 16:18:21 2014
 @author: Bodangles
 """
 from __future__ import print_function
-import ipdb
 import sys
 import warnings
 import pickle

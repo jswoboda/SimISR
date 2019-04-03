@@ -4,6 +4,7 @@
 """
 import argparse
 from datetime import datetime, timedelta
+import dateutil.parser
 import calendar
 
 import scipy as sp
@@ -17,11 +18,16 @@ from SimISR.analysisplots import analysisdump
 from SimISR.runsim import main as runsimisr
 from SimISR import Path
 import ipdb
-def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)], z=None, spike=False):
+
+def pyglowinput(latlonalt=None, dn_list=None, z=None, storm=False, spike=False):
 
 
+    if latlonalt is None:
+        latlonalt = [42.61950, -71.4882, 250.00]
     if z is None:
         z = sp.linspace(50., 1000., 200)
+    if dn_list is None:
+        dn_list = [datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)]
     dn_diff = sp.diff(dn_list)
     dn_diff_sec = dn_diff[-1].seconds
     timelist = sp.array([calendar.timegm(i.timetuple()) for i in dn_list])
@@ -45,7 +51,11 @@ def pyglowinput(latlonalt=[42.61950, -71.4882, 250.00], dn_list=[datetime(2015, 
             pt = Point(dn, *latlonalt)
             pt.run_igrf()
             pt.run_msis()
-            pt.run_iri()
+            if storm:
+                pt.run_iri(foF2_storm=True, foE_storm=True, hmF2_storm=True,
+                           topside_storm=True)
+            else:
+                pt.run_iri()
 
             # so the zonal pt.u and meriodinal winds pt.v  will coorispond to x and y even though they are
             # supposed to be east west and north south. Pyglow does not seem to have
@@ -170,9 +180,23 @@ def main(ARGS):
     config = str(testpath.joinpath(ARGS.config))
 
     inputpath = testpath.joinpath('Origparams')
-    d_1 = datetime(2015, 3, 21, 8, 00)
+    if ARGS.starttime is None:
+        dtst0 = datetime(2015, 3, 21, 8, 00)
+    else:
+        dtst0 = dateutil.parser.parse(ARGS.starttime)
+
+        print('Start time: %s' % (dtst0.strftime('%a %b %d %H:%M:%S %Y')))
+
+    if ARGS.endtime is None:
+        # default to the next 24 hours
+        dtet0 = dtst0 + timedelta(1)
+    else:
+        dtet0 = dateutil.parser.parse(ARGS.endtime)
+        print('End time: %s' % (dtet0.strftime('%a %b %d %H:%M:%S %Y')))
+
     #HACK May be should make this over the time period of the simulation?
-    dn_list = [d_1+timedelta(i) for i in sp.linspace(0., .5, ARGS.ntimes)]
+    dtdiff = dtet0 - dtst0
+    dn_list = [dtst0+timedelta(seconds=i) for i in sp.linspace(0., dtdiff.total_seconds(), ARGS.ntimes)]
     ionoout = pyglowinput(dn_list=dn_list, spike=ARGS.nespike)
     if not inputpath.is_dir():
         inputpath.mkdir()
@@ -216,12 +240,22 @@ if __name__== '__main__':
     PAR1.add_argument("-c", "--config",
                       help='Name of config file in data prod scripts directory.',
                       type=str, default='MHsimple.yml')
-    PAR1.add_argument('-n', '--ntimes', type=int, default=2,
-                      help='The number evenly distributed of samples over 1/2 day that will be created parameter truth data.')
-    PAR1.add_argument('-j', "--nminutes", help='Number minutes of data created.', type=int, default=4)
+    PAR1.add_argument('-t', '--ntimes', type=int, default=2,
+                      help='''The number evenly distributed of samples over 1/2
+                      day that will be created parameter truth data.''')
+    PAR1.add_argument('-j', "--nminutes", help='Number minutes of data created.',
+                      type=int, default=4)
     PAR1.add_argument('-f', '--funclist', help='Functions to be used.', nargs='+',
                       default=['spectrums', 'radardata', 'process', 'fitting', 'analysis'])
-    PAR1.add_argument('-e', '-nespike', dest='nespike', action='store_true',
+    PAR1.add_argument('-s', '--starttime',  dest='starttime',
+                      help='''Start time of IRI data created as datetime
+                      (if in ISO8601 format: 2016-01-01T15:24:00Z)''')
+    PAR1.add_argument('-e', '--endtime',  dest='endtime',
+                      help='''End time of IRI data created as datetime (if in ISO8601 format
+                      : 2016-01-01T15:24:00Z)''')
+    PAR1.add_argument('-k', '--nespike', dest='nespike', action='store_true',
                       help='''Adds a spike in electron density at peak''',)
+    PAR1.add_argument('-g', '--storms', dest='storms', action='store_true',
+                      help="Storm time mode flag.")
     PAR1 = PAR1.parse_args()
     main(PAR1)
