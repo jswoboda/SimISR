@@ -249,9 +249,10 @@ class RadarDataFile(object):
                 pool = mp.Pool(processes=self.simparams['numprocesses'])
 
                 results = [pool.apply_async(resample_worker, args=x) for x in arg_list]
-                results = [p.get() for p in results]
-                rawdata_us = sp.zeros((n_pulse_cur,r_samps), dtype=results[0][1].dtype)
-                for iindx,idata in results:
+                #results = [p.get() for p in results]
+                rawdata_us = sp.zeros((n_pulse_cur,r_samps), dtype=rawdata.dtype)
+                for p in results:
+                    iindx, idata = p.get()
                     rawdata_us[iindx] = idata[:,:r_samps]
 
                 # rawdata_us = rawdata_us[:,:r_samps]
