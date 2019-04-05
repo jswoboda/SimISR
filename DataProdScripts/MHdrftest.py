@@ -197,13 +197,13 @@ def main(ARGS):
     #HACK May be should make this over the time period of the simulation?
     dtdiff = dtet0 - dtst0
     dn_list = [dtst0+timedelta(seconds=i) for i in sp.linspace(0., dtdiff.total_seconds(), ARGS.ntimes)]
-    ionoout = pyglowinput(dn_list=dn_list, spike=ARGS.nespike)
     if not inputpath.is_dir():
         inputpath.mkdir()
-
     inputfile = inputpath.joinpath('0 stats.h5')
-    ionoout.saveh5(str(inputfile))
-    ionoout.saveh5(str(testpath.joinpath('startfile.h5')))
+    if not inputfile.is_file() or ARGS.makeparams:
+        ionoout = pyglowinput(dn_list=dn_list, spike=ARGS.nespike)
+        ionoout.saveh5(str(inputfile))
+        ionoout.saveh5(str(testpath.joinpath('startfile.h5')))
 
     #make digitral rf directories
     drfdirone = drfdata = testpath/'drfdata'
@@ -257,5 +257,7 @@ if __name__== '__main__':
                       help='''Adds a spike in electron density at peak''',)
     PAR1.add_argument('-g', '--storms', dest='storms', action='store_true',
                       help="Storm time mode flag.")
+    PAR1.add_argument('-m', '--makeparams', dest='makeparams', action='store_true',
+                      help="Flag to remake the input parameters.")
     PAR1 = PAR1.parse_args()
     main(PAR1)
