@@ -19,3 +19,4 @@
   - [0]
   species: ['O+', 'NO+', 'O2+', 'H+', 'e-']
   startfile: ''
+  numprocesses: 3

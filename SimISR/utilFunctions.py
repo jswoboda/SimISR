@@ -19,7 +19,6 @@ import scipy.interpolate as spinterp
 from isrutilities.physConstants import v_C_0
 import isrutilities.sensorConstants as sensconst
 from isrutilities import Path
-
 # utility functions
 
 # update_progress() : Displays or updates a console progress bar
@@ -600,9 +599,8 @@ def makeconfigfile(fname, beamlist, radarname, simparams_orig):
 
     # reduce the number of stuff needed to be saved and avoid problems with writing
     keys2save = ['IPP', 'IPPsamps', 'TimeLim', 'Pulselength', 'Pulsetype', 'fsnum',
-                 'fsden', 'Tint', 'Fitinter',
-                 'dtype', 'species', 'numpoints', 'startfile',
-                 'FitType', 'beamrate', 'outangles', 'declist']
+                 'fsden', 'Tint', 'Fitinter', 'dtype', 'species', 'numpoints', 'startfile',
+                 'FitType', 'beamrate', 'outangles', 'declist', 'numprocesses']
 
     if not 'beamrate' in simparams_orig.keys():
         simparams_orig['beamrate'] = 1
@@ -612,63 +610,6 @@ def makeconfigfile(fname, beamlist, radarname, simparams_orig):
     if fext == '.yml':
         with fname.open('w') as f:
             yaml.dump([{'beamlist':beamlist, 'radarname':radarname}, simparams], f)
-    elif fext == '.ini':
-        defaultparser = ConfigParser()
-        defaultparser.read(str(d_file))
-#        config = configparser()
-#        config.read(fname)
-        cfgfile = open(str(fname),'w')
-        config = ConfigParser(allow_no_value = True)
-
-        config.add_section('section 1')
-        beamstring = ""
-        for beam in beamlist:
-            beamstring += str(beam)
-            beamstring += " "
-        config.set('section 1','; beamlist must be list of ints')
-        config.set('section 1','beamlist',beamstring)
-        config.set('section 1','; radarname can be pfisr, risr, or sondastrom')
-        config.set('section 1','radarname',radarname)
-
-        config.add_section('simparams')
-        config.add_section('simparamsnames')
-        defitems = [i[0] for i in defaultparser.items('simparamsnotes')]
-        for param in simparams:
-            if param=='Beamlist':
-                continue
-            if param.lower() in defitems:
-                paramnote = defaultparser.get('simparamsnotes',param.lower())
-            else:
-                paramnote = 'Not in default parameters'
-            config.set('simparams','; '+param +' '+paramnote)
-            # for the output list of angles
-            if param.lower()=='outangles':
-                outstr = ''
-                beamlistlist = simparams[param]
-                if beamlistlist=='':
-                    beamlistlist=beamlist
-                for ilist in beamlistlist:
-                    if isinstance(ilist,list) or isinstance(ilist,sp.ndarray):
-                        for inum in ilist:
-                            outstr=outstr+str(inum)+' '
-
-                    else:
-                        outstr=outstr+str(ilist)
-                    outstr=outstr+', '
-                outstr=outstr[:-2]
-                config.set('simparams',param,outstr)
-
-            elif isinstance(simparams[param],list):
-                data = ""
-                for a in simparams[param]:
-                    data += str(a)
-                    data += " "
-                config.set('simparams',param,str(data))
-            else:  #TODO config.set() is obsolete, undefined behavior!  use mapping protocol instead https://docs.python.org/3/library/configparser.html#mapping-protocol-access
-                config.set('simparams',param,str(simparams[param]))
-            config.set('simparamsnames',param,param)
-        config.write(cfgfile)
-        cfgfile.close()
     else:
         raise ValueError('fname needs to have an extension of .pickle or .ini')
 
@@ -709,6 +650,7 @@ def readconfigfile(fname, make_amb_bool=False):
 
     ftype = fname.suffix
     curpath = fname.parent
+    yaml.warnings({'YAMLLoadWarning': False})
     if ftype == '.yml':
         with fname.open('r') as f:
             dictlist = yaml.load(f)
@@ -719,45 +661,6 @@ def readconfigfile(fname, make_amb_bool=False):
         sensdict = sensconst.getConst(dictlist[0]['radarname'], ang_data)
 
         simparams = dictlist[1]
-    if ftype == '.ini':
-        config = ConfigParser()
-        config.read(str(fname))
-        beamlist = config.get('section 1', 'beamlist').split()
-        beamlist = [float(i) for i in beamlist]
-        angles = sensconst.getangles(beamlist, config.get('section 1', 'radarname'))
-        ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
-
-        sensdict = sensconst.getConst(config.get('section 1', 'radarname'), ang_data)
-
-        simparams = {}
-        for param in config.options('simparams'):
-            rname = config.get('simparamsnames', param)
-            simparams[rname] = config.get('simparams', param)
-
-        for param in simparams:
-            if simparams[param] == "<type 'numpy.complex128'>":
-                simparams[param] = sp.complex128
-            elif simparams[param] == "<type 'numpy.complex64'>":
-                simparams[param] = sp.complex64
-            elif param == 'outangles':
-                outlist1 = simparams[param].split(',')
-                simparams[param] = [[float(j) for j in
-                                     i.lstrip().rstrip().split(' ')] for i in outlist1]
-            else:
-                simparams[param] = simparams[param].split(" ")
-                if len(simparams[param]) == 1:
-                    simparams[param] = simparams[param][0]
-                    try:
-                        simparams[param] = float(simparams[param])
-                    except:
-                        pass
-                else:
-                    for a in range(len(simparams[param])):
-                        try:
-                            simparams[param][a] = float(simparams[param][a])
-                        except:
-                            pass
-
 
 
     if 'declist' not in simparams.keys():

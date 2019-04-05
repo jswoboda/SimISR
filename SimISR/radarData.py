@@ -10,6 +10,7 @@ import scipy as sp
 # My modules
 from isrutilities.physConstants import v_C_0, v_Boltz
 from SimISR import Path
+import multiprocessing as mp
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import CenteredLagProduct, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
 import digital_rf as drf
@@ -221,7 +222,7 @@ class RadarDataFile(object):
             f_pulses = sp.where(pulsefile == ifn)[0]
             nwrites = sp.ceil(float(len(f_pulses))/nippw).astype(int)
             for ifwrite, i_pstart in enumerate(range(0, len(f_pulses), nippw)):
-                progstr1 = 'Data for write {:d} of {:d} being created.'
+                progstr1 = 'Data written, {:d} of {:d} now being created.'
 
                 prog_level = float(ifn)/Nf+float(ifwrite)/Nf/nwrites
                 update_progress(prog_level, progstr1.format(int(ifn*nwrites+ifwrite+1), int(Nf*nwrites)))
@@ -239,9 +240,21 @@ class RadarDataFile(object):
                                             curcontainer.Param_List, pb, pulse_idx)
 
                 n_pulse_cur, n_raw = rawdata.shape
-                rawdata_us = sp.signal.resample(rawdata, n_raw*ds_fac, axis=1)
+                nbreak = 400
                 r_samps = sp.diff(d_samps)[0]
-                rawdata_us = rawdata_us[:,:r_samps]
+                orig_ind = sp.arange(n_pulse_cur)
+                rawsplit = sp.array_split(rawdata,nbreak,axis=0)
+                indsplit = sp.array_split(orig_ind,nbreak)
+                arg_list = [(idata,iindx,n_raw*ds_fac,1) for idata,iindx in zip(rawsplit,indsplit)]
+                pool = mp.Pool(processes=self.simparams['numprocesses'])
+
+                results = [pool.apply_async(resample_worker, args=x) for x in arg_list]
+                results = [p.get() for p in results]
+                rawdata_us = sp.zeros((n_pulse_cur,r_samps), dtype=results[0][1].dtype)
+                for iindx,idata in results:
+                    rawdata_us[iindx] = idata[:,:r_samps]
+
+                # rawdata_us = rawdata_us[:,:r_samps]
                 alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
                 alldata = sp.sqrt(noisepwr/2.)*alldata
                 caldata = sp.random.randn(n_pulse_cur, n_cal) + 1j*sp.random.randn(n_pulse_cur, n_cal)
@@ -257,50 +270,50 @@ class RadarDataFile(object):
                     alldata[sw_ind, cur_c[0]:cur_c[1]] += caldata[sw_ind, :cur_csamps]
 
                 alldata = alldata/sp.sqrt(calpwr/2.)
-                rawdata = rawdata_us.copy()/sp.sqrt(calpwr/2.)
-                noisedata = noisedata.copy()/sp.sqrt(calpwr/2.)
-                cal_samps = sp.zeros_like(caldata)
-                data_samps = sp.zeros_like(rawdata_us)
-                noise_samps = sp.zeros((n_pulse_cur, n_ns), dtype=alldata.dtype)
+                # rawdata = rawdata_us.copy()/sp.sqrt(calpwr/2.)
+                # noisedata = noisedata.copy()/sp.sqrt(calpwr/2.)
+                # cal_samps = sp.zeros_like(caldata)
+                # data_samps = sp.zeros_like(rawdata_us)
+                # noise_samps = sp.zeros((n_pulse_cur, n_ns), dtype=alldata.dtype)
+                #
+                # for i_swid in usweep:
+                #     sw_ind = sp.where(s_i == i_swid)[0]
+                #     cur_tdict = t_dict[i_swid]
+                #     cur_c = cur_tdict['calibration']
+                #     cur_csamps = sp.diff(cur_c)[0]
+                #     cur_n = cur_tdict['noise']
+                #     cur_nsamps = sp.diff(cur_n)[0]
+                #     data_samps[sw_ind] = alldata[sw_ind, d_samps[0]:d_samps[1]]
+                #     cal_samps[sw_ind, :cur_csamps] = alldata[sw_ind, cur_c[0]:cur_c[1]]
+                #     noise_samps[sw_ind, :cur_nsamps] = alldata[sw_ind, cur_n[0]:cur_n[1]]
 
-                for i_swid in usweep:
-                    sw_ind = sp.where(s_i == i_swid)[0]
-                    cur_tdict = t_dict[i_swid]
-                    cur_c = cur_tdict['calibration']
-                    cur_csamps = sp.diff(cur_c)[0]
-                    cur_n = cur_tdict['noise']
-                    cur_nsamps = sp.diff(cur_n)[0]
-                    data_samps[sw_ind] = alldata[sw_ind, d_samps[0]:d_samps[1]]
-                    cal_samps[sw_ind, :cur_csamps] = alldata[sw_ind, cur_c[0]:cur_c[1]]
-                    noise_samps[sw_ind, :cur_nsamps] = alldata[sw_ind, cur_n[0]:cur_n[1]]
-
-                data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
-                noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
-                # Down sample data using resample, keeps variance correct
-                rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
-                noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
-                noise_est = sp.mean(sp.mean(noise_samps.real**2+noise_samps.imag**2))
-                cal_est = sp.mean(sp.mean(cal_samps.real**2+cal_samps.imag**2))
-                calfac = calpwr/(cal_est-noise_est)
-                outdict['AddedNoise'] = noisedata_ds
-                outdict['RawData'] = data_samps
-                outdict['RawDatanonoise'] = rawdata_ds
-                outdict['NoiseData'] = noise_samps_ds
-                outdict['CalFactor'] = sp.array([calfac])
-                outdict['Pulses'] = pn
-                outdict['Beams'] = pb
-                outdict['Time'] = pt
-                fname = '{0:d} RawData.h5'.format(ifwrite)
-                newfn = self.datadir/fname
-                self.outfilelist.append(str(newfn))
-                dict2h5(str(newfn), outdict)
+                # data_samps = sp.signal.resample(data_samps, n_raw, axis=1)
+                # noise_samps_ds = sp.signal.resample(noise_samps, n_ns/ds_fac, axis=1)
+                # # Down sample data using resample, keeps variance correct
+                # rawdata_ds = sp.signal.resample(rawdata_us, rawdata.shape[1]/ds_fac, axis=1)
+                # noisedata_ds = sp.signal.resample(noisedata, noisedata.shape[1]/ds_fac, axis=1)
+                # noise_est = sp.mean(sp.mean(noise_samps.real**2+noise_samps.imag**2))
+                # cal_est = sp.mean(sp.mean(cal_samps.real**2+cal_samps.imag**2))
+                # calfac = calpwr/(cal_est-noise_est)
+                # outdict['AddedNoise'] = noisedata_ds
+                # outdict['RawData'] = data_samps
+                # outdict['RawDatanonoise'] = rawdata_ds
+                # outdict['NoiseData'] = noise_samps_ds
+                # outdict['CalFactor'] = sp.array([calfac])
+                # outdict['Pulses'] = pn
+                # outdict['Beams'] = pb
+                # outdict['Time'] = pt
+                # fname = '{0:d} RawData.h5'.format(ifwrite)
+                # newfn = self.datadir/fname
+                # self.outfilelist.append(str(newfn))
+                # dict2h5(str(newfn), outdict)
                 #Listing info
-                pt_list.append(pt)
-                pb_list.append(pb)
-                pn_list.append(pn)
-                si_list.append(s_i)
-                sn_list.append(s_n)
-                fname_list.append(fname)
+                # pt_list.append(pt)
+                # pb_list.append(pb)
+                # pn_list.append(pn)
+                # si_list.append(s_i)
+                # sn_list.append(s_n)
+                # fname_list.append(fname)
 
                 #HACK Add a constant to set the noise level to be atleast 1 bit
                 num_const = 200.
@@ -319,8 +332,8 @@ class RadarDataFile(object):
                 idmobj.write(dmdplist, idmdict)
                 pmmobj.write(int(pmmobj.get_samples_per_second()*pt[0]), pmmdict)
 
-        infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
-        dict2h5(str(self.datadir.joinpath('INFO.h5')), infodict)
+        # infodict = {'Files':fname_list, 'Time':pt_list, 'Beams':pb_list, 'Pulses':pn_list}
+        # dict2h5(str(self.datadir.joinpath('INFO.h5')), infodict)
         data_object.close()
         data_object_tx.close()
 
@@ -370,6 +383,8 @@ class RadarDataFile(object):
         weights = {ibn:self.sensdict['ArrayFunc'](Az, El, ib[0], ib[1], sensdict['Angleoffset'])
                    for ibn, ib in enumerate(angles)}
         ntime = len(spectime)
+        pool = mp.Pool(processes=self.simparams['numprocesses'])
+        results = []
         for istn in range(ntime):
             for ibn in range(n_beams):
                 #print('\t\t Making Beam {0:d} of {1:d}'.format(ibn, n_beams))
@@ -410,14 +425,19 @@ class RadarDataFile(object):
                         # outstr = '\t\t No data for {0:d} of {1:d} in this time period'
                         # print(outstr.format(ibn, n_beams))
                         continue
-                    cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
-                                                         cur_pidx, numtype=simdtype)
-                    cur_pulse_data = cur_pulse_data[:, cur_pnts-isamp]*sp.sqrt(pow_num/pow_den)
-                    # Need to do the adding in a loop, can't find a way to get a round this.
-                    for idatn, idat in enumerate(curdataloc):
-                        out_data[idat, cur_pnts] += cur_pulse_data[idatn]
+                    mpargs = (pulse, cur_spec, nlpc, cur_pidx, cur_pnts, curdataloc, isamp, simdtype, sp.sqrt(pow_num/pow_den))
+                    results.append(pool.apply_async(pulseworkerfunction, args=mpargs))
 
-
+                    # cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
+                    #                                      cur_pidx, numtype=simdtype)
+                    # cur_pulse_data = cur_pulse_data[:, cur_pnts-isamp]*sp.sqrt(pow_num/pow_den)
+                    # # Need to do the adding in a loop, can't find a way to get a round this.
+                    # for idatn, idat in enumerate(curdataloc):
+                    #     out_data[idat, cur_pnts] += cur_pulse_data[idatn]
+        for p in results:
+            (cur_pnts, curdataloc, cur_pulse_data) = p.get()
+            for idatn, idat in enumerate(curdataloc):
+                out_data[idat, cur_pnts] += cur_pulse_data[idatn]
         return out_data
         #%% Processing
     def processdataiono(self):
@@ -805,6 +825,18 @@ class RadarDataFile(object):
         noise_lags = {'ACF':outnoise, 'Pow':outnoise[:, :, :, 0].real, 'Pulses':pulsesN,
                       'Time':timemat}
         return(data_lags, noise_lags)
+
+def pulseworkerfunction(pulse, cur_spec, nlpc, cur_pidx, cur_pnts, curdataloc, isamp, simdtype, mult_term):
+    """
+        Worker function for the multiprocess stuff
+    """
+    cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
+                                         cur_pidx, numtype=simdtype)
+    cur_pulse_data = cur_pulse_data[:, cur_pnts-isamp]*mult_term
+    return (cur_pnts, curdataloc, cur_pulse_data)
+def resample_worker(data, indx, resfac, axis):
+    data_out = sp.signal.resample(data,resfac, axis=axis)
+    return (indx, data_out)
 
 #%% Make Lag dict to an iono container
 def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
