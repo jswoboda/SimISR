@@ -256,7 +256,8 @@ class RadarDataFile(object):
                     rawdata_us[iindx] = idata[:,:r_samps]
 
                 # rawdata_us = rawdata_us[:,:r_samps]
-                alldata = sp.random.randn(n_pulse_cur, ippsamps) + 1j*sp.random.randn(n_pulse_cur, ippsamps)
+                alldata = 1j*sp.random.randn(n_pulse_cur, ippsamps)
+                alldata = alldata+sp.random.randn(n_pulse_cur, ippsamps)
                 alldata = sp.sqrt(noisepwr/2.)*alldata
                 caldata = sp.random.randn(n_pulse_cur, n_cal) + 1j*sp.random.randn(n_pulse_cur, n_cal)
                 caldata = sp.sqrt(calpwr/2)*caldata.astype(simdtype)
@@ -325,6 +326,7 @@ class RadarDataFile(object):
                 # extend array for digital rf to flattend array
 
                 data_object.rf_write(alldata.flatten().astype('complex64')*num_const)
+                del alldata
                 id_strt = int(idmobj.get_samples_per_second()*pt[0])
                 dmdplist = sp.arange(n_pulse_cur, dtype=int)*ippsamps + id_strt
                 acmobj.write(int(acmobj.get_samples_per_second()*pt[0]), acmdict)
