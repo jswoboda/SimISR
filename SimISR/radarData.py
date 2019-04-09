@@ -245,23 +245,22 @@ class RadarDataFile(object):
                 orig_ind = sp.arange(n_pulse_cur)
                 rawsplit = sp.array_split(rawdata,nbreak,axis=0)
                 indsplit = sp.array_split(orig_ind,nbreak)
-                arg_list = [(idata,iindx,n_raw*ds_fac,1) for idata,iindx in zip(rawsplit,indsplit)]
+                arg_list = [(iindx,idata,n_raw*ds_fac,1) for idata,iindx in zip(rawsplit,indsplit)]
                 pool = mp.Pool(processes=self.simparams['numprocesses'])
 
                 results = [pool.apply_async(resample_worker, args=x) for x in arg_list]
                 #results = [p.get() for p in results]
-                rawdata_us = sp.zeros((n_pulse_cur,r_samps), dtype=rawdata.dtype)
+                rawdata_us = sp.zeros((n_pulse_cur,r_samps), dtype=simdtype)
                 for p in results:
                     iindx, idata = p.get()
                     rawdata_us[iindx] = idata[:,:r_samps]
-
                 # rawdata_us = rawdata_us[:,:r_samps]
                 alldata = 1j*sp.random.randn(n_pulse_cur, ippsamps)
                 alldata = alldata+sp.random.randn(n_pulse_cur, ippsamps)
-                alldata = sp.sqrt(noisepwr/2.)*alldata
+                alldata = sp.sqrt(noisepwr/2.)*alldata.astype(simdtype)
                 caldata = sp.random.randn(n_pulse_cur, n_cal) + 1j*sp.random.randn(n_pulse_cur, n_cal)
                 caldata = sp.sqrt(calpwr/2)*caldata.astype(simdtype)
-                noisedata = alldata[:, d_samps[0]:d_samps[1]]
+                # noisedata = alldata[:, d_samps[0]:d_samps[1]]
 
                 for i_swid in usweep:
                     sw_ind = sp.where(s_i == i_swid)[0]
@@ -438,7 +437,7 @@ class RadarDataFile(object):
                     # for idatn, idat in enumerate(curdataloc):
                     #     out_data[idat, cur_pnts] += cur_pulse_data[idatn]
         for p in results:
-            (cur_pnts, curdataloc, cur_pulse_data) = p.get()
+            (cur_pnts, curdataloc, cur_pulse_data,cur_pidx) = p.get()
             for idatn, idat in enumerate(curdataloc):
                 out_data[idat, cur_pnts] += cur_pulse_data[idatn]
         return out_data
@@ -836,8 +835,8 @@ def pulseworkerfunction(pulse, cur_spec, nlpc, cur_pidx, cur_pnts, curdataloc, i
     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
                                          cur_pidx, numtype=simdtype)
     cur_pulse_data = cur_pulse_data[:, cur_pnts-isamp]*mult_term
-    return (cur_pnts, curdataloc, cur_pulse_data)
-def resample_worker(data, indx, resfac, axis):
+    return (cur_pnts, curdataloc, cur_pulse_data,cur_pidx)
+def resample_worker(indx, data, resfac, axis):
     data_out = sp.signal.resample(data,resfac, axis=axis)
     return (indx, data_out)
 
