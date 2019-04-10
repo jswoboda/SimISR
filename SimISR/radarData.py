@@ -238,14 +238,12 @@ class RadarDataFile(object):
                 rawdata = self.__makeTime__(pt, curcontainer.Time_Vector,
                                             curcontainer.Sphere_Coords,
                                             curcontainer.Param_List, pb, pulse_idx)
-
                 n_pulse_cur, n_raw = rawdata.shape
                 nbreak = 400
                 r_samps = sp.diff(d_samps)[0]
                 orig_ind = sp.arange(n_pulse_cur)
-                rawsplit = sp.array_split(rawdata,nbreak,axis=0)
                 indsplit = sp.array_split(orig_ind,nbreak)
-                arg_list = [(iindx,idata,n_raw*ds_fac,1) for idata,iindx in zip(rawsplit,indsplit)]
+                arg_list = [(iindx,rawdata[iindx],n_raw*ds_fac,1) for iindx in indsplit]
                 pool = mp.Pool(processes=self.simparams['numprocesses'])
 
                 results = [pool.apply_async(resample_worker, args=x) for x in arg_list]
