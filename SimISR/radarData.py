@@ -239,20 +239,21 @@ class RadarDataFile(object):
                                             curcontainer.Sphere_Coords,
                                             curcontainer.Param_List, pb, pulse_idx)
                 n_pulse_cur, n_raw = rawdata.shape
-                nbreak = 400
+                # nbreak = 400
                 r_samps = sp.diff(d_samps)[0]
-                orig_ind = sp.arange(n_pulse_cur)
-                indsplit = sp.array_split(orig_ind,nbreak)
-                arg_list = [(iindx,rawdata[iindx],n_raw*ds_fac,1) for iindx in indsplit]
-                pool = mp.Pool(processes=self.simparams['numprocesses'])
-
-                results = [pool.apply_async(resample_worker, args=x) for x in arg_list]
+                # orig_ind = sp.arange(n_pulse_cur)
+                # indsplit = sp.array_split(orig_ind,nbreak)
+                # arg_list = [(iindx,rawdata[iindx],n_raw*ds_fac,1) for iindx in indsplit]
+                # pool = mp.Pool(processes=self.simparams['numprocesses'])
+                #
+                # results = [pool.apply_async(resample_worker, args=x) for x in arg_list]
                 #results = [p.get() for p in results]
-                rawdata_us = sp.zeros((n_pulse_cur,r_samps), dtype=simdtype)
-                for p in results:
-                    iindx, idata = p.get()
-                    rawdata_us[iindx] = idata[:,:r_samps]
-                # rawdata_us = rawdata_us[:,:r_samps]
+                # rawdata_us = sp.zeros((n_pulse_cur,r_samps), dtype=simdtype)
+                # for p in results:
+                #     iindx, idata = p.get()
+                #     rawdata_us[iindx] = idata[:,:r_samps]
+                rawdata_us = sp.signal.resample(rawdata,n_raw*ds_fac,axis=1)
+                rawdata_us = rawdata_us[:,:r_samps]
                 alldata = 1j*sp.random.randn(n_pulse_cur, ippsamps)
                 alldata = alldata+sp.random.randn(n_pulse_cur, ippsamps)
                 alldata = sp.sqrt(noisepwr/2.)*alldata.astype(simdtype)
@@ -428,16 +429,16 @@ class RadarDataFile(object):
                     mpargs = (pulse, cur_spec, nlpc, cur_pidx, cur_pnts, curdataloc, isamp, simdtype, sp.sqrt(pow_num/pow_den))
                     results.append(pool.apply_async(pulseworkerfunction, args=mpargs))
 
-                    # cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
-                    #                                      cur_pidx, numtype=simdtype)
-                    # cur_pulse_data = cur_pulse_data[:, cur_pnts-isamp]*sp.sqrt(pow_num/pow_den)
-                    # # Need to do the adding in a loop, can't find a way to get a round this.
-                    # for idatn, idat in enumerate(curdataloc):
-                    #     out_data[idat, cur_pnts] += cur_pulse_data[idatn]
-        for p in results:
-            (cur_pnts, curdataloc, cur_pulse_data,cur_pidx) = p.get()
-            for idatn, idat in enumerate(curdataloc):
-                out_data[idat, cur_pnts] += cur_pulse_data[idatn]
+                    cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
+                                                         cur_pidx, numtype=simdtype)
+                    cur_pulse_data = cur_pulse_data[:, cur_pnts-isamp]*sp.sqrt(pow_num/pow_den)
+                    # Need to do the adding in a loop, can't find a way to get a round this.
+                    for idatn, idat in enumerate(curdataloc):
+                        out_data[idat, cur_pnts] += cur_pulse_data[idatn]
+        # for p in results:
+        #     (cur_pnts, curdataloc, cur_pulse_data,cur_pidx) = p.get()
+        #     for idatn, idat in enumerate(curdataloc):
+        #         out_data[idat, cur_pnts] += cur_pulse_data[idatn]
         return out_data
         #%% Processing
     def processdataiono(self):
@@ -537,7 +538,7 @@ class RadarDataFile(object):
             decode_arr = sp.zeros((num_codes, nlags))
             for ilag in range(nlags):
                 if ilag==0:
-                    decode_arr[:,ilag] = sp.sum(ac_codes*ac_codes,axis=-1)
+                    decode_arr[:,ilag] = sp.sum(ac_codes*ac_codes,axis=-1)/nlags
                 else:
                     decode_arr[:,ilag] = sp.sum(ac_codes[:,:-ilag]*ac_codes[:,ilag:],axis=-1)
             decode_dict = {ac_swid[i]:decode_arr[i] for i in range(num_codes)}
