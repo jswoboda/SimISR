@@ -10,7 +10,7 @@ import scipy as sp
 # My modules
 from isrutilities.physConstants import v_C_0, v_Boltz
 from SimISR import Path
-import multiprocessing as mp
+#import multiprocessing as mp
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import CenteredLagProduct, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
 import digital_rf as drf
@@ -384,7 +384,7 @@ class RadarDataFile(object):
         weights = {ibn:self.sensdict['ArrayFunc'](Az, El, ib[0], ib[1], sensdict['Angleoffset'])
                    for ibn, ib in enumerate(angles)}
         ntime = len(spectime)
-        pool = mp.Pool(processes=self.simparams['numprocesses'])
+        #pool = mp.Pool(processes=self.simparams['numprocesses'])
         results = []
         for istn in range(ntime):
             for ibn in range(n_beams):
@@ -426,8 +426,8 @@ class RadarDataFile(object):
                         # outstr = '\t\t No data for {0:d} of {1:d} in this time period'
                         # print(outstr.format(ibn, n_beams))
                         continue
-                    mpargs = (pulse, cur_spec, nlpc, cur_pidx, cur_pnts, curdataloc, isamp, simdtype, sp.sqrt(pow_num/pow_den))
-                    results.append(pool.apply_async(pulseworkerfunction, args=mpargs))
+                    # mpargs = (pulse, cur_spec, nlpc, cur_pidx, cur_pnts, curdataloc, isamp, simdtype, sp.sqrt(pow_num/pow_den))
+                    # results.append(pool.apply_async(pulseworkerfunction, args=mpargs))
 
                     cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
                                                          cur_pidx, numtype=simdtype)
