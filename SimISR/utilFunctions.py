@@ -1,24 +1,24 @@
 #!/usr/bin/env python
 """
-Created on Tue Jul 22 16:18:21 2014
-
-@author: Bodangles
+utilFunctions.py
+This module holds many of the
+@author: John Swoboda
 """
 from __future__ import print_function
 import sys
 import warnings
 import pickle
 import yaml
-from six.moves.configparser import ConfigParser
+import h5py
 import tables
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.signal as scisig
 import scipy.interpolate as spinterp
+import scipy.constants as sconst
 #
-from isrutilities.physConstants import v_C_0
-import isrutilities.sensorConstants as sensconst
-from isrutilities import Path
+import sensorConstants as sensconst
+from SimISR import Path
 # utility functions
 
 # update_progress() : Displays or updates a console progress bar
@@ -191,7 +191,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
         lagmatac[ilag] = ((vol+ilag)/(vol*W0ac))*lagmatac[ilag]
     lagmatac = lagmatac[:, ::m_up]
     wttdict = {'WttAll':Wtt, 'Wtt':Wtt.max(axis=0), 'Wrange':Wtt.sum(axis=1),
-               'Wlag':Wtt.sum(axis=2), 'Delay':delay, 'Range':v_C_0*t_rng/2.0,
+               'Wlag':Wtt.sum(axis=2), 'Delay':delay, 'Range':sconst.c*t_rng/2.0,
                'WttMatrix':lagmat, 'WttAllac':Wttac, 'Wttac':Wttac.max(axis=0),
                'Wrangeac':Wttac.sum(axis=1), 'Wlagac':Wttac.sum(axis=2),
                'WttMatrixac':lagmatac}
@@ -547,20 +547,86 @@ def h52dict(filename):
         outdict[ikey.strip('/')] = sublist
 
     return outdict
-        #%% Test functions
+
+
+def save_dict_to_hdf5(dic, filename):
+
+    with h5py.File(filename, 'w') as h5file:
+        recursively_save_dict_contents_to_group(h5file, '/', dic)
+
+def load_dict_from_hdf5(filename):
+
+    with h5py.File(filename, 'r') as h5file:
+        return recursively_load_dict_contents_from_group(h5file, '/')
+
+
+
+def recursively_save_dict_contents_to_group( h5file, path, dic):
+
+    # argument type checking
+    if not isinstance(dic, dict):
+        raise ValueError("must provide a dictionary")
+
+    if not isinstance(path, str):
+        raise ValueError("path must be a string")
+    if not isinstance(h5file, h5py._hl.files.File):
+        raise ValueError("must be an open h5py file")
+    # save items to the hdf5 file
+    for key, item in dic.items():
+        #print(key,item)
+        key = str(key)
+        if isinstance(item, list):
+            item = np.array(item)
+            #print(item)
+        if not isinstance(key, str):
+            raise ValueError("dict keys must be strings to save to hdf5")
+        # save strings, numpy.int64, and numpy.float64 types
+        if isinstance(item, (np.int64, np.float64, str, np.float, float, np.float32,int)):
+            #print( 'here' )
+            h5file[path + key] = item
+            if not h5file[path + key][()] == item:
+                raise ValueError('The data representation in the HDF5 file does not match the original dict.')
+        # save numpy arrays
+        elif isinstance(item, np.ndarray):
+            try:
+                h5file[path + key] = item
+            except:
+                item = np.array(item).astype('|S9')
+                h5file[path + key] = item
+            if not np.array_equal(h5file[path + key][()], item):
+                raise ValueError('The data representation in the HDF5 file does not match the original dict.')
+        # save dictionaries
+        elif isinstance(item, dict):
+            recursively_save_dict_contents_to_group(h5file, path + key + '/', item)
+        # other types cannot be saved and will result in an error
+        else:
+            #print(item)
+            raise ValueError('Cannot save %s type.' % type(item))
+
+def recursively_load_dict_contents_from_group( h5file, path):
+
+    ans = {}
+    for key, item in h5file[path].items():
+        if isinstance(item, h5py._hl.dataset.Dataset):
+            ans[key] = item[()]
+        elif isinstance(item, h5py._hl.group.Group):
+            ans[key] = recursively_load_dict_contents_from_group(h5file, path + key + '/')
+    return ans
+
+
+#%% Test functions
 def Chapmanfunc(z, H_0, Z_0, N_0):
     """This function will return the Chapman function for a given altitude
     vector z.  All of the height values are assumed km.
     Inputs
-        z: An array of z values in km.
-        H_0: A single float of the height in km.
-        Z_0: The peak density location.
-        N_0: The peak electron density.
+    z: An array of z values in km.
+    H_0: A single float of the height in km.
+    Z_0: The peak density location.
+    N_0: The peak electron density.
     """
     z1 = (z-Z_0)/H_0
     Ne = N_0*sp.exp(0.5*(1-z1-sp.exp(-z1)))
     return Ne
-
 
 def TempProfile(z, T0=1000., z0=100.):
     """
@@ -699,7 +765,7 @@ def readconfigfile(fname, make_amb_bool=False):
     simparams['noisesamples'] = n_len
     simparams['calsamples'] = c_len
     simparams['Timing_Dict'] = {i:timing_dict[i][1] for i in usweeps}
-    rng_samprate = t_s*v_C_0*1e-3/2.
+    rng_samprate = t_s*sconst.c*1e-3/2.
     rng_samprateds = rng_samprate/ds_fac
     rng_gates = sp.arange(d_len[0], d_len[1])*rng_samprate
     rng_gates_ds = rng_gates[::ds_fac]
