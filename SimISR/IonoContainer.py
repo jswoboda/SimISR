@@ -14,11 +14,12 @@ from SimISR import Path
 import numpy as np
 import scipy.io as sio
 import scipy.interpolate
+import h5py
 import tables
 import numbers
 import pandas as pd
 # From my
-from SimISR.utilFunctions import Chapmanfunc, TempProfile
+from SimISR.utilFunctions import load_dict_from_hdf5, save_dict_to_hdf5
 
 class IonoContainer(object):
     """
@@ -55,7 +56,6 @@ class IonoContainer(object):
                 times = np.arange(1)
         if Ndims == 2:
             paramlist = paramlist[:, np.newaxis, :]
-
         if ver == 0:
             x_vec = coordlist[:, 0]
             y_vec = coordlist[:, 1]
@@ -286,28 +286,29 @@ class IonoContainer(object):
 
 
         vardict = vars(self)
+        save_dict_to_hdf5(vardict, filename)
 
-        with tables.open_file(str(filename), mode = "w", title = "IonoContainer out.") as f:
+        # with tables.open_file(str(filename), mode = "w", title = "IonoContainer out.") as f:
 
-            try:
-                # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
-                # Make group for each dictionary
-                for cvar in vardict.keys():
-                    #group = f.create_group(posixpath.sep, cvar,cvar +'dictionary')
-                    if type(vardict[cvar]) ==dict: # Check if dictionary
-                        dictkeys = vardict[cvar].keys()
-                        group2 = f.create_group('/',cvar,cvar+' dictionary')
-                        for ikeys in dictkeys:
-                            f.create_array(group2,ikeys,vardict[cvar][ikeys],'Static array')
-                    else:
-                        if not(vardict[cvar] is None):
-                            f.create_array('/',cvar,vardict[cvar],'Static array')
+        #     try:
+        #         # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
+        #         # Make group for each dictionary
+        #         for cvar in vardict.keys():
+        #             #group = f.create_group(posixpath.sep, cvar,cvar +'dictionary')
+        #             if type(vardict[cvar]) ==dict: # Check if dictionary
+        #                 dictkeys = vardict[cvar].keys()
+        #                 group2 = f.create_group('/',cvar,cvar+' dictionary')
+        #                 for ikeys in dictkeys:
+        #                     f.create_array(group2,ikeys,vardict[cvar][ikeys],'Static array')
+        #             else:
+        #                 if not(vardict[cvar] is None):
+        #                     f.create_array('/',cvar,vardict[cvar],'Static array')
 
-            except Exception as inst:
-                print(type(inst))
-                print(inst.args)
-                print(inst)
-                raise NameError('Failed to write to h5 file.')
+        #     except Exception as inst:
+        #         print(type(inst))
+        #         print(inst.args)
+        #         print(inst)
+        #         raise NameError('Failed to write to h5 file.')
 
     @staticmethod
 
@@ -348,39 +349,44 @@ class IonoContainer(object):
             'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
             'paramnames':'Param_Names', 'species':'Species','velocity':'Velocity'}
         vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
+        file_dict = load_dict_from_hdf5(filename)
+        if not file_dict['Species'] is None:
+            file_dict['Species'] = file_dict['Species'].astype('<U6').tolist()
+        file_dict['Param_Names'] = file_dict['Param_Names'].astype('<U6')
         outdict = {}
+        # with tables.open_file(filename) as f:
+        #     output={}
+        #     # Read in all of the info from the h5 file and put it in a dictionary.
+        #     for group in f.walk_groups(posixpath.sep):
+        #         output[group._v_pathname]={}
+        #         for array in f.list_nodes(group, classname = 'Array'):
+        #             output[group._v_pathname][array.name]=array.read()
+        #     f.close()
+        # outarr = [pathparts(ipath) for ipath in output.keys() if len(pathparts(ipath))>0]
+        # outlist = []
+        # basekeys  = output[posixpath.sep].keys()
+        # # Determine assign the entries to each entry in the list of variables.
+        # for ivar in vardict2.keys():
+        #     dictout = False
+        #     for npath,ipath in enumerate(outarr):
+        #         if ivar==ipath[0]:
+        #             outlist.append(output[output.keys()[npath]])
+        #             dictout=True
+        #             break
+        #     if dictout:
+        #         continue
 
-        with tables.open_file(filename) as f:
-            output={}
-            # Read in all of the info from the h5 file and put it in a dictionary.
-            for group in f.walk_groups(posixpath.sep):
-                output[group._v_pathname]={}
-                for array in f.list_nodes(group, classname = 'Array'):
-                    output[group._v_pathname][array.name]=array.read()
-            f.close()
-        outarr = [pathparts(ipath) for ipath in output.keys() if len(pathparts(ipath))>0]
-        outlist = []
-        basekeys  = output[posixpath.sep].keys()
-        # Determine assign the entries to each entry in the list of variables.
+        #     if ivar in basekeys:
+        #         outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
         for ivar in vardict2.keys():
-            dictout = False
-            for npath,ipath in enumerate(outarr):
-                if ivar==ipath[0]:
-                    outlist.append(output[output.keys()[npath]])
-                    dictout=True
-                    break
-            if dictout:
-                continue
-
-            if ivar in basekeys:
-                outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
+            outdict[vardict2[ivar]] = file_dict[ivar]
         # determine version of data
         if 'coordvecs' in outdict.keys():
             if type(outdict['coordvecs']) ==np.ndarray:
-                outdict['coordvecs'] = outdict['coordvecs'].tolist()
-            if outdict['coordvecs'] == ['r','theta','phi']:
+                outdict['coordvecs'] = outdict['coordvecs'].astype('<U6').tolist()
+            if set(outdict['coordvecs']) == {'r','theta','phi'}:
                 outdict['ver']=1
-                outdict['coordlist']=outdict['coordlist2']
+                outdict['coordlist'] = outdict['coordlist2'].copy()
         if 'coordlist2' in outdict.keys():
             del outdict['coordlist2']
         return IonoContainer(**outdict)
@@ -404,10 +410,9 @@ class IonoContainer(object):
         timelist=[]
         fileslist = []
         for ifilenum,ifile in enumerate(ionocontlist):
-            with tables.open_file(str(ifile)) as f:
-                times = f.root.Time_Vector.read()
+            temp_data = load_dict_from_hdf5(ifile)
 
-
+            times = temp_data['Time_Vector']
             timelist.append(times)
             fileslist.append(ifilenum*np.ones(len(times)))
         times_file =np.array([i[:,0].min() for i in timelist])
@@ -638,13 +643,13 @@ class IonoContainer(object):
         return outiono
 
     #%% Spectrum methods
-    def makeallspectrumsopen(self,func,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
+    def makeallspectrumsopen(self,func,sensdict,simparams,npts,ifile=0.,nfiles=1.,print_line=True):
         """ This function will make all of the spectrums given a functions.
             Inputs
                 func - A function that will create all of the spectrums.
                 sensdict = A dictionary will information on the sensor.
                 npts - The number of points """
-        return func(self,sensdict,npts,ifile,nfiles,print_line)
+        return func(self,sensdict,simparams,npts,ifile,nfiles,print_line)
 
     def combinetimes(self,self2):
         """
@@ -687,7 +692,7 @@ class IonoContainer(object):
             Iono1 - An instance of the IonoContainer class with the spectrums as the
                 param vectors and the param names will be the the frequency points
         """
-        (omeg, outspecs) = self.makeallspectrumsopen(func, sensdict, simparams, 0., 1., print_line)
+        (omeg, outspecs) = self.makeallspectrumsopen(func, sensdict, simparams, simparams['numpoints'], 0., 1., print_line)
         return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
     def getDoppler(self,sensorloc=np.zeros(3)):
         """

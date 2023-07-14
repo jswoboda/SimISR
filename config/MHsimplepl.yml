@@ -1,0 +1,12 @@
+- beamlist: [23465]
+  radarname: millstonez
+  IPP: 222750
+  Pulselength: 12000
+  Pulsetype: 0
+  beamrate: 1
+  dsfac: [750, 5]
+  dtype: !!python/name:numpy.complex64 ''
+  fsden: 1
+  fsnum: 25000000
+  numpoints: [128, 2048]
+  centerfrequency: [0. 3500000.]

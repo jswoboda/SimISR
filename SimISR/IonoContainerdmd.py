@@ -261,6 +261,57 @@ class IonoContainer(object):
         return IonoContainer(new_coords,New_param,self.Time_Vector,sensor_loc,ver,self.Coord_Vecs,self.Param_Names)
 
      #%% Read and Write Methods
+    def savedmd(self,dmd_dir):
+
+        dmd_path = Path(dmd_dir)
+        coord_dir = dmd_path.joinpath('coordinates')
+        data_dir = dmd_path.joinpath('data')
+        time_arr = self.Time_Vector
+        t1 = time_arr[0,0]
+        sr_num = 1
+        sr_den = time_arr[0,1]-time_arr[0,0]
+        start_sample = int(sr_num*t1/sr_den)
+
+        sub_cadence_secs = 3600  # Number of seconds of data in a subdirectory
+        file_cadence_millisecs = 1000  # Each file will have up to 400 ms of data
+        compression_level = 0  # no compression
+        checksum = False  # no checksum
+
+        coord_obj = drf.DigitalMetadataWriter(
+            str(coord_dir),
+            sub_cadence_secs,
+            int(file_cadence_millisecs / 1000),
+            sr_num,
+            sr_den,
+            "ionocontainer",
+        )
+
+        coord_dict = dict(paramnames = self.Param_Names,
+            times = self.Time_Vector,
+            coordvecs =  self.Coord_Vecs,
+            sensor_loc = self.Sensor_loc,
+            species = self.Species,
+        )
+        coord_obj.write(start_sample,coord_dict)
+
+        data_obj = drf.DigitalMetadataWriter(
+            str(data_dir),
+            sub_cadence_secs,
+            int(file_cadence_millisecs / 1000),
+            sr_num,
+            sr_den,
+            "ionocontainer",
+        )
+        
+        for itn, itime in enumerate(time_arr):
+            cur_time = itime[0]
+            cur_sample = int(sr_num*cur_time/sr_den)
+            cur_data = self.Param_List[:,itn]
+            cur_dict = {ipname:cur_data[:,ipn] for ipn,ipname in enumerate(self.Param_Names)}
+            cur_dict['velocity'] = self.Velocity[:,itn]
+            data_obj.write(cur_sample,cur_dict)
+
+
     def savemat(self,filename):
         """
         This method will write out a structured mat file and save information

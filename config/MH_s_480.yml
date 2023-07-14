@@ -1,0 +1,74 @@
+!!python/object:timingobjs.Timingmode
+bw_list:
+- !!python/tuple
+  - 1000000
+  - 20
+cen_freqs:
+- 0
+final_bw: !!python/tuple
+- 1000000
+- 1
+sweep_dict:
+  300: !timingsweep
+    name: s480_8910
+    real:
+    - - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+    imag:
+    - - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+    raster:
+      blank: !!python/tuple
+      - 0
+      - 700
+      calibration: !!python/tuple
+      - 7700
+      - 8300
+      clutter: !!python/tuple
+      - 700
+      - 800
+      full: !!python/tuple
+      - 0
+      - 8910
+      noise: !!python/tuple
+      - 7100
+      - 7700
+      signal: !!python/tuple
+      - 800
+      - 7100
+      tx: !!python/tuple
+      - 0
+      - 480
+      txnoise: !!python/tuple
+      - 7100
+      - 7700
+sweep_order:
+- 30

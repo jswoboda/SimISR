@@ -6,8 +6,8 @@ Created on Tue Dec 29 15:49:01 2015
 """
 import tables
 import numpy as np
+import scipy.constants as sc
 #
-from isrutilities.physConstants import v_C_0
 from SimISR.utilFunctions import readconfigfile
 from SimISR.IonoContainer import IonoContainer,makeionocombined
 from SimISR.utilFunctions import spect2acf
@@ -174,7 +174,7 @@ def makematPA(Sphere_Coords,Cart_Coords,timein,configfile,vel=None,mattype='matr
     timeout = np.column_stack((timeout, timeout+Tint)) +timein[0,0]
     ds_fac = sp.prod(self.simparams['declist'])
     t_s = float(self.simparams['fsden']*ds_fac)/self.simparams['fsnum']
-    rng_bin = t_s*v_C_0*1e-3/2.
+    rng_bin = t_s*sc.c*1e-3/2.
 
     angles = simparams['angles']
     Nbeams = len(angles)

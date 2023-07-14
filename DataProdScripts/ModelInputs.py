@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
-from datetime import datetime
+from datetime import datetime,timedelta
 import calendar
-import scipy as sp
+import numpy as np
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 import shutil
-from pyglow.pyglow import Point
+import iri2016.profile as iri
+# MSISE-00 atmospheric model
+import msise00
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigfile
 from SimISR.analysisplots import analysisdump
@@ -17,19 +19,22 @@ from SimISR import Path
 
 def pyglowinput(latlonalt=[65.1367, -147.4472, 250.00], dn_list=[datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)], z=None):
 
-
+    from pyglow import Point
     if z is None:
-        z = sp.linspace(50., 1000., 200)
-    dn_diff = sp.diff(dn_list)
+        z = np.linspace(50., 1000., 200)
+    dz = z[1]-z[0]
+    dn_diff = np.diff(dn_list)
     dn_diff_sec = dn_diff[-1].seconds
-    timelist = sp.array([calendar.timegm(i.timetuple()) for i in dn_list])
-    time_arr = sp.column_stack((timelist, sp.roll(timelist, -1)))
+    timelist = np.array([calendar.timegm(i.timetuple()) for i in dn_list])
+    time_arr = np.column_stack((timelist, np.roll(timelist, -1)))
     time_arr[-1, -1] = time_arr[-1, 0]+dn_diff_sec
 
     v=[]
-    coords = sp.column_stack((sp.zeros((len(z), 2), dtype=z.dtype), z))
+    coords = np.column_stack((np.zeros((len(z), 2), dtype=z.dtype), z))
+    iri_data = iri.timeprofile(dn_list,dn_diff[-1],(z.min(),z.max(),dz),latlonalt[0],latlonalt[1])
+
     all_spec = ['O+', 'NO+', 'O2+', 'H+', 'HE+']
-    Param_List = sp.zeros((len(z), len(dn_list),len(all_spec),2))
+    Param_List = np.zeros((len(z), len(dn_list),len(all_spec),2))
     for idn, dn in enumerate(dn_list):
         for iz, zcur in enumerate(z):
             latlonalt[2] = zcur
@@ -53,14 +58,55 @@ def pyglowinput(latlonalt=[65.1367, -147.4472, 250.00], dn_list=[datetime(2015, 
             Param_List[iz, idn, -1, 1] = pt.Te
     Param_sum = Param_List[:, :, :, 0].sum(0).sum(0)
     spec_keep = Param_sum > 0.
-    species = sp.array(all_spec)[spec_keep[:-1]].tolist()
+    species = np.array(all_spec)[spec_keep[:-1]].tolist()
     species.append('e-')
     Param_List[:, :] = Param_List[:, :, spec_keep]
     Iono_out = IonoContainer(coords, Param_List, times = time_arr, species=species)
     return Iono_out
 
+def iriinput(latlonalt = [42.61950, -71.4882, 250.00], dn_start_stop =(datetime(2023, 1, 11, 8, 0), datetime(2023, 1, 11, 20, 0)),dn_diff= timedelta(minutes=10), altkmrange = [50,950,10]):
+    """ """
 
-def makedatasets(maindir='~/DATA/Ion_Comp_Exp/', nomult=sp.arange(1, 5, dtype=float), baud_len=[7, 14, 21]):
+    dn_diff_sec = dn_diff.seconds
+
+    altkmrange = [50,950,10]
+    iri_data = iri.timeprofile(dn_start_stop,dn_diff,altkmrange,latlonalt[0],latlonalt[1])
+    dn_list = iri_data.time.to_series()
+    timelist = np.array([calendar.timegm(i.timetuple()) for i in dn_list])
+    time_arr = np.column_stack((timelist, np.roll(timelist, -1)))
+    time_arr[-1, -1] = time_arr[-1, 0]+dn_diff_sec
+
+    z = iri_data.alt_km.to_numpy()
+    coords = np.column_stack((np.zeros((len(z), 2), dtype=z.dtype), z))
+
+    all_spec = ['O+', 'NO+', 'O2+', 'H+', 'He+']
+    Param_List = np.zeros((len(z), len(dn_list),len(all_spec),2))
+    v=[]
+
+    for idn, dn in enumerate(dn_list):
+        for iz, zcur in enumerate(z):
+            latlonalt[2] = zcur
+
+            # No winds from iri
+            v.append([0, 0, 0])
+
+            for is1, ispec in enumerate(all_spec):
+                Param_List[iz, idn, is1, 0] = iri_data.data_vars["n"+ispec][idn,iz]
+
+            Param_List[iz, idn, :, 1] = iri_data.Ti[idn,iz]
+
+            Param_List[iz, idn, -1, 0] = iri_data.ne[idn,iz]
+            Param_List[iz, idn, -1, 1] = iri_data.Te[idn,iz]
+    
+    Param_sum = Param_List[:, :, :, 0].sum(0).sum(0)
+    spec_keep = Param_sum > 0.
+    all_spec[-1] = 'HE+'
+    species = np.array(all_spec)[spec_keep].tolist()
+    species.append('e-')
+    Param_List[:, :] = Param_List[:, :, spec_keep]
+    Iono_out = IonoContainer(coords, Param_List, times = time_arr, species=species)
+    return Iono_out
+def makedatasets(maindir='~/DATA/Ion_Comp_Exp/', nomult=np.arange(1, 5, dtype=float), baud_len=[7, 14, 21]):
     """
         This will make all of the data sets.
     """
@@ -86,7 +132,7 @@ def makedatasets(maindir='~/DATA/Ion_Comp_Exp/', nomult=sp.arange(1, 5, dtype=fl
         curiono = iono_orig.copy()
         curiono.Param_List[:, :, 1, 0] *= imult
         ratio = curiono.Param_List[:, :, -1, 0]/curiono.Param_List[:, :, :-1, 0].sum(-1)
-        ratio_ar = sp.repeat(ratio[:, :, sp.newaxis], nion, axis=-1)
+        ratio_ar = np.repeat(ratio[:, :, np.newaxis], nion, axis=-1)
         curiono.Param_List[:, :, :-1, 0] *= ratio_ar
         figout = plotiono(curiono)[0]
         for ibaud in baud_len:
@@ -110,7 +156,7 @@ def plotiono(ionoin):
     species = ionoin.Species
     zvec = ionoin.Cart_Coords[:, 2]
     params = ionoin.Param_List[:, 0]
-    maxden = 10**sp.ceil(sp.log10(params[:, -1, 0].max()))
+    maxden = 10**np.ceil(np.log10(params[:, -1, 0].max()))
     for iplot, ispec in enumerate(species):
         axmat[0].plot(params[:, iplot, 0], zvec, label=ispec +'Density')
         axmat[1].plot(params[:, iplot, 1], zvec, label=ispec+'Temperture')

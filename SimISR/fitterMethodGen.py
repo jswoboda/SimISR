@@ -11,9 +11,9 @@ import os
 import ipdb
 # Imported scipy modules
 import scipy as sp
+import scipy.constants as sc
 import scipy.optimize
 # My modules
-from isrutilities.physConstants import v_C_0
 from SimISR.IonoContainer import IonoContainer, makeionocombined
 from SimISR.utilFunctions import readconfigfile, update_progress
 
@@ -89,7 +89,7 @@ class Fitterionoconainer(object):
         ds_fac = sp.prod(self.simparams['declist'])
         p_samps = len(self.simparams['Pulse'])/ds_fac
         pvec = sp.arange(-sp.ceil((p_samps-1)/2.), sp.floor((p_samps-1)/2.)+1)/p_samps
-        amblen = .5*v_C_0*self.simparams['Pulselength']*pvec*1e-3
+        amblen = .5*sc.c*self.simparams['Pulselength']*pvec*1e-3
         first_lag = True
         x_0all = startvalfunc(Ne_start, self.acf.Cart_Coords, self.acf.Sphere_Coords,
                               self.acf.Time_Vector[:, 0], startinputs, amblen)

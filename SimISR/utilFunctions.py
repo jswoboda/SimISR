@@ -11,13 +11,14 @@ import pickle
 import yaml
 import h5py
 import tables
+import numpy as np
 import scipy as sp
 import scipy.fftpack as scfft
 import scipy.signal as scisig
 import scipy.interpolate as spinterp
 import scipy.constants as sconst
 #
-import sensorConstants as sensconst
+import SimISR.sensorConstants as sensconst
 from SimISR import Path
 # utility functions
 
@@ -82,7 +83,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     # original frequency response of each decmination filter because it is run as
     # a zero phase filter using filtfilt.
     # curds = 1
-    m_up = sp.prod(ds_list)
+    m_up = np.prod(ds_list)
 
     nout = nspec/m_up
 
@@ -92,100 +93,100 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     nlags = plen/m_up
 
     # find alternating codes and long pulse
-    sweepu, u_ind = sp.unique(sweepid, return_index=True)
-    ac_ind = u_ind[sp.where(sp.logical_and(sweepu >= 1, sweepu <= 32))[0]]
+    sweepu, u_ind = np.unique(sweepid, return_index=True)
+    ac_ind = u_ind[np.where(np.logical_and(sweepu >= 1, sweepu <= 32))[0]]
     ac_pulses = pulse[ac_ind]
     n_codes = ac_pulses.shape[0]
     ac_codes = ac_pulses[:,::m_up]
 
-    decode_arr = sp.zeros((n_codes, nlags))
+    decode_arr = np.zeros((n_codes, nlags))
     for ilag in range(nlags):
         if ilag==0:
-            decode_arr[:,ilag] = sp.sum(ac_codes*ac_codes,axis=-1)
+            decode_arr[:,ilag] = np.sum(ac_codes*ac_codes,axis=-1)
         else:
-            decode_arr[:,ilag] = sp.sum(ac_codes[:,:-ilag]*ac_codes[:,ilag:],axis=-1)
-    lp_ind = u_ind[sp.where(sweepu == 300)[0]]
+            decode_arr[:,ilag] = np.sum(ac_codes[:,:-ilag]*ac_codes[:,ilag:],axis=-1)
+    lp_ind = u_ind[np.where(sweepu == 300)[0]]
     lp_pulse = pulse[lp_ind].flatten()
     # make the sinc
-    nsamps = int(plen-(1-sp.mod(plen, 2)))
+    nsamps = int(plen-(1-np.mod(plen, 2)))
 
     # need to incorporate summation rule
     vol = 1.
-    nvec = sp.arange(-sp.floor(nsamps/2.0), sp.floor(nsamps/2.0)+1).astype(int)
+    nvec = np.arange(-np.floor(nsamps/2.0), np.floor(nsamps/2.0)+1).astype(int)
     pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett',
                    'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall',
                    'barthann']
     curwin = scisig.get_window(winname, nsamps)
     # Apply window to the sinc function. This will act as the impulse respons of the filter
 
-    impres = curwin*sp.sinc(nvec.astype(float)/m_up)
-    impres = impres/sp.sum(impres)
+    impres = curwin*np.sinc(nvec.astype(float)/m_up)
+    impres = impres/np.sum(impres)
     d_t = 1./Fsorg/m_up
     #make delay vector
-    delay_num = sp.arange(-m_up*(nlags+2), m_up*(nlags+2)+1)
+    delay_num = np.arange(-m_up*(nlags+2), m_up*(nlags+2)+1)
     delay = delay_num*d_t
 
-    t_rng = sp.arange(-sp.floor(.5*plen), sp.ceil(1.5*plen))*d_t
+    t_rng = np.arange(-np.floor(.5*plen), np.ceil(1.5*plen))*d_t
     if len(t_rng) > 2e4:
         raise ValueError('The time array is way too large. plen should be in seconds.')
     numdiff = len(delay)-nsamps
     # numback = int(nvec.min()/m_up-delay_num.min())
     # numfront = numdiff-numback
-#    imprespad  = sp.pad(impres,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
-    imprespad = sp.pad(impres, (numdiff/2, numdiff/2), mode='constant',
+#    imprespad  = np.pad(impres,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
+    imprespad = np.pad(impres, (numdiff/2, numdiff/2), mode='constant',
                        constant_values=(0.0, 0.0))
-    cursincrep = sp.tile(imprespad[sp.newaxis, :], (len(t_rng), 1))
+    cursincrep = np.tile(imprespad[np.newaxis, :], (len(t_rng), 1))
 
-    (d2d, srng) = sp.meshgrid(delay, t_rng)
+    (d2d, srng) = np.meshgrid(delay, t_rng)
     # envelop function
-    t_p = sp.arange(plen)*d_t
+    t_p = np.arange(plen)*d_t
 
-    envfunc = sp.interp(sp.ravel(srng-d2d), t_p, lp_pulse, left=0., right=0.).reshape(d2d.shape)
-#    envfunc = sp.zeros(d2d.shape)
+    envfunc = sp.interp(np.ravel(srng-d2d), t_p, lp_pulse, left=0., right=0.).reshape(d2d.shape)
+#    envfunc = np.zeros(d2d.shape)
 #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
-    envfunc = envfunc/sp.sqrt(envfunc.sum(axis=0).max())
+    envfunc = envfunc/np.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
-    Wtt = sp.zeros((nlags, d2d.shape[0], d2d.shape[1]))
+    Wtt = np.zeros((nlags, d2d.shape[0], d2d.shape[1]))
     Wt0 = scfft.ifftshift(cursincrep*envfunc, axes=1)
     Wt0fft = scfft.fft(Wt0, axis=1)
-    for ilag in sp.arange(nlags):
-        Wtafft = sp.roll(Wt0fft, ilag*m_up, axis=0)
-        curwt =  scfft.ifftshift(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, axes=1)
-        Wtt[ilag] = sp.roll(curwt, ilag*m_up, axis=1)
+    for ilag in np.arange(nlags):
+        Wtafft = np.roll(Wt0fft, ilag*m_up, axis=0)
+        curwt =  scfft.ifftshift(scfft.ifft(Wtafft*np.conj(Wt0fft), axis=1).real, axes=1)
+        Wtt[ilag] = np.roll(curwt, ilag*m_up, axis=1)
 
 
     # make matrix for application of
-    imat = sp.eye(nspec)
-    tau = sp.arange(-sp.floor(nspec/2.), sp.ceil(nspec/2.))*d_t
+    imat = np.eye(nspec)
+    tau = np.arange(-np.floor(nspec/2.), np.ceil(nspec/2.))*d_t
     tauint = delay
     interpmat = spinterp.interp1d(tau, imat, bounds_error=0, axis=0)(tauint)
-    lagmat = sp.dot(Wtt.sum(axis=1), interpmat)
+    lagmat = np.dot(Wtt.sum(axis=1), interpmat)
     W0 = lagmat[0].sum()
     for ilag in range(nlags):
         lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
     lagmat = lagmat[:, ::m_up]
 
     #%% Alt. code ambigutity
-    Wttac = sp.zeros((nlags, d2d.shape[0], d2d.shape[1]))
+    Wttac = np.zeros((nlags, d2d.shape[0], d2d.shape[1]))
 
     for icn, i_pulse in enumerate(ac_pulses):
-        envfunc = sp.interp(sp.ravel(srng-d2d), t_p, i_pulse, left=0., right=0.).reshape(d2d.shape)
-    #    envfunc = sp.zeros(d2d.shape)
+        envfunc = sp.interp(np.ravel(srng-d2d), t_p, i_pulse, left=0., right=0.).reshape(d2d.shape)
+    #    envfunc = np.zeros(d2d.shape)
     #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
-        envfunc = envfunc/sp.sqrt(sp.absolute(envfunc).sum(axis=0).max())
+        envfunc = envfunc/np.sqrt(np.absolute(envfunc).sum(axis=0).max())
         #create the ambiguity function for everything
 
         Wt0 = scfft.ifftshift(cursincrep*envfunc, axes=1)
-        Wt0fft = sp.fft(Wt0, axis=1)
+        Wt0fft = np.fft(Wt0, axis=1)
         for ilag in range(nlags):
-            Wtafft = sp.roll(Wt0fft, ilag*m_up, axis=0)
-            curwt =  scfft.ifftshift(scfft.ifft(Wtafft*sp.conj(Wt0fft), axis=1).real, axes=1)
-            curwt = sp.roll(curwt, ilag*m_up, axis=1)
+            Wtafft = np.roll(Wt0fft, ilag*m_up, axis=0)
+            curwt =  scfft.ifftshift(scfft.ifft(Wtafft*np.conj(Wt0fft), axis=1).real, axes=1)
+            curwt = np.roll(curwt, ilag*m_up, axis=1)
             Wttac[ilag] = Wttac[ilag] + curwt*decode_arr[icn, ilag]
 
     Wttac[0] = Wttac[0]/nlags
     Wttac = Wttac/ac_pulses.shape[0]
-    lagmatac = sp.dot(Wttac.sum(axis=1), interpmat)
+    lagmatac = np.dot(Wttac.sum(axis=1), interpmat)
     W0ac = lagmatac[0].sum()
     for ilag in range(nlags):
         lagmatac[ilag] = ((vol+ilag)/(vol*W0ac))*lagmatac[ilag]
@@ -208,13 +209,13 @@ def spect2acf(omeg, spec, n_s=None):
     acf: The acf from the original spectrum."""
     if n_s is None:
         n_s = float(spec.shape[-1])
-#    padnum = sp.floor(len(spec)/2)
+#    padnum = np.floor(len(spec)/2)
     d_f = omeg[1]-omeg[0]
 
-#    specpadd = sp.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
+#    specpadd = np.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
     acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec, axes=-1), n_s, axis=-1), axes=-1)
     d_t = 1/(d_f*n_s)
-    tau = sp.arange(-sp.ceil(float(n_s-1)/2.), sp.floor(float(n_s-1)/2.)+1)*d_t
+    tau = np.arange(-np.ceil(float(n_s-1)/2.), np.floor(float(n_s-1)/2.)+1)*d_t
     return tau, acf
 
 def acf2spect(tau, acf, n_s=None, initshift=False):
@@ -236,11 +237,11 @@ def acf2spect(tau, acf, n_s=None, initshift=False):
         acf = scfft.ifftshift(acf, axes=-1)
     spec = scfft.fftshift(scfft.fft(acf, n=n_s, axis=-1), axes=-1)
     fs = 1/d_t
-    omeg = sp.arange(-sp.ceil(n_s/2.), sp.floor(n_s/2.)+1)*fs
+    omeg = np.arange(-np.ceil(n_s/2.), np.floor(n_s/2.)+1)*fs
     return omeg, spec
 #%% making pulse data
 
-def MakePulseDataRepLPC(pulse, spec, nlpc, p_ind, numtype=sp.complex128):
+def MakePulseDataRepLPC(pulse, spec, nlpc, p_ind, numtype=np.complex128):
     """
         This will make shaped noise data using linear predictive coding windowed
         by the pulse function.
@@ -262,36 +263,36 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, p_ind, numtype=sp.complex128):
     # rcs is encoded in the spectrum
     # Use Levinson recursion to find the coefs for the data
     xr1 = sp.linalg.solve_toeplitz(rp1, rp2)
-    lpc = sp.r_[sp.ones(1), -xr1]
+    lpc = np.r_[np.ones(1), -xr1]
     # The Gain  term.
-    G = sp.sqrt(sp.sum(sp.conjugate(r1[:nlpc+1])*lpc))
-    Gvec = sp.r_[G, sp.zeros(nlpc)]
+    G = np.sqrt(np.sum(np.conjugate(r1[:nlpc+1])*lpc))
+    Gvec = np.r_[G, np.zeros(nlpc)]
     n_pnt = (nlpc+1)*3+lp
     rep1 = len(p_ind)
     if n_pnt >= 200:
         nfft = scfft.next_fast_len(n_pnt)
         _, h_filt = sp.signal.freqz(Gvec, lpc, worN=nfft, whole=True)
-        h_tile = sp.tile(h_filt[sp.newaxis, :], (rep1, 1))
+        h_tile = np.tile(h_filt[np.newaxis, :], (rep1, 1))
         # Create the noise vector and normalize
-        xin = sp.random.randn(rep1, nfft)+1j*sp.random.randn(rep1, nfft)
-        x_vec = sp.mean(xin.real**2+xin.imag**2, axis=1)
-        xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, nfft))
+        xin = np.random.randn(rep1, nfft)+1j*np.random.randn(rep1, nfft)
+        x_vec = np.mean(xin.real**2+xin.imag**2, axis=1)
+        xinsum = np.tile(np.sqrt(x_vec)[:, np.newaxis], (1, nfft))
         xinsum = xinsum
-        xin = sp.sqrt(nfft)*xin/xinsum
-        outdata = sp.ifft(h_tile*xin, axis=1)
+        xin = np.sqrt(nfft)*xin/xinsum
+        outdata = scfft.ifft(h_tile*xin, axis=1)
         # Flipping pulse
         outpulse = pulse[p_ind,::-1]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     else:
-        xin = sp.random.randn(rep1, n_pnt)+1j*sp.random.randn(rep1, n_pnt)
-        x_vec = sp.mean(xin.real**2+xin.imag**2, axis=1)
-        xinsum = sp.tile(sp.sqrt(x_vec)[:, sp.newaxis], (1, n_pnt))
+        xin = np.random.randn(rep1, n_pnt)+1j*np.random.randn(rep1, n_pnt)
+        x_vec = np.mean(xin.real**2+xin.imag**2, axis=1)
+        xinsum = np.tile(np.sqrt(x_vec)[:, np.newaxis], (1, n_pnt))
         xin = xin/xinsum
         outdata = sp.signal.lfilter(Gvec, lpc, xin, axis=1)
         # Flipping pulse
         outpulse = pulse[p_ind,::-1]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
-    #outdata = sp.sqrt(rcs)*outdata/sp.sqrt(sp.mean(outdata.var(axis=1)))
+    #outdata = np.sqrt(rcs)*outdata/np.sqrt(np.mean(outdata.var(axis=1)))
     return outdata
 #%% Pulse shapes
 def GenBarker(blen):
@@ -304,11 +305,11 @@ def GenBarker(blen):
     bdict = {1:[-1], 2:[-1, 1], 3:[-1, -1, 1], 4:[-1, -1, 1, -1], 5:[-1, -1, -1, 1, -1],
              7:[-1, -1, -1, 1, 1, -1, 1], 11:[-1, -1, -1, 1, 1, 1, -1, 1, 1, -1, 1],
              13:[-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1]}
-    outar = sp.array(bdict[blen])
-    outar.astype(sp.float64)
+    outar = np.array(bdict[blen])
+    outar.astype(np.float64)
     return outar
 #%% Lag Functions
-def CenteredLagProduct(rawbeams, numtype=sp.complex128, pulse=sp.ones(14), lagtype='centered'):
+def CenteredLagProduct(rawbeams, numtype=np.complex128, pulse=np.ones(14), lagtype='centered'):
     """ This function will create a centered lag product for each range using the
     raw IQ given to it.  It will form each lag for each pulse and then integrate
     all of the pulses.
@@ -316,7 +317,7 @@ def CenteredLagProduct(rawbeams, numtype=sp.complex128, pulse=sp.ones(14), lagty
         rawbeams - This is a NpxNs complex numpy array where Ns is number of
         samples per pulse and Npu is number of pulses
         N - The number of lags that will be created, default is 14.
-        numtype - The type of numbers used to create the data. Default is sp.complex128
+        numtype - The type of numbers used to create the data. Default is np.complex128
         lagtype - Can be centered forward or backward.
     Output:
         acf_cent - This is a NrxNl complex numpy array where Nr is number of
@@ -329,35 +330,35 @@ def CenteredLagProduct(rawbeams, numtype=sp.complex128, pulse=sp.ones(14), lagty
 
     # Make masks for each piece of data
     if lagtype == 'forward':
-        arback = sp.zeros(n_pulse, dtype=int)
-        arfor = sp.arange(n_pulse, dtype=int)
+        arback = np.zeros(n_pulse, dtype=int)
+        arfor = np.arange(n_pulse, dtype=int)
 
     elif lagtype == 'backward':
-        arback = sp.arange(n_pulse, dtype=int)
-        arfor = sp.zeros(n_pulse, dtype=int)
+        arback = np.arange(n_pulse, dtype=int)
+        arfor = np.zeros(n_pulse, dtype=int)
     else:
-       # arex = sp.arange(0,N/2.0,0.5);
-        arback = -sp.floor(sp.arange(0, n_pulse/2.0, 0.5)).astype(int)
-        arfor = sp.ceil(sp.arange(0, n_pulse/2.0, 0.5)).astype(int)
+       # arex = np.arange(0,N/2.0,0.5);
+        arback = -np.floor(np.arange(0, n_pulse/2.0, 0.5)).astype(int)
+        arfor = np.ceil(np.arange(0, n_pulse/2.0, 0.5)).astype(int)
 
     # figure out how much range space will be kept
-    ap = sp.nanmax(abs(arback))
-    ep = Nr- sp.nanmax(arfor)
-    rng_ar_all = sp.arange(ap, ep)
-#    wearr = (1./(N-sp.tile((arfor-arback)[:,sp.newaxis],(1,Np)))).astype(numtype)
-    #acf_cent = sp.zeros((ep-ap,N))*(1+1j)
-    acf_cent = sp.zeros((ep-ap, n_pulse), dtype=numtype)
+    ap = np.nanmax(abs(arback))
+    ep = Nr- np.nanmax(arfor)
+    rng_ar_all = np.arange(ap, ep)
+#    wearr = (1./(N-np.tile((arfor-arback)[:,np.newaxis],(1,Np)))).astype(numtype)
+    #acf_cent = np.zeros((ep-ap,N))*(1+1j)
+    acf_cent = np.zeros((ep-ap, n_pulse), dtype=numtype)
     for irng, curange in  enumerate(rng_ar_all):
         rng_ar1 = int(curange) + arback
         rng_ar2 = int(curange) + arfor
         # get all of the acfs across pulses # sum along the pulses
-        acf_tmp = sp.conj(rawbeams[rng_ar1, :])*rawbeams[rng_ar2, :]#*wearr
-        acf_ave = sp.sum(acf_tmp, 1)
+        acf_tmp = np.conj(rawbeams[rng_ar1, :])*rawbeams[rng_ar2, :]#*wearr
+        acf_ave = np.sum(acf_tmp, 1)
         acf_cent[irng, :] = acf_ave# might need to transpose this
     return acf_cent
 
 
-def BarkerLag(rawbeams, numtype=sp.complex128, pulse=GenBarker(13), lagtype=None):
+def BarkerLag(rawbeams, numtype=np.complex128, pulse=GenBarker(13), lagtype=None):
     """This will process barker code data by filtering it with a barker code pulse and
     then sum up the pulses.
     Inputs
@@ -371,16 +372,16 @@ def BarkerLag(rawbeams, numtype=sp.complex128, pulse=GenBarker(13), lagtype=None
      # It will be assumed the data will be pulses vs rangne
     rawbeams = rawbeams.transpose()
     (Nr, Np) = rawbeams.shape
-    pulsepow = sp.power(sp.absolute(pulse), 2.0).sum()
+    pulsepow = np.power(np.absolute(pulse), 2.0).sum()
     # Make matched filter
-    filt = sp.fft(pulse[::-1]/sp.sqrt(pulsepow), n=Nr)
-    filtmat = sp.repeat(filt[:, sp.newaxis], Np, axis=1)
-    rawfreq = sp.fft(rawbeams, axis=0)
-    outdata = sp.ifft(filtmat*rawfreq, axis=0)
+    filt = scfft.fft(pulse[::-1]/np.sqrt(pulsepow), n=Nr)
+    filtmat = np.repeat(filt[:, np.newaxis], Np, axis=1)
+    rawfreq = scfft.fft(rawbeams, axis=0)
+    outdata = scfft.ifft(filtmat*rawfreq, axis=0)
     outdata = outdata*outdata.conj()
     outdata = sp.sum(outdata, axis=-1)
     #increase the number of axes
-    return outdata[len(pulse)-1:, sp.newaxis]
+    return outdata[len(pulse)-1:, np.newaxis]
 
 def makesumrule(ptype, nlags, lagtype='centered'):
     """ This function will return the sum rule.
@@ -394,17 +395,17 @@ def makesumrule(ptype, nlags, lagtype='centered'):
     """
     if ptype.lower() == 'long' or ptype.lower() == 'interleaved':
         if lagtype == 'forward':
-            arback = -sp.arange(nlags, dtype=int)
-            arforward = sp.zeros(nlags, dtype=int)
+            arback = -np.arange(nlags, dtype=int)
+            arforward = np.zeros(nlags, dtype=int)
         elif lagtype == 'backward':
-            arback = sp.zeros(nlags, dtype=int)
-            arforward = sp.arange(nlags, dtype=int)
+            arback = np.zeros(nlags, dtype=int)
+            arforward = np.arange(nlags, dtype=int)
         else:
-            arback = -sp.ceil(sp.arange(0, nlags/2.0, 0.5)).astype(int)
-            arforward = sp.floor(sp.arange(0, nlags/2.0, 0.5)).astype(int)
-        sumrule = sp.array([arback, arforward])
+            arback = -np.ceil(np.arange(0, nlags/2.0, 0.5)).astype(int)
+            arforward = np.floor(np.arange(0, nlags/2.0, 0.5)).astype(int)
+        sumrule = np.array([arback, arforward])
     elif ptype.lower() == 'barker':
-        sumrule = sp.array([[0], [0]])
+        sumrule = np.array([[0], [0]])
     return sumrule
 
 #%% Make pulse
@@ -420,20 +421,20 @@ def makepulse(ptype, nsamps, t_s, nbauds=16):
     """
     plen = nsamps*t_s
     if ptype.lower() == 'long':
-        pulse = sp.ones(nsamps)[sp.newaxis]
-        sweepid = sp.array([300])
-        sweepnum = sp.array([0])
+        pulse = np.ones(nsamps)[np.newaxis]
+        sweepid = np.array([300])
+        sweepnum = np.array([0])
     elif ptype.lower() == 'barker':
-        blen = sp.array([1, 2, 3, 4, 5, 7, 11, 13])
-        nsampsarg = sp.argmin(sp.absolute(blen-nbauds))
+        blen = np.array([1, 2, 3, 4, 5, 7, 11, 13])
+        nsampsarg = np.argmin(np.absolute(blen-nbauds))
         nbauds = blen[nsampsarg]
         pulse = GenBarker(nbauds)
         baudratio = float(nbauds)/nsamps
-        pulse_samps = sp.floor(sp.arange(nsamps)*baudratio)
+        pulse_samps = np.floor(np.arange(nsamps)*baudratio)
         pulse = pulse[pulse_samps]
         plen = nsamps*ts
-        sweepid = sp.array([400])
-        sweepnum = sp.array([0])
+        sweepid = np.array([400])
+        sweepnum = np.array([0])
     elif ptype.lower() == 'ac':
         pulse, sweepid, sweepnum = gen_ac(nsamps, nbauds)
 
@@ -464,10 +465,10 @@ def gen_ac(nsamps, nbauds):
             sweepid:``array``: Array of sweep ids.
             sweepnum:``array``: Array of sweep numbers.
     """
-    blen = sp.array([4, 8, 16])
-    nsampsarg = sp.argmin(sp.absolute(blen-nbauds))
+    blen = np.array([4, 8, 16])
+    nsampsarg = np.argmin(np.absolute(blen-nbauds))
     nbauds = blen[nsampsarg]
-    samp_mat = sp.arange(nbauds).repeat(nsamps/nbauds)
+    samp_mat = np.arange(nbauds).repeat(nsamps/nbauds)
     walshmat = sp.linalg.hadamard(nbauds*2)
     # Strong codes found in Hysell 2018 textbook
     if nbauds == 4:
@@ -481,10 +482,10 @@ def gen_ac(nsamps, nbauds):
     # List of alternating code phases are not the same as the order in the textbooks
     if nbauds == 16:
         phasefile = Path(__file__).resolve().parent / 'acphase.txt'
-        all_phase = sp.genfromtxt(str(phasefile))
-        pulse = sp.cos(sp.pi*all_phase/180.)
+        all_phase = np.genfromtxt(str(phasefile))
+        pulse = np.cos(np.pi*all_phase/180.)
     pulse = pulse[:, samp_mat]
-    sweepnum = sp.arange(nbauds*2)
+    sweepnum = np.arange(nbauds*2)
     sweepid = sweepnum+1
     return pulse, sweepid, sweepnum
 #%% dictionary file
@@ -508,7 +509,7 @@ def dict2h5(fn, dictin):
                     lenzeros = len(str(len(dictin[cvar])))-1
                     for inum, datapnts in enumerate(dictin[cvar]):
                         f.create_array('/'+cvar, 'Inst{0:0{1:d}d}'.format(inum, lenzeros),datapnts, 'Static array')
-                elif type(dictin[cvar]) is sp.ndarray:
+                elif type(dictin[cvar]) is np.ndarray:
                     f.create_array('/', cvar, dictin[cvar], 'Static array')
                 else:
                     raise ValueError('Values in list must be lists or numpy arrays')
@@ -581,7 +582,7 @@ def recursively_save_dict_contents_to_group( h5file, path, dic):
         if not isinstance(key, str):
             raise ValueError("dict keys must be strings to save to hdf5")
         # save strings, numpy.int64, and numpy.float64 types
-        if isinstance(item, (np.int64, np.float64, str, np.float, float, np.float32,int)):
+        if isinstance(item, (np.int64, np.float64, str, float, np.float32,int)):
             #print( 'here' )
             h5file[path + key] = item
             if not h5file[path + key][()] == item:
@@ -590,10 +591,19 @@ def recursively_save_dict_contents_to_group( h5file, path, dic):
         elif isinstance(item, np.ndarray):
             try:
                 h5file[path + key] = item
+                same_item = np.array_equal(h5file[path + key][()], item,equal_nan=True)
             except:
                 item = np.array(item).astype('|S9')
                 h5file[path + key] = item
-            if not np.array_equal(h5file[path + key][()], item):
+                same_item = np.array_equal(h5file[path + key][()], item)
+   
+               
+            if not same_item:
+                raise ValueError('The data representation in the HDF5 file does not match the original dict.')
+        elif item is None:
+            item = b"None_Value"
+            h5file[path + key] = item
+            if not h5file[path + key][()] == item:
                 raise ValueError('The data representation in the HDF5 file does not match the original dict.')
         # save dictionaries
         elif isinstance(item, dict):
@@ -609,6 +619,9 @@ def recursively_load_dict_contents_from_group( h5file, path):
     for key, item in h5file[path].items():
         if isinstance(item, h5py._hl.dataset.Dataset):
             ans[key] = item[()]
+            if isinstance(ans[key],bytes):
+                if ans[key]==b"None_Value":
+                    ans[key] = None
         elif isinstance(item, h5py._hl.group.Group):
             ans[key] = recursively_load_dict_contents_from_group(h5file, path + key + '/')
     return ans
@@ -625,7 +638,7 @@ def Chapmanfunc(z, H_0, Z_0, N_0):
     N_0: The peak electron density.
     """
     z1 = (z-Z_0)/H_0
-    Ne = N_0*sp.exp(0.5*(1-z1-sp.exp(-z1)))
+    Ne = N_0*np.exp(0.5*(1-z1-np.exp(-z1)))
     return Ne
 
 def TempProfile(z, T0=1000., z0=100.):
@@ -639,8 +652,8 @@ def TempProfile(z, T0=1000., z0=100.):
         Te - The electron density profile in K. 1700*(atan((z-z0)2*exp(1)/400-exp(1))+1)/2 +T0
         Ti - The ion density profile in K. 500*(atan((z-z0)2*exp(1)/400-exp(1))+1)/2 +T0
     """
-    zall = (z-z0)*2.*sp.exp(1)/400. -sp.exp(1)
-    atanshp = (sp.tanh(zall)+1.)/2
+    zall = (z-z0)*2.*np.exp(1)/400. -np.exp(1)
+    atanshp = (np.tanh(zall)+1.)/2
     Te = 1700*atanshp+T0
     Ti = 500*atanshp+T0
 
@@ -719,11 +732,12 @@ def readconfigfile(fname, make_amb_bool=False):
     yaml.warnings({'YAMLLoadWarning': False})
     if ftype == '.yml':
         with fname.open('r') as f:
-            dictlist = yaml.load(f)
-
+            dictlist = yaml.load(f,Loader=yaml.FullLoader)
+        # import ipdb
+        # ipdb.set_trace()
         angles = sensconst.getangles(dictlist[0]['beamlist'], dictlist[0]['radarname'])
         beamlist = [float(i) for i in dictlist[0]['beamlist']]
-        ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
+        ang_data = np.array([[iout[0], iout[1]] for iout in angles])
         sensdict = sensconst.getConst(dictlist[0]['radarname'], ang_data)
 
         simparams = dictlist[1]
@@ -736,12 +750,12 @@ def readconfigfile(fname, make_amb_bool=False):
         if ikey  in simparams.keys():
             sensdict[ikey] = simparams[ikey]
 #            del simparams[ikey]
-    ds_fac = int(sp.prod(simparams['declist']))
+    ds_fac = int(np.prod(simparams['declist']))
     simparams['Beamlist'] = beamlist
     time_lim = simparams['TimeLim']
     f_s = float(simparams['fsnum'])/simparams['fsden']
     t_s = float(simparams['fsden'])/simparams['fsnum']
-    p_len = int(sp.round_(f_s*simparams['Pulselength']))
+    p_len = int(np.round_(f_s*simparams['Pulselength']))
     (pulse, simparams['Pulselength'], sweepid, sweepnums) = makepulse(simparams['Pulsetype'],
                                                                       p_len, t_s)
     simparams['sweepids'] = sweepid
@@ -752,12 +766,12 @@ def readconfigfile(fname, make_amb_bool=False):
                                          simparams['numpoints'], sweepid)
     simparams['angles'] = angles
     timing_dict = get_timing_dict()
-    usweeps = sp.unique(sweepid)
+    usweeps = np.unique(sweepid)
 
-    sig_list = sp.vstack([list(timing_dict[i][1]['signal']) for i in usweeps])
-    blank_list = sp.vstack([list(timing_dict[i][1]['blank']) for i in usweeps])
-    no_list = sp.vstack([list(timing_dict[i][1]['noise']) for i in usweeps])
-    cal_list = sp.vstack([list(timing_dict[i][1]['calibration']) for i in usweeps])
+    sig_list = np.vstack([list(timing_dict[i][1]['signal']) for i in usweeps])
+    blank_list = np.vstack([list(timing_dict[i][1]['blank']) for i in usweeps])
+    no_list = np.vstack([list(timing_dict[i][1]['noise']) for i in usweeps])
+    cal_list = np.vstack([list(timing_dict[i][1]['calibration']) for i in usweeps])
     d_len = [blank_list[:, 1].min(), sig_list[:, 1].max()]
     n_len = [no_list[:, 0].min(), no_list[:, 1].max()]
     c_len = [cal_list[:, 0].min(), cal_list[:, 1].max()]
@@ -767,9 +781,9 @@ def readconfigfile(fname, make_amb_bool=False):
     simparams['Timing_Dict'] = {i:timing_dict[i][1] for i in usweeps}
     rng_samprate = t_s*sconst.c*1e-3/2.
     rng_samprateds = rng_samprate/ds_fac
-    rng_gates = sp.arange(d_len[0], d_len[1])*rng_samprate
+    rng_gates = np.arange(d_len[0], d_len[1])*rng_samprate
     rng_gates_ds = rng_gates[::ds_fac]
-    simparams['Timevec'] = sp.arange(0, time_lim, simparams['Fitinter'])
+    simparams['Timevec'] = np.arange(0, time_lim, simparams['Fitinter'])
     simparams['Rangegates'] = rng_gates
     if 'lagtype' not in simparams.keys():
         simparams['lagtype'] = 'centered'

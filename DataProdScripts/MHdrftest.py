@@ -7,11 +7,11 @@ from datetime import datetime, timedelta
 import dateutil.parser
 import calendar
 
-import scipy as sp
+import numpy as np
 import shutil
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pyglow.pyglow import Point
+
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigfile, readconfigfile
 from SimISR.analysisplots import analysisdump
@@ -21,23 +21,23 @@ import ipdb
 
 def pyglowinput(latlonalt=None, dn_list=None, z=None, storm=False, spike=False):
 
-
+    from pyglow.pyglow import Point
     if latlonalt is None:
         latlonalt = [42.61950, -71.4882, 250.00]
     if z is None:
-        z = sp.linspace(50., 1000., 200)
+        z = np.linspace(50., 1000., 200)
     if dn_list is None:
         dn_list = [datetime(2015, 3, 21, 8, 00), datetime(2015, 3, 21, 20, 00)]
-    dn_diff = sp.diff(dn_list)
+    dn_diff = np.diff(dn_list)
     dn_diff_sec = dn_diff[-1].seconds
-    timelist = sp.array([calendar.timegm(i.timetuple()) for i in dn_list])
-    time_arr = sp.column_stack((timelist, sp.roll(timelist, -1)))
+    timelist = np.array([calendar.timegm(i.timetuple()) for i in dn_list])
+    time_arr = np.column_stack((timelist, np.roll(timelist, -1)))
     time_arr[-1, -1] = time_arr[-1, 0]+dn_diff_sec
 
-    v = sp.zeros((len(z), len(dn_list), 3))
-    coords = sp.column_stack((sp.zeros((len(z), 2), dtype=z.dtype), z))
+    v = np.zeros((len(z), len(dn_list), 3))
+    coords = np.column_stack((np.zeros((len(z), 2), dtype=z.dtype), z))
     all_spec = ['O+', 'NO+', 'O2+', 'H+'] #'HE+']
-    Param_List = sp.zeros((len(z), len(dn_list), len(all_spec)+1,2))
+    Param_List = np.zeros((len(z), len(dn_list), len(all_spec)+1,2))
 
     # for velocities
     a = 150.
@@ -60,8 +60,8 @@ def pyglowinput(latlonalt=None, dn_list=None, z=None, storm=False, spike=False):
             # so the zonal pt.u and meriodinal winds pt.v  will coorispond to x and y even though they are
             # supposed to be east west and north south. Pyglow does not seem to have
             # vertical winds.
-            v0 = c* sp.exp(-(zcur-h_0)/a)*sp.sin(sp.pi*(zcur-h_0)/b)+d
-            v[iz, idn] = sp.array([pt.u, pt.v, v0])
+            v0 = c* np.exp(-(zcur-h_0)/a)*np.sin(np.pi*(zcur-h_0)/b)+d
+            v[iz, idn] = np.array([pt.u, pt.v, v0])
 
             for is1, ispec in enumerate(all_spec):
                 Param_List[iz, idn, is1, 0] = pt.ni[ispec]*1e6
@@ -72,18 +72,59 @@ def pyglowinput(latlonalt=None, dn_list=None, z=None, storm=False, spike=False):
             Param_List[iz, idn, -1, 1] = pt.Te
     Param_sum = Param_List[:, :, :, 0].sum(0).sum(0)
     spec_keep = Param_sum > 0.
-    v[sp.isnan(v)] = 0.
-    species = sp.array(all_spec)[spec_keep[:-1]].tolist()
+    v[np.isnan(v)] = 0.
+    species = np.array(all_spec)[spec_keep[:-1]].tolist()
     species.append('e-')
     Param_List[:, :] = Param_List[:, :, spec_keep]
     if spike:
         ne_all = Param_List[:, :, -1, 0]
-        maxarg = sp.argmax(ne_all, axis=0)
-        t_ar = sp.arange(len(dn_list))
+        maxarg = np.argmax(ne_all, axis=0)
+        t_ar = np.arange(len(dn_list))
         Param_List[maxarg, t_ar, -1, 0] = 5.*ne_all[maxarg, t_ar]
     Iono_out = IonoContainer(coords, Param_List, times=time_arr, species=species, velocity=v)
     return Iono_out
 
+def iriinput(latlonalt = [42.61950, -71.4882, 250.00], dn_start_stop =(datetime(2023, 1, 11, 8, 0), datetime(2023, 1, 11, 20, 0)),dn_diff= timedelta(minutes=10), altkmrange = [50,950,10]):
+    """ """
+    import iri2016.profile as iri
+
+    dn_diff_sec = dn_diff.seconds
+
+    altkmrange = [50,950,10]
+    iri_data = iri.timeprofile(dn_start_stop,dn_diff,altkmrange,latlonalt[0],latlonalt[1])
+    dn_list = iri_data.time.to_series()
+    timelist = np.array([calendar.timegm(i.timetuple()) for i in dn_list])
+    time_arr = np.column_stack((timelist, np.roll(timelist, -1)))
+    time_arr[-1, -1] = time_arr[-1, 0]+dn_diff_sec
+
+    z = iri_data.alt_km.to_numpy()
+    coords = np.column_stack((np.zeros((len(z), 2), dtype=z.dtype), z))
+
+    all_spec = ['O+', 'NO+', 'O2+', 'H+', 'He+','e-']
+    Param_List = np.zeros((len(z), len(dn_list),len(all_spec) ,2))
+    v=[]
+
+    for idn, dn in enumerate(dn_list):
+        for iz, zcur in enumerate(z):
+            latlonalt[2] = zcur
+
+            # No winds from iri
+            v.append([0, 0, 0])
+
+            for is1, ispec in enumerate(all_spec[:-1]):
+                Param_List[iz, idn, is1, 0] = iri_data.data_vars["n"+ispec][idn,iz]
+
+            Param_List[iz, idn, :, 1] = iri_data.Ti[idn,iz]
+
+            Param_List[iz, idn, -1, 0] = iri_data.ne[idn,iz]
+            Param_List[iz, idn, -1, 1] = iri_data.Te[idn,iz]
+    
+    Param_sum = Param_List[:, :, :, 0].sum(0).sum(0)
+    spec_keep = Param_sum > 0.
+    species = np.array(all_spec)[spec_keep].tolist()
+    Param_List[:, :] = Param_List[:, :, spec_keep]
+    Iono_out = IonoContainer(coords, Param_List, times = time_arr, species=species)
+    return Iono_out
 def configfilesetup(testpath, config, simtime_mins=4):
     """ This will create the configureation file given the number of pulses for
         the test. This will make it so that there will be 12 integration periods
@@ -94,7 +135,7 @@ def configfilesetup(testpath, config, simtime_mins=4):
     """
     curloc = Path(__file__).resolve().parent
     defcon = curloc/config
-    (sensdict, simparams) = readconfigfile(defcon)
+    (sensdict, simparams) = readconfigfile(str(defcon))
     simparams['TimeLim'] = simtime_mins*60
     # tint = simparams['IPP']*npulses
     # ratio1 = tint/simparams['Tint']
@@ -123,7 +164,7 @@ def plotiono(ionoin,fileprefix):
         species = ionoin.Species
         zvec = ionoin.Cart_Coords[:, 2]
         params = ionoin.Param_List[:, itn]
-        maxden = 10**sp.ceil(sp.log10(params[:, -1, 0].max()))
+        maxden = 10**np.ceil(np.log10(params[:, -1, 0].max()))
         for iplot, ispec in enumerate(species):
             axvec[0].plot(params[:, iplot, 0], zvec, label=ispec +'Density')
 
@@ -172,9 +213,9 @@ def main(ARGS):
         testpath.mkdir(parents=True)
     functlist = ARGS.funclist
     functlist_default = ['spectrums', 'radardata', 'process', 'fitting']
-    check_list = sp.array([i in functlist for i in functlist_default])
-    check_run = sp.any(check_list)
-    functlist_red = sp.array(functlist_default)[check_list].tolist()
+    check_list = np.array([i in functlist for i in functlist_default])
+    check_run = np.any(check_list)
+    functlist_red = np.array(functlist_default)[check_list].tolist()
 
     configfilesetup(testpath, ARGS.config, ARGS.nminutes)
     config = str(testpath.joinpath(ARGS.config))
@@ -196,12 +237,16 @@ def main(ARGS):
 
     #HACK May be should make this over the time period of the simulation?
     dtdiff = dtet0 - dtst0
-    dn_list = [dtst0+timedelta(seconds=i) for i in sp.linspace(0., dtdiff.total_seconds(), ARGS.ntimes)]
+    dn_secs = dtdiff.seconds/ARGS.ntimes
+    dn_diff = timedelta(seconds=dn_secs)
     if not inputpath.is_dir():
         inputpath.mkdir()
     inputfile = inputpath.joinpath('0 stats.h5')
     if not inputfile.is_file() or ARGS.makeparams:
-        ionoout = pyglowinput(dn_list=dn_list, spike=ARGS.nespike)
+        dn_start_stop = (dtst0,dtet0)
+        altkmrange = [50,1000,5]
+        ionoout = iriinput(latlonalt = [42.61950, -71.4882, 250.00],dn_start_stop=dn_start_stop,dn_diff=dn_diff,altkmrange=altkmrange)
+        #ionoout = pyglowinput(dn_list=dn_list, spike=ARGS.nespike)
         ionoout.saveh5(str(inputfile))
         ionoout.saveh5(str(testpath.joinpath('startfile.h5')))
 
@@ -241,8 +286,7 @@ if __name__== '__main__':
                       help='Name of config file in data prod scripts directory.',
                       type=str, default='MHsimple.yml')
     PAR1.add_argument('-t', '--ntimes', type=int, default=2,
-                      help='''The number evenly distributed of samples over 1/2
-                      day that will be created parameter truth data.''')
+                      help='''The number of iri data samples made in the time period.''')
     PAR1.add_argument('-j', "--nminutes", help='Number minutes of data created.',
                       type=int, default=4)
     PAR1.add_argument('-f', '--funclist', help='Functions to be used.', nargs='+',

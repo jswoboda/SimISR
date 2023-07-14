@@ -7,9 +7,8 @@ fitting and making spectrums.
 """
 import numpy as np
 import scipy.fftpack as scfft
-import pdb
 #
-from ISRSpectrum.ISRSpectrum import ISRSpectrum
+from ISRSpectrum.ISRSpectrum import Specinit
 from SimISR.utilFunctions import spect2acf, update_progress
 
 
@@ -33,8 +32,8 @@ def ISRSspecmake(ionocont,sensdict, simparams, npts,ifile=0.,nfiles=1.,print_lin
     declist = simparams['declist']
     d_fac = np.prod(declist)
     f_s = float(sample_rate_numerator)/sample_rate_denominator/d_fac
-    npts = simparams['numpoints']/d_fac
-    specobj = ISRSpectrum(centerFrequency=sensdict['fc'], nspec=npts, sampfreq=f_s)
+    npts = int(simparams['numpoints']/d_fac)
+    specobj = Specinit(centerFrequency=sensdict['fc'], nspec=npts, sampfreq=f_s)
 
 
     (n_x, n_t) = ionocont.Param_List.shape[:2]
@@ -86,7 +85,7 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
     Vi = paramvals[:, :, 2*Nsp]
     Parammat = paramvals[:, :, :2*Nsp].reshape((N_x, N_t, Nsp, 2))
     outspecs = np.zeros((N_x, N_t, npts))
-    specobj = ISRSpectrum(centerFrequency=fc, nspec=npts, sampfreq=fs)
+    specobj = Specinit(centerFrequency=fc, nspec=npts, sampfreq=fs)
     outspecsorig = np.zeros_like(outspecs)
     outrcs = np.zeros((N_x, N_t))
     for i_x in np.arange(N_x):
