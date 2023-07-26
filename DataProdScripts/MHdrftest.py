@@ -8,6 +8,7 @@ import dateutil.parser
 import calendar
 
 import numpy as np
+import pandas as pd
 import shutil
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -17,7 +18,6 @@ from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigf
 from SimISR.analysisplots import analysisdump
 from SimISR.runsim import main as runsimisr
 from SimISR import Path
-import ipdb
 
 def pyglowinput(latlonalt=None, dn_list=None, z=None, storm=False, spike=False):
 
@@ -92,7 +92,7 @@ def iriinput(latlonalt = [42.61950, -71.4882, 250.00], dn_start_stop =(datetime(
 
     altkmrange = [50,950,10]
     iri_data = iri.timeprofile(dn_start_stop,dn_diff,altkmrange,latlonalt[0],latlonalt[1])
-    dn_list = iri_data.time.to_series()
+    dn_list = pd.to_datetime(iri_data.time.to_series())
     timelist = np.array([calendar.timegm(i.timetuple()) for i in dn_list])
     time_arr = np.column_stack((timelist, np.roll(timelist, -1)))
     time_arr[-1, -1] = time_arr[-1, 0]+dn_diff_sec
