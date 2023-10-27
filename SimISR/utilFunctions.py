@@ -20,6 +20,7 @@ import scipy.constants as sconst
 #
 import SimISR.sensorConstants as sensconst
 from SimISR import Path
+
 # utility functions
 
 # update_progress() : Displays or updates a console progress bar
@@ -116,6 +117,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett',
                    'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall',
                    'barthann']
+
     curwin = scisig.get_window(winname, nsamps)
     # Apply window to the sinc function. This will act as the impulse respons of the filter
 
@@ -143,6 +145,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
 
     envfunc = sp.interp(np.ravel(srng-d2d), t_p, lp_pulse, left=0., right=0.).reshape(d2d.shape)
 #    envfunc = np.zeros(d2d.shape)
+
 #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
     envfunc = envfunc/np.sqrt(envfunc.sum(axis=0).max())
     #create the ambiguity function for everything
@@ -198,6 +201,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
                'WttMatrixac':lagmatac}
     return wttdict
 
+
 def spect2acf(omeg, spec, n_s=None):
     """ Creates acf and time array associated with the given frequency vector and spectrum
     Inputs:
@@ -219,6 +223,7 @@ def spect2acf(omeg, spec, n_s=None):
     return tau, acf
 
 def acf2spect(tau, acf, n_s=None, initshift=False):
+
     """ Creates spectrum and frequency vector associated with the given time array and acf.
     Inputs:
     tau: The time sampling array.
@@ -257,6 +262,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, p_ind, numtype=np.complex128):
 
     npulse, lp = pulse.shape
     # repeat the pulse pattern
+
     r1 = scfft.ifft(scfft.ifftshift(spec))
     rp1 = r1[:nlpc]
     rp2 = r1[1:nlpc+1]
@@ -293,6 +299,7 @@ def MakePulseDataRepLPC(pulse, spec, nlpc, p_ind, numtype=np.complex128):
         outpulse = pulse[p_ind,::-1]
         outdata = outpulse*outdata[:, nlpc:nlpc+lp]
     #outdata = np.sqrt(rcs)*outdata/np.sqrt(np.mean(outdata.var(axis=1)))
+
     return outdata
 #%% Pulse shapes
 def GenBarker(blen):
@@ -354,11 +361,13 @@ def CenteredLagProduct(rawbeams, numtype=np.complex128, pulse=np.ones(14), lagty
         # get all of the acfs across pulses # sum along the pulses
         acf_tmp = np.conj(rawbeams[rng_ar1, :])*rawbeams[rng_ar2, :]#*wearr
         acf_ave = np.sum(acf_tmp, 1)
+
         acf_cent[irng, :] = acf_ave# might need to transpose this
     return acf_cent
 
 
 def BarkerLag(rawbeams, numtype=np.complex128, pulse=GenBarker(13), lagtype=None):
+
     """This will process barker code data by filtering it with a barker code pulse and
     then sum up the pulses.
     Inputs
@@ -378,6 +387,7 @@ def BarkerLag(rawbeams, numtype=np.complex128, pulse=GenBarker(13), lagtype=None
     filtmat = np.repeat(filt[:, np.newaxis], Np, axis=1)
     rawfreq = scfft.fft(rawbeams, axis=0)
     outdata = scfft.ifft(filtmat*rawfreq, axis=0)
+
     outdata = outdata*outdata.conj()
     outdata = sp.sum(outdata, axis=-1)
     #increase the number of axes
@@ -400,6 +410,7 @@ def makesumrule(ptype, nlags, lagtype='centered'):
         elif lagtype == 'backward':
             arback = np.zeros(nlags, dtype=int)
             arforward = np.arange(nlags, dtype=int)
+
         else:
             arback = -np.ceil(np.arange(0, nlags/2.0, 0.5)).astype(int)
             arforward = np.floor(np.arange(0, nlags/2.0, 0.5)).astype(int)
@@ -432,6 +443,7 @@ def makepulse(ptype, nsamps, t_s, nbauds=16):
         baudratio = float(nbauds)/nsamps
         pulse_samps = np.floor(np.arange(nsamps)*baudratio)
         pulse = pulse[pulse_samps]
+
         plen = nsamps*ts
         sweepid = np.array([400])
         sweepnum = np.array([0])
@@ -746,6 +758,7 @@ def readconfigfile(fname, make_amb_bool=False):
     if 'declist' not in simparams.keys():
         simparams['declist'] = []
 
+
     for ikey in sensdict.keys():
         if ikey  in simparams.keys():
             sensdict[ikey] = simparams[ikey]
@@ -794,6 +807,7 @@ def readconfigfile(fname, make_amb_bool=False):
     minrg = plen_ds-1
     maxrg = len(rng_gates_ds)-plen_ds+1
 
+
     simparams['Rangegatesfinal'] = rng_gates_ds[minrg:maxrg]
     # HACK need to move this to the sensor constants part
     sensdict['CalDiodeTemp'] = 1689.21
@@ -804,6 +818,7 @@ def readconfigfile(fname, make_amb_bool=False):
         if not relpath.is_absolute():
             # Some times the ini files may split the strings of the start
             # file because of white space in file names.
+
             if type(simparams['startfile']) is list:
                 startfile = " ".join(simparams['startfile'])
             else:
@@ -929,3 +944,4 @@ def get_timing_dict():
                     0 : ('standby', {'full' : (0,34599), 'tx' : (100,2101), 'blank' : (0,2500), 'clutter' : (2501,2700), 'signal' : (2701,28100), 'noise' : (28101,30100),'txnoise' : (28101,30100),  'calibration' : (30101,32100)})
 
                     }
+

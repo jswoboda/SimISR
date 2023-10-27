@@ -24,6 +24,7 @@ import sys
 from datetime import datetime
 import traceback
 import argparse
+import ipdb
 
 # Imported scipy and matplotlib modules
 import scipy as sp
@@ -173,12 +174,20 @@ def fitdata(basedir,configfile,optinputs):
                                   fitterone.simparams['startfile'], fittimes=fitlist,
                                   printlines=printlines)
 
-
+    #ipdb.set_trace()
     (fitteddata, fittederror, funcevals, fittedcov) = fitoutput
     if fitterone.simparams['Pulsetype'].lower() == 'barker':
         paramlist = fitteddata
+
         species = fitterone.simparams['species']
-        paranamsf = ['Ne']
+        paramnames = ['Ne']
+        if not fittederror is None:
+            fittederronly = sp.sqrt(fittederror)
+            paramlist = sp.concatenate([fitteddata, fittederronly], axis=2)
+            paramnamese = ['n'+ip for ip in paramnames]
+            paranamsf = sp.array(paramnames+paramnamese)
+        else:
+            paranamsf = sp.array(paramnames)
     else:
         fittederronly = sp.sqrt(fittederror)
         paramnames = []

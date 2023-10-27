@@ -40,6 +40,7 @@ def ISRSspecmake(ionocont,sensdict, simparams, npts,ifile=0.,nfiles=1.,print_lin
     outspecs = np.zeros((n_x, n_t, npts))
     outspecsorig = np.zeros_like(outspecs)
     outrcs = np.zeros((n_x, n_t))
+
     #pdb.set_trace()
     for i_x in np.arange(n_x):
         for i_t in np.arange(n_t):
@@ -49,9 +50,9 @@ def ISRSspecmake(ionocont,sensdict, simparams, npts,ifile=0.,nfiles=1.,print_lin
                 outstr = outstr.format(i_t, n_t, i_x, n_x)
                 update_progress(curnum, outstr)
 
-
             cur_params = ionocont.Param_List[i_x, i_t]
             cur_vel = v_i[i_x, i_t]
+
 
             (omeg, cur_spec, rcs) = specobj.getspecsep(cur_params, ionocont.Species,
                                                        cur_vel, rcsflag=True)
@@ -134,6 +135,11 @@ def ISRSfitfunction(x, y_acf, sensdict, simparams, Niratios,  y_err=None ):
     elif simparams['fitmode'] == 1:
         (Ti, Ne, TeoTi, v_i) = x
         Te = TeoTi*Ti
+    elif simparams['fitmode'] == 2:
+        (Ti, acfnorm, TeoTi, v_i) = x
+        Te = TeoTi*Ti
+        Ne = acfnorm*(1+TeoTi)
+
     datablock = np.zeros((nspecs, 2), dtype=x.dtype)
     datablock[:-1, 0] = Ne*Niratios
     datablock[:-1, 1] = Ti

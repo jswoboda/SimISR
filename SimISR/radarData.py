@@ -9,6 +9,7 @@ import ipdb
 import numpy as np
 import scipy.signal as sig
 import scipy.constants as sc
+
 # My modules
 from SimISR import Path
 #import multiprocessing as mp
@@ -306,6 +307,7 @@ class RadarDataFile(object):
                 # newfn = self.datadir/fname
                 # self.outfilelist.append(str(newfn))
                 # dict2h5(str(newfn), outdict)
+
                 #Listing info
                 # pt_list.append(pt)
                 # pb_list.append(pb)
@@ -370,6 +372,7 @@ class RadarDataFile(object):
         lp_pnts = pulse.shape[-1]
         samp_num = np.arange(lp_pnts)
         n_samps = int(np.ceil(float(samp_range[1]-samp_range[0])/ds_fac))
+
         angles = self.simparams['angles']
         n_beams = len(angles)
         rho = Sphere_Coords[:, 0]
@@ -392,15 +395,18 @@ class RadarDataFile(object):
                 for isamp in np.arange(n_samps):
 
                     range_g = range_gates[isamp*ds_fac]
+
                     range_m = range_g*1e3
                     rnglims = [range_g-rng_len/2.0, range_g+rng_len/2.0]
                     rangelog = (rho >= rnglims[0])&(rho < rnglims[1])
+                    # Get the number of points covered
                     cur_pnts = samp_num+isamp
                     cur_pnts = cur_pnts[cur_pnts < n_samps]
                     # This is a nearest neighbors interpolation for the
                     # spectrums in the range domain
                     if np.sum(rangelog) == 0:
                         minrng = np.argmin(np.absolute(range_g-rho))
+
                         rangelog[minrng] = True
 
                     #create the weights and weight location based on the beams pattern.
@@ -679,6 +685,7 @@ class RadarDataFile(object):
         N_rg = len(range_gates)# take the size
         pulse = self.simparams['Pulse'][::ds_fac]
         pulselen = len(pulse)
+
         simdtype = self.simparams['dtype']
         Ntime = len(timevec)
 
@@ -734,6 +741,7 @@ class RadarDataFile(object):
             if  not np.any(curcases):
                 progstr = "No pulses for time {0:d} of {1:d}, lagdata adjusted accordinly"
                 update_progress(float(itn)/Ntime, progstr.format(itn, Ntime))
+
                 outdata = outdata[:itn]
                 outnoise = outnoise[:itn]
                 pulses = pulses[:itn]
@@ -743,6 +751,7 @@ class RadarDataFile(object):
             pulseset = set(pulsen[curcases])
             poslist = [np.where(pulsen == item)[0] for item in pulseset]
             pos_all = np.hstack(poslist)
+
             try:
                 pos_all = np.hstack(poslist)
                 curfileloc = file_loc[pos_all]
@@ -838,6 +847,7 @@ def resample_worker(indx, data, resfac, axis):
     data_out = sig.resample(data,resfac, axis=axis)
     return (indx, data_out)
 
+
 #%% Make Lag dict to an iono container
 def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     """This function will take the data and noise lags and create an instance of the
@@ -856,6 +866,7 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     n_samps = len(rng_vec)
     p_samps = len(simparams['Pulse'][::ds_fac])
     pulsewidth = p_samps*t_s*ds_fac
+
     txpower = sensdict['Pt']
     if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
         Ksysvec = sensdict['Ksys']
@@ -866,9 +877,13 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
         ang_data_temp = ang_data.copy()
         ang_data = np.array([ang_data_temp[i].mean(axis=0) for i in beamlistlist])
 
+
     sumrule = simparams['SUMRULE']
     rng_vec2 = simparams['Rangegatesfinal']
     Nrng2 = len(rng_vec2)
+    minrg = p_samps-1+sumrule[0].min()
+    maxrg = Nrng2+minrg
+
 
     minrg = -sumrule[0].min()
     maxrg = Nrng2 + minrg
@@ -904,6 +919,7 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
 
 
     pulses = np.tile(DataLags['Pulses'][:, :, np.newaxis, np.newaxis], (1, 1, Nrng, Nlags))
+
     time_vec = time_vec[:Nt]
     # Divid lags by number of pulses
     lagsData = lagsData/pulses
@@ -967,6 +983,7 @@ def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
     return (ionodata,ionosigs)
 
 def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
+
     """
         Makes the covariance matrix for the lags given the noise acf and number
         of pulses.
@@ -988,4 +1005,5 @@ def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
     Ctt = R0*R12+R[T1]*np.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*np.conjugate(Rw[T2])
     avecback = np.roll(np.arange(Ctt.ndim),-2)
     Cttout = np.transpose(Ctt,avecback)
+
     return Cttout

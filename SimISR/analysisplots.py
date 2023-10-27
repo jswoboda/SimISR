@@ -15,7 +15,6 @@ import scipy.fftpack as scfft
 import numpy as np
 import seaborn as sns
 
-
 from .IonoContainer import IonoContainer
 from .utilFunctions import readconfigfile,spect2acf,acf2spect
 from .specfunctions import ISRspecmakeout#,ISRSfitfunction
@@ -395,12 +394,11 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
             # get and plot the input data
 
             numplots = len(time2file[itime])
-
             # set the limit for the parameter
             if curparm == 'vi':
-                 ax.set(xlim=[-1.25*sp.amax(sp.absolute(curfit)), 1.25*sp.amax(sp.absolute(curfit))])
+                 ax.set(xlim=[-1.25*sp.nanmax(sp.absolute(curfit)), 1.25*sp.nanmax(sp.absolute(curfit))])
             elif curparm_in != 'ne':
-                ax.set(xlim=[0.75*sp.amin(curfit), sp.minimum(1.25*sp.amax(curfit), 8000.)])
+                ax.set(xlim=[0.75*sp.nanmin(curfit), sp.minimum(1.25*sp.nanmax(curfit), 8000.)])
             elif (curparm_in == 'ne') and nelog:
                 ax.set_xscale('log')
 
@@ -472,7 +470,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
                 else:
                     tempin = Ionoin.getclosestsphere(ic,times)[0]
 
-                specin[icn,itn] = tempin[0,:]/npts/npts
+                specin[icn,itn] = tempin[0,:]/npts
     fs = sensdict['fs']
 
     if acfdisp:
@@ -629,7 +627,7 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
                     tempin = Ionoin.getclosestsphere(ic,times)[0]
 #                if sp.ndim(tempin)==1:
 #                    tempin = tempin[sp.newaxis,:]
-                specin[icn,itn] = tempin[0,:]/npts
+                specin[icn,itn] = tempin[0,:]
     if acfdisp:
         Ionoacf = IonoContainer.readh5(str(acfname))
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
