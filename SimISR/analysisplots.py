@@ -476,7 +476,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
     if acfdisp:
         Ionoacf = IonoContainer.readh5(str(acfname))
         ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
-        ts = sensdict['t_s']
+        ts = float(simparams['fsden']*sp.prod(simparams['declist']))/simparams['fsnum']
         omeg = sp.arange(-sp.ceil((npts-1.)/2.),sp.floor((npts-1.)/2.)+1)/ts/npts
         for icn, ic in enumerate(coords):
             if cartcoordsys:
@@ -558,13 +558,14 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
             labels.remove(None)
             lines.remove(None)
         plt.figlegend( lines, labels, loc = 'lower center', ncol=5, labelspacing=0. )
-        fname= filetemplate+'_{0:0>3}.png'.format(i_fig)
+        fname = filetemplate+'_{0:0>3}.png'.format(i_fig)
 
         plt.savefig(fname)
         plt.close(figmplf)
 
-def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,acfdisp= True,
-             fitdisp=True, filetemplate='acf',suptitle = 'ACF Comparison',invacf=''):
+def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
+             acfdisp=True, fitdisp=True, filetemplate='acf',suptitle='ACF Comparison',
+             invacf=''):
     """ This will create a set of images that compare the input ISR acf to the
         output ISR acfs from the simulator.
         Inputs
@@ -596,12 +597,12 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
     Nloc = coords.shape[0]
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-    pulse = simparams['Pulse']
-    ts = sensdict['t_s']
+    ds_fac = sp.prod(simparams['declist'])
+    pulse = simparams['Pulse'][::ds_fac]
+    p_samps = len(pulse)
+    ts = float(simparams['fsden']*ds_fac)/simparams['fsnum']
+
     tau1 = sp.arange(pulse.shape[-1])*ts
-
-
-
 
     if indisp:
         dirlist = [i.name for i in specsfiledir.glob('*.h5')]
@@ -698,7 +699,7 @@ def plotacfs(coords,times,configfile,maindir,cartcoordsys = True, indisp=True,ac
                 # apply ambiguity funciton to spectrum
                 curin = specin[iloc,itime]
                 (tau,acf) = spect2acf(omeg,curin)
-                acf1 = scfft.ifftshift(acf)[:len(pulse)]*len(curin)
+                acf1 = scfft.ifftshift(acf)[:p_samps]*len(curin)
                 rcs = acf1[0].real
                 guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
                 guess_acf = guess_acf*rcs/guess_acf[0].real

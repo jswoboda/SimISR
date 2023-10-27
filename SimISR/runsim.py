@@ -70,19 +70,20 @@ def makespectrums(basedir, configfile, printlines=True):
         curiono = IonoContainer.readh5(str(curfile))
 
         curiono.makespectruminstanceopen(specfuncs.ISRSspecmake, sensdict,
-                                         int(simparams['numpoints']), float(inum),
-                                         float(len(slist)), printlines).saveh5(str(outfile))
+                                         simparams, float(inum), float(len(slist)),
+                                         printlines).saveh5(str(outfile))
         update_progress(float(inum+1)/float(len(slist)),
                         'Finished file {} starting at {}'.format(curfile.name, datetime.now()))
 
 #%% Make Radar Data
 def makeradardata(basedir,configfile,remakealldata):
-    """ This function will make the radar data and create the acf estimates.
-    Inputs:
-        basedir: A string for the directory that will hold all of the data for the simulation.
-        configfile: The configuration file for the simulation.
-        remakealldata: A bool that determines if the radar data is remade. If false
-            only the acfs will be estimated using the radar that is already made."""
+    """
+        This function will make the radar data and create the acf estimates.
+        Inputs:
+            basedir: A string for the directory that will hold all of the data for the simulation.
+            configfile: The configuration file for the simulation.
+            remakealldata: A bool that determines if the radar data is remade. If false
+                only the acfs will be estimated using the radar that is already made."""
 
     dirio = ('Spectrums', 'Radardata', 'ACF')
     inputdir = basedir/dirio[0]
@@ -107,21 +108,46 @@ def makeradardata(basedir,configfile,remakealldata):
         outlist2 = None
 
     # create the radar data file class
-    rdata = RadarDataFile(Ionodict, configfile, outputdir, outfilelist=outlist2)
+    rdata = RadarDataFile(configfile, outputdir)
+    rdata.makerfdata(Ionodict)
     # From the ACFs and uncertainties
-    (ionoout, ionosig) = rdata.processdataiono()
+    #
+    # outdict = rdata.processdataiono()
+    # # save the acfs and uncertianties in ionocontainer h5 files.
+    # for i_ptype in outdict:
+    #     ionoout, ionosig = outdict[i_ptype]
+    #
+    #     ionoout.saveh5(str(outputdir2.joinpath('00'+i_ptype+'lags.h5')))
+    #     ionosig.saveh5(str(outputdir2.joinpath('00'+i_ptype+'sigs.h5')))
+    return ()
+def processdata(basedir, configfile, optinputs):
+    """
+        Creates the ACFs from the digital_rf data
+    """
+    dirio = ('Radardata', 'ACF')
+    outputdir = basedir/dirio[0]
+    outputdir2 = basedir/dirio[1]
+    # create the radar data file class
+    rdata = RadarDataFile(configfile, outputdir)
+    # From the ACFs and uncertainties
+
+    outdict = rdata.processdataiono()
     # save the acfs and uncertianties in ionocontainer h5 files.
-    ionoout.saveh5(str(outputdir2.joinpath('00lags.h5')))
-    ionosig.saveh5(str(outputdir2.joinpath('00sigs.h5')))
+    for i_ptype in outdict:
+        ionoout, ionosig = outdict[i_ptype]
+
+        ionoout.saveh5(str(outputdir2.joinpath('00'+i_ptype+'lags.h5')))
+        ionosig.saveh5(str(outputdir2.joinpath('00'+i_ptype+'sigs.h5')))
     return ()
 #%% Fit data
 def fitdata(basedir,configfile,optinputs):
-    """ This function will run the fitter on the estimated ACFs saved in h5 files.
+    """
+        This function will run the fitter on the estimated ACFs saved in h5 files.
         Inputs:
-        basedir: A string for the directory that will hold all of the data for the simulation.
-        configfile: The configuration file for the simulation.
-        optinputs:A string that helps determine the what type of acfs will be fitted.
-         """
+            basedir: A string for the directory that will hold all of the data for the simulation.
+            configfile: The configuration file for the simulation.
+            optinputs:A string that helps determine the what type of acfs will be fitted.
+     """
     # determine the input folders which can be ACFs from the full simulation
     dirdict = {'fitting':('ACF', 'Fitted'), 'fittingmat':('ACFMat', 'FittedMat'),
                'fittinginv':('ACFInv', 'FittedInv'), 'fittingmatinv':('ACFMatInv', 'FittedMatInv')}
@@ -276,8 +302,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype='',p
                 the full simulation. The user can also start with a directory
                 from a later stage of the simulation instead though.
 
-        configfile: The configuration used for the simulation. Can be an ini file or
-                a pickle file.
+        configfile: The configuration yaml file used for the simulation. 
 
         remakealldata: A bool to determine if the raw radar data will be remade. If
                 this is False the radar data will only be made if it does
@@ -290,7 +315,7 @@ def main(funcnamelist,basedir,configfile,remakealldata,fitlist=None,invtype='',p
 
     inputsep = '***************************************************************\n'
 
-    funcdict = {'spectrums':makespectrums, 'radardata':makeradardata, 'fitting':fitdata,'fittingmat':fitdata,
+    funcdict = {'spectrums':makespectrums, 'radardata':makeradardata, 'process':processdata,'fitting':fitdata,'fittingmat':fitdata,
                 'fittinginv':fitdata,'applymat':applymat,'fittingmatinv':fitdata}
     #inout = {'spectrums':('Origparams','Spectrums'),'radardata':('Spectrums','Radardata'),'fitting':('ACF','Fitted')}
     #pdb.set_trace()

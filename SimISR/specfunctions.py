@@ -7,13 +7,12 @@ fitting and making spectrums.
 """
 import numpy as np
 import scipy.fftpack as scfft
-import pdb
 #
-from ISRSpectrum.ISRSpectrum import ISRSpectrum
+from ISRSpectrum.ISRSpectrum import Specinit
 from SimISR.utilFunctions import spect2acf, update_progress
 
 
-def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
+def ISRSspecmake(ionocont,sensdict, simparams, npts,ifile=0.,nfiles=1.,print_line=True):
     """ This function will take an ionocontainer instance of plasma parameters and create
         ISR spectra for each object.
 
@@ -27,36 +26,34 @@ def ISRSspecmake(ionocont,sensdict,npts,ifile=0.,nfiles=1.,print_line=True):
             outspects - The spectra which have been weighted using the RCS. The
                 weighting is npts^2 *rcs.
     """
-    Vi = ionocont.getDoppler()
-    specobj = ISRSpectrum(centerFrequency=sensdict['fc'], nspec=npts,
-                          sampfreq=sensdict['fs'])
+    v_i = ionocont.getDoppler()
+    sample_rate_numerator = simparams['fsnum']
+    sample_rate_denominator = simparams['fsden']
+    declist = simparams['declist']
+    d_fac = np.prod(declist)
+    f_s = float(sample_rate_numerator)/sample_rate_denominator/d_fac
+    npts = int(simparams['numpoints']/d_fac)
+    specobj = Specinit(centerFrequency=sensdict['fc'], nspec=npts, sampfreq=f_s)
 
-    if ionocont.Time_Vector is None:
-        N_x = ionocont.Param_List.shape[0]
-        N_t = 1
-        outspecs = np.zeros((N_x, 1, npts))
-        full_grid = False
-    else:
-        (N_x, N_t) = ionocont.Param_List.shape[:2]
-        outspecs = np.zeros((N_x, N_t, npts))
-        full_grid = True
 
-    (N_x, N_t) = outspecs.shape[:2]
+    (n_x, n_t) = ionocont.Param_List.shape[:2]
+    outspecs = np.zeros((n_x, n_t, npts))
     outspecsorig = np.zeros_like(outspecs)
-    outrcs = np.zeros((N_x, N_t))
+    outrcs = np.zeros((n_x, n_t))
+
     #pdb.set_trace()
-    for i_x in np.arange(N_x):
-        for i_t in np.arange(N_t):
+    for i_x in np.arange(n_x):
+        for i_t in np.arange(n_t):
             if print_line:
-                curnum = ifile/nfiles + float(i_x)/N_x/nfiles+float(i_t)/N_t/N_x/nfiles
-                outstr = 'Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'.format(i_t, N_t, i_x ,N_x)
+                curnum = ifile/nfiles + float(i_x)/n_x/nfiles+float(i_t)/n_t/n_x/nfiles
+                outstr = 'Time:{0:d} of {1:d} Location:{2:d} of {3:d}, now making spectrum.'
+                outstr = outstr.format(i_t, n_t, i_x, n_x)
                 update_progress(curnum, outstr)
 
-            if full_grid:
-                cur_params = ionocont.Param_List[i_x, i_t]
-                cur_vel = Vi[i_x, i_t]
-            else:
-                cur_params = ionocont.Param_List[i_x]
+            cur_params = ionocont.Param_List[i_x, i_t]
+            cur_vel = v_i[i_x, i_t]
+
+
             (omeg, cur_spec, rcs) = specobj.getspecsep(cur_params, ionocont.Species,
                                                        cur_vel, rcsflag=True)
             specsum = np.absolute(cur_spec).sum()
@@ -89,7 +86,7 @@ def ISRspecmakeout(paramvals,fc,fs,species,npts):
     Vi = paramvals[:, :, 2*Nsp]
     Parammat = paramvals[:, :, :2*Nsp].reshape((N_x, N_t, Nsp, 2))
     outspecs = np.zeros((N_x, N_t, npts))
-    specobj = ISRSpectrum(centerFrequency=fc, nspec=npts, sampfreq=fs)
+    specobj = Specinit(centerFrequency=fc, nspec=npts, sampfreq=fs)
     outspecsorig = np.zeros_like(outspecs)
     outrcs = np.zeros((N_x, N_t))
     for i_x in np.arange(N_x):
@@ -154,14 +151,17 @@ def ISRSfitfunction(x, y_acf, sensdict, simparams, Niratios,  y_err=None ):
     grt0 = np.exp(-datablock)
     pentsum = np.zeros(grt0.size+1)
     pentsum[:-1] = grt0.flatten()
+    ds_fac = int(np.prod(simparams['declist']))
 
-
-    specobj = ISRSpectrum(centerFrequency=sensdict['fc'], nspec=npts, sampfreq=sensdict['fs'])
+    f_s = float(simparams['fsnum'])/simparams['fsden']
+    sampfreq = f_s/ds_fac
+    npts = int(npts/ds_fac)
+    specobj = ISRSpectrum(centerFrequency=sensdict['fc'], nspec=npts, sampfreq=sampfreq)
     (omeg, cur_spec, rcs) = specobj.getspecsep(datablock, specs, v_i, rcsflag=True)
     cur_spec.astype(numtype)
     # Create spectrum guess
     (_, acf) = spect2acf(omeg, cur_spec)
-    
+
     if amb_dict['WttMatrix'].shape[-1] != acf.shape[0]:
         pdb.set_trace()
     guess_acf = np.dot(amb_dict['WttMatrix'], acf)

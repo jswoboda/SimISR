@@ -36,6 +36,33 @@ def configfilesetup(testpath, npulses, radar='PFISR'):
     simparams['fitmode'] = 1
     simparams['startfile'] = 'startfile.h5'
     makeconfigfile(str(testpath/'stats.yml'), simparams['Beamlist'],
+sensdict['Name'], simparams)
+
+
+def configfilesetup(testpath,npulses):
+
+    """ This will create the configureation file given the number of pulses for
+        the test. This will make it so that there will be 12 integration periods
+        for a given number of pulses.
+        Input
+            testpath - The location of the data.
+            npulses - The number of pulses.
+    """
+    testpath = Path(testpath).expanduser()
+    curloc = Path(__file__).resolve().parent
+    if radar.lower() == 'pfisr':
+        defcon = curloc/'statsbase.ini'
+    elif radar.lower() == 'millstonez':
+        defcon = curloc/'statsbasemhz.yml'
+    (sensdict, simparams) = readconfigfile(defcon)
+    tint = simparams['IPP']*npulses
+    ratio1 = tint/simparams['Tint']
+    simparams['Tint'] = ratio1*simparams['Tint']
+    simparams['Fitinter'] = ratio1 * simparams['Fitinter']
+    simparams['TimeLim'] = 2*tint
+    simparams['fitmode'] = 1
+    simparams['startfile'] = 'startfile.h5'
+    makeconfigfile(str(testpath/'stats.yml'), simparams['Beamlist'],
                    sensdict['Name'], simparams)
 
 def makedata(testpath,tint):

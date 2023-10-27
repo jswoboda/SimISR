@@ -62,3 +62,9 @@ docs/_build/
 *.png
 *.jpg
 .DS_Store
+
+#Ipython notebooks
+*.ipynb_checkpoints
+
+# profiler
+*.cprof
