@@ -639,38 +639,6 @@ def recursively_load_dict_contents_from_group( h5file, path):
     return ans
 
 
-#%% Test functions
-def Chapmanfunc(z, H_0, Z_0, N_0):
-    """This function will return the Chapman function for a given altitude
-    vector z.  All of the height values are assumed km.
-    Inputs
-    z: An array of z values in km.
-    H_0: A single float of the height in km.
-    Z_0: The peak density location.
-    N_0: The peak electron density.
-    """
-    z1 = (z-Z_0)/H_0
-    Ne = N_0*np.exp(0.5*(1-z1-np.exp(-z1)))
-    return Ne
-
-def TempProfile(z, T0=1000., z0=100.):
-    """
-    This function creates a tempreture profile using arc tan functions for test purposes.
-    Inputs
-        z - The altitude locations in km.
-        T0 - The value of the lowest tempretures in K.
-        z0 - The middle value of the atan functions along alitutude. In km.
-    Outputs
-        Te - The electron density profile in K. 1700*(atan((z-z0)2*exp(1)/400-exp(1))+1)/2 +T0
-        Ti - The ion density profile in K. 500*(atan((z-z0)2*exp(1)/400-exp(1))+1)/2 +T0
-    """
-    zall = (z-z0)*2.*np.exp(1)/400. -np.exp(1)
-    atanshp = (np.tanh(zall)+1.)/2
-    Te = 1700*atanshp+T0
-    Ti = 500*atanshp+T0
-
-    return (Te,Ti)
-
 
 
 #%% Config files

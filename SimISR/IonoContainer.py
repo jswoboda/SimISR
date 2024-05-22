@@ -7,7 +7,6 @@ from six import string_types
 import os
 import glob
 import inspect
-import posixpath
 import copy
 from datetime import datetime
 from pathlib import Path
@@ -41,21 +40,27 @@ class IonoContainer(object):
         species=None,
         velocity=None,
     ):
-        """This constructor function will use create an instance of the IonoContainer class
+        """Ionocontainer object class constructor
+
+        This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
-        Inputs:
-        coordlist - Nx3 Numpy array where N is the number of coordinates.
-        paramlist - NxTxP Numpy array where T is the number of times and P is the number of parameters
-                    alternatively it could be NxP if there is only one time instance.
-        times - A T length numpy array where T is the number of times.  This is
-                optional input, if not given then its just a numpy array of 0-T
-        sensor_loc - A numpy array of length 3 that gives the sensor location.
-                    The default value is [0,0,0] in cartisian space.
-        ver - (Optional) If 0 the coordlist is in Cartisian coordinates if 1 then
-        coordlist is a spherical coordinates.
-        coordvecs - (Optional) A dictionary that holds the individual coordinate vectors.
-        if sphereical coordinates keys are 'r','theta','phi' if cartisian 'x','y','z'.
-        paramnames - This is a list or number numpy array of numbers for each parameter in the
+
+        Parameters
+        ----------
+        coordlist : array_like
+            Nx3 Numpy array where N is the number of coordinates.
+        paramlist : array_like
+            NxTxP Numpy array where T is the number of times and P is the number of parameters alternatively it could be NxP if there is only one time instance.
+        times : array_like
+            A T length numpy array where T is the number of times.  This is optional input, if not given then its just a numpy array of 0-T
+        sensor_loc : array_like
+            A numpy array of length 3 that gives the sensor location. The default value is [0,0,0] in cartisian space.
+        ver : int
+            If 0 the coordlist is in Cartisian coordinates if 1 then coordlist is a spherical coordinates.
+        coordvecs : dict
+            A dictionary that holds the individual coordinate vectors. if sphereical coordinates keys are 'r','theta','phi' if cartisian 'x','y','z'.
+        paramnames : list
+            This is a list or number numpy array of numbers for each parameter in the paramlist array.
         """
         # Set up the size for the time vector if its not given.
         Ndims = paramlist.ndim
@@ -324,7 +329,6 @@ class IonoContainer(object):
 
         vardict = vars(self)
         save_dict_to_hdf5(vardict, filename)
-
 
     @staticmethod
     def readmat(filename):
@@ -874,128 +878,3 @@ def makeionocombined(datapath, ext=".h5"):
         else:
             outiono.combinetimes(curiono)
     return outiono
-
-
-def pathparts(path):
-    """
-    This will break up a path name into componenets using recursion
-    Input - path a string seperated by a posix path seperator.
-    Output - A list of strings of the path parts.
-    """
-    components = []
-    while True:
-        (path, tail) = posixpath.split(path)
-        if tail == "":
-            components.reverse()
-            return components
-        components.append(tail)
-
-
-def MakeTestIonoclass(
-    testv=False,
-    testtemp=False,
-    N_0=1e11,
-    z_0=250.0,
-    H_0=50.0,
-    coords=None,
-    times=np.array([[0, 1e6]]),
-):
-    """
-    This function will create a test ionoclass with an electron density that
-    follows a chapman function.
-    Inputs
-        testv - A bool to add velocities. If not then all of the velocity values will be zero.
-        testtemp - If true then a tempreture profile will be used. If not then there will be a set tempreture
-            of 2000 k for Te and Ti.
-        N_0 - The peak value of the chapman functions
-        z_0 - The peak altitude of the chapman function.
-        H_0 - The scale hight.
-        coords - A list of coordinates that the data will be created over.
-        times - A list of times the data will be created over.
-    Outputs
-        Icont - A test ionocontainer.
-    """
-    if coords is None:
-        xvec = np.arange(-250.0, 250.0, 20.0)
-        yvec = np.arange(-250.0, 250.0, 20.0)
-        zvec = np.arange(50.0, 900.0, 2.0)
-        # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
-        xx, zz, yy = np.meshgrid(xvec, zvec, yvec)
-        coords = np.zeros((xx.size, 3))
-        coords[:, 0] = xx.flatten()
-        coords[:, 1] = yy.flatten()
-        coords[:, 2] = zz.flatten()
-        zzf = zz.flatten()
-    else:
-        zzf = coords[:, 2]
-    #    H_0 = 50.0 #km scale height
-    #    z_0 = 250.0 #km
-    #    N_0 = 10**11
-
-    # Make electron density
-    Ne_profile = Chapmanfunc(zzf, H_0, z_0, N_0)
-    # Make temperture background
-    if testtemp:
-        (Te, Ti) = TempProfile(zzf)
-    else:
-        Te = np.ones_like(zzf) * 2000.0
-        Ti = np.ones_like(zzf) * 1500.0
-
-    # set up the velocity
-    (Nlocs, ndims) = coords.shape
-    Ntime = len(times)
-    vel = np.zeros((Nlocs, Ntime, ndims))
-
-    if testv:
-        vel[:, :, 2] = np.repeat(zzf[:, np.newaxis], Ntime, axis=1) / 5.0
-    species = ["O+", "e-"]
-    # put the parameters in order
-    params = np.zeros((Ne_profile.size, len(times), 2, 2))
-    params[:, :, 0, 1] = np.repeat(Ti[:, np.newaxis], Ntime, axis=1)
-    params[:, :, 1, 1] = np.repeat(Te[:, np.newaxis], Ntime, axis=1)
-    params[:, :, 0, 0] = np.repeat(Ne_profile[:, np.newaxis], Ntime, axis=1)
-    params[:, :, 1, 0] = np.repeat(Ne_profile[:, np.newaxis], Ntime, axis=1)
-
-    Icont1 = IonoContainer(
-        coordlist=coords,
-        paramlist=params,
-        times=times,
-        sensor_loc=np.zeros(3),
-        ver=0,
-        coordvecs=["x", "y", "z"],
-        paramnames=None,
-        species=species,
-        velocity=vel,
-    )
-    return Icont1
-
-
-def main():
-    """
-    This is a test function that create an instance of the ionocontainer class and check if
-    copies of it are equal.
-    """
-    curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0], "testdata")
-
-    Icont1 = MakeTestIonoclass()
-
-    Icont1.savemat(os.path.join(testpath, "testiono.mat"))
-    Icont1.saveh5(os.path.join(testpath, "testiono.h5"))
-    Icont2 = IonoContainer.readmat(os.path.join(testpath, "testiono.mat"))
-    Icont3 = IonoContainer.readh5(os.path.join(testpath, "testiono.h5"))
-
-    if Icont1 == Icont2:
-        print("Mat file saving and reading works")
-    else:
-        print("Something is wrong with the Mat file writing and reading")
-    if Icont1 == Icont3:
-        print("h5 file saving and reading works")
-    else:
-        print("Something is wrong with the h5 file writing and reading")
-    # %% Main
-
-
-if __name__ == "__main__":
-
-    main()

@@ -5,7 +5,7 @@ This is the setup file for the SimISR python package
 
 @author: John Swoboda
 """
-req = ['ISRSpectrum', 'nose','six','numpy','scipy','tables','matplotlib','seaborn','pyyaml','pandas','digital_rf']
+req = ['ISRSpectrum', 'nose','six','numpy','scipy','matplotlib','seaborn','pyyaml','pandas','digital_rf']
 
 import os
 from setuptools import setup, find_packages

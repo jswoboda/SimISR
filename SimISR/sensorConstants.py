@@ -5,7 +5,7 @@
 
 .. moduleauthor:: John Swoboda <swoboj@bu.edu>
 """
-from . import Path
+from pathlib import Path
 import tables
 import h5py
 import numpy as np
@@ -13,7 +13,8 @@ from scipy.interpolate import griddata
 import scipy as sp
 import scipy.constants as sconst
 #
-from .mathutils import diric, angles2xy, jinc, rotcoords
+from mathutils import diric, angles2xy, jinc, rotcoords
+from h5fileIO import load_dict_from_hdf5
 ## Parameters for Sensor
 #AMISR = {'Name':'AMISR','Pt':2e6,'k':9.4,'G':10**4.3,'lamb':0.6677,'fc':449e6,'fs':50e3,\
 #    'taurg':14,'Tsys':120,'BeamWidth':(2,2)}
@@ -66,14 +67,22 @@ def getConst(typestr,angles = None):
         arrayfunc = Sond_Pattern
         h5filename = dirname/'Sondrestrom_PARAMS.h5'
 
-    with tables.open_file(str(h5filename)) as f:
-        kmat = f.root.Params.Kmat.read()
-        freq = float(f.root.Params.Frequency.read())
-        P_r = float(f.root.Params.Power.read())
-        bandwidth = f.get_node('/Params/Bandwidth').read()
-        ts = f.get_node('/Params/Sampletime').read()
-        systemp = f.get_node('/Params/Systemp').read()
-        Ang_off = f.root.Params.Angleoffset.read()
+    # with tables.open_file(str(h5filename)) as f:
+    #     kmat = f.root.Params.Kmat.read()
+    #     freq = float(f.root.Params.Frequency.read())
+    #     P_r = float(f.root.Params.Power.read())
+    #     bandwidth = f.get_node('/Params/Bandwidth').read()
+    #     ts = f.get_node('/Params/Sampletime').read()
+    #     systemp = f.get_node('/Params/Systemp').read()
+    #     Ang_off = f.root.Params.Angleoffset.read()
+    am = load_dict_from_hdf5(str(h5filename))
+    kmat = am['Params']['Kmat']
+    freq = am['Params']['Frequency']
+    P_r = am['Params']['Power']
+    bandwidth = am['Params']["Bandwidth"]
+    ts = am['Params']["Sampletime"]
+    systemp = am['Params']["Systemp"]
+    Ang_off = am['Params']["Angleoffset"]
 
     Ksens = freq*2*np.pi/sconst.c
     lamb = Ksens/2.0/np.pi
@@ -82,7 +91,7 @@ def getConst(typestr,angles = None):
     ksys = kmat[:, 3]
 
     (xin, yin) = angles2xy(az, el)
-    points = sp.column_stack((xin, yin))
+    points = np.column_stack((xin, yin))
     if angles is not None:
         (xvec, yvec) = angles2xy(angles[:, 0], angles[:, 1])
         ksysout = griddata(points, ksys, (xvec, yvec), method='nearest')
@@ -114,13 +123,12 @@ def getangles(bcodes, radar='risr'):
     elif radar.lower() == 'sondrestrom':
         reffile = get_files('Sondrestrom_PARAMS.h5')
 
-    with tables.open_file(str(reffile)) as f:
-        all_ref = f.root.Params.Kmat.read()
 
-
+    am = load_dict_from_hdf5(str(reffile))
+    kmat = am['Params']['Kmat']
     # make a beamcode to angle dictionary
     bco_dict = dict()
-    for slin in all_ref:
+    for slin in kmat:
         bco_num = slin[0].astype(int)
         bco_dict[bco_num] = (float(slin[1]), float(slin[2]))
 

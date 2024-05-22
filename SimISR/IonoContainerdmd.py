@@ -9,7 +9,7 @@ import glob
 import inspect
 import posixpath
 import copy
-from SimISR import Path
+from pathlib import Path
 import numpy as np
 import scipy.io as sio
 import scipy.interpolate

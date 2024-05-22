@@ -6,15 +6,15 @@ This file holds the RadarData class that hold the radar data and processes it.
 @author: John Swoboda
 """
 import ipdb
+from pathlib import Path
 import numpy as np
 import scipy.signal as sig
 import scipy.constants as sc
 
 # My modules
-from pathlib import Path
-#import multiprocessing as mp
-from SimISR.IonoContainer import IonoContainer
-from SimISR.utilFunctions import CenteredLagProduct, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
+from IonoContainer import IonoContainer
+from utilFunctions import CenteredLagProduct, MakePulseDataRepLPC, readconfigfile, BarkerLag, update_progress
+from h5fileIO import save_dict_to_hdf5, load_dict_from_hdf5
 import digital_rf as drf
 #from SimISR import specfunctions
 #from SimISR.analysisplots import plotspecsgen
@@ -74,7 +74,7 @@ class RadarDataFile(object):
         """
             If data has been previously made set it up accordinly
         """
-        infodict = h52dict(str(self.datadir.joinpath('INFO.h5')))
+        infodict = load_dict_from_hdf5(str(self.datadir.joinpath('INFO.h5')))
         alltime = np.hstack(infodict['Time'])
         self.timeoffset = alltime.min()
         self.outfilelist = outfilelist
@@ -707,7 +707,7 @@ class RadarDataFile(object):
         # set up arrays that hold the location of pulses that are to be processed together
         infoname = self.datadir / 'INFO.h5'
         # Just going to assume that the info file is in the directory
-        infodict = h52dict(str(infoname))
+        infodict = load_dict_from_hdf5(str(infoname))
         flist = infodict['Files']
         file_list = [str(self.datadir/i) for i in flist]
         pulsen_list = infodict['Pulses']
@@ -766,7 +766,7 @@ class RadarDataFile(object):
                 curfileit = [np.where(pulsen_list[ifn] == item)[0] for item in pulseset]
                 curfileitvec = np.hstack(curfileit)
                 ifile = file_list[ifn]
-                curh5data = h52dict(ifile)
+                curh5data = load_dict_from_hdf5(ifile)
                 file_arlocs = np.where(curfileloc == ifn)[0]
                 curdata[file_arlocs] = curh5data['RawData'][curfileitvec]
 
