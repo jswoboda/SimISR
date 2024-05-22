@@ -29,7 +29,7 @@ import ipdb
 # Imported scipy and matplotlib modules
 import scipy as sp
 # My modules
-from SimISR import Path
+from pathlib import Path
 from SimISR.IonoContainer import IonoContainer
 from SimISR.radarData import RadarDataFile
 import SimISR.specfunctions as specfuncs

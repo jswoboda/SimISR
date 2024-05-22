@@ -19,7 +19,7 @@ import scipy.interpolate as spinterp
 import scipy.constants as sconst
 #
 import SimISR.sensorConstants as sensconst
-from SimISR import Path
+from pathlib import Path
 
 # utility functions
 

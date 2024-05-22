@@ -7,7 +7,7 @@ This module will implement a simple fitter for ISR spectra.
 
 import scipy as sp
 import scipy.optimize
-from SimISR import Path
+from pathlib import Path
 from SimISR.IonoContainer import IonoContainer, makeionocombined
 from SimISR.utilFunctions import readconfigfile, update_progress,spect2acf
 import SimISR.specfunctions as specfuncs
@@ -176,7 +176,7 @@ if __name__ == '__main__':
     args_commd = parse_command_line()
 
     if args_commd.path is None:
-        print "Please provide an input source with the -p option!"
+        print("Please provide an input source with the -p option!")
         sys.exit(1)
 
     run_sim(args_commd)

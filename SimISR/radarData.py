@@ -11,7 +11,7 @@ import scipy.signal as sig
 import scipy.constants as sc
 
 # My modules
-from SimISR import Path
+from pathlib import Path
 #import multiprocessing as mp
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import CenteredLagProduct, MakePulseDataRepLPC,dict2h5,h52dict,readconfigfile, BarkerLag, update_progress
@@ -45,21 +45,14 @@ class RadarDataFile(object):
 
 
     def __init__(self, config, outdir, outfilelist=None):
-        """
-            This function will create an instance of the RadarData class.  It will
-            take in the values and create the class and make raw IQ data.
-            Inputs:
-            sensdict - A dictionary of sensor parameters
-            angles - A list of tuples which the first position is the az angle
-                and the second position is the el angle.
-            IPP - The interpulse period in seconds represented as a float.
-            Tint - The integration time in seconds as a float.  This will be the
-            integration time of all of the beams.
-            time_lim - The length of time of the simulation the number of time points
-                will be calculated.
-            pulse - A numpy array that represents the pulse shape.
-            rng_lims - A numpy array of length 2 that holds the min and max range
-                that the radar will cover.
+        """ This function will create an instance of the RadarData class.  It will take in the values and create the class and make raw IQ data.
+            
+            Parameters
+            ----------
+            config : str
+                Configuration file
+            outdir : str
+                Directory data will be saved.
         """
         (self.sensdict, self.simparams) = readconfigfile(config)
 

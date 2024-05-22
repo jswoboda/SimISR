@@ -10,27 +10,38 @@ import inspect
 import posixpath
 import copy
 from datetime import datetime
-from SimISR import Path
+from pathlib import Path
 import numpy as np
 import scipy.io as sio
 import scipy.interpolate
-import h5py
-import tables
 import numbers
 import pandas as pd
+
 # From my
-from SimISR.utilFunctions import load_dict_from_hdf5, save_dict_to_hdf5
+from SimISR.h5fileIO import load_dict_from_hdf5, save_dict_to_hdf5
+
 
 class IonoContainer(object):
     """
-        Holds the coordinates and parameters to create the ISR data. This class can hold plasma parameters
-        spectra, or ACFs. If given plasma parameters the can call the ISR spectrum functions and for each
-        point in time and space a spectra will be created.
+    Holds the coordinates and parameters to create the ISR data. This class can hold plasma parameters
+    spectra, or ACFs. If given plasma parameters the can call the ISR spectrum functions and for each
+    point in time and space a spectra will be created.
     """
-    #%% Init function
-    def __init__(self, coordlist, paramlist, times=None, sensor_loc=np.zeros(3), ver=0,
-                 coordvecs=None, paramnames=None, species=None, velocity=None):
-        """ This constructor function will use create an instance of the IonoContainer class
+
+    # %% Init function
+    def __init__(
+        self,
+        coordlist,
+        paramlist,
+        times=None,
+        sensor_loc=np.zeros(3),
+        ver=0,
+        coordvecs=None,
+        paramnames=None,
+        species=None,
+        velocity=None,
+    ):
+        """This constructor function will use create an instance of the IonoContainer class
         using either cartisian or spherical coordinates depending on which ever the user prefers.
         Inputs:
         coordlist - Nx3 Numpy array where N is the number of coordinates.
@@ -61,37 +72,37 @@ class IonoContainer(object):
             y_vec = coordlist[:, 1]
             z_vec = coordlist[:, 2]
 
-            r_vec = np.sqrt(x_vec**2+y_vec**2+z_vec**2)
+            r_vec = np.sqrt(x_vec**2 + y_vec**2 + z_vec**2)
             az_vec = np.degrees(np.arctan2(x_vec, x_vec))
-            el_vec = np.degrees(np.arcsin(z_vec/r_vec))
+            el_vec = np.degrees(np.arcsin(z_vec / r_vec))
 
             self.Cart_Coords = coordlist
             self.Sphere_Coords = np.array([r_vec, az_vec, el_vec]).transpose()
             if coordvecs is not None:
-                if set(coordvecs)!={'x', 'y', 'z'}:
+                if set(coordvecs) != {"x", "y", "z"}:
                     raise NameError("Keys for coordvecs need to be 'x','y','z' ")
             else:
-                coordvecs = ['x', 'y', 'z']
+                coordvecs = ["x", "y", "z"]
 
         elif ver == 1:
             r_vec = coordlist[:, 0]
             az_vec = np.radians(coordlist[:, 1])
             el_vec = np.radians(coordlist[:, 2])
 
-            xvecmult = np.sin(az_vec)*np.cos(el_vec)
-            yvecmult = np.cos(az_vec)*np.cos(el_vec)
+            xvecmult = np.sin(az_vec) * np.cos(el_vec)
+            yvecmult = np.cos(az_vec) * np.cos(el_vec)
             zvecmult = np.sin(el_vec)
-            x_vec = r_vec*xvecmult
-            y_vec = r_vec*yvecmult
-            z_vec = r_vec*zvecmult
+            x_vec = r_vec * xvecmult
+            y_vec = r_vec * yvecmult
+            z_vec = r_vec * zvecmult
 
             self.Cart_Coords = np.column_stack((x_vec, y_vec, z_vec))
             self.Sphere_Coords = coordlist
             if coordvecs is not None:
-                if set(coordvecs) != {'r', 'theta', 'phi'}:
+                if set(coordvecs) != {"r", "theta", "phi"}:
                     raise NameError("Keys for coordvecs need to be 'r','theta','phi' ")
             else:
-                 coordvecs = ['r', 'theta', 'phi']
+                coordvecs = ["r", "theta", "phi"]
         # used to deal with the change in the files
         if type(coordvecs) == np.ndarray:
             coordvecs = [str(ic) for ic in coordvecs]
@@ -102,15 +113,17 @@ class IonoContainer(object):
         self.Sensor_loc = sensor_loc
         self.Species = species
         (Nloc, Nt) = paramlist.shape[:2]
-        #set up a Velocity measurement
+        # set up a Velocity measurement
         if velocity is None:
-            self.Velocity=np.zeros((Nloc, Nt, 3))
+            self.Velocity = np.zeros((Nloc, Nt, 3))
         else:
             # if in sperical coordinates and you have a velocity
             if velocity.ndim == 2 and ver == 1:
-                veltup = (velocity*np.tile(xvecmult[:, np.newaxis], (1, Nt)),
-                          velocity*np.tile(yvecmult[:, np.newaxis], (1, Nt)),
-                          velocity*np.tile(zvecmult[:, np.newaxis], (1, Nt)))
+                veltup = (
+                    velocity * np.tile(xvecmult[:, np.newaxis], (1, Nt)),
+                    velocity * np.tile(yvecmult[:, np.newaxis], (1, Nt)),
+                    velocity * np.tile(zvecmult[:, np.newaxis], (1, Nt)),
+                )
                 self.Velocity = np.dstack(veltup)
             else:
                 self.Velocity = velocity
@@ -118,8 +131,8 @@ class IonoContainer(object):
         if paramnames is None:
             partparam = paramlist.shape[2:]
             if species is not None:
-                paramnames = [['Ni_'+isp, 'Ti_'+isp] for isp in species[:-1]]
-                paramnames.append(['Ne', 'Te'])
+                paramnames = [["Ni_" + isp, "Ti_" + isp] for isp in species[:-1]]
+                paramnames.append(["Ne", "Te"])
                 self.Param_Names = np.array(paramnames, dtype=str)
             else:
 
@@ -128,29 +141,30 @@ class IonoContainer(object):
         else:
             self.Param_Names = paramnames
 
-    #%% Getting closest objects
+    # %% Getting closest objects
     def getclosestsphere(self, coords, timelist=None):
         """
-            This method will get the closest point in space to given spherical coordinates from the
-            IonoContainer.
-            Input
-            coords - A list of r,az and phi coordinates.
-            Output
-            paramout - A NtxNp array from the closes output params
-            sphereout - A Nc length array The sphereical coordinates of the closest point.
-            cartout -  Cartisian coordinates of the closes point.
-            distance - The spatial distance between the returned location and the
-                desired location.
-            minidx - The spatial index point.
-            tvec - The times of the returned data.
+        This method will get the closest point in space to given spherical coordinates from the
+        IonoContainer.
+        Input
+        coords - A list of r,az and phi coordinates.
+        Output
+        paramout - A NtxNp array from the closes output params
+        sphereout - A Nc length array The sphereical coordinates of the closest point.
+        cartout -  Cartisian coordinates of the closes point.
+        distance - The spatial distance between the returned location and the
+            desired location.
+        minidx - The spatial index point.
+        tvec - The times of the returned data.
         """
-        d2r = np.pi/180.0
+        d2r = np.pi / 180.0
         (r, az, el) = coords
-        x_coord = r*np.sin(az*d2r)*np.cos(el*d2r)
-        y_coord = r*np.cos(az*d2r)*np.cos(el*d2r)
-        z_coord = r*np.sin(el*d2r)
+        x_coord = r * np.sin(az * d2r) * np.cos(el * d2r)
+        y_coord = r * np.cos(az * d2r) * np.cos(el * d2r)
+        z_coord = r * np.sin(el * d2r)
         cartcoord = np.array([x_coord, y_coord, z_coord])
         return self.getclosest(cartcoord, timelist)
+
     def getclosest(self, coords, timelist=None):
         """
         This method will get the closest set of parameters in the coordinate space. It will return
@@ -173,7 +187,7 @@ class IonoContainer(object):
         xdiff = x_vec - coords[0]
         ydiff = y_vec - coords[1]
         zdiff = z_vec - coords[2]
-        distall = xdiff**2+ydiff**2+zdiff**2
+        distall = xdiff**2 + ydiff**2 + zdiff**2
         minidx = np.argmin(distall)
         paramout = self.Param_List[minidx]
         velout = self.Velocity[minidx]
@@ -188,24 +202,35 @@ class IonoContainer(object):
             timeindx = []
             for itime in timelist:
                 if np.isscalar(itime):
-                    timeindx.append(np.argmin(np.absolute(itime-datatime)))
+                    timeindx.append(np.argmin(np.absolute(itime - datatime)))
                 else:
                     # look for overlap
                     log1 = (tvec[:, 0] >= itime[0]) & (tvec[:, 0] < itime[1])
                     log2 = (tvec[:, 1] > itime[0]) & (tvec[:, 1] <= itime[1])
                     log3 = (tvec[:, 0] <= itime[0]) & (tvec[:, 1] > itime[1])
                     log4 = (tvec[:, 0] > itime[0]) & (tvec[:, 1] < itime[1])
-                    tempindx = np.where(log1|log2|log3|log4)[0]
+                    tempindx = np.where(log1 | log2 | log3 | log4)[0]
 
-                    timeindx = timeindx +tempindx.tolist()
+                    timeindx = timeindx + tempindx.tolist()
             paramout = paramout[timeindx]
             velout = velout[timeindx]
             tvec = tvec[timeindx]
         sphereout = self.Sphere_Coords[minidx]
         cartout = self.Cart_Coords[minidx]
-        return (paramout, velout, sphereout, cartout, np.sqrt(distall[minidx]), minidx, tvec)
-    #%% Interpolation methods
-    def interp(self,new_coords,ver=0,sensor_loc = None,method='linear',fill_value=np.nan):
+        return (
+            paramout,
+            velout,
+            sphereout,
+            cartout,
+            np.sqrt(distall[minidx]),
+            minidx,
+            tvec,
+        )
+
+    # %% Interpolation methods
+    def interp(
+        self, new_coords, ver=0, sensor_loc=None, method="linear", fill_value=np.nan
+    ):
         """
         This method will take the parameters in the Param_List variable and spatially.
         interpolate the points given the new coordinates. The method will be
@@ -222,122 +247,124 @@ class IonoContainer(object):
         parameters.
         """
         if sensor_loc is None:
-            sensor_loc=self.Sensor_loc
+            sensor_loc = self.Sensor_loc
 
-        curavalmethods = ['linear', 'nearest', 'cubic']
-        interpmethods = ['linear', 'nearest', 'cubic']
+        curavalmethods = ["linear", "nearest", "cubic"]
+        interpmethods = ["linear", "nearest", "cubic"]
         if method not in curavalmethods:
-            raise ValueError('Must be one of the following methods: '+ str(curavalmethods))
-        (Nloc,Nt) = self.Param_List.shape[:2]
-        New_param = np.zeros_like(self.Param_List,dtype=self.Param_List.dtype)
+            raise ValueError(
+                "Must be one of the following methods: " + str(curavalmethods)
+            )
+        (Nloc, Nt) = self.Param_List.shape[:2]
+        New_param = np.zeros_like(self.Param_List, dtype=self.Param_List.dtype)
         curcoords = self.Cart_Coords
 
         for itime in np.arange(Nt):
-            curparamar = self.Param_List[:,itime]
-            changeparams=False
-            Nparams=np.product(curparamar.shape[1:])
+            curparamar = self.Param_List[:, itime]
+            changeparams = False
+            Nparams = np.product(curparamar.shape[1:])
             # deal with case where parameters are multi-dimensional arrays, flatten each array and apply interpolation
-            if curparamar.ndim >2:
-                changeparams=True
+            if curparamar.ndim > 2:
+                changeparams = True
                 oldshape = curparamar.shape
-                curparamar = np.reshape(curparamar,(Nloc,Nparams))
+                curparamar = np.reshape(curparamar, (Nloc, Nparams))
 
             tempparams = np.zeros_like(curparamar)
             for iparam in np.arange(Nparams):
-                curparam =curparamar[:,iparam]
+                curparam = curparamar[:, iparam]
 
                 if method in interpmethods:
-                    tempparams[:,iparam] = scipy.interpolate.griddata(curcoords,curparam,new_coords,method,fill_value)
+                    tempparams[:, iparam] = scipy.interpolate.griddata(
+                        curcoords, curparam, new_coords, method, fill_value
+                    )
 
             if changeparams:
-                New_param[:,itime] = np.reshape(tempparams,oldshape)
+                New_param[:, itime] = np.reshape(tempparams, oldshape)
             else:
-                New_param[:,itime] =tempparams
+                New_param[:, itime] = tempparams
 
+        return IonoContainer(
+            new_coords,
+            New_param,
+            self.Time_Vector,
+            sensor_loc,
+            ver,
+            self.Coord_Vecs,
+            self.Param_Names,
+        )
 
-        return IonoContainer(new_coords,New_param,self.Time_Vector,sensor_loc,ver,self.Coord_Vecs,self.Param_Names)
-
-     #%% Read and Write Methods
-    def savemat(self,filename):
+    # %% Read and Write Methods
+    def savemat(self, filename):
         """
         This method will write out a structured mat file and save information
         from the class.
         inputs
         filename - A string for the file name.
         """
-        #outdict = {'Cart_Coords':self.Cart_Coords,'Sphere_Coords':self.Sphere_Coords,\
+        # outdict = {'Cart_Coords':self.Cart_Coords,'Sphere_Coords':self.Sphere_Coords,\
         #    'Param_List':self.Param_List,'Time_Vector':self.Time_Vector}
-#        if self.Coord_Vecs!=None:
-#            #fancy way of combining dictionaries
-#            outdict = dict(outdict.items()+self.Coord_Vecs.items())
+        #        if self.Coord_Vecs!=None:
+        #            #fancy way of combining dictionaries
+        #            outdict = dict(outdict.items()+self.Coord_Vecs.items())
         outdict1 = vars(self)
-        outdict = {ik:outdict1[ik] for ik in outdict1.keys() if not(outdict1[ik] is None)}
-        sio.savemat(filename,mdict=outdict)
+        outdict = {
+            ik: outdict1[ik] for ik in outdict1.keys() if not (outdict1[ik] is None)
+        }
+        sio.savemat(filename, mdict=outdict)
 
-    def saveh5(self,filename):
+    def saveh5(self, filename):
         """
         This method will save the instance of the class to a structured h5 file.
         Input:
         filename - A string for the file name.
         """
-        filename=Path(filename)
+        filename = Path(filename)
         if filename.is_file():
             filename.unlink()
-
 
         vardict = vars(self)
         save_dict_to_hdf5(vardict, filename)
 
-        # with tables.open_file(str(filename), mode = "w", title = "IonoContainer out.") as f:
-
-        #     try:
-        #         # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
-        #         # Make group for each dictionary
-        #         for cvar in vardict.keys():
-        #             #group = f.create_group(posixpath.sep, cvar,cvar +'dictionary')
-        #             if type(vardict[cvar]) ==dict: # Check if dictionary
-        #                 dictkeys = vardict[cvar].keys()
-        #                 group2 = f.create_group('/',cvar,cvar+' dictionary')
-        #                 for ikeys in dictkeys:
-        #                     f.create_array(group2,ikeys,vardict[cvar][ikeys],'Static array')
-        #             else:
-        #                 if not(vardict[cvar] is None):
-        #                     f.create_array('/',cvar,vardict[cvar],'Static array')
-
-        #     except Exception as inst:
-        #         print(type(inst))
-        #         print(inst.args)
-        #         print(inst)
-        #         raise NameError('Failed to write to h5 file.')
 
     @staticmethod
-
     def readmat(filename):
         """
         This method will read an instance of the class from a mat file.
         Input:
         filename - A string for the file name.
         """
-        indata = sio.loadmat(filename,chars_as_strings=True)
-        vardict = {'coordlist':'Cart_Coords','coordlist2':'Sphere_Coords','paramlist':'Param_List',\
-            'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
-            'paramnames':'Param_Names','species':'Species','velocity':'Velocity'}
+        indata = sio.loadmat(filename, chars_as_strings=True)
+        vardict = {
+            "coordlist": "Cart_Coords",
+            "coordlist2": "Sphere_Coords",
+            "paramlist": "Param_List",
+            "times": "Time_Vector",
+            "sensor_loc": "Sensor_loc",
+            "coordvecs": "Coord_Vecs",
+            "paramnames": "Param_Names",
+            "species": "Species",
+            "velocity": "Velocity",
+        }
         outdict = {}
         for ikey in vardict.keys():
             if vardict[ikey] in indata.keys():
-                if (ikey=='species') and (type(indata[vardict[ikey]]) ==np.ndarray):
-                    indata[vardict[ikey]] = [str(''.join(letter)) for letter_array in indata[vardict[ikey]][0] for letter in letter_array]
+                if (ikey == "species") and (type(indata[vardict[ikey]]) == np.ndarray):
+                    indata[vardict[ikey]] = [
+                        str("".join(letter))
+                        for letter_array in indata[vardict[ikey]][0]
+                        for letter in letter_array
+                    ]
 
                 outdict[ikey] = indata[vardict[ikey]]
 
-        if 'coordvecs' in outdict.keys():
-            if [str(x) for x in outdict['coordvecs']] == ['r','theta','phi']:
-                outdict['ver']=1
-                outdict['coordlist']=outdict['coordlist2']
-        del outdict['coordlist2']
+        if "coordvecs" in outdict.keys():
+            if [str(x) for x in outdict["coordvecs"]] == ["r", "theta", "phi"]:
+                outdict["ver"] = 1
+                outdict["coordlist"] = outdict["coordlist2"]
+        del outdict["coordlist2"]
         return IonoContainer(**outdict)
-    @staticmethod
 
+    @staticmethod
     def readh5(filename):
         """
         This method will read an instance of the class from a structured h5 file.
@@ -345,50 +372,35 @@ class IonoContainer(object):
         filename - A string for the file name.
         """
 
-        vardict = {'coordlist':'Cart_Coords','coordlist2':'Sphere_Coords','paramlist':'Param_List',\
-            'times':'Time_Vector','sensor_loc':'Sensor_loc','coordvecs':'Coord_Vecs',\
-            'paramnames':'Param_Names', 'species':'Species','velocity':'Velocity'}
-        vardict2 = {vardict[ikey]:ikey for ikey in vardict.keys()}
+        vardict = {
+            "coordlist": "Cart_Coords",
+            "coordlist2": "Sphere_Coords",
+            "paramlist": "Param_List",
+            "times": "Time_Vector",
+            "sensor_loc": "Sensor_loc",
+            "coordvecs": "Coord_Vecs",
+            "paramnames": "Param_Names",
+            "species": "Species",
+            "velocity": "Velocity",
+        }
+        vardict2 = {vardict[ikey]: ikey for ikey in vardict.keys()}
         file_dict = load_dict_from_hdf5(filename)
-        if not file_dict['Species'] is None:
-            file_dict['Species'] = file_dict['Species'].astype('<U6').tolist()
-        file_dict['Param_Names'] = file_dict['Param_Names'].astype('<U6')
+        if not file_dict["Species"] is None:
+            file_dict["Species"] = file_dict["Species"].astype("<U6").tolist()
+        file_dict["Param_Names"] = file_dict["Param_Names"].astype("<U6")
         outdict = {}
-        # with tables.open_file(filename) as f:
-        #     output={}
-        #     # Read in all of the info from the h5 file and put it in a dictionary.
-        #     for group in f.walk_groups(posixpath.sep):
-        #         output[group._v_pathname]={}
-        #         for array in f.list_nodes(group, classname = 'Array'):
-        #             output[group._v_pathname][array.name]=array.read()
-        #     f.close()
-        # outarr = [pathparts(ipath) for ipath in output.keys() if len(pathparts(ipath))>0]
-        # outlist = []
-        # basekeys  = output[posixpath.sep].keys()
-        # # Determine assign the entries to each entry in the list of variables.
-        # for ivar in vardict2.keys():
-        #     dictout = False
-        #     for npath,ipath in enumerate(outarr):
-        #         if ivar==ipath[0]:
-        #             outlist.append(output[output.keys()[npath]])
-        #             dictout=True
-        #             break
-        #     if dictout:
-        #         continue
 
-        #     if ivar in basekeys:
-        #         outdict[vardict2[ivar]] = output[posixpath.sep][ivar]
         for ivar in vardict2.keys():
             outdict[vardict2[ivar]] = file_dict[ivar]
         # determine version of data
-        if 'coordvecs' in outdict.keys():
-            if type(outdict['coordvecs']) ==np.ndarray:
-                outdict['coordvecs'] = outdict['coordvecs'].astype('<U6').tolist()
-            if set(outdict['coordvecs']) == {'r','theta','phi'}:
-                outdict['ver']=1
-                outdict['coordlist'] = outdict['coordlist2'].copy()
-        if 'coordlist2' in outdict.keys():
-            del outdict['coordlist2']
+        if "coordvecs" in outdict.keys():
+            if type(outdict["coordvecs"]) == np.ndarray:
+                outdict["coordvecs"] = outdict["coordvecs"].astype("<U6").tolist()
+            if set(outdict["coordvecs"]) == {"r", "theta", "phi"}:
+                outdict["ver"] = 1
+                outdict["coordlist"] = outdict["coordlist2"].copy()
+        if "coordlist2" in outdict.keys():
+            del outdict["coordlist2"]
         return IonoContainer(**outdict)
 
     @staticmethod
@@ -405,270 +417,321 @@ class IonoContainer(object):
             outtime - A Nt x 2 numpy array of all of the times.
             timebeg - A list of beginning times
         """
-        if isinstance(ionocontlist,string_types):
-            ionocontlist=[ionocontlist]
-        timelist=[]
+        if isinstance(ionocontlist, string_types):
+            ionocontlist = [ionocontlist]
+        timelist = []
         fileslist = []
-        for ifilenum,ifile in enumerate(ionocontlist):
+        for ifilenum, ifile in enumerate(ionocontlist):
             temp_data = load_dict_from_hdf5(ifile)
 
-            times = temp_data['Time_Vector']
+            times = temp_data["Time_Vector"]
             timelist.append(times)
-            fileslist.append(ifilenum*np.ones(len(times)))
-        times_file =np.array([i[:,0].min() for i in timelist])
+            fileslist.append(ifilenum * np.ones(len(times)))
+        times_file = np.array([i[:, 0].min() for i in timelist])
         sortlist = np.argsort(times_file)
 
         timelist_s = [timelist[i] for i in sortlist]
         timebeg = times_file[sortlist]
-        fileslist = np.vstack([fileslist[i][0] for i in sortlist]).flatten().astype('int64')
+        fileslist = (
+            np.vstack([fileslist[i][0] for i in sortlist]).flatten().astype("int64")
+        )
         outime = np.vstack(timelist_s)
-        return (sortlist,outime,fileslist,timebeg,timelist_s)
+        return (sortlist, outime, fileslist, timebeg, timelist_s)
 
-    #%% Reduce numbers
-    def coordreduce(self,coorddict):
+    # %% Reduce numbers
+    def coordreduce(self, coorddict):
         """
-            Given a dictionary of coordinates the location points in the IonoContainer
-            object will be reduced.
-            Inputs
-                corrddict - A dictionary with keys 'x','y','z','r','theta','phi'. The
-                    values in the dictionary are coordinate values that will be kept.
+        Given a dictionary of coordinates the location points in the IonoContainer
+        object will be reduced.
+        Inputs
+            corrddict - A dictionary with keys 'x','y','z','r','theta','phi'. The
+                values in the dictionary are coordinate values that will be kept.
         """
-        assert type(coorddict)==dict, "Coorddict needs to be a dictionary"
+        assert type(coorddict) == dict, "Coorddict needs to be a dictionary"
         ncoords = self.Cart_Coords.shape[0]
-        coordlist = ['x','y','z','r','theta','phi']
+        coordlist = ["x", "y", "z", "r", "theta", "phi"]
 
         coordkeysorg = coorddict.keys()
         coordkeys = [ic for ic in coordkeysorg if ic in coordlist]
 
-        ckeep = np.ones(ncoords,dtype=bool)
+        ckeep = np.ones(ncoords, dtype=bool)
 
         for ic in coordkeys:
             currlims = coorddict[ic]
-            if ic=='x':
-                tempcoords = self.Cart_Coords[:,0]
-            elif ic=='y':
-                tempcoords = self.Cart_Coords[:,1]
-            elif ic=='z':
-                tempcoords = self.Cart_Coords[:,2]
-            elif ic=='r':
-                tempcoords = self.Sphere_Coords[:,0]
-            elif ic=='theta':
-                tempcoords = self.Sphere_Coords[:,1]
-            elif ic=='phi':
-                tempcoords = self.Sphere_Coords[:,2]
-            keeptemp = np.logical_and(tempcoords>=currlims[0],tempcoords<currlims[1])
-            ckeep = np.logical_and(ckeep,keeptemp)
+            if ic == "x":
+                tempcoords = self.Cart_Coords[:, 0]
+            elif ic == "y":
+                tempcoords = self.Cart_Coords[:, 1]
+            elif ic == "z":
+                tempcoords = self.Cart_Coords[:, 2]
+            elif ic == "r":
+                tempcoords = self.Sphere_Coords[:, 0]
+            elif ic == "theta":
+                tempcoords = self.Sphere_Coords[:, 1]
+            elif ic == "phi":
+                tempcoords = self.Sphere_Coords[:, 2]
+            keeptemp = np.logical_and(
+                tempcoords >= currlims[0], tempcoords < currlims[1]
+            )
+            ckeep = np.logical_and(ckeep, keeptemp)
         # prune the arrays
-        self.Cart_Coords=self.Cart_Coords[ckeep]
-        self.Sphere_Coords=self.Sphere_Coords[ckeep]
-        self.Param_List=self.Param_List[ckeep]
-        self.Velocity=self.Velocity[ckeep]
+        self.Cart_Coords = self.Cart_Coords[ckeep]
+        self.Sphere_Coords = self.Sphere_Coords[ckeep]
+        self.Param_List = self.Param_List[ckeep]
+        self.Velocity = self.Velocity[ckeep]
 
     def timereduce(self, timelims=None, timesselected=None, tkeep=None):
         """
-            Given set of time limits or list of times the data the IonoContainer will be
-            pruned accordinly.
+        Given set of time limits or list of times the data the IonoContainer will be
+        pruned accordinly.
 
-            Args:
-                timelims:``list``: A two point list with the desired time limits.
-                timesselected:``list``: Start times that will be kept.
-                tkeep: ``list``: Indexes of times from the Time_Vector array that will be kept.
+        Args:
+            timelims:``list``: A two point list with the desired time limits.
+            timesselected:``list``: Start times that will be kept.
+            tkeep: ``list``: Indexes of times from the Time_Vector array that will be kept.
         """
-        assert (tkeep is not None) or (timelims is not None) or (timesselected is not None), "Need a set of limits or selected set of times"
+        assert (
+            (tkeep is not None) or (timelims is not None) or (timesselected is not None)
+        ), "Need a set of limits or selected set of times"
 
         if timelims is not None:
-            tkeep = np.logical_and(self.Time_Vector[:,0]>=timelims[0],self.Time_Vector[:,1]<timelims[1])
+            tkeep = np.logical_and(
+                self.Time_Vector[:, 0] >= timelims[0],
+                self.Time_Vector[:, 1] < timelims[1],
+            )
         if timesselected is not None:
-            tkeep = np.in1d(self.Time_Vector[:,0],timesselected)
+            tkeep = np.in1d(self.Time_Vector[:, 0], timesselected)
         # prune the arrays
-        self.Time_Vector=self.Time_Vector[tkeep]
-        self.Param_List=self.Param_List[:,tkeep]
-        self.Velocity=self.Velocity[:,tkeep]
+        self.Time_Vector = self.Time_Vector[tkeep]
+        self.Param_List = self.Param_List[:, tkeep]
+        self.Velocity = self.Velocity[:, tkeep]
 
     def timelisting(self):
-        """ This will output a list of lists that contains the times in strings."""
+        """This will output a list of lists that contains the times in strings."""
 
         curtimes = self.Time_Vector
         timestrs = []
-        for (i,j) in curtimes:
-            curlist = [datetime.utcfromtimestamp(i).__str__(),datetime.utcfromtimestamp(j).__str__()]
+        for i, j in curtimes:
+            curlist = [
+                datetime.utcfromtimestamp(i).__str__(),
+                datetime.utcfromtimestamp(j).__str__(),
+            ]
             timestrs.append(curlist)
 
         return timestrs
-    #%% Operator Methods
-    def __eq__(self,self2):
-        """This is the == operator """
+
+    # %% Operator Methods
+    def __eq__(self, self2):
+        """This is the == operator"""
         vardict = vars(self)
         vardict2 = vars(self2)
 
         for ivar in vardict.keys():
             if ivar not in vardict2.keys():
                 return False
-            if type(vardict[ivar])!=type(vardict2[ivar]):
+            if type(vardict[ivar]) != type(vardict2[ivar]):
                 return False
-            if type(vardict[ivar])==np.ndarray:
-                a = np.ma.array(vardict[ivar],mask=np.isnan(vardict[ivar]))
-                blah = np.ma.array(vardict2[ivar],mask=np.isnan(vardict2[ivar]))
-                if not np.ma.allequal(a,blah):
+            if type(vardict[ivar]) == np.ndarray:
+                a = np.ma.array(vardict[ivar], mask=np.isnan(vardict[ivar]))
+                blah = np.ma.array(vardict2[ivar], mask=np.isnan(vardict2[ivar]))
+                if not np.ma.allequal(a, blah):
                     return False
             else:
-                if vardict[ivar]!=vardict2[ivar]:
+                if vardict[ivar] != vardict2[ivar]:
                     return False
             return True
 
-    def __ne__(self,self2):
-        '''This is the != operator. '''
+    def __ne__(self, self2):
+        """This is the != operator."""
         return not self.__eq__(self2)
+
     # multiplication operators
-    def __mul__(self,thingtomult):
+    def __mul__(self, thingtomult):
         """
-            This is the (*) multiplication. The thingtomult object can be a number, numpy array
-            thats the same size as Param_List or another ionocontainer.
+        This is the (*) multiplication. The thingtomult object can be a number, numpy array
+        thats the same size as Param_List or another ionocontainer.
         """
         # check if multiplying a number or numpy array
-        isnum = isinstance(thingtomult,numbers.Number)
-        isarray=isinstance(thingtomult,np.ndarray)
-        isiono= isinstance(thingtomult,type(self))
+        isnum = isinstance(thingtomult, numbers.Number)
+        isarray = isinstance(thingtomult, np.ndarray)
+        isiono = isinstance(thingtomult, type(self))
         if isarray:
-            assert thingtomult.shape==self.Param_List.shape, "Numpy array must same shape as Param_List"
+            assert (
+                thingtomult.shape == self.Param_List.shape
+            ), "Numpy array must same shape as Param_List"
         if isnum or isarray:
-            newself=self.copy()
-            newself.Param_List=newself.Param_List*thingtomult
+            newself = self.copy()
+            newself.Param_List = newself.Param_List * thingtomult
             return newself
 
         # Now if you're multiplying two iono containers
         if isiono:
-            assert np.allclose(self.Time_Vector,thingtomult.Time_Vector),"Need to have the same times"
-            a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
-            blah = np.ma.array(thingtomult.Cart_Coords,mask=np.isnan(thingtomult.Cart_Coords))
+            assert np.allclose(
+                self.Time_Vector, thingtomult.Time_Vector
+            ), "Need to have the same times"
+            a = np.ma.array(self.Cart_Coords, mask=np.isnan(self.Cart_Coords))
+            blah = np.ma.array(
+                thingtomult.Cart_Coords, mask=np.isnan(thingtomult.Cart_Coords)
+            )
 
-            assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+            assert np.ma.allequal(a, blah), "Need to have same spatial coordinates"
 
-            assert type(self.Param_Names)==type(thingtomult.Param_Names),'Param_Names are different types, they need to be the same'
+            assert type(self.Param_Names) == type(
+                thingtomult.Param_Names
+            ), "Param_Names are different types, they need to be the same"
 
+            assert np.all(
+                self.Param_Names == thingtomult.Param_Names
+            ), "Need to have same parameter names"
+            assert self.Species == thingtomult.Species, "Need to have the same species"
 
-            assert np.all(self.Param_Names == thingtomult.Param_Names), "Need to have same parameter names"
-            assert self.Species== thingtomult.Species, "Need to have the same species"
-
-            newself=self.copy()
-            newself.Param_List=newself.Param_List*thingtomult
+            newself = self.copy()
+            newself.Param_List = newself.Param_List * thingtomult
             return newself
-        raise ValueError('thing2mult must be a number, numpy array or ionoContainer.')
-    def __rmul__(self,thingtomult):
+        raise ValueError("thing2mult must be a number, numpy array or ionoContainer.")
+
+    def __rmul__(self, thingtomult):
         """
-            This is the reverse (*) multiplication operator. The thingtomult object can be a number, numpy array
-            thats the same size as Param_List or another ionocontainer.
+        This is the reverse (*) multiplication operator. The thingtomult object can be a number, numpy array
+        thats the same size as Param_List or another ionocontainer.
         """
         return self.__mul__(thingtomult)
 
     def __div__(self, thing2div):
         """
-            This is the (/) division. The thing2div object can be a number, numpy array
-            thats the same size as Param_List or another ionocontainer.
+        This is the (/) division. The thing2div object can be a number, numpy array
+        thats the same size as Param_List or another ionocontainer.
         """
-        isnum = isinstance(thing2div,numbers.Number)
-        isarray=isinstance(thing2div,np.ndarray)
-        isiono= isinstance(thing2div,type(self))
+        isnum = isinstance(thing2div, numbers.Number)
+        isarray = isinstance(thing2div, np.ndarray)
+        isiono = isinstance(thing2div, type(self))
         if isarray:
-            assert thing2div.shape==self.Param_List.shape, "Numpy array must same shape as Param_List"
+            assert (
+                thing2div.shape == self.Param_List.shape
+            ), "Numpy array must same shape as Param_List"
         if isnum or isarray:
-            newself=self.copy()
-            newself.Param_List=newself.Param_List/thing2div.Param_List
+            newself = self.copy()
+            newself.Param_List = newself.Param_List / thing2div.Param_List
             return newself
 
         # Now if you're multiplying two iono containers
         if isiono:
-            assert np.allclose(self.Time_Vector,thing2div.Time_Vector),"Need to have the same times"
-            a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
-            blah = np.ma.array(thing2div.Cart_Coords,mask=np.isnan(thing2div.Cart_Coords))
+            assert np.allclose(
+                self.Time_Vector, thing2div.Time_Vector
+            ), "Need to have the same times"
+            a = np.ma.array(self.Cart_Coords, mask=np.isnan(self.Cart_Coords))
+            blah = np.ma.array(
+                thing2div.Cart_Coords, mask=np.isnan(thing2div.Cart_Coords)
+            )
 
-            assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+            assert np.ma.allequal(a, blah), "Need to have same spatial coordinates"
 
-            assert type(self.Param_Names)==type(thing2div.Param_Names),'Param_Names are different types, they need to be the same'
+            assert type(self.Param_Names) == type(
+                thing2div.Param_Names
+            ), "Param_Names are different types, they need to be the same"
 
+            assert np.all(
+                self.Param_Names == thing2div.Param_Names
+            ), "Need to have same parameter names"
+            assert self.Species == thing2div.Species, "Need to have the same species"
 
-            assert np.all(self.Param_Names == thing2div.Param_Names), "Need to have same parameter names"
-            assert self.Species== thing2div.Species, "Need to have the same species"
-
-            newself=self.copy()
-            newself.Param_List=newself.Param_List/thing2div.Param_List
+            newself = self.copy()
+            newself.Param_List = newself.Param_List / thing2div.Param_List
             return newself
-        raise ValueError('thing2div must be a number, numpy array or ionoContainer.')
-    def __truediv__(self,thing2div):
+        raise ValueError("thing2div must be a number, numpy array or ionoContainer.")
+
+    def __truediv__(self, thing2div):
         """
-            This is the (/) division operator but for python 3. This may not be implemented properly.
-            The thing2div object can be a number, numpy arraythats the same
-            size as Param_List or another ionocontainer.
+        This is the (/) division operator but for python 3. This may not be implemented properly.
+        The thing2div object can be a number, numpy arraythats the same
+        size as Param_List or another ionocontainer.
         """
         return self.__div__(thing2div)
+
     # addition
-    def __add__(self,self2):
-        """ This is the '-' operator. Assuming the locations, times and parameter types are the same,
-            the data will be added.
+    def __add__(self, self2):
+        """This is the '-' operator. Assuming the locations, times and parameter types are the same,
+        the data will be added.
         """
 
-        assert np.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
-        a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
-        blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
+        assert np.allclose(
+            self.Time_Vector, self2.Time_Vector
+        ), "Need to have the same times"
+        a = np.ma.array(self.Cart_Coords, mask=np.isnan(self.Cart_Coords))
+        blah = np.ma.array(self2.Cart_Coords, mask=np.isnan(self2.Cart_Coords))
 
-        assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+        assert np.ma.allequal(a, blah), "Need to have same spatial coordinates"
 
-        assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
+        assert type(self.Param_Names) == type(
+            self2.Param_Names
+        ), "Param_Names are different types, they need to be the same"
 
-
-        assert np.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
-        assert self.Species== self2.Species, "Need to have the same species"
+        assert np.all(
+            self.Param_Names == self2.Param_Names
+        ), "Need to have same parameter names"
+        assert self.Species == self2.Species, "Need to have the same species"
 
         outiono = self.copy()
-        outiono.Param_List=outiono.Param_List+self2.Param_List
+        outiono.Param_List = outiono.Param_List + self2.Param_List
         return outiono
-    def __sub__(self,self2):
-        """ This is the '-' operator. Assuming the locations, times and parameter types are the same,
-            the data will be subtracted.
+
+    def __sub__(self, self2):
+        """This is the '-' operator. Assuming the locations, times and parameter types are the same,
+        the data will be subtracted.
         """
-        assert np.allclose(self.Time_Vector,self2.Time_Vector),"Need to have the same times"
-        a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
-        blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
+        assert np.allclose(
+            self.Time_Vector, self2.Time_Vector
+        ), "Need to have the same times"
+        a = np.ma.array(self.Cart_Coords, mask=np.isnan(self.Cart_Coords))
+        blah = np.ma.array(self2.Cart_Coords, mask=np.isnan(self2.Cart_Coords))
 
-        assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+        assert np.ma.allequal(a, blah), "Need to have same spatial coordinates"
 
-        assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
+        assert type(self.Param_Names) == type(
+            self2.Param_Names
+        ), "Param_Names are different types, they need to be the same"
 
-
-        assert np.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
-        assert self.Species== self2.Species, "Need to have the same species"
+        assert np.all(
+            self.Param_Names == self2.Param_Names
+        ), "Need to have same parameter names"
+        assert self.Species == self2.Species, "Need to have the same species"
 
         outiono = self.copy()
-        outiono.Param_List=outiono.Param_List-self2.Param_List
+        outiono.Param_List = outiono.Param_List - self2.Param_List
         return outiono
 
-    #%% Spectrum methods
-    def makeallspectrumsopen(self,func,sensdict,simparams,npts,ifile=0.,nfiles=1.,print_line=True):
-        """ This function will make all of the spectrums given a functions.
-            Inputs
-                func - A function that will create all of the spectrums.
-                sensdict = A dictionary will information on the sensor.
-                npts - The number of points """
-        return func(self,sensdict,simparams,npts,ifile,nfiles,print_line)
+    # %% Spectrum methods
+    def makeallspectrumsopen(
+        self, func, sensdict, simparams, npts, ifile=0.0, nfiles=1.0, print_line=True
+    ):
+        """This function will make all of the spectrums given a functions.
+        Inputs
+            func - A function that will create all of the spectrums.
+            sensdict = A dictionary will information on the sensor.
+            npts - The number of points"""
+        return func(self, sensdict, simparams, npts, ifile, nfiles, print_line)
 
-    def combinetimes(self,self2):
-        """
-        """
-        a = np.ma.array(self.Cart_Coords,mask=np.isnan(self.Cart_Coords))
-        blah = np.ma.array(self2.Cart_Coords,mask=np.isnan(self2.Cart_Coords))
+    def combinetimes(self, self2):
+        """ """
+        a = np.ma.array(self.Cart_Coords, mask=np.isnan(self.Cart_Coords))
+        blah = np.ma.array(self2.Cart_Coords, mask=np.isnan(self2.Cart_Coords))
 
-        assert np.ma.allequal(a,blah), "Need to have same spatial coordinates"
+        assert np.ma.allequal(a, blah), "Need to have same spatial coordinates"
 
-        assert type(self.Param_Names)==type(self2.Param_Names),'Param_Names are different types, they need to be the same'
+        assert type(self.Param_Names) == type(
+            self2.Param_Names
+        ), "Param_Names are different types, they need to be the same"
 
+        assert np.all(
+            self.Param_Names == self2.Param_Names
+        ), "Need to have same parameter names"
+        assert self.Species == self2.Species, "Need to have the same species"
 
-        assert np.all(self.Param_Names == self2.Param_Names), "Need to have same parameter names"
-        assert self.Species== self2.Species, "Need to have the same species"
+        self.Time_Vector = np.concatenate((self.Time_Vector, self2.Time_Vector), 0)
+        self.Velocity = np.concatenate((self.Velocity, self2.Velocity), 1)
+        self.Param_List = np.concatenate((self.Param_List, self2.Param_List), 1)
 
-        self.Time_Vector = np.concatenate((self.Time_Vector,self2.Time_Vector),0)
-        self.Velocity = np.concatenate((self.Velocity,self2.Velocity),1)
-        self.Param_List = np.concatenate((self.Param_List,self2.Param_List),1)
-    def makespectruminstance(self,sensdict,npts):
+    def makespectruminstance(self, sensdict, npts):
         """
         This will create another instance of the Ionocont class
         Inputs:
@@ -678,10 +741,20 @@ class IonoContainer(object):
             Iono1 - An instance of the IonoContainer class with the spectrums as the
                 param vectors and the param names will be the the frequency points.
         """
-        (omeg,outspecs) = self.makeallspectrums(sensdict,npts)
+        (omeg, outspecs) = self.makeallspectrums(sensdict, npts)
         # XXX velocity is from original parameters
-        return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
-    def makespectruminstanceopen(self, func, sensdict, simparams, ifile=0., nfiles=1., print_line=True):
+        return IonoContainer(
+            self.Cart_Coords,
+            outspecs,
+            self.Time_Vector,
+            self.Sensor_loc,
+            paramnames=omeg,
+            velocity=self.Velocity,
+        )
+
+    def makespectruminstanceopen(
+        self, func, sensdict, simparams, ifile=0.0, nfiles=1.0, print_line=True
+    ):
         """
         This will create another instance of the Ionocont class
         Inputs:
@@ -692,9 +765,19 @@ class IonoContainer(object):
             Iono1 - An instance of the IonoContainer class with the spectrums as the
                 param vectors and the param names will be the the frequency points
         """
-        (omeg, outspecs) = self.makeallspectrumsopen(func, sensdict, simparams, simparams['numpoints'], 0., 1., print_line)
-        return IonoContainer(self.Cart_Coords,outspecs,self.Time_Vector,self.Sensor_loc,paramnames=omeg,velocity=self.Velocity)
-    def getDoppler(self,sensorloc=np.zeros(3)):
+        (omeg, outspecs) = self.makeallspectrumsopen(
+            func, sensdict, simparams, simparams["numpoints"], 0.0, 1.0, print_line
+        )
+        return IonoContainer(
+            self.Cart_Coords,
+            outspecs,
+            self.Time_Vector,
+            self.Sensor_loc,
+            paramnames=omeg,
+            velocity=self.Velocity,
+        )
+
+    def getDoppler(self, sensorloc=np.zeros(3)):
         """
         This will return the line of sight velocity.
         Inputs
@@ -705,15 +788,17 @@ class IonoContainer(object):
         ncoords = self.Cart_Coords.shape[0]
         ntimes = len(self.Time_Vector)
         if not np.alltrue(sensorloc == np.zeros(3)):
-            curcoords = self.Cart_Coords -np.tile(sensorloc[np.newaxis,:],(ncoords,1))
+            curcoords = self.Cart_Coords - np.tile(
+                sensorloc[np.newaxis, :], (ncoords, 1)
+            )
         else:
             curcoords = self.Cart_Coords
-        denom = np.tile(np.sqrt(np.sum(curcoords**2,1))[:,np.newaxis],(1,3))
-        unit_coords = curcoords/denom
+        denom = np.tile(np.sqrt(np.sum(curcoords**2, 1))[:, np.newaxis], (1, 3))
+        unit_coords = curcoords / denom
 
-        Vi = np.zeros((ncoords,ntimes))
+        Vi = np.zeros((ncoords, ntimes))
         for itime in range(ntimes):
-            Vi[:,itime] = (self.Velocity[:,itime]*unit_coords).sum(1)
+            Vi[:, itime] = (self.Velocity[:, itime] * unit_coords).sum(1)
         return Vi
 
     def copy(self):
@@ -725,14 +810,14 @@ class IonoContainer(object):
 
     def get_dataframe(self):
         """
-            Outputs a pandas data frame in same format at madgrigal
+        Outputs a pandas data frame in same format at madgrigal
         """
 
         #
         time_list = np.array([datetime.fromtimestamp(i[0]) for i in self.Time_Vector])
         t_len = len(time_list)
-        plist = ['ne', 'te', 'ti']
-        pout = ['NE', 'TE', 'TI', 'VO', 'GDALT', 'Time']
+        plist = ["ne", "te", "ti"]
+        pout = ["NE", "TE", "TI", "VO", "GDALT", "Time"]
         pnshape = self.Param_Names.shape
         paramsf = self.Param_Names.flatten().tolist()
         params_list = []
@@ -745,60 +830,76 @@ class IonoContainer(object):
                 outparam = outparam[:, :, i]
             params_list.append(outparam)
         params_list.append(self.getDoppler())
-        gdalt = self.Cart_Coords[:,2]
+        gdalt = self.Cart_Coords[:, 2]
         nlocs = len(gdalt)
-        params_list.append(np.repeat(gdalt[:,np.newaxis], t_len, axis=1))
-        params_list.append(np.repeat(time_list[np.newaxis,:], nlocs, axis=0))
-        param_dict = {pout[i]:params_list[i].flatten() for i in range(len(pout))}
+        params_list.append(np.repeat(gdalt[:, np.newaxis], t_len, axis=1))
+        params_list.append(np.repeat(time_list[np.newaxis, :], nlocs, axis=0))
+        param_dict = {pout[i]: params_list[i].flatten() for i in range(len(pout))}
         return pd.DataFrame(data=param_dict)
-#%%    utility functions
-def makeionocombined(datapath,ext='.h5'):
-    """ This function make an ionocontainer for all of the points in a folder or a list
-        Inputs
-            datapath - Can be a string containing the folder holding the ionocontaner files or can be
-                list of file names.
-            ext - (default '.h5') The extention of the files that will be used.
-        Output
-            outiono - The ionocontainer with of all the time points.
 
-        """
 
-    if isinstance(datapath,string_types):
-        if os.path.splitext(datapath)[-1]==0:
-            ionocontlist=[datapath]
+# %%    utility functions
+def makeionocombined(datapath, ext=".h5"):
+    """This function make an ionocontainer for all of the points in a folder or a list
+    Inputs
+        datapath - Can be a string containing the folder holding the ionocontaner files or can be
+            list of file names.
+        ext - (default '.h5') The extention of the files that will be used.
+    Output
+        outiono - The ionocontainer with of all the time points.
+
+    """
+
+    if isinstance(datapath, string_types):
+        if os.path.splitext(datapath)[-1] == 0:
+            ionocontlist = [datapath]
         else:
-            ionocontlist = glob.glob(os.path.join(datapath,'*'+ext))
-    elif not isinstance(datapath,list):
+            ionocontlist = glob.glob(os.path.join(datapath, "*" + ext))
+    elif not isinstance(datapath, list):
         return datapath
     else:
         ionocontlist = datapath
-    (sortlist,outime,fileslist,timebeg,timelist_s)=IonoContainer.gettimes(ionocontlist)
+    (sortlist, outime, fileslist, timebeg, timelist_s) = IonoContainer.gettimes(
+        ionocontlist
+    )
     readlist = [ionocontlist[i] for i in fileslist]
 
-    for i,iname in enumerate(readlist):
-        if ext=='.h5':
+    for i, iname in enumerate(readlist):
+        if ext == ".h5":
             curiono = IonoContainer.readh5(iname)
-        elif ext=='.mat':
+        elif ext == ".mat":
             curiono = IonoContainer.readmat(iname)
-        if i==0:
-            outiono=curiono.copy()
+        if i == 0:
+            outiono = curiono.copy()
         else:
             outiono.combinetimes(curiono)
     return outiono
+
+
 def pathparts(path):
-    '''
+    """
     This will break up a path name into componenets using recursion
     Input - path a string seperated by a posix path seperator.
     Output - A list of strings of the path parts.
-    '''
+    """
     components = []
     while True:
-        (path,tail) = posixpath.split(path)
+        (path, tail) = posixpath.split(path)
         if tail == "":
             components.reverse()
             return components
         components.append(tail)
-def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coords=None,times =np.array([[0,1e6]])):
+
+
+def MakeTestIonoclass(
+    testv=False,
+    testtemp=False,
+    N_0=1e11,
+    z_0=250.0,
+    H_0=50.0,
+    coords=None,
+    times=np.array([[0, 1e6]]),
+):
     """
     This function will create a test ionoclass with an electron density that
     follows a chapman function.
@@ -815,50 +916,59 @@ def MakeTestIonoclass(testv=False,testtemp=False,N_0=1e11,z_0=250.0,H_0=50.0,coo
         Icont - A test ionocontainer.
     """
     if coords is None:
-        xvec = np.arange(-250.0,250.0,20.0)
-        yvec = np.arange(-250.0,250.0,20.0)
-        zvec = np.arange(50.0,900.0,2.0)
+        xvec = np.arange(-250.0, 250.0, 20.0)
+        yvec = np.arange(-250.0, 250.0, 20.0)
+        zvec = np.arange(50.0, 900.0, 2.0)
         # Mesh grid is set up in this way to allow for use in MATLAB with a simple reshape command
-        xx,zz,yy = np.meshgrid(xvec,zvec,yvec)
-        coords = np.zeros((xx.size,3))
-        coords[:,0] = xx.flatten()
-        coords[:,1] = yy.flatten()
-        coords[:,2] = zz.flatten()
-        zzf=zz.flatten()
+        xx, zz, yy = np.meshgrid(xvec, zvec, yvec)
+        coords = np.zeros((xx.size, 3))
+        coords[:, 0] = xx.flatten()
+        coords[:, 1] = yy.flatten()
+        coords[:, 2] = zz.flatten()
+        zzf = zz.flatten()
     else:
-        zzf = coords[:,2]
-#    H_0 = 50.0 #km scale height
-#    z_0 = 250.0 #km
-#    N_0 = 10**11
+        zzf = coords[:, 2]
+    #    H_0 = 50.0 #km scale height
+    #    z_0 = 250.0 #km
+    #    N_0 = 10**11
 
     # Make electron density
-    Ne_profile = Chapmanfunc(zzf,H_0,z_0,N_0)
+    Ne_profile = Chapmanfunc(zzf, H_0, z_0, N_0)
     # Make temperture background
     if testtemp:
-        (Te,Ti)= TempProfile(zzf)
+        (Te, Ti) = TempProfile(zzf)
     else:
-        Te = np.ones_like(zzf)*2000.0
-        Ti = np.ones_like(zzf)*1500.0
+        Te = np.ones_like(zzf) * 2000.0
+        Ti = np.ones_like(zzf) * 1500.0
 
     # set up the velocity
-    (Nlocs,ndims) = coords.shape
-    Ntime= len(times)
-    vel = np.zeros((Nlocs,Ntime,ndims))
+    (Nlocs, ndims) = coords.shape
+    Ntime = len(times)
+    vel = np.zeros((Nlocs, Ntime, ndims))
 
     if testv:
-        vel[:,:,2] = np.repeat(zzf[:,np.newaxis],Ntime,axis=1)/5.0
-    species=['O+','e-']
+        vel[:, :, 2] = np.repeat(zzf[:, np.newaxis], Ntime, axis=1) / 5.0
+    species = ["O+", "e-"]
     # put the parameters in order
-    params = np.zeros((Ne_profile.size,len(times),2,2))
-    params[:,:,0,1] = np.repeat(Ti[:,np.newaxis],Ntime,axis=1)
-    params[:,:,1,1] = np.repeat(Te[:,np.newaxis],Ntime,axis=1)
-    params[:,:,0,0] = np.repeat(Ne_profile[:,np.newaxis],Ntime,axis=1)
-    params[:,:,1,0] = np.repeat(Ne_profile[:,np.newaxis],Ntime,axis=1)
+    params = np.zeros((Ne_profile.size, len(times), 2, 2))
+    params[:, :, 0, 1] = np.repeat(Ti[:, np.newaxis], Ntime, axis=1)
+    params[:, :, 1, 1] = np.repeat(Te[:, np.newaxis], Ntime, axis=1)
+    params[:, :, 0, 0] = np.repeat(Ne_profile[:, np.newaxis], Ntime, axis=1)
+    params[:, :, 1, 0] = np.repeat(Ne_profile[:, np.newaxis], Ntime, axis=1)
 
-
-    Icont1 = IonoContainer(coordlist=coords,paramlist=params,times = times,sensor_loc = np.zeros(3),ver =0,coordvecs =
-        ['x','y','z'],paramnames=None,species=species,velocity=vel)
+    Icont1 = IonoContainer(
+        coordlist=coords,
+        paramlist=params,
+        times=times,
+        sensor_loc=np.zeros(3),
+        ver=0,
+        coordvecs=["x", "y", "z"],
+        paramnames=None,
+        species=species,
+        velocity=vel,
+    )
     return Icont1
+
 
 def main():
     """
@@ -866,24 +976,26 @@ def main():
     copies of it are equal.
     """
     curpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    testpath = os.path.join(os.path.split(curpath)[0],'testdata')
+    testpath = os.path.join(os.path.split(curpath)[0], "testdata")
 
     Icont1 = MakeTestIonoclass()
 
-    Icont1.savemat(os.path.join(testpath,'testiono.mat'))
-    Icont1.saveh5(os.path.join(testpath,'testiono.h5'))
-    Icont2 = IonoContainer.readmat(os.path.join(testpath,'testiono.mat'))
-    Icont3 = IonoContainer.readh5(os.path.join(testpath,'testiono.h5'))
+    Icont1.savemat(os.path.join(testpath, "testiono.mat"))
+    Icont1.saveh5(os.path.join(testpath, "testiono.h5"))
+    Icont2 = IonoContainer.readmat(os.path.join(testpath, "testiono.mat"))
+    Icont3 = IonoContainer.readh5(os.path.join(testpath, "testiono.h5"))
 
-    if Icont1==Icont2:
+    if Icont1 == Icont2:
         print("Mat file saving and reading works")
     else:
         print("Something is wrong with the Mat file writing and reading")
-    if Icont1==Icont3:
+    if Icont1 == Icont3:
         print("h5 file saving and reading works")
     else:
         print("Something is wrong with the h5 file writing and reading")
-    #%% Main
-if __name__ == '__main__':
+    # %% Main
+
+
+if __name__ == "__main__":
 
     main()
