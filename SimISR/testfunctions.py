@@ -54,7 +54,7 @@ def temp_profile(z, T0=1000., z0=100.):
     return (Te,Ti)
 
 
-def MakeTestIonoclass(
+def make_test_ex(
     testv=False,
     testtemp=False,
     N_0=1e11,

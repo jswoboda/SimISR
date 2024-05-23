@@ -28,12 +28,14 @@ from pathlib import Path
 ## A value under 0 represents a 'halt'.
 ## A value at 1 or bigger represents 100%
 def update_progress(progress, extstr=""):
-    """
-        This will make a progress bar in the command line
+    """This will make a progress bar in the command line
 
-        Args:
-            progress (:obj:`float`): Proportion of progress on scale of 0 to one.
-            extstr (:obj:'str'): Extra string added to the progress bar.
+    Parameters
+    ----------
+    progress : float 
+        Proportion of progress on scale of 0 to one.
+    extstr : str 
+        Extra string added to the progress bar.
     """
     bar_length = 20 # Modify this to change the length of the progress bar
     status = ""
@@ -58,24 +60,21 @@ def update_progress(progress, extstr=""):
 
 
 def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'):
-    """
-        Make the ambiguity function dictionary that holds the lag ambiguity and
-        range ambiguity. Uses a sinc function weighted by a blackman window. Currently
-        only set up for an uncoded pulse.
+    """Make the ambiguity function dictionary that holds the lag ambiguity and range ambiguity. Uses a sinc function weighted by a blackman window. Currently only set up for an uncoded pulse.
 
-        Args:
-            Fsorg (:obj:`float`): A scalar, the original sampling frequency in Hertz.
-            m_up (:obj:`int`): The upsampled ratio between the original sampling rate and the rate of
-            the ambiguity function up sampling.
-            nlags (:obj:`int`): The number of lags used.
+    Parameters
+    ----------
+    Fsorg : float 
+        A scalar, the original sampling frequency in Hertz.
+    m_up : int 
+        The upsampled ratio between the original sampling rate and the rate of the ambiguity function up sampling.
+    nlags : int 
+        The number of lags used.
 
-        Returns:
-            Wttdict (:obj:`dict`): A dictionary with the keys 'WttAll' which is the full ambiguity function
-            for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the
-            ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity
-            for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array
-            for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity
-            function on a pulses.
+    Returns
+    -------
+    Wttdict :dict 
+        A dictionary with the keys 'WttAll' which is the full ambiguity function for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity function on a pulses.
     """
 
 
@@ -233,7 +232,6 @@ def spect2acf(omeg, spec, n_s=None):
     return tau, acf
 
 def acf2spect(tau, acf, n_s=None, initshift=False):
-
     """ Creates spectrum and frequency vector associated with the given time array and acf.
     
     Parameters
@@ -441,13 +439,22 @@ def makesumrule(ptype, nlags, lagtype='centered'):
 #%% Make pulse
 def makepulse(ptype, nsamps, t_s, nbauds=16):
     """ This will make the pulse array.
-        Inputs
-            ptype - The type of pulse used.
-            plen - The length of the pulse in seconds.
-            ts - The sampling rate of the pulse.
-        Output
-            pulse - The pulse array that will be used as the window in the data formation.
-            plen - The length of the pulse with the sampling time taken into account.
+    
+    Parameters
+    ----------
+    ptype : 
+        The type of pulse used.
+    plen : 
+        The length of the pulse in seconds.
+    ts : 
+        The sampling rate of the pulse.
+    
+    Parameters
+    ----------
+    pulse : ndarray 
+        The pulse array that will be used as the window in the data formation.
+    plen : float 
+        The length of the pulse with the sampling time taken into account.
     """
     plen = nsamps*t_s
     if ptype.lower() == 'long':
@@ -483,18 +490,23 @@ def makepulse(ptype, nsamps, t_s, nbauds=16):
     return (pulse, plen, sweepid, sweepnum)
 
 def gen_ac(nsamps, nbauds):
-    """
-        This will generate a set of alternating code pulses and their sweep ids.
+    """This will generate a set of alternating code pulses and their sweep ids.
 
-        Args:
-            nsamps:``int``: The length of the pulse in samples.
-            nbauds:``int``: The number of bauds for each code.
+    Parameters
+    ----------
+    nsamps : int 
+        The length of the pulse in samples.
+    nbauds : int 
+        The number of bauds for each code.
 
-        Returns:
-            pulse:``array``: A numpy array of shape 2nbaudsxnsamps holding the
-            pulses.
-            sweepid:``array``: Array of sweep ids.
-            sweepnum:``array``: Array of sweep numbers.
+    Returns
+    -------
+    pulse : ndarray
+        A numpy array of shape 2nbaudsxnsamps holding the pulses.
+    sweepid : ndarray  
+        Array of sweep ids.
+    sweepnum : ndarray
+        Array of sweep numbers.
     """
     blen = np.array([4, 8, 16])
     nsampsarg = np.argmin(np.absolute(blen-nbauds))
@@ -519,156 +531,23 @@ def gen_ac(nsamps, nbauds):
     sweepnum = np.arange(nbauds*2)
     sweepid = sweepnum+1
     return pulse, sweepid, sweepnum
-#%% dictionary file
-def dict2h5(fn, dictin):
-    """
-        A function that will save a dictionary to a h5 file.
-        Args:
-            filename:``str``:The file name in a string.
-            dictin:``dict``: A flat dictionary that will be saved out.
-    """
-    fn = Path(fn).expanduser()
-    if fn.is_file():
-        fn.unlink()
-    with tables.open_file(str(fn), mode="w", title="RadarDataFile out.") as f:
-        try:
-            # XXX only allow 1 level of dictionaries, do not allow for dictionary of dictionaries.
-            # Make group for each dictionary
-            for cvar in dictin.keys():
-                if type(dictin[cvar]) is list:
-                    f.create_group('/', cvar)
-                    lenzeros = len(str(len(dictin[cvar])))-1
-                    for inum, datapnts in enumerate(dictin[cvar]):
-                        f.create_array('/'+cvar, 'Inst{0:0{1:d}d}'.format(inum, lenzeros),datapnts, 'Static array')
-                elif type(dictin[cvar]) is np.ndarray:
-                    f.create_array('/', cvar, dictin[cvar], 'Static array')
-                else:
-                    raise ValueError('Values in list must be lists or numpy arrays')
-            f.close()
-        except Exception as inst:
-            print(type(inst))
-            print(inst.args)
-            print(inst)
-            raise NameError('Failed to write to h5 file.')
-
-def h52dict(filename):
-    """This will read in the information from a structure h5 file where it is assumed
-    that the base groups are either root or are a group that leads to arrays.
-    Input
-    filename - A string that holds the name of the h5 file that will be opened.
-    Output
-    outdict - A dictionary where the keys are the group names and the values are lists
-    or numpy arrays."""
-    h5file = tables.open_file(filename, mode="r")
-    output = {}
-    for group in h5file.walk_groups('/'):
-        output[group._v_pathname] = {}
-        for array in h5file.list_nodes(group, classname='Array'):
-            output[group._v_pathname][array.name] = array.read()
-    h5file.close()
-
-    outdict= {}
-    # first get the
-    base_arrs = output['/']
-
-    outdict = {ikey.strip('/'):base_arrs[ikey] for ikey in base_arrs.keys()}
-
-    del output['/']
-    for ikey in output.keys():
-        sublist = [output[ikey][l] for l in output[ikey].keys()]
-        outdict[ikey.strip('/')] = sublist
-
-    return outdict
-
-
-def save_dict_to_hdf5(dic, filename):
-
-    with h5py.File(filename, 'w') as h5file:
-        recursively_save_dict_contents_to_group(h5file, '/', dic)
-
-def load_dict_from_hdf5(filename):
-
-    with h5py.File(filename, 'r') as h5file:
-        return recursively_load_dict_contents_from_group(h5file, '/')
-
-
-
-def recursively_save_dict_contents_to_group( h5file, path, dic):
-
-    # argument type checking
-    if not isinstance(dic, dict):
-        raise ValueError("must provide a dictionary")
-
-    if not isinstance(path, str):
-        raise ValueError("path must be a string")
-    if not isinstance(h5file, h5py._hl.files.File):
-        raise ValueError("must be an open h5py file")
-    # save items to the hdf5 file
-    for key, item in dic.items():
-        #print(key,item)
-        key = str(key)
-        if isinstance(item, list):
-            item = np.array(item)
-            #print(item)
-        if not isinstance(key, str):
-            raise ValueError("dict keys must be strings to save to hdf5")
-        # save strings, numpy.int64, and numpy.float64 types
-        if isinstance(item, (np.int64, np.float64, str, float, np.float32,int)):
-            #print( 'here' )
-            h5file[path + key] = item
-            if not h5file[path + key][()] == item:
-                raise ValueError('The data representation in the HDF5 file does not match the original dict.')
-        # save numpy arrays
-        elif isinstance(item, np.ndarray):
-            try:
-                h5file[path + key] = item
-                same_item = np.array_equal(h5file[path + key][()], item,equal_nan=True)
-            except:
-                item = np.array(item).astype('|S9')
-                h5file[path + key] = item
-                same_item = np.array_equal(h5file[path + key][()], item)
-   
-               
-            if not same_item:
-                raise ValueError('The data representation in the HDF5 file does not match the original dict.')
-        elif item is None:
-            item = b"None_Value"
-            h5file[path + key] = item
-            if not h5file[path + key][()] == item:
-                raise ValueError('The data representation in the HDF5 file does not match the original dict.')
-        # save dictionaries
-        elif isinstance(item, dict):
-            recursively_save_dict_contents_to_group(h5file, path + key + '/', item)
-        # other types cannot be saved and will result in an error
-        else:
-            #print(item)
-            raise ValueError('Cannot save %s type.' % type(item))
-
-def recursively_load_dict_contents_from_group( h5file, path):
-
-    ans = {}
-    for key, item in h5file[path].items():
-        if isinstance(item, h5py._hl.dataset.Dataset):
-            ans[key] = item[()]
-            if isinstance(ans[key],bytes):
-                if ans[key]==b"None_Value":
-                    ans[key] = None
-        elif isinstance(item, h5py._hl.group.Group):
-            ans[key] = recursively_load_dict_contents_from_group(h5file, path + key + '/')
-    return ans
-
-
-
 
 #%% Config files
 
 def makeconfigfile(fname, beamlist, radarname, simparams_orig):
-    """This will make the config file based off of the desired input parmeters.
-    Inputs
-        fname - Name of the file as a string.
-        beamlist - A list of beams numbers used by the AMISRS
-        radarname - A string that is the name of the radar being simulated.
-        simparams_orig - A set of simulation parameters in a dictionary."""
+    """This will write the config file to disk based off of the desired input parmeters.
+    
+    Parameters
+    ----------
+    fname : str
+        Name of the file as a string.
+    beamlist : list
+        A list of beams numbers used by the AMISRS
+    radarname : str
+        A string that is the name of the radar being simulated.
+    simparams_orig : dict
+        A set of simulation parameters in a dictionary.
+    """
     fname = Path(fname).expanduser()
 
     curpath = Path(__file__).resolve().parent
@@ -685,41 +564,30 @@ def makeconfigfile(fname, beamlist, radarname, simparams_orig):
     if not 'outangles' in simparams_orig.keys():
         simparams_orig['outangles'] = beamlist
     simparams = {i:simparams_orig[i] for i in keys2save}
+    
     if fext == '.yml':
         with fname.open('w') as f:
             yaml.dump([{'beamlist':beamlist, 'radarname':radarname}, simparams], f)
     else:
         raise ValueError('fname needs to have an extension of .pickle or .ini')
 
-def makedefaultfile(fname):
-    """
-        This function will give you default configuration dictionaries.
-    """
-    (sensdict, simparams) = getdefualtparams()
-    makeconfigfile(fname, simparams['Beamlist'], sensdict['Name'], simparams)
-
-def getdefualtparams():
-    """
-        This function will copy the default configuration file to whatever file the users
-        specifies.
-    """
-    curpath = Path(__file__).parent
-    d_file = curpath / 'default.ini'
-    (sensdict, simparams) = readconfigfile(str(d_file))
-    return sensdict, simparams
-
 def readconfigfile(fname, make_amb_bool=False):
     """
-        This funciton will read in the ini or yaml files that are used for configuration.
+    This funciton will read in the ini or yaml files that are used for configuration.
 
-        Args:
-            fname - A string containing the file name and location.
-            make_amb_bool - A bool to determine if the ambiguity functions should be
-                       calculated because they take a lot of time.
+    Parameters
+    ----------
+    fname : str 
+        File name and location.
+    make_amb_bool : bool
+        A bool to determine if the ambiguity functions should be calculated because they take a lot of time.
 
-        Returns:
-            sensdict - A dictionary that holds the sensor parameters.
-            simparams - A dictionary that holds the simulation parameters.
+    Returns
+    -------
+    sensdict : dict 
+        A dictionary that holds the sensor parameters.
+    simparams : dict 
+        A dictionary that holds the simulation parameters.
     """
 
     fname = Path(fname).expanduser()

@@ -8,6 +8,7 @@ Holds functions for file input/output
 
 import h5py
 import numpy as np
+from pathlib import Path
 
 
 def save_dict_to_hdf5(dic, filename):
@@ -47,6 +48,9 @@ def load_dict_from_hdf5(filename):
     dic : Dictionary
         Dictionary to be read.
     """
+    if not Path(filename).exists():
+        raise FileNotFoundError(f'{filename}, no such file exists')    
+    
     with h5py.File(filename, "r") as h5file:
         return recursively_load_dict_contents_from_group(h5file, "/")
 
@@ -87,7 +91,7 @@ def recursively_save_dict_contents_to_group(h5file, path, dic):
             raise ValueError("dict keys must be strings to save to hdf5")
         # save strings, numpy.int64, and numpy.float64 types
         if isinstance(
-            item, (np.int64, np.float64, str, np.float, float, np.float32, int)
+            item, (np.int64, np.float64, str, float, np.float32, np.float16, int)
         ):
             # print( 'here' )
             h5file[path + key] = item

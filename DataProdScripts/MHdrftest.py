@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from SimISR.IonoContainer import IonoContainer
-from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigfile, readconfigfile
+from SimISR.utilFunctions import makeconfigfile, readconfigfile
 from SimISR.analysisplots import analysisdump
 from SimISR.runsim import main as runsimisr
 from SimISR import Path

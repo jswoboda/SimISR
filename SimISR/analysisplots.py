@@ -19,22 +19,23 @@ from IonoContainer import IonoContainer
 from utilFunctions import readconfigfile,spect2acf,acf2spect
 from specfunctions import ISRspecmakeout#,ISRSfitfunction
 
-def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs Time'):
-    """ This will create a altitude time image for the data for ionocontainer files
-        that are in sphereical coordinates.
-        Inputs
-            Times - A list of times that will be plotted.
-            configfile - The INI file with the simulation parameters that will be useds.
-            maindir - The directory the images will be saved in.
-            params - List of Parameter names that will be ploted. These need to match
-                in the ionocontainer names.
-            filetemplate - The first part of a the file names.
-            suptitle - The supertitle for the plots.
+def beamvstime(maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs Time'):
+    """ This will create a altitude time image for the data for ionocontainer files that are in sphereical coordinates.
+
+    Parameters
+    ----------
+    maindir : str
+        Directory where the data resides.
+    params : list
+        List of Parameter names that will be ploted. These need to match in the ionocontainer names.
+    filetemplate : str
+        The first part of a the file names.
+    suptitle : str 
+        The supertitle for the plots.
     """
     sns.set_style("whitegrid")
     sns.set_context("notebook")
 #    rc('text', usetex=True)
-    (sensdict,simparams) = readconfigfile(configfile)
 
     paramslower = [ip.lower() for ip in params]
     Np = len(params)

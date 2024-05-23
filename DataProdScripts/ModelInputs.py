@@ -11,7 +11,7 @@ import iri2016.profile as iri
 # MSISE-00 atmospheric model
 import msise00
 from SimISR.IonoContainer import IonoContainer
-from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigfile
+from SimISR.utilFunctions import getdefualtparams, makeconfigfile
 from SimISR.analysisplots import analysisdump
 from SimISR.runsim import main as runsimisr
 from SimISR import Path
@@ -147,6 +147,7 @@ def makedatasets(maindir='~/DATA/Ion_Comp_Exp/', nomult=np.arange(1, 5, dtype=fl
             iono_orig.saveh5(sfile)
             simparams['startfile'] = sfile
             makeconfigfile(str(newpath/'chem_test.yml'), [23465.], 'millstone', simparams)
+            
 def plotiono(ionoin):
 
     sns.set_style("whitegrid")
