@@ -15,9 +15,9 @@ import scipy.fftpack as scfft
 import numpy as np
 import seaborn as sns
 
-from .IonoContainer import IonoContainer
-from .utilFunctions import readconfigfile,spect2acf,acf2spect
-from .specfunctions import ISRspecmakeout#,ISRSfitfunction
+from IonoContainer import IonoContainer
+from utilFunctions import readconfigfile,spect2acf,acf2spect
+from specfunctions import ISRspecmakeout#,ISRSfitfunction
 
 def beamvstime(configfile,maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs Time'):
     """ This will create a altitude time image for the data for ionocontainer files

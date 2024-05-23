@@ -17,7 +17,7 @@ import numbers
 import pandas as pd
 
 # From my
-from SimISR.h5fileIO import load_dict_from_hdf5, save_dict_to_hdf5
+from h5fileIO import load_dict_from_hdf5, save_dict_to_hdf5
 
 
 class IonoContainer(object):
@@ -844,13 +844,20 @@ class IonoContainer(object):
 
 # %%    utility functions
 def makeionocombined(datapath, ext=".h5"):
-    """This function make an ionocontainer for all of the points in a folder or a list
-    Inputs
-        datapath - Can be a string containing the folder holding the ionocontaner files or can be
-            list of file names.
-        ext - (default '.h5') The extention of the files that will be used.
-    Output
-        outiono - The ionocontainer with of all the time points.
+    """
+    This function make an ionocontainer for all of the points in a folder or a list
+   
+    Parameters
+    ----------
+    datapath : list
+        Can be a string containing the folder holding the ionocontaner files or can be list of file names.
+    ext : :obj:`str`, optional
+        The extention of the files that will be used. (default '.h5')
+    
+    Returns
+    -------
+    outiono : :obj:`ionocontainer` 
+        The ionocontainer with of all the time points.
 
     """
 

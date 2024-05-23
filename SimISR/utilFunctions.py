@@ -203,14 +203,24 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
 
 
 def spect2acf(omeg, spec, n_s=None):
-    """ Creates acf and time array associated with the given frequency vector and spectrum
-    Inputs:
-    omeg: The frequency sampling vector
-    spec: The spectrum array.
-    n: optional, default len(spec), Length of output spectrum
-    Output:
-    tau: The time sampling array.
-    acf: The acf from the original spectrum."""
+    """Creates acf and time array associated with the given frequency vector and spectrum
+    
+    Parameters
+    ----------
+    omeg : ndarray
+        The frequency sampling vector
+    spec : ndarray
+        The spectrum array.
+    n : :obj:`int`, optional, 
+        Length of output spectrum default len(spec)
+   
+    Returns
+    -------
+    tau : ndarray
+        The time sampling array.
+    acf : ndarray 
+        The acf from the original spectrum.
+    """
     if n_s is None:
         n_s = float(spec.shape[-1])
 #    padnum = np.floor(len(spec)/2)
@@ -225,13 +235,22 @@ def spect2acf(omeg, spec, n_s=None):
 def acf2spect(tau, acf, n_s=None, initshift=False):
 
     """ Creates spectrum and frequency vector associated with the given time array and acf.
-    Inputs:
-    tau: The time sampling array.
-    acf: The acf from the original spectrum.
-    n: optional, default len(acf), Length of output spectrum
-    Output:
-    omeg: The frequency sampling vector
-    spec: The spectrum array.
+    
+    Parameters
+    ----------
+    tau : ndarray
+        The time sampling array.
+    acf : ndarray 
+        The acf from the original spectrum.
+        n : :obj:`int`, optional, 
+        Length of output spectrum default len(acf)
+    
+    Returns
+    -------
+    omeg : ndarray
+        The frequency sampling vector
+    spec : ndarray
+        The spectrum array.
     """
 
     if n_s is None:
