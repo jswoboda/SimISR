@@ -11,7 +11,7 @@ from pyglow.pyglow import Point
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import getdefualtparams, getdefualtparams, makeconfigfile
 from SimISR.analysisplots import analysisdump
-from SimISR.runsim import main as runsimisr
+from SimISR import runsimisr
 from SimISR import Path
 
 

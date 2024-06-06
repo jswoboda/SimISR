@@ -25,6 +25,27 @@ class IonoContainer(object):
     Holds the coordinates and parameters to create the ISR data. This class can hold plasma parameters
     spectra, or ACFs. If given plasma parameters the can call the ISR spectrum functions and for each
     point in time and space a spectra will be created.
+    
+    Attributes
+    ----------
+    Cart_Coords : ndarray
+        Listing of spatial coordinates in Cartesian.
+    Sphere_Coords : ndarray
+        Listing of spatial coordinates in spherical.
+    Param_List : ndarray
+        Parameter values for each space-time element.
+    Time_Vector : ndarray
+        Array of times, first column is start time, second column is end time.
+    Coord_Vecs : list
+        List of strings representing the coordinate system.
+    Sensor_loc : ndarray
+        Location of sensor in wgs84.
+    Species : list
+        List of the ionosphere species.
+    Param_Names : ndarray
+        List of parameter names.
+    Velocity : ndarray
+        Array of velocities for each space-time location.
     """
 
     # %% Init function
@@ -60,7 +81,11 @@ class IonoContainer(object):
         coordvecs : dict
             A dictionary that holds the individual coordinate vectors. if sphereical coordinates keys are 'r','theta','phi' if cartisian 'x','y','z'.
         paramnames : list
-            This is a list or number numpy array of numbers for each parameter in the paramlist array.
+            This is a list or number numpy array of numbers for each parameter in the paramlist array.  
+        species : list
+            List of the ionosphere species.
+        velocity : ndarray
+            Array of velocities for each space-time location.
         """
         # Set up the size for the time vector if its not given.
         Ndims = paramlist.ndim
@@ -149,18 +174,29 @@ class IonoContainer(object):
     # %% Getting closest objects
     def getclosestsphere(self, coords, timelist=None):
         """
-        This method will get the closest point in space to given spherical coordinates from the
-        IonoContainer.
-        Input
-        coords - A list of r,az and phi coordinates.
-        Output
-        paramout - A NtxNp array from the closes output params
-        sphereout - A Nc length array The sphereical coordinates of the closest point.
-        cartout -  Cartisian coordinates of the closes point.
-        distance - The spatial distance between the returned location and the
-            desired location.
-        minidx - The spatial index point.
-        tvec - The times of the returned data.
+        This method will get the closest point in space to given spherical coordinates from the IonoContainer.
+        
+        Parameters
+        ----------
+        coords : ndarray
+            A list of r,az and phi coordinates.
+        timelist : ndarray
+            Listing of times to be taken.
+        
+        Returns
+        -------
+        paramout : ndarray
+            A NtxNp array from the closes output params
+        sphereout : ndarray
+            A Nc length array The sphereical coordinates of the closest point.
+        cartout : ndarray
+            Cartisian coordinates of the closes point.
+        distance : ndarray
+            The spatial distance between the returned location and the desired location.
+        minidx : float
+            The spatial index point.
+        tvec : ndarray
+            The times of the returned data.
         """
         d2r = np.pi / 180.0
         (r, az, el) = coords
@@ -174,16 +210,28 @@ class IonoContainer(object):
         """
         This method will get the closest set of parameters in the coordinate space. It will return
         the parameters from all times.
-        Input
-        coords - A list of x,y and z coordinates.
-        Output
-        paramout - A NtxNp array from the closes output params
-        sphereout - A Nc length array The sphereical coordinates of the closest point.
-        cartout -  Cartisian coordinates of the closes point.
-        distance - The spatial distance between the returned location and the
-            desired location.
-        minidx - The spatial index point.
-        tvec - The times of the returned data.
+
+        Parameters
+        ----------
+        coords : ndarray
+            A list of r,az and phi coordinates.
+        timelist : ndarray
+            Listing of times to be taken.
+        
+        Returns
+        -------
+        paramout : ndarray
+            A NtxNp array from the closes output params
+        sphereout : ndarray
+            A Nc length array The sphereical coordinates of the closest point.
+        cartout : ndarray
+            Cartisian coordinates of the closes point.
+        distance : ndarray
+            The spatial distance between the returned location and the desired location.
+        minidx : float
+            The spatial index point.
+        tvec : ndarray
+            The times of the returned data.
         """
         x_vec = self.Cart_Coords[:, 0]
         y_vec = self.Cart_Coords[:, 1]
@@ -222,6 +270,7 @@ class IonoContainer(object):
             tvec = tvec[timeindx]
         sphereout = self.Sphere_Coords[minidx]
         cartout = self.Cart_Coords[minidx]
+        
         return (
             paramout,
             velout,
@@ -303,14 +352,13 @@ class IonoContainer(object):
         """
         This method will write out a structured mat file and save information
         from the class.
-        inputs
-        filename - A string for the file name.
+        
+        Parameters
+        ----------
+        filename : string
+            A string for the file name.
         """
-        # outdict = {'Cart_Coords':self.Cart_Coords,'Sphere_Coords':self.Sphere_Coords,\
-        #    'Param_List':self.Param_List,'Time_Vector':self.Time_Vector}
-        #        if self.Coord_Vecs!=None:
-        #            #fancy way of combining dictionaries
-        #            outdict = dict(outdict.items()+self.Coord_Vecs.items())
+
         outdict1 = vars(self)
         outdict = {
             ik: outdict1[ik] for ik in outdict1.keys() if not (outdict1[ik] is None)
@@ -320,8 +368,11 @@ class IonoContainer(object):
     def saveh5(self, filename):
         """
         This method will save the instance of the class to a structured h5 file.
-        Input:
-        filename - A string for the file name.
+       
+        Parameters
+        ----------
+        filename : string
+            A string for the file name.
         """
         filename = Path(filename)
         if filename.is_file():
@@ -334,8 +385,11 @@ class IonoContainer(object):
     def readmat(filename):
         """
         This method will read an instance of the class from a mat file.
-        Input:
-        filename - A string for the file name.
+
+        Parameters
+        ----------
+        filename : string
+            A string for the file name.
         """
         indata = sio.loadmat(filename, chars_as_strings=True)
         vardict = {
@@ -372,8 +426,11 @@ class IonoContainer(object):
     def readh5(filename):
         """
         This method will read an instance of the class from a structured h5 file.
-        Input:
-        filename - A string for the file name.
+
+        Parameters
+        ----------
+        filename : string
+            A string for the file name.
         """
 
         vardict = {
@@ -489,10 +546,14 @@ class IonoContainer(object):
         Given set of time limits or list of times the data the IonoContainer will be
         pruned accordinly.
 
-        Args:
-            timelims:``list``: A two point list with the desired time limits.
-            timesselected:``list``: Start times that will be kept.
-            tkeep: ``list``: Indexes of times from the Time_Vector array that will be kept.
+        Parameters
+        ----------
+        timelims : list
+            A two point list with the desired time limits.
+        timesselected : list 
+            Start times that will be kept.
+        tkeep : list
+            Indexes of times from the Time_Vector array that will be kept.
         """
         assert (
             (tkeep is not None) or (timelims is not None) or (timesselected is not None)
@@ -511,7 +572,13 @@ class IonoContainer(object):
         self.Velocity = self.Velocity[:, tkeep]
 
     def timelisting(self):
-        """This will output a list of lists that contains the times in strings."""
+        """This will output a list of lists that contains the times in strings.
+        
+        Returns
+        -------
+        timestrs : list
+            List of strings with the times.
+        """
 
         curtimes = self.Time_Vector
         timestrs = []
@@ -526,7 +593,18 @@ class IonoContainer(object):
 
     # %% Operator Methods
     def __eq__(self, self2):
-        """This is the == operator"""
+        """This is the == operator.
+        
+        Parameters
+        ----------
+        self2 : ionocontainer
+            Other ionocontainer object.
+
+        Returns
+        -------
+        iseq : bool
+            Are the two ionocontainers equal.
+        """
         vardict = vars(self)
         vardict2 = vars(self2)
 
@@ -546,14 +624,35 @@ class IonoContainer(object):
             return True
 
     def __ne__(self, self2):
-        """This is the != operator."""
+        """This is the != operator.
+        
+        Parameters
+        ----------
+        self2 : ionocontainer
+            Other ionocontainer object.
+
+        Returns
+        -------
+        iseq : bool
+            Are the two ionocontainers not equal.
+        """
         return not self.__eq__(self2)
 
     # multiplication operators
     def __mul__(self, thingtomult):
         """
-        This is the (*) multiplication. The thingtomult object can be a number, numpy array
-        thats the same size as Param_List or another ionocontainer.
+        This is the (*) multiplication. The thingtomult object can be a number, numpy array thats the same size as Param_List or another ionocontainer.
+
+                
+        Parameters
+        ----------
+        thingtomult : ionocontainer
+            Object that the ionocontainer is multiplied by, can be a number, numpy array or ionocontainer.
+                
+        Parameters
+        ----------
+        self2 : ionocontainer
+            Multiplied ionoconainter.
         """
         # check if multiplying a number or numpy array
         isnum = isinstance(thingtomult, numbers.Number)
@@ -596,15 +695,33 @@ class IonoContainer(object):
 
     def __rmul__(self, thingtomult):
         """
-        This is the reverse (*) multiplication operator. The thingtomult object can be a number, numpy array
-        thats the same size as Param_List or another ionocontainer.
+        This is the reverse (*) multiplication operator. The thingtomult object can be a number, numpy array thats the same size as Param_List or another ionocontainer.
+        
+        Parameters
+        ----------
+        thingtomult : ionocontainer
+            Object that the ionocontainer is multiplied by, can be a number, numpy array or ionocontainer.
+                
+        Parameters
+        ----------
+        self2 : ionocontainer
+            Multiplied ionoconainter.
         """
         return self.__mul__(thingtomult)
 
     def __div__(self, thing2div):
         """
-        This is the (/) division. The thing2div object can be a number, numpy array
-        thats the same size as Param_List or another ionocontainer.
+        This is the (/) division. The thing2div object can be a number, numpy array thats the same size as Param_List or another ionocontainer.
+        
+        Parameters
+        ----------
+        thing2div : ionocontainer
+            Object that the ionocontainer is divided by, can be a number, numpy array or ionocontainer.
+                
+        Parameters
+        ----------
+        self2 : ionocontainer
+            Divided ionoconainter.
         """
         isnum = isinstance(thing2div, numbers.Number)
         isarray = isinstance(thing2div, np.ndarray)
@@ -646,16 +763,33 @@ class IonoContainer(object):
 
     def __truediv__(self, thing2div):
         """
-        This is the (/) division operator but for python 3. This may not be implemented properly.
-        The thing2div object can be a number, numpy arraythats the same
-        size as Param_List or another ionocontainer.
+        This is the (/) division operator but for python 3. This may not be implemented properly. The thing2div object can be a number, numpy arraythats the same size as Param_List or another ionocontainer.
+
+        Parameters
+        ----------
+        thing2div : ionocontainer
+            Object that the ionocontainer is divided by, can be a number, numpy array or ionocontainer.
+                
+        Parameters
+        ----------
+        self2 : ionocontainer
+            divided ionoconainter.    
         """
         return self.__div__(thing2div)
 
     # addition
     def __add__(self, self2):
-        """This is the '-' operator. Assuming the locations, times and parameter types are the same,
-        the data will be added.
+        """This is the '+' operator. Assuming the locations, times and parameter types are the same, the data will be added.
+
+        Parameters
+        ----------
+        self2 : ionocontainer
+            Ionocontainer is added to the original.
+                
+        Returns
+        -------
+        self2 : ionocontainer
+            Summed ionoconainter.
         """
 
         assert np.allclose(
@@ -680,8 +814,17 @@ class IonoContainer(object):
         return outiono
 
     def __sub__(self, self2):
-        """This is the '-' operator. Assuming the locations, times and parameter types are the same,
-        the data will be subtracted.
+        """This is the '-' operator. Assuming the locations, times and parameter types are the same, the data will be subtracted.
+        
+        Parameters
+        ----------
+        self2 : ionocontainer
+            Ionocontainer is subtracted from the original.
+                
+        Returns
+        -------
+        self2 : ionocontainer
+            subtracted ionoconainter.
         """
         assert np.allclose(
             self.Time_Vector, self2.Time_Vector
@@ -709,14 +852,31 @@ class IonoContainer(object):
         self, func, sensdict, simparams, npts, ifile=0.0, nfiles=1.0, print_line=True
     ):
         """This function will make all of the spectrums given a functions.
-        Inputs
-            func - A function that will create all of the spectrums.
-            sensdict = A dictionary will information on the sensor.
-            npts - The number of points"""
+
+        Parameters
+        ----------
+        func : func
+            A function that will create all of the spectrums.
+        sensdict : dict
+            A dictionary will information on the sensor.
+        npts : int 
+            The number of points for the spectrum
+        """
         return func(self, sensdict, simparams, npts, ifile, nfiles, print_line)
 
     def combinetimes(self, self2):
-        """ """
+        """Combines the content of two ionocontainers across time.
+
+        Parameters
+        ----------
+        self2 : ionocontainer
+            Ionocontainer is added to the original.
+                
+        Returns
+        ----------
+        self2 : ionocontainer
+            Combined ionoconainter.
+        """
         a = np.ma.array(self.Cart_Coords, mask=np.isnan(self.Cart_Coords))
         blah = np.ma.array(self2.Cart_Coords, mask=np.isnan(self2.Cart_Coords))
 
@@ -746,7 +906,7 @@ class IonoContainer(object):
                 param vectors and the param names will be the the frequency points.
         """
         (omeg, outspecs) = self.makeallspectrums(sensdict, npts)
-        # XXX velocity is from original parameters
+        #HACK velocity is from original parameters
         return IonoContainer(
             self.Cart_Coords,
             outspecs,

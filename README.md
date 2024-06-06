@@ -1,8 +1,10 @@
 # SimISR
+
 by John Swoboda
 ![ionosphere slice plots](https://raw.github.com/jswoboda/SimISR/master/Images/logofig3.png "SimISR")
 
 ## Overview
+
 This Python module can be used create synthetic incoherenent scatter radar. It does this by creating filters from ISR spectrums and applying them to CWGN. This is depicted below in the following flow diagram.
 
 ![SimISR flow Diagram](https://raw.github.com/jswoboda/SimISR/master/Images/diagrampart.png)
@@ -13,24 +15,30 @@ From there the data can be processed like ISR data. The following flow diagram r
 ![SIMisr block diagram](https://raw.github.com/jswoboda/SimISR/master/Images/datastackchain.png)
 
 ## Suggestions
+
 It is highly suggested that the [Anaconda](https://www.continuum.io/downloads) platform be used as the package manager. All of the development and testing has been done using this.
 Assuming the user has installed Anaconda a [set up bash script](https://github.com/jswoboda/AnacondaEnvUtilities), which can be used in Linux or Mac environments is avalible.
 
 The user can also take advantage of two different APIs to plot results using the SimISR. The first is in Python and is called [GeoDataPython](https://github.com/jswoboda/GeoDataPython). A MATLAB version of this API is also avalible called [GeoDataMATLAB](https://github.com/jswoboda/GeoDataMATLAB). Both APIs can read in the structured files from SimISR.
 
 ## Installation
+
 All prereqs are handled automatically on install:
 
+```sh
 	git clone https://github.com/jswoboda/SimISR.git
 	cd SimISR
     pip install -e .
+```
 
 ### Test
+
 To determine if everything has been properly installed it is suggested that user runs the following Python files to create some test data.
 
-
+```sh
 	$ cd SimISR/Test
 	$ python testsimisr.py
+```
 
 If h5 files for each stage have been created then it should be properly installed.
 
@@ -41,6 +49,7 @@ TODO:
 * `testcomp.py`, `testdishmode.py`, `testisrmatrix.py`,`testsimisr.py` missing input file
 
 ## Software Archetecture
+
 The module is split up into three classes.
 
 IonoContainer - A container class that holds information on the ionosphere or auto correlation functions (ACFs)/spectrums.

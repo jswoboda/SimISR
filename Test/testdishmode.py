@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use('Agg')
 from SimISR.utilFunctions import makeconfigfile
 from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
-import SimISR.runsim as runsim
+from SimISR import runsimisr
 from SimISR.analysisplots import analysisdump
 
 def configsetup(testpath):
@@ -126,7 +126,7 @@ def main(funcnamelist):
         funcnamelist.remove('origdata')
 
 #    funcnamelist=['spectrums','radardata','fitting']
-    failflag=runsim.main(funcnamelist,testpath,testpath/'DishExample.ini',True)
+    failflag=runsimisr(funcnamelist,testpath,testpath/'DishExample.ini',True)
     if not failflag:
         analysisdump(testpath,testpath/'DishExample.ini')
 

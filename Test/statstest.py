@@ -17,7 +17,7 @@ import seaborn as sns
 import pdb
 from SimISR.utilFunctions import MakePulseDataRep,CenteredLagProduct,readconfigfile,spect2acf,makeconfigfile
 from SimISR.IonoContainer import IonoContainer
-from  SimISR.runsim import main as runsim
+from  SimISR import runsimisr
 from SimISR.analysisplots import analysisdump,maketi
 #from radarsystools.radarsystools import RadarSys
 PVALS = [1e11,2.1e3,1.1e3,0.]
@@ -380,7 +380,7 @@ def main(plist = None, functlist = ['spectrums','radardata','fitting','analysis'
 #        rtemp = RadarSys(sensdict,simparams['Rangegatesfinal'],ip)
 #        rsystools.append(rtemp.rms(sp.array([1e12]),sp.array([2.5e3]),sp.array([2.5e3])))
         if check_run:
-            runsim(functlist_red, curfold, str(curfold.joinpath('stats.ini')), True)
+            runsimisr(functlist_red, curfold, str(curfold.joinpath('stats.ini')), True)
         if 'analysis' in functlist:
             analysisdump(curfold, config, params = ['Ne', 'Te', 'Ti', 'Vi'])
         if 'stats' in functlist:

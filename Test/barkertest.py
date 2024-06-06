@@ -10,7 +10,7 @@ from SimISR import Path
 import scipy as sp
 from SimISR.utilFunctions import makeconfigfile, GenBarker#,readconfigfile
 from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
-import SimISR.runsim as runsim
+from SimISR import runsimisr
 from SimISR.analysisplots import analysisdump
 
 def makeconfigfilebarker(testpath):
@@ -131,7 +131,7 @@ def main(input_str=None):
 
     funcnamelist = args_commd.funclist
 
-    failflag=runsim.main(funcnamelist,testpath,str(testpath.joinpath('barkertest.yml')),True)
+    failflag=runsimisr(funcnamelist,testpath,str(testpath.joinpath('barkertest.yml')),True)
     if not failflag:
         analysisdump(testpath,testpath.joinpath('barkertest.yml'))
 if __name__== '__main__':

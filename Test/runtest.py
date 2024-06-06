@@ -8,7 +8,7 @@ from SimISR import Path
 import scipy as sp
 from SimISR.utilFunctions import readconfigfile,makeconfigfile
 from SimISR.IonoContainer import IonoContainer
-from  SimISR.runsim import main as runsim
+from  SimISR import runsimisr
 from SimISR.analysisplots import analysisdump
 import ipdb
 
@@ -135,7 +135,7 @@ def main(npulse=100, functlist=['spectrums', 'radardata', 'fitting', 'analysis']
     (_, simparams) = readconfigfile(str(config))
     makedata(testpath, simparams['Tint'])
     if check_run:
-        runsim(functlist_red, str(testpath), config, True)
+        runsimisr(functlist_red, str(testpath), config, True)
     if 'analysis' in functlist:
         analysisdump(str(testpath), config)
 

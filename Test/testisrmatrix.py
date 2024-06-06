@@ -11,7 +11,7 @@ import shutil
 #from SimISR.operators import makematPA
 from SimISR.IonoContainer import MakeTestIonoclass
 from SimISR.analysisplots import plotbeamparametersv2
-import SimISR.runsim as runsim
+from SimISR import runsimisr
 
 
 
@@ -56,7 +56,7 @@ def main():
     Icont1.saveh5(origparamsdir/'0 testiono.h5')
     Icont1.saveh5(testpath/'startdata.h5')
     funcnamelist=['spectrums','applymat','fittingmat']
-    runsim.main(funcnamelist,testpath,configname,True)
+    runsimisr(funcnamelist,testpath,configname,True)
 
     plotdir = testpath/'AnalysisPlots'
 

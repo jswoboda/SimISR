@@ -16,7 +16,7 @@ import seaborn as sns
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import makeconfigfile, readconfigfile
 from SimISR.analysisplots import analysisdump
-from SimISR.runsim import main as runsimisr
+from SimISR import runsimisr
 from SimISR import Path
 
 def pyglowinput(latlonalt=None, dn_list=None, z=None, storm=False, spike=False):
@@ -125,6 +125,7 @@ def iriinput(latlonalt = [42.61950, -71.4882, 250.00], dn_start_stop =(datetime(
     Param_List[:, :] = Param_List[:, :, spec_keep]
     Iono_out = IonoContainer(coords, Param_List, times = time_arr, species=species)
     return Iono_out
+
 def configfilesetup(testpath, config, simtime_mins=4):
     """ This will create the configureation file given the number of pulses for
         the test. This will make it so that there will be 12 integration periods

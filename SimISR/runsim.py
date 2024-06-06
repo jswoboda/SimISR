@@ -146,7 +146,7 @@ def ke(item):
     else:
         return float('inf')
 #%% Main function
-def main(funcnamelist,basedir,configfile,remakealldata,printlines=True):
+def runsimisr(funcnamelist,basedir,configfile,remakealldata,printlines=True):
     """ Main function for this module. 
     
     The function will set up the directory

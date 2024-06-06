@@ -10,7 +10,7 @@ from SimISR import Path
 import scipy as sp
 from SimISR.utilFunctions import makeconfigfile
 from SimISR.IonoContainer import IonoContainer, MakeTestIonoclass
-import SimISR.runsim as runsim
+from SimISR import runsimisr
 from SimISR.analysisplots import analysisdump
 
 def configsetup(testpath):
@@ -114,7 +114,7 @@ def main():
     makeinputh5(MakeTestIonoclass(testv=True,testtemp=False),testpath)
     Icont1.saveh5(origparamsdir/'0 testiono.h5')
     funcnamelist=['spectrums','radardata','fitting']
-    failflag = runsim.main(funcnamelist,testpath, testpath/'PFISRExample.ini',True)
+    failflag = runsimisr(funcnamelist,testpath, testpath/'PFISRExample.ini',True)
     if not failflag:
         analysisdump(testpath,str(testpath/'PFISRExample.ini'))
 if __name__== '__main__':

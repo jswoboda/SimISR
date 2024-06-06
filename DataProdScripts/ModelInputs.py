@@ -13,7 +13,7 @@ import msise00
 from SimISR.IonoContainer import IonoContainer
 from SimISR.utilFunctions import getdefualtparams, makeconfigfile
 from SimISR.analysisplots import analysisdump
-from SimISR.runsim import main as runsimisr
+from SimISR import runsimisr
 from SimISR import Path
 
 
