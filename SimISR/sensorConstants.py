@@ -13,8 +13,8 @@ from scipy.interpolate import griddata
 import scipy as sp
 import scipy.constants as sconst
 #
-from mathutils import diric, angles2xy, jinc, rotcoords
-from h5fileIO import load_dict_from_hdf5
+from .mathutils import diric, angles2xy, jinc, rotcoords
+from .h5fileIO import load_dict_from_hdf5
 ## Parameters for Sensor
 #AMISR = {'Name':'AMISR','Pt':2e6,'k':9.4,'G':10**4.3,'lamb':0.6677,'fc':449e6,'fs':50e3,\
 #    'taurg':14,'Tsys':120,'BeamWidth':(2,2)}

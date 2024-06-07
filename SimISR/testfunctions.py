@@ -1,7 +1,7 @@
 #!python
 
 import numpy as np
-from IonoContainer import IonoContainer
+from .IonoContainer import IonoContainer
 
 #%% Test functions
 def chapman_func(z, H_0, Z_0, N_0):

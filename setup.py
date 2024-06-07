@@ -7,7 +7,6 @@ This is the setup file for the SimISR python package
 """
 req = ['ISRSpectrum', 'nose','six','numpy','scipy','matplotlib','seaborn','pyyaml','pandas','digital_rf']
 
-import os
 from setuptools import setup, find_packages
 
 config = {
@@ -21,13 +20,5 @@ config = {
     'packages': find_packages(),
     'name': 'SimISR'
 }
-
-curpath = os.path.dirname(__file__)
-testpath = os.path.join(curpath,'Testdata')
-try:
-    os.mkdir(testpath)
-except OSError:
-    pass
-print("created {}".format(testpath))
 
 setup(**config)

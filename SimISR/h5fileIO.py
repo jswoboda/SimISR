@@ -113,6 +113,8 @@ def recursively_save_dict_contents_to_group(h5file, path, dic):
                 raise ValueError(
                     "The data representation in the HDF5 file does not match the original dict."
                 )
+        elif item is None:
+            continue
         # save dictionaries
         elif isinstance(item, dict):
             recursively_save_dict_contents_to_group(h5file, path + key + "/", item)

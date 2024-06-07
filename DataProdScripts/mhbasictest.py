@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 import numpy as np
 
-from SimISR import make_test_ex, readconfigfile, makeconfigfile
+from SimISR import make_test_ex, readconfigfile, makeconfigfile, runsimisr
 
 
 
@@ -59,20 +59,13 @@ def parse_command_line(str_input=None):
         help="Original directory the data was recorded to.",
         required=True,
     )
-    parser.add_argument(
-        "-m",
-        "--mffile",
-        dest="mffile",
-        help="Matched filter file.",
-        required=True,
-    )
+
     parser.add_argument(
         "-c",
         "--config",
         dest="config",
         help="Config file.",
         required=False,
-
         type=str,
     )
     parser.add_argument(
@@ -105,30 +98,35 @@ def configfilesetup(testpath, config, simtime_mins=4):
     defcon = curloc/config
     (sensdict, simparams) = readconfigfile(str(defcon))
     simparams['TimeLim'] = simtime_mins*60
-    # tint = simparams['IPP']*npulses
-    # ratio1 = tint/simparams['Tint']
-    # simparams['Tint'] = ratio1*simparams['Tint']
-    # simparams['Fitinter'] = ratio1 * simparams['Fitinter']
-    # simparams['TimeLim'] = 2*tint
+
     simparams['fitmode'] = 1
     simparams['startfile'] = 'startfile.h5'
     makeconfigfile(str(testpath/config), simparams['Beamlist'],
                    sensdict['Name'], simparams)
-    
-def main(datadir="~/DATA/SimISR/MHsimple"):
 
 
+def run_example(datadir="~/DATA/SimISR/MHchapmantest",config="MHsimple.yml",nminutes=4):
 
     curloc = Path(__file__).resolve().parent
     testpath = Path(datadir)
     if not testpath.is_dir():
         testpath.mkdir(parents=True)
+
     z = np.arange(90, 700,5,dtype = float)
     coords = np.column_stack([np.zeros_like(z),np.zeros_like(z),z])
     iono_t = make_test_ex(testv=False,testtemp=True,coords=coords)
+    inputpath = testpath.joinpath('Origparams')
+
+    if not inputpath.is_dir():
+        inputpath.mkdir()
+    inputfile = inputpath.joinpath('0 stats.h5')
+
+    iono_t.saveh5(str(inputfile))
+    iono_t.saveh5(str(testpath.joinpath('startfile.h5')))
+
     functlist = ['spectrums', 'radardata']
-    configfilesetup(testpath, ARGS.config, ARGS.nminutes)
-    config = str(testpath.joinpath(ARGS.config))
+    configfilesetup(testpath, config, nminutes)
+    config = str(testpath.joinpath(config))
 
     drfdirone = drfdata = testpath/'drfdata'
     if drfdirone.exists() and 'radardata' in functlist:
@@ -153,4 +151,7 @@ def main(datadir="~/DATA/SimISR/MHsimple"):
 
 
 if __name__ == '__main__':
-    main()
+    
+    args_commd = parse_command_line()
+    arg_dict = {k: v for k, v in args_commd._get_kwargs() if v is not None}
+    run_example(**arg_dict)

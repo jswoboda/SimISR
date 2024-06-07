@@ -12,12 +12,11 @@ import scipy.signal as sig
 import scipy.constants as sc
 
 # My modules
-from IonoContainer import IonoContainer
-from utilFunctions import CenteredLagProduct, MakePulseDataRepLPC, readconfigfile, BarkerLag, update_progress
-from h5fileIO import save_dict_to_hdf5, load_dict_from_hdf5
+from .IonoContainer import IonoContainer
+from .utilFunctions import CenteredLagProduct, MakePulseDataRepLPC, readconfigfile, BarkerLag, update_progress
+from .h5fileIO import save_dict_to_hdf5, load_dict_from_hdf5
 import digital_rf as drf
-#from SimISR import specfunctions
-#from SimISR.analysisplots import plotspecsgen
+
 
 class RadarDataFile(object):
     """

@@ -6,7 +6,6 @@ Holds the IonoContainer class that contains the ionospheric parameters.
 from six import string_types
 import os
 import glob
-import inspect
 import copy
 from datetime import datetime
 from pathlib import Path
@@ -17,7 +16,7 @@ import numbers
 import pandas as pd
 
 # From my
-from h5fileIO import load_dict_from_hdf5, save_dict_to_hdf5
+from .h5fileIO import load_dict_from_hdf5, save_dict_to_hdf5
 
 
 class IonoContainer(object):
@@ -446,8 +445,12 @@ class IonoContainer(object):
         }
         vardict2 = {vardict[ikey]: ikey for ikey in vardict.keys()}
         file_dict = load_dict_from_hdf5(filename)
-        if not file_dict["Species"] is None:
+        
+        if not 'Species' in  file_dict.keys():
+            file_dict["Species"] = None
+        elif not file_dict["Species"] is None:
             file_dict["Species"] = file_dict["Species"].astype("<U6").tolist()
+    
         file_dict["Param_Names"] = file_dict["Param_Names"].astype("<U6")
         outdict = {}
 
