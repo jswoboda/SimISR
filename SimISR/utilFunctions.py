@@ -7,10 +7,7 @@ This module holds many of the
 from __future__ import print_function
 import sys
 import warnings
-import pickle
 import yaml
-import h5py
-import tables
 import numpy as np
 import scipy as sp
 import scipy.fftpack as scfft

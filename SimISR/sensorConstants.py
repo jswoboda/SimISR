@@ -6,8 +6,6 @@
 .. moduleauthor:: John Swoboda <swoboj@bu.edu>
 """
 from pathlib import Path
-import tables
-import h5py
 import numpy as np
 from scipy.interpolate import griddata
 import scipy as sp
@@ -67,14 +65,7 @@ def getConst(typestr,angles = None):
         arrayfunc = Sond_Pattern
         h5filename = dirname/'Sondrestrom_PARAMS.h5'
 
-    # with tables.open_file(str(h5filename)) as f:
-    #     kmat = f.root.Params.Kmat.read()
-    #     freq = float(f.root.Params.Frequency.read())
-    #     P_r = float(f.root.Params.Power.read())
-    #     bandwidth = f.get_node('/Params/Bandwidth').read()
-    #     ts = f.get_node('/Params/Sampletime').read()
-    #     systemp = f.get_node('/Params/Systemp').read()
-    #     Ang_off = f.root.Params.Angleoffset.read()
+
     am = load_dict_from_hdf5(str(h5filename))
     kmat = am['Params']['Kmat']
     freq = am['Params']['Frequency']
