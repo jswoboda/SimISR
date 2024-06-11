@@ -8,7 +8,6 @@
 from pathlib import Path
 import numpy as np
 from scipy.interpolate import griddata
-import scipy as sp
 import scipy.constants as sconst
 #
 from .mathutils import diric, angles2xy, jinc, rotcoords

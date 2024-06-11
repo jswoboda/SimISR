@@ -22,10 +22,7 @@ import sys
 from datetime import datetime
 import traceback
 import argparse
-import ipdb
 
-# Imported scipy and matplotlib modules
-import scipy as sp
 # My modules
 from pathlib import Path
 from SimISR.IonoContainer import IonoContainer

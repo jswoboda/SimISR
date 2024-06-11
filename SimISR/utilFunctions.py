@@ -14,7 +14,6 @@ import scipy.fftpack as scfft
 import scipy.signal as scisig
 import scipy.interpolate as spinterp
 import scipy.constants as sconst
-#
 import SimISR.sensorConstants as sensconst
 from pathlib import Path
 

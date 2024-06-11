@@ -6,7 +6,7 @@ This module is used to plot the output from various stages of the simulator to d
 problems. This is also helpful for presentations.
 @author: John Swoboda
 """
-from . import Path
+from pathlib import Path
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors

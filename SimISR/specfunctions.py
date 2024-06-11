@@ -8,7 +8,7 @@ fitting and making spectrums.
 import numpy as np
 import scipy.fftpack as scfft
 #
-from ISRSpectrum.ISRSpectrum import Specinit
+from ISRSpectrum import Specinit
 from SimISR.utilFunctions import spect2acf, update_progress
 
 
