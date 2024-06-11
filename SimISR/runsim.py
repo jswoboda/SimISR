@@ -360,4 +360,4 @@ if __name__ == "__main__":
     else:
         funcnamelist = funcname.split()
 
-    failflag = main(funcnamelist, basedir, configfile, remakealldata)
+    failflag = runsimisr(funcnamelist, basedir, configfile, remakealldata)

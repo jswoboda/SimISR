@@ -10,7 +10,6 @@ from pathlib import Path
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-import scipy as sp
 import scipy.fftpack as scfft
 import numpy as np
 import seaborn as sns
@@ -48,8 +47,8 @@ def beamvstime(maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs 
     Nt = len(times)
     dataloc = Ionofit.Sphere_Coords
     pnames = Ionofit.Param_Names
-    pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
-    p2fit = [sp.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
+    pnameslower = np.array([ip.lower() for ip in pnames.flatten()])
+    p2fit = [np.argwhere(ip==pnameslower)[0][0] if ip in pnameslower else None for ip in paramslower]
 
     angles = dataloc[:,1:]
     b = np.ascontiguousarray(angles).view(np.dtype((np.void, angles.dtype.itemsize * angles.shape[1])))
@@ -84,7 +83,7 @@ def beamvstime(maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs 
             rng_fit= dataloc[indxkep,0]
             rngargs = np.argsort(rng_fit)
             rng_fit = rng_fit[rngargs]
-            alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
+            alt_fit = rng_fit*np.sin(curbeam[1]*np.pi/180.)
             curfit = Ionofit.Param_List[indxkep,:,p2fit[iparam]]
 
             curfit = curfit[rngargs]
@@ -99,7 +98,7 @@ def beamvstime(maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs 
 
             if ix>5:
                 ax.set_xlabel("Time in s")
-            if sp.mod(ix,3)==0:
+            if np.mod(ix,3)==0:
                 ax.set_ylabel('Alt km')
             ax.set_title('{0} vs Altitude, Az: {1}$^o$ El: {2}$^o$'.format(params[iparam],*curbeam))
             imcount=imcount+1
@@ -117,93 +116,6 @@ def beamvstime(maindir,params=['Ne'],filetemplate='AltvTime',suptitle = 'Alt vs 
                 newfig=True
 
 
-def fitsurfaceplot(paramdict,plotvals,configfile,y_acf,yerr=None,filetemplate='fitsurfs',suptitle = 'Fit Surfaces'):
-    """ This will create a fit surface plot.
-        Inputs
-        paramdict - A dictionary with the followign key value pairs.
-            Ne - Array of possible electron density values.
-            Te - Array of possible electron tempreture values.
-            Ti - Array of possible ion tempreture values.
-            frac - Array of possible fraction shares of the ion make up.
-        plotvals - A dictionary with key value pars.
-            setparam - A string that describes he parameter thats set.
-            xparam - The parameter that's varied along the x axis of the image.
-            yparam - The parameter that's varied along the y axis of the image.
-            indx - The index from the paramdict for the set variable.
-        configfile - The file thats used for the simulation.
-        y_acf - the complex ACF used to create the errors.
-        yerr - The standard deviation of the acf measurement.
-        filetemplate - The template on how the file will be named.
-        suptitle - The super title for the plots.
-    """
-    sns.set_style("whitegrid")
-    sns.set_context("notebook")
-    (sensdict,simparams) = readconfigfile(configfile)
-    specs = simparams['species']
-    nspecs = len(specs)
-
-    # make param lists
-    paramlist = [[]]*(2*nspecs+1)
-    paramlist[2*(nspecs-1)] =paramdict['Ne']
-    paramlist[2*(nspecs-1)+1] =paramdict['Te']
-
-    if 'frac' in paramdict.keys():
-        frac = paramdict['frac']
-    else:
-        frac = [[1./(nspecs-1)]]*(nspecs-1)
-
-    for ispec in range(nspecs-1):
-        paramlist[2*ispec] =frac[ispec]
-        paramlist[2*ispec+1] =  paramdict['Ti'][ispec]
-
-    if 'Vi' in paramdict.keys():
-        paramlist[-1] = paramdict['Vi']
-    else:
-        paramlist[-1] =[0.]
-
-    pvals = {'Ne':2*(nspecs-1),'Te':2*(nspecs-1)+1,'Ti':1,'frac':0}
-
-    fitsurfs= makefitsurf(paramlist,y_acf,sensdict,simparams,yerr)
-    quad = (3,3)
-    i_fig=0
-    for iplt, idict in enumerate(plotvals):
-        iaxn = sp.mod(iplt,sp.prod(quad))
-
-        if iaxn==0:
-            (figmplf, axmat) = plt.subplots(quad[0],quad[1],figsize=(20, 15), facecolor='w')
-            axvec = axmat.flatten()
-
-        setstr = idict['setparam']
-        xstr = idict['xparam']
-        ystr = idict['yparam']
-        mloc = pvals[setstr]
-        xdim = pvals[xstr]
-        ydim = pvals[ystr]
-        setval = paramlist[setstr][idict['indx']]
-        transarr = sp.arange(2*nspecs+1).tolist()
-        transarr.remove(mloc)
-        transarr.remove(xdim)
-        transarr.remove(ydim)
-        transarr = [mloc,ydim,xdim] +transarr
-        fitupdate = sp.transpose(fitsurfs,transarr)
-        while fitupdate.ndim>3:
-            fitupdate = sp.nanmean(fitupdate,dim=-1)
-        Z1 = fitupdate[idict['indx']]
-        iax = axvec[iaxn]
-        xvec = paramdict[xstr]
-        yvec = paramdict[ystr]
-        [Xmat,Ymat]= sp.meshgrid(xvec,yvec)
-
-        iax.pcolor(Xmat,Ymat,Z1,norm=colors.LogNorm(vmin=Z1.min(), vmax=Z1.max()))
-        iax.xlabel=xstr
-        iax.ylabel=ystr
-        iax.title('{0} at {0}'.format(setstr,setval))
-        if iaxn ==sp.prod(quad)-1:
-            figmplf.suptitle(suptitle, fontsize=20)
-            fname= filetemplate+'_{0:0>4}.png'.format(i_fig)
-            plt.savefig(fname)
-            plt.close(figmplf)
-            i_fig+=1
 
 
 def maketi(Ionoin):
@@ -214,16 +126,16 @@ def maketi(Ionoin):
     Paramlist = Ionoin.Param_List[:,:,:-1,:]
     Vi = Ionoin.getDoppler()
 
-    Nisum = sp.sum(Paramlist[:,:,:,0],axis=2)
-    Tisum = sp.sum(Paramlist[:,:,:,0]*Paramlist[:,:,:,1],axis=2)
+    Nisum = np.sum(Paramlist[:,:,:,0],axis=2)
+    Tisum = np.sum(Paramlist[:,:,:,0]*Paramlist[:,:,:,1],axis=2)
     Tiave = Tisum/Nisum
-    Newpl = sp.zeros((Nloc,Nt,Nion+2,Nppi))
+    Newpl = np.zeros((Nloc,Nt,Nion+2,Nppi))
     Newpl[:,:,:-2,:] = Ionoin.Param_List
     Newpl[:,:,-2,0] = Nisum
     Newpl[:,:,-2,1] = Tiave
     Newpl[:,:,-1,0] = Vi
-    newrow = sp.array([['Ni','Ti'],['Vi','xx']])
-    newpn = sp.vstack((Ionoin.Param_Names,newrow))
+    newrow = np.array([['Ni','Ti'],['Vi','xx']])
+    newpn = np.vstack((Ionoin.Param_Names,newrow))
     Ionoin.Param_List = Newpl
     Ionoin.Param_Names = newpn
     return Ionoin
@@ -262,25 +174,25 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
     Ionofit = IonoContainer.readh5(str(ffit))
     dataloc = Ionofit.Sphere_Coords
     pnames = Ionofit.Param_Names
-    pnameslower = sp.array([ip.lower() for ip in pnames.flatten()])
-    p2fit = [sp.argwhere(ip == pnameslower)[0][0]
+    pnameslower = np.array([ip.lower() for ip in pnames.flatten()])
+    p2fit = [np.argwhere(ip == pnameslower)[0][0]
              if ip in pnameslower else None for ip in paramslower]
     time2fit = [None]*Nt
     # Have to fix this because of time offsets
     if times[0] == 0:
         times += Ionofit.Time_Vector[0, 0]
     for itn, itime in enumerate(times):
-        filear = sp.argwhere(Ionofit.Time_Vector[:, 0] >= itime)
+        filear = np.argwhere(Ionofit.Time_Vector[:, 0] >= itime)
         if len(filear) == 0:
             filenum = len(Ionofit.Time_Vector)-1
         else:
-            filenum = sp.argmin(sp.absolute(Ionofit.Time_Vector[:, 0]-itime))
+            filenum = np.argmin(np.absolute(Ionofit.Time_Vector[:, 0]-itime))
         time2fit[itn] = filenum
     times_int = [Ionofit.Time_Vector[i] for i in time2fit]
 
     # determine the beams
     angles = dataloc[:, 1:]
-    rng = sp.unique(dataloc[:, 0])
+    rng = np.unique(dataloc[:, 0])
     b_arr = np.ascontiguousarray(angles).view(np.dtype((np.void,
                                                         angles.dtype.itemsize * angles.shape[1])))
     _, idx, invidx = np.unique(b_arr, return_index=True, return_inverse=True)
@@ -301,7 +213,7 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
     # go through times find files and then times in files
     for itn, itime in enumerate(times):
 
-        filear = sp.argwhere(timelist >= itime)
+        filear = np.argwhere(timelist >= itime)
         if len(filear) == 0:
             filenum = [len(timelist)-1]
         else:
@@ -315,12 +227,12 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
             log2 = (filetimes[:, 1] > times_int[itn][0]) & (filetimes[:, 1] <= times_int[itn][1])
             log3 = (filetimes[:, 0] <= times_int[itn][0]) & (filetimes[:, 1] > times_int[itn][1])
             log4 = (filetimes[:, 0] > times_int[itn][0]) & (filetimes[:, 1] < times_int[itn][1])
-            curtimes1 = sp.where(log1|log2|log3|log4)[0].tolist()
+            curtimes1 = np.where(log1|log2|log3|log4)[0].tolist()
             flist1 = flist1+ [ifile]*len(curtimes1)
             timeinflist = timeinflist+curtimes1
         time2intime[itn] = timeinflist
         time2file[itn] = flist1
-    nfig = int(sp.ceil(Nt*Nb))
+    nfig = int(np.ceil(Nt*Nb))
 
     imcount = 0
     curfilenum = -1
@@ -328,7 +240,7 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
     for i_fig in range(nfig):
         lines = [None]*2
         labels = [None]*2
-        (figmplf, axmat) = plt.subplots(int(sp.ceil(Np/2)), 2, figsize=(20, 15), facecolor='w')
+        (figmplf, axmat) = plt.subplots(int(np.ceil(Np/2)), 2, figsize=(20, 15), facecolor='w')
         axvec = axmat.flatten()
         # loop that goes through each axis loops through each parameter, beam
         # then time.
@@ -336,12 +248,12 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
             if imcount >= Nt*Nb*Np:
                 break
             imcount_f = float(imcount)
-            itime = int(sp.floor(imcount_f/Nb/Np))
+            itime = int(np.floor(imcount_f/Nb/Np))
             iparam = int(imcount_f/Nb-Np*itime)
             ibeam = int(imcount_f-(itime*Np*Nb+iparam*Nb))
             curbeam = beamlist[ibeam]
 
-            altlist = sp.sin(curbeam[1]*sp.pi/180.)*rng
+            altlist = np.sin(curbeam[1]*np.pi/180.)*rng
 
             curparm = paramslower[iparam]
             # Use Ne from input to compare the ne derived from the power.
@@ -350,7 +262,7 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
             else:
                 curparm_in = curparm
 
-            curcoord = sp.zeros(3)
+            curcoord = np.zeros(3)
             curcoord[1:] = curbeam
 
             for iplot, filenum in enumerate(time2file[itime]):
@@ -362,17 +274,17 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
                     if ('ti' in paramslower) or ('vi' in paramslower):
                         Ionoin = maketi(Ionoin)
                     pnames = Ionoin.Param_Names
-                    pnameslowerin = sp.array([ip.lower() for ip in pnames.flatten()])
-                prmloc = sp.argwhere(curparm_in == pnameslowerin)
+                    pnameslowerin = np.array([ip.lower() for ip in pnames.flatten()])
+                prmloc = np.argwhere(curparm_in == pnameslowerin)
                 if prmloc.size != 0:
                     curprm = prmloc[0][0]
                 # build up parameter vector bs the range values by finding the closest point in space in the input
-                curdata = sp.zeros(len(rng))
+                curdata = np.zeros(len(rng))
                 for irngn, irng in enumerate(rng):
                     curcoord[0] = irng
                     tempin = Ionoin.getclosestsphere(curcoord)[0][time2intime[itime]]
                     Ntloc = tempin.shape[0]
-                    tempin = sp.reshape(tempin, (Ntloc, len(pnameslowerin)))
+                    tempin = np.reshape(tempin, (Ntloc, len(pnameslowerin)))
                     curdata[irngn] = tempin[0, curprm]
                 #actual plotting of the input data
                 lines[0] = ax.plot(curdata, altlist, marker='o', c='b', linewidth=2)[0]
@@ -382,10 +294,10 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
             indxkep = np.argwhere(invidx == ibeam)[:, 0]
             curfit = Ionofit.Param_List[indxkep, time2fit[itime], p2fit[iparam]]
             rng_fit = dataloc[indxkep, 0]
-            alt_fit = rng_fit*sp.sin(curbeam[1]*sp.pi/180.)
+            alt_fit = rng_fit*np.sin(curbeam[1]*np.pi/180.)
             errorexist = 'n'+paramslower[iparam] in pnameslower
             if errorexist and werrors:
-                eparam = sp.argwhere('n'+paramslower[iparam] == pnameslower)[0][0]
+                eparam = np.argwhere('n'+paramslower[iparam] == pnameslower)[0][0]
                 curerror = Ionofit.Param_List[indxkep, time2fit[itime], eparam]
                 lines[1] = ax.errorbar(curfit, alt_fit, xerr=curerror, fmt='-.',
                                        c='g', linewidth=2)[0]
@@ -397,9 +309,9 @@ def plotbeamparametersv2(times, configfile, maindir, fitdir='Fitted', params=['N
             numplots = len(time2file[itime])
             # set the limit for the parameter
             if curparm == 'vi':
-                 ax.set(xlim=[-1.25*sp.nanmax(sp.absolute(curfit)), 1.25*sp.nanmax(sp.absolute(curfit))])
+                 ax.set(xlim=[-1.25*np.nanmax(np.absolute(curfit)), 1.25*np.nanmax(np.absolute(curfit))])
             elif curparm_in != 'ne':
-                ax.set(xlim=[0.75*sp.nanmin(curfit), sp.minimum(1.25*sp.nanmax(curfit), 8000.)])
+                ax.set(xlim=[0.75*np.nanmin(curfit), np.minimum(1.25*np.nanmax(curfit), 8000.)])
             elif (curparm_in == 'ne') and nelog:
                 ax.set_xscale('log')
 
@@ -442,8 +354,8 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
     simdtype = simparams['dtype']
     npts = simparams['numpoints']*3.0
     amb_dict = simparams['amb_dict']
-    if sp.ndim(coords)==1:
-        coords = coords[sp.newaxis,:]
+    if np.ndim(coords)==1:
+        coords = coords[np.newaxis,:]
     Nt = len(times)
     Nloc = coords.shape[0]
     sns.set_style("whitegrid")
@@ -451,9 +363,9 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
 
     if indisp:
         dirlist = [i.name for i in specsfiledir.glob('*.h5')]
-        timelist = sp.array([float(i.split()[0]) for i in dirlist])
+        timelist = np.array([float(i.split()[0]) for i in dirlist])
         for itn,itime in enumerate(times):
-            filear = sp.argwhere(timelist>=itime)
+            filear = np.argwhere(timelist>=itime)
             if len(filear)==0:
                 filenum = len(timelist)-1
             else:
@@ -461,7 +373,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
             specsfilename = specsfiledir.joinpath(dirlist[filenum])
             Ionoin = IonoContainer.readh5(str(specsfilename))
             if itn==0:
-                specin = sp.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
+                specin = np.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
             omeg = Ionoin.Param_Names
             npts = Ionoin.Param_List.shape[-1]
 
@@ -476,16 +388,16 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
 
     if acfdisp:
         Ionoacf = IonoContainer.readh5(str(acfname))
-        ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
-        ts = float(simparams['fsden']*sp.prod(simparams['declist']))/simparams['fsnum']
-        omeg = sp.arange(-sp.ceil((npts-1.)/2.),sp.floor((npts-1.)/2.)+1)/ts/npts
+        ACFin = np.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
+        ts = float(simparams['fsden']*np.prod(simparams['declist']))/simparams['fsnum']
+        omeg = np.arange(-np.ceil((npts-1.)/2.),np.floor((npts-1.)/2.)+1)/ts/npts
         for icn, ic in enumerate(coords):
             if cartcoordsys:
                 tempin = Ionoacf.getclosest(ic,times)[0]
             else:
                 tempin = Ionoacf.getclosestsphere(ic,times)[0]
-            if sp.ndim(tempin)==1:
-                tempin = tempin[sp.newaxis,:]
+            if np.ndim(tempin)==1:
+                tempin = tempin[np.newaxis,:]
             ACFin[icn] = tempin
         specout = scfft.fftshift(scfft.fft(ACFin,n=npts,axis=-1),axes=-1)
 
@@ -494,18 +406,18 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
         (omegfit,outspecsfit) =ISRspecmakeout(Ionofit.Param_List,sensdict['fc'],sensdict['fs'],simparams['species'],npts)
         Ionofit.Param_List= outspecsfit
         Ionofit.Param_Names = omegfit
-        specfit = sp.zeros((Nloc,Nt,npts))
+        specfit = np.zeros((Nloc,Nt,npts))
         for icn, ic in enumerate(coords):
             if cartcoordsys:
                 tempin = Ionofit.getclosest(ic,times)[0]
             else:
                 tempin = Ionofit.getclosestsphere(ic,times)[0]
-            if sp.ndim(tempin)==1:
-                tempin = tempin[sp.newaxis,:]
+            if np.ndim(tempin)==1:
+                tempin = tempin[np.newaxis,:]
             specfit[icn] = tempin/npts/npts
 
 
-    nfig = int(sp.ceil(Nt*Nloc/6.0))
+    nfig = int(np.ceil(Nt*Nloc/6.0))
     imcount = 0
 
     for i_fig in range(nfig):
@@ -516,7 +428,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
         for iax,ax in enumerate(axvec):
             if imcount>=Nt*Nloc:
                 break
-            iloc = int(sp.floor(imcount/Nt))
+            iloc = int(np.floor(imcount/Nt))
             itime = int(imcount-(iloc*Nt))
 
             maxvec = []
@@ -524,7 +436,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
                 curfitspec = specfit[iloc,itime]
                 rcsfit = curfitspec.sum()
                 (taufit,acffit) = spect2acf(omegfit,curfitspec)
-                guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
+                guess_acffit = np.dot(amb_dict['WttMatrix'],acffit)
                 guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
                 spec_intermfit = scfft.fftshift(scfft.fft(guess_acffit,n=npts))
                 lines[1]= ax.plot(omeg*1e-3,spec_intermfit.real,label='Fitted Spectrum',linewidth=5)[0]
@@ -534,7 +446,7 @@ def plotspecs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True
                 curin = specin[iloc,itime]
                 rcs = curin.real.sum()
                 (tau,acf) = spect2acf(omeg,curin)
-                guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
+                guess_acf = np.dot(amb_dict['WttMatrix'],acf)
 
                 guess_acf = guess_acf*rcs/guess_acf[0].real
 
@@ -592,24 +504,24 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
     simdtype = simparams['dtype']
     npts = simparams['numpoints']*3.0
     amb_dict = simparams['amb_dict']
-    if sp.ndim(coords)==1:
-        coords = coords[sp.newaxis,:]
+    if np.ndim(coords)==1:
+        coords = coords[np.newaxis,:]
     Nt = len(times)
     Nloc = coords.shape[0]
     sns.set_style("whitegrid")
     sns.set_context("notebook")
-    ds_fac = sp.prod(simparams['declist'])
+    ds_fac = np.prod(simparams['declist'])
     pulse = simparams['Pulse'][::ds_fac]
     p_samps = len(pulse)
     ts = float(simparams['fsden']*ds_fac)/simparams['fsnum']
 
-    tau1 = sp.arange(pulse.shape[-1])*ts
+    tau1 = np.arange(pulse.shape[-1])*ts
 
     if indisp:
         dirlist = [i.name for i in specsfiledir.glob('*.h5')]
-        timelist = sp.array([float(i.split()[0]) for i in dirlist])
+        timelist = np.array([float(i.split()[0]) for i in dirlist])
         for itn,itime in enumerate(times):
-            filear = sp.argwhere(timelist>=itime)
+            filear = np.argwhere(timelist>=itime)
             if len(filear)==0:
                 filenum = len(timelist)-1
             else:
@@ -617,7 +529,7 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
             specsfilename = specsfiledir.joinpath(dirlist[filenum])
             Ionoin = IonoContainer.readh5(str(specsfilename))
             if itn==0:
-                specin = sp.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
+                specin = np.zeros((Nloc,Nt,Ionoin.Param_List.shape[-1])).astype(Ionoin.Param_List.dtype)
             omeg = Ionoin.Param_Names
             npts = Ionoin.Param_List.shape[-1]
 
@@ -626,21 +538,21 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
                     tempin = Ionoin.getclosest(ic,times)[0]
                 else:
                     tempin = Ionoin.getclosestsphere(ic,times)[0]
-#                if sp.ndim(tempin)==1:
-#                    tempin = tempin[sp.newaxis,:]
+#                if np.ndim(tempin)==1:
+#                    tempin = tempin[np.newaxis,:]
                 specin[icn,itn] = tempin[0,:]
     if acfdisp:
         Ionoacf = IonoContainer.readh5(str(acfname))
-        ACFin = sp.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
+        ACFin = np.zeros((Nloc,Nt,Ionoacf.Param_List.shape[-1])).astype(Ionoacf.Param_List.dtype)
 
-        omeg = sp.arange(-sp.ceil((npts+1)/2),sp.floor((npts+1)/2))/ts/npts
+        omeg = np.arange(-np.ceil((npts+1)/2),np.floor((npts+1)/2))/ts/npts
         for icn, ic in enumerate(coords):
             if cartcoordsys:
                 tempin = Ionoacf.getclosest(ic,times)[0]
             else:
                 tempin = Ionoacf.getclosestsphere(ic,times)[0]
-            if sp.ndim(tempin)==1:
-                tempin = tempin[sp.newaxis,:]
+            if np.ndim(tempin)==1:
+                tempin = tempin[np.newaxis,:]
             ACFin[icn] = tempin
 
             # Determine the inverse ACF stuff
@@ -650,15 +562,15 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
         invacfbool = True
         invfile=maindir.joinpath('ACFInv','00lags'+invacf+'.h5')
         Ionoacfinv=IonoContainer.readh5(str(invfile))
-        ACFinv = sp.zeros((Nloc,Nt,Ionoacfinv.Param_List.shape[-1])).astype(Ionoacfinv.Param_List.dtype)
+        ACFinv = np.zeros((Nloc,Nt,Ionoacfinv.Param_List.shape[-1])).astype(Ionoacfinv.Param_List.dtype)
 
         for icn, ic in enumerate(coords):
             if cartcoordsys:
                 tempin = Ionoacfinv.getclosest(ic,times)[0]
             else:
                 tempin = Ionoacfinv.getclosestsphere(ic,times)[0]
-            if sp.ndim(tempin)==1:
-                tempin = tempin[sp.newaxis,:]
+            if np.ndim(tempin)==1:
+                tempin = tempin[np.newaxis,:]
             ACFinv[icn] = tempin
 
 
@@ -669,17 +581,17 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
                                                npts)
         Ionofit.Param_List = outspecsfit
         Ionofit.Param_Names = omegfit
-        specfit = sp.zeros((Nloc,Nt,npts))
+        specfit = np.zeros((Nloc,Nt,npts))
         for icn, ic in enumerate(coords):
             if cartcoordsys:
                 tempin = Ionofit.getclosest(ic,times)[0]
             else:
                 tempin = Ionofit.getclosestsphere(ic,times)[0]
-            if sp.ndim(tempin)==1:
-                tempin = tempin[sp.newaxis,:]
+            if np.ndim(tempin)==1:
+                tempin = tempin[np.newaxis,:]
             specfit[icn] = tempin/npts/npts
 
-    nfig = int(sp.ceil(Nt*Nloc/3.))
+    nfig = int(np.ceil(Nt*Nloc/3.))
     imcount = 0
     for i_fig in range(nfig):
         lines = [None]*4
@@ -690,7 +602,7 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
         for ax in axmat:
             if imcount>=Nt*Nloc:
                 break
-            iloc = int(sp.floor(imcount/Nt))
+            iloc = int(np.floor(imcount/Nt))
             itime = int(imcount-(iloc*Nt))
 
             maxvec = []
@@ -702,7 +614,7 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
                 (tau,acf) = spect2acf(omeg,curin)
                 acf1 = scfft.ifftshift(acf)[:p_samps]*len(curin)
                 rcs = acf1[0].real
-                guess_acf = sp.dot(amb_dict['WttMatrix'],acf)
+                guess_acf = np.dot(amb_dict['WttMatrix'],acf)
                 guess_acf = guess_acf*rcs/guess_acf[0].real
 
                 # fit to spectrums
@@ -719,7 +631,7 @@ def plotacfs(coords, times, configfile, maindir, cartcoordsys=True, indisp=True,
                 curinfit = specfit[iloc,itime]
                 (taufit,acffit) = spect2acf(omegfit,curinfit)
                 rcsfit=curinfit.sum()
-                guess_acffit = sp.dot(amb_dict['WttMatrix'],acffit)
+                guess_acffit = np.dot(amb_dict['WttMatrix'],acffit)
                 guess_acffit = guess_acffit*rcsfit/guess_acffit[0].real
 
                 lines[1]= ax[0].plot(tau1*1e6,guess_acffit.real,label='Input',linewidth=5)[0]
@@ -771,8 +683,8 @@ def plotspecsgen(timeomeg,speclist,needtrans,specnames=None,filename='specs.png'
     if specnames is None:
         specnames = ['Spec {0}'.format(i) for i in range(len(speclist))]
     labels = specnames
-    xlims = [sp.Inf,-sp.Inf]
-    ylims = [sp.Inf,-sp.Inf]
+    xlims = [np.Inf,-np.Inf]
+    ylims = [np.Inf,-np.Inf]
     for ispecn,ispec in enumerate(speclist):
         if type(timeomeg)==list:
             curbasis = timeomeg[ispecn]
@@ -813,17 +725,17 @@ def analysisdump(maindir,configfile,suptitle=None, params = ['Ne','Nepow','Te','
     filetemplate4 = str(maindir.joinpath('AnalysisPlots', 'AltvTime'))
     (sensdict, simparams) = readconfigfile(configfile)
     angles = simparams['angles']
-    ang_data = sp.array([[iout[0], iout[1]] for iout in angles])
+    ang_data = np.array([[iout[0], iout[1]] for iout in angles])
     if not sensdict['Name'].lower() in ['risr', 'pfisr']:
         ang_data_temp = ang_data.copy()
-        beamlistlist = sp.array(simparams['outangles']).astype(int)
-        ang_data = sp.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist])
+        beamlistlist = np.array(simparams['outangles']).astype(int)
+        ang_data = np.array([ang_data_temp[i].mean(axis=0)  for i in beamlistlist])
 
-    zenang = ang_data[sp.argmax(ang_data[:, 1])]
+    zenang = ang_data[np.argmax(ang_data[:, 1])]
     rnggates = simparams['Rangegatesfinal']
-    rngchoices = sp.linspace(sp.amin(rnggates), sp.amax(rnggates), 4)
-    angtile = sp.tile(zenang, (len(rngchoices), 1))
-    coords = sp.column_stack((sp.transpose(rngchoices), angtile))
+    rngchoices = np.linspace(np.amin(rnggates), np.amax(rnggates), 4)
+    angtile = np.tile(zenang, (len(rngchoices), 1))
+    coords = np.column_stack((np.transpose(rngchoices), angtile))
     times = simparams['Timevec']
 
 

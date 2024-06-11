@@ -162,8 +162,7 @@ def ISRSfitfunction(x, y_acf, sensdict, simparams, Niratios,  y_err=None ):
     # Create spectrum guess
     (_, acf) = spect2acf(omeg, cur_spec)
 
-    if amb_dict['WttMatrix'].shape[-1] != acf.shape[0]:
-        pdb.set_trace()
+
     guess_acf = np.dot(amb_dict['WttMatrix'], acf)
     # apply ambiguity function
 

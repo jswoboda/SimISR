@@ -466,7 +466,7 @@ def makepulse(ptype, nsamps, t_s, nbauds=16):
         pulse_samps = np.floor(np.arange(nsamps)*baudratio)
         pulse = pulse[pulse_samps]
 
-        plen = nsamps*ts
+        plen = nsamps*t_s
         sweepid = np.array([400])
         sweepnum = np.array([0])
     elif ptype.lower() == 'ac':
