@@ -1,0 +1,517 @@
+radars:
+  - name: millstone_misa
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 90.0
+    freq: 440000000.0
+    tx_gain: 42.5
+    rx_gain: 42.5
+    tx_power: 2500000.0
+    duty: 0.06
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: MISA
+    cal_temp: 1689.21
+    kmat_file: Millstone_PARAMS.h5
+  - name: millstone_zenith
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 188.0
+      - 189.0
+      - 88.0
+      - 89.0
+    freq: 440000000.0
+    tx_gain: 45.5
+    rx_gain: 45.5
+    tx_power: 2500000.0
+    duty: 0.06
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: Zenith
+    cal_temp: 1689.21
+    kmat_file: Millstonez_PARAMS.h5
+  - name: millstone_lband
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 90.0
+    freq: 1295000000.0
+    tx_gain: 47.9
+    rx_gain: 47.9
+    tx_power: 3000000.0
+    duty: 0.20
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: L-band
+  - name: greenbank_43m
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 90.0
+    freq: 440000000.0
+    tx_gain: 42.0
+    rx_gain: 42.0
+    tx_power: 0.0
+    duty: 0.0
+    tsys_type: fixed_low
+    xtra_tsys: 0.0
+    notes: 140 foot GB telescope
+  - name: jicamarca
+    ant_type: planar_array
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 3.0
+    freq: 49900000.0
+    tx_gain: 45.0
+    rx_gain: 45.0
+    tx_power: 4000000.0
+    duty: 0.06
+    tsys_type: fixed_high
+    xtra_tsys: 500.0
+    notes: imaging radar
+  - name: arecibo
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 70.0
+      - 90.0
+    freq: 430000000.0
+    tx_gain: 58.5
+    rx_gain: 58.5
+    tx_power: 1600000.0
+    duty: 0.06
+    tsys_type: fixed_high
+    xtra_tsys: 0.0
+    notes: dual beam ; limited TX bandwidth
+  - name: sondrestrom
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 20.0
+      - 90.0
+    freq: 1290000000.0
+    tx_gain: 49.9
+    rx_gain: 49.9
+    tx_power: 4000000.0
+    duty: 0.03
+    tsys_type: fixed_high
+    xtra_tsys: 30.0
+    notes: ""
+    kmat_file: Sondrestrom_PARAMS.h5
+  - name: poker_flat
+    ant_type: planar_array
+    az_rotation: 16.0
+    el_tilt: 15.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 38.0
+    freq: 449000000.0
+    tx_gain: 42.0
+    rx_gain: 42.0
+    tx_power: 1800000.0
+    duty: 0.1
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: AMISR
+    kmat_file: PFISR_PARAMS.h5
+  - name: resolute_n
+    ant_type: planar_array
+    az_rotation: 35.0
+    el_tilt: 26.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 38.0
+    freq: 449000000.0
+    tx_gain: 42.0
+    rx_gain: 42.0
+    tx_power: 1800000.0
+    duty: 0.1
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: AMISR
+    kmat_file: RISR_PARAMS.h5
+  - name: resolute_c
+    ant_type: planar_array
+    az_rotation: 206.0
+    el_tilt: 35.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 38.0
+    freq: 449000000.0
+    tx_gain: 42.0
+    rx_gain: 42.0
+    tx_power: 1800000.0
+    duty: 0.1
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: AMISR
+  - name: tromso
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 30.0
+      - 90.0
+    freq: 226700000.0
+    tx_gain: 46.0
+    rx_gain: 46.0
+    tx_power: 1600000.0
+    duty: 0.125
+    tsys_type: fixed_medium
+    xtra_tsys: 200.0
+    notes: limited steering
+  - name: kilpisjarvi
+    ant_type: planar_array
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 40.0
+    freq: 226700000.0
+    tx_gain: 0.0
+    rx_gain: 32.0
+    tx_power: 0.0
+    duty: 0.0
+    tsys_type: fixed_low
+    xtra_tsys: 0.0
+    notes: matched to VHF TX
+  - name: sodonkyla
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 90.0
+    freq: 226700000.0
+    tx_gain: 0.0
+    rx_gain: 34.5
+    tx_power: 0.0
+    duty: 0.0
+    tsys_type: fixed_high
+    xtra_tsys: 30.0
+    notes: bistatic VHF RX only
+  - name: kiruna
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 90.0
+    freq: 226700000.0
+    tx_gain: 0.0
+    rx_gain: 34.5
+    tx_power: 0.0
+    duty: 0.0
+    tsys_type: fixed_high
+    xtra_tsys: 30.0
+    notes: bistatic VHF RX only
+  - name: svalbard
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 2.5
+      - 90.0
+    freq: 500000000.0
+    tx_gain: 44.8
+    rx_gain: 44.8
+    tx_power: 1000000.0
+    duty: 0.25
+    tsys_type: fixed_high
+    xtra_tsys: 0.0
+    notes: ""
+  - name: svalbard_fa
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 81.0
+      - 82.0
+    freq: 500000000.0
+    tx_gain: 42.5
+    rx_gain: 42.5
+    tx_power: 1000000.0
+    duty: 0.25
+    tsys_type: fixed_high
+    xtra_tsys: 0.0
+    notes: field aligned fixed dish
+  - name: kharkov
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 89.0
+      - 90.0
+    freq: 158000000.0
+    tx_gain: 42.0
+    rx_gain: 42.0
+    tx_power: 2000000.0
+    duty: 0.05
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: fixed zenith dish
+  - name: irkutsk
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - -15.0
+      - 15.0
+      - 60.0
+      - 90.0
+    freq: 158000000.0
+    tx_gain: 35.0
+    rx_gain: 35.0
+    tx_power: 3200000.0
+    duty: 0.02
+    tsys_type: fixed_high
+    xtra_tsys: 700.0
+    notes: parabolic trough antenna
+  - name: mu
+    ant_type: planar_array
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 40.0
+    freq: 46500000.0
+    tx_gain: 34.0
+    rx_gain: 34.0
+    tx_power: 1000000.0
+    duty: 0.05
+    tsys_type: fixed_high
+    xtra_tsys: 200.0
+    notes: MST array
+  - name: qujing
+    ant_type: dish
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 2.5
+      - 90.0
+    freq: 500000000.0
+    tx_gain: 40.5
+    rx_gain: 40.5
+    tx_power: 2000000.0
+    duty: 0.05
+    tsys_type: fixed_high
+    xtra_tsys: 0.0
+    notes: approximate parameters
+sites:
+  - name: millstone
+    latitude: 42.6195
+    longitude: -71.49173
+    altitude: 146.0
+    elevation_mask: 2.5
+    description: Millstone Hill UHF radar site
+    notes: existing 46 meter IS radar
+  - name: greenbank
+    latitude: 38.43771
+    longitude: -79.83570
+    altitude: 805.0
+    elevation_mask: 2.5
+    description: NRAO Greenbank WV Site
+    notes: existing 140 foot antenna
+  - name: jicamarca
+    latitude: -11.95
+    longitude: -76.87
+    altitude: 500.0
+    elevation_mask: 30.0
+    description: Jicamarca radar site
+    notes: existing 300 meter HF IS radar
+  - name: arecibo
+    latitude: 18.34417
+    longitude: -66.75278
+    altitude: 323.0
+    elevation_mask: 45.0
+    description: Arecibo radar site
+    notes: existing 300 meter UHF IS radar and HF heater
+  - name: sondrestrom
+    latitude: 66.978
+    longitude: -50.949
+    altitude: 177.0
+    elevation_mask: 30.0
+    description: Sondrestrom radar site
+    notes: existing L-band IS radar
+  - name: poker_flat
+    latitude: 65.126
+    longitude: -147.4789
+    altitude: 750.0
+    elevation_mask: 20.0
+    description: Poker flat rocket range and radar
+    notes: existing UHF AMISR IS radar
+  - name: resolute
+    latitude: 74.72955
+    longitude: -94.90576
+    altitude: 145.0
+    elevation_mask: 5.0
+    description: Resolute bay radar site
+    notes: Dual existing UHF AMISR IS radars
+  - name: altair
+    latitude: 9.39538
+    longitude: 167.479181
+    altitude: 2.0
+    elevation_mask: 5.0
+    description: Altair radar site
+    notes: Existing VHF and UHF IS capable radar
+  - name: tromso
+    latitude: 69.5864
+    longitude: 19.2272
+    altitude: 86.28
+    elevation_mask: 30.0
+    description: EISCAT VHF radar site
+    notes: VHF radar and HF heater
+  - name: sodonkyla
+    latitude: 67.36361
+    longitude: 26.62694
+    altitude: 197.03
+    elevation_mask: 20.0
+    description: EISCAT VHF receiver site
+    notes: VHF receive only dish
+  - name: kiruna
+    latitude: 67.86056
+    longitude: 20.43528
+    altitude: 417.62
+    elevation_mask: 20.0
+    description: EISCAT VHF receiver site
+    notes: VHF receive only dish
+  - name: kilpisjarvi
+    latitude: 69.097253
+    longitude: 20.753892
+    altitude: 565.8
+    elevation_mask: 20.0
+    description: KAIRA LOFAR receiver site
+    notes: Broadband receive array
+  - name: svalbard
+    latitude: 78.15305
+    longitude: 16.02889
+    altitude: 445.0
+    elevation_mask: 30.0
+    description: EISCAT Svalbard radar site
+    notes: existing UHF IS radar
+  - name: kharkov
+    latitude: 50.0
+    longitude: 36.2
+    altitude: 154.83
+    elevation_mask: 5.0
+    description: Kharkov IS radar site
+    notes: existing VHF IS radar and HF heater ; coordinates not accurate
+  - name: irkutsk
+    latitude: 52.878012
+    longitude: 103.265857
+    altitude: 0.502
+    elevation_mask: 5.0
+    description: Irkutsk IS radar site
+    notes: existing VHF IS radar
+  - name: mu
+    latitude: 34.854083
+    longitude: 136.105517
+    altitude: 253.0
+    elevation_mask: 5.0
+    description: Mu IS radar site
+    notes: existing HF IS radar
+  - name: qujing
+    latitude: 25.6
+    longitude: 103.8
+    altitude: 1873.0
+    elevation_mask: 5.0
+    description: Qujing IS radar site
+    notes: existing UHF IS radar ; coordinates not accurate
+  - name: sanya
+    latitude: 18.3
+    longitude: 109.6
+    altitude: 30.0
+    elevation_mask: 5.0
+    description: Sanya IS radar site
+    notes: planned UHF phased array radar ; coordinates not accurate
+  - name: skibotn
+    latitude: 69.34
+    longitude: 20.313
+    altitude: 10.0
+    elevation_mask: 15.0
+    description: planned E3D IS radar site
+    notes: planned VHF phased array radar TX / RX site
+  - name: kaiseniemi
+    latitude: 68.26711
+    longitude: 19.44805
+    altitude: 100.0
+    elevation_mask: 15.0
+    description: planned E3D IS radar site
+    notes: planned VHF phased array radar RX site
+  - name: karesuvanto
+    latitude: 68.463
+    longitude: 22.458
+    altitude: 337.0
+    elevation_mask: 15.0
+    description: planned E3D IS radar site
+    notes: planned VHF phased array radar RX site
+  - name: palojoensuu
+    latitude: 68.296716
+    longitude: 23.079827
+    altitude: 280.0
+    elevation_mask: 5.0
+    description: planned E3D IS radar site
+    notes: possible VHF phased array radar RX site
+  - name: kaitum
+    latitude: 67.637338
+    longitude: 19.739984
+    altitude: 508.0
+    elevation_mask: 5.0
+    description: planned E3D IS radar site
+    notes: possible VHF phased array radar RX site ; middle of nowhere?
+  - name: andoya
+    latitude: 68.967142
+    longitude: 15.872391
+    altitude: 10.0
+    elevation_mask: 20.0
+    description: planned E3D IS radar site
+    notes: possible VHF phased array radar RX site ; approximate
