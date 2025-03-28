@@ -18,6 +18,43 @@ from .h5fileIO import save_dict_to_hdf5, load_dict_from_hdf5
 import digital_rf as drf
 
 
+
+class RadarDataCreate(object):
+    def __init__(self, experiment,save_directory=None):
+        self.experiment = experiment
+        self.radarsys = experiment.radarsys
+        self.tx_chans = experiment.tx_chans
+        self.iline_chans = experiment.iline_chans
+        self.pline_chans = self.pline_chans
+        if save_directory is None:
+            self.save_directory = experiment.save_directory
+        else:
+            self.save_directory = save_directory
+        self.save_path = Path(self.save_directory)
+        self.first_time = True
+
+    def create_data(self,specfile_obj,st_time,en_time,log_func=print):
+
+        if self.first_time:
+            for itxkey, ichan in self.tx_chans.items():
+                ichan.makedrf(self.save_directory, st_time)
+                newdir = self.save_path.joinpath(ichan.name)
+                log_func(f"Make channel: {itxkey}")
+                log_func(f"\tDirectory: {str(newdir)}")
+            for iilkey, ichan in self.iline_chans.items():
+                ichan.makedrf(self.save_directory, st_time)
+                newdir = self.save_path.joinpath(ichan.name)
+                log_func(f"Make channel: {iilkey}")
+                log_func(f"\tDirectory: {str(newdir)}")
+            for iipkey, ichan in self.pline_chans.items():
+                ichan.makedrf(self.save_directory, st_time)
+                newdir = self.save_path.joinpath(ichan.name)
+                log_func(f"Make channel: {iipkey}")
+                log_func(f"\tDirectory: {str(newdir)}")
+            self.first_time = False
+
+
+
 class RadarDataFile(object):
     """
         This class will will take the ionosphere class and create radar data both

@@ -4,8 +4,6 @@ Holds the IonoContainer class that contains the ionospheric parameters.
 @author: John Swoboda
 """
 from six import string_types
-import os
-import glob
 import copy
 from datetime import datetime
 from pathlib import Path
@@ -24,7 +22,7 @@ class IonoContainer(object):
     Holds the coordinates and parameters to create the ISR data. This class can hold plasma parameters
     spectra, or ACFs. If given plasma parameters the can call the ISR spectrum functions and for each
     point in time and space a spectra will be created.
-    
+
     Attributes
     ----------
     Cart_Coords : ndarray
@@ -53,17 +51,14 @@ class IonoContainer(object):
         coordlist,
         paramlist,
         times=None,
-        sensor_loc=np.zeros(3),
-        ver=0,
-        coordvecs=None,
+        originlla=np.array([42.6195,-71.49173,146.0]),
         paramnames=None,
         species=None,
         velocity=None,
     ):
         """Ionocontainer object class constructor
 
-        This constructor function will use create an instance of the IonoContainer class
-        using either cartisian or spherical coordinates depending on which ever the user prefers.
+        This constructor function will use create an instance of the IonoContainer class using either cartisian coordinates
 
         Parameters
         ----------
@@ -73,14 +68,10 @@ class IonoContainer(object):
             NxTxP Numpy array where T is the number of times and P is the number of parameters alternatively it could be NxP if there is only one time instance.
         times : array_like
             A T length numpy array where T is the number of times.  This is optional input, if not given then its just a numpy array of 0-T
-        sensor_loc : array_like
-            A numpy array of length 3 that gives the sensor location. The default value is [0,0,0] in cartisian space.
-        ver : int
-            If 0 the coordlist is in Cartisian coordinates if 1 then coordlist is a spherical coordinates.
-        coordvecs : dict
-            A dictionary that holds the individual coordinate vectors. if sphereical coordinates keys are 'r','theta','phi' if cartisian 'x','y','z'.
+        originlla : ndarray
+            The latitude and longitude of the origin [0,0,0]. Default is Millstone's location.
         paramnames : list
-            This is a list or number numpy array of numbers for each parameter in the paramlist array.  
+            This is a list or number numpy array of numbers for each parameter in the paramlist array.
         species : list
             List of the ionosphere species.
         velocity : ndarray
@@ -96,66 +87,19 @@ class IonoContainer(object):
                 times = np.arange(1)
         if Ndims == 2:
             paramlist = paramlist[:, np.newaxis, :]
-        if ver == 0:
-            x_vec = coordlist[:, 0]
-            y_vec = coordlist[:, 1]
-            z_vec = coordlist[:, 2]
 
-            r_vec = np.sqrt(x_vec**2 + y_vec**2 + z_vec**2)
-            az_vec = np.degrees(np.arctan2(x_vec, x_vec))
-            el_vec = np.degrees(np.arcsin(z_vec / r_vec))
 
-            self.Cart_Coords = coordlist
-            self.Sphere_Coords = np.array([r_vec, az_vec, el_vec]).transpose()
-            if coordvecs is not None:
-                if set(coordvecs) != {"x", "y", "z"}:
-                    raise NameError("Keys for coordvecs need to be 'x','y','z' ")
-            else:
-                coordvecs = ["x", "y", "z"]
-
-        elif ver == 1:
-            r_vec = coordlist[:, 0]
-            az_vec = np.radians(coordlist[:, 1])
-            el_vec = np.radians(coordlist[:, 2])
-
-            xvecmult = np.sin(az_vec) * np.cos(el_vec)
-            yvecmult = np.cos(az_vec) * np.cos(el_vec)
-            zvecmult = np.sin(el_vec)
-            x_vec = r_vec * xvecmult
-            y_vec = r_vec * yvecmult
-            z_vec = r_vec * zvecmult
-
-            self.Cart_Coords = np.column_stack((x_vec, y_vec, z_vec))
-            self.Sphere_Coords = coordlist
-            if coordvecs is not None:
-                if set(coordvecs) != {"r", "theta", "phi"}:
-                    raise NameError("Keys for coordvecs need to be 'r','theta','phi' ")
-            else:
-                coordvecs = ["r", "theta", "phi"]
-        # used to deal with the change in the files
-        if type(coordvecs) == np.ndarray:
-            coordvecs = [str(ic) for ic in coordvecs]
-
+        self.Cart_Coords = coordlist
         self.Param_List = paramlist
         self.Time_Vector = times
-        self.Coord_Vecs = coordvecs
-        self.Sensor_loc = sensor_loc
+        self.originlla = originlla
         self.Species = species
         (Nloc, Nt) = paramlist.shape[:2]
         # set up a Velocity measurement
         if velocity is None:
             self.Velocity = np.zeros((Nloc, Nt, 3))
         else:
-            # if in sperical coordinates and you have a velocity
-            if velocity.ndim == 2 and ver == 1:
-                veltup = (
-                    velocity * np.tile(xvecmult[:, np.newaxis], (1, Nt)),
-                    velocity * np.tile(yvecmult[:, np.newaxis], (1, Nt)),
-                    velocity * np.tile(zvecmult[:, np.newaxis], (1, Nt)),
-                )
-                self.Velocity = np.dstack(veltup)
-            else:
-                self.Velocity = velocity
+            self.Velocity = velocity
         # set up a params name
         if paramnames is None:
             partparam = paramlist.shape[2:]
@@ -170,18 +114,32 @@ class IonoContainer(object):
         else:
             self.Param_Names = paramnames
 
-    # %% Getting closest objects
+
+    def get_sphere_coords(self,origin=np.zeros(3)):
+
+        x_vec = self.Cart_Coords[:, 0] - origin[0]
+        y_vec = self.Cart_Coords[:, 1] - origin[1]
+        z_vec = self.Cart_Coords[:, 2] - origin[2]
+
+        r_vec = np.sqrt(x_vec**2 + y_vec**2 + z_vec**2)
+        az_vec = np.degrees(np.arctan2(x_vec, x_vec))
+        el_vec = np.degrees(np.arcsin(z_vec / r_vec))
+
+        sp_coords =  np.array([r_vec, az_vec, el_vec]).transpose()
+
+        return sp_coords
+     # %% Getting closest objects
     def getclosestsphere(self, coords, timelist=None):
         """
         This method will get the closest point in space to given spherical coordinates from the IonoContainer.
-        
+
         Parameters
         ----------
         coords : ndarray
             A list of r,az and phi coordinates.
         timelist : ndarray
             Listing of times to be taken.
-        
+
         Returns
         -------
         paramout : ndarray
@@ -216,7 +174,7 @@ class IonoContainer(object):
             A list of r,az and phi coordinates.
         timelist : ndarray
             Listing of times to be taken.
-        
+
         Returns
         -------
         paramout : ndarray
@@ -269,7 +227,7 @@ class IonoContainer(object):
             tvec = tvec[timeindx]
         sphereout = self.Sphere_Coords[minidx]
         cartout = self.Cart_Coords[minidx]
-        
+
         return (
             paramout,
             velout,
@@ -282,7 +240,7 @@ class IonoContainer(object):
 
     # %% Interpolation methods
     def interp(
-        self, new_coords, ver=0, sensor_loc=None, method="linear", fill_value=np.nan
+        self, new_coords, ver=0, new_origin=None, method="linear", fill_value=np.nan
     ):
         """
         This method will take the parameters in the Param_List variable and spatially.
@@ -291,7 +249,7 @@ class IonoContainer(object):
         Input:
         new_coords - A Nlocx3 numpy array. This will hold the new coordinates that
         one wants to interpolate the data over.
-        sensor_loc - The location of the new sensor.
+        new_origin - The location of the new origin.
         method - A string. The method of interpolation curently only accepts 'linear',
         'nearest' and 'cubic'
         fill_value - The fill value for the interpolation.
@@ -299,8 +257,8 @@ class IonoContainer(object):
         iono1 - An instance of the ionocontainer class with the newly interpolated
         parameters.
         """
-        if sensor_loc is None:
-            sensor_loc = self.Sensor_loc
+        if new_origin is None:
+            new_origin = self.originlla
 
         curavalmethods = ["linear", "nearest", "cubic"]
         interpmethods = ["linear", "nearest", "cubic"]
@@ -351,7 +309,7 @@ class IonoContainer(object):
         """
         This method will write out a structured mat file and save information
         from the class.
-        
+
         Parameters
         ----------
         filename : string
@@ -367,7 +325,7 @@ class IonoContainer(object):
     def saveh5(self, filename):
         """
         This method will save the instance of the class to a structured h5 file.
-       
+
         Parameters
         ----------
         filename : string
@@ -396,8 +354,6 @@ class IonoContainer(object):
             "coordlist2": "Sphere_Coords",
             "paramlist": "Param_List",
             "times": "Time_Vector",
-            "sensor_loc": "Sensor_loc",
-            "coordvecs": "Coord_Vecs",
             "paramnames": "Param_Names",
             "species": "Species",
             "velocity": "Velocity",
@@ -414,11 +370,6 @@ class IonoContainer(object):
 
                 outdict[ikey] = indata[vardict[ikey]]
 
-        if "coordvecs" in outdict.keys():
-            if [str(x) for x in outdict["coordvecs"]] == ["r", "theta", "phi"]:
-                outdict["ver"] = 1
-                outdict["coordlist"] = outdict["coordlist2"]
-        del outdict["coordlist2"]
         return IonoContainer(**outdict)
 
     @staticmethod
@@ -437,34 +388,24 @@ class IonoContainer(object):
             "coordlist2": "Sphere_Coords",
             "paramlist": "Param_List",
             "times": "Time_Vector",
-            "sensor_loc": "Sensor_loc",
-            "coordvecs": "Coord_Vecs",
             "paramnames": "Param_Names",
             "species": "Species",
             "velocity": "Velocity",
         }
         vardict2 = {vardict[ikey]: ikey for ikey in vardict.keys()}
         file_dict = load_dict_from_hdf5(filename)
-        
+
         if not 'Species' in  file_dict.keys():
             file_dict["Species"] = None
         elif not file_dict["Species"] is None:
             file_dict["Species"] = file_dict["Species"].astype("<U6").tolist()
-    
+
         file_dict["Param_Names"] = file_dict["Param_Names"].astype("<U6")
         outdict = {}
 
         for ivar in vardict2.keys():
             outdict[vardict2[ivar]] = file_dict[ivar]
-        # determine version of data
-        if "coordvecs" in outdict.keys():
-            if type(outdict["coordvecs"]) == np.ndarray:
-                outdict["coordvecs"] = outdict["coordvecs"].astype("<U6").tolist()
-            if set(outdict["coordvecs"]) == {"r", "theta", "phi"}:
-                outdict["ver"] = 1
-                outdict["coordlist"] = outdict["coordlist2"].copy()
-        if "coordlist2" in outdict.keys():
-            del outdict["coordlist2"]
+
         return IonoContainer(**outdict)
 
     @staticmethod
@@ -553,7 +494,7 @@ class IonoContainer(object):
         ----------
         timelims : list
             A two point list with the desired time limits.
-        timesselected : list 
+        timesselected : list
             Start times that will be kept.
         tkeep : list
             Indexes of times from the Time_Vector array that will be kept.
@@ -576,7 +517,7 @@ class IonoContainer(object):
 
     def timelisting(self):
         """This will output a list of lists that contains the times in strings.
-        
+
         Returns
         -------
         timestrs : list
@@ -597,7 +538,7 @@ class IonoContainer(object):
     # %% Operator Methods
     def __eq__(self, self2):
         """This is the == operator.
-        
+
         Parameters
         ----------
         self2 : ionocontainer
@@ -628,7 +569,7 @@ class IonoContainer(object):
 
     def __ne__(self, self2):
         """This is the != operator.
-        
+
         Parameters
         ----------
         self2 : ionocontainer
@@ -646,12 +587,12 @@ class IonoContainer(object):
         """
         This is the (*) multiplication. The thingtomult object can be a number, numpy array thats the same size as Param_List or another ionocontainer.
 
-                
+
         Parameters
         ----------
         thingtomult : ionocontainer
             Object that the ionocontainer is multiplied by, can be a number, numpy array or ionocontainer.
-                
+
         Parameters
         ----------
         self2 : ionocontainer
@@ -699,12 +640,12 @@ class IonoContainer(object):
     def __rmul__(self, thingtomult):
         """
         This is the reverse (*) multiplication operator. The thingtomult object can be a number, numpy array thats the same size as Param_List or another ionocontainer.
-        
+
         Parameters
         ----------
         thingtomult : ionocontainer
             Object that the ionocontainer is multiplied by, can be a number, numpy array or ionocontainer.
-                
+
         Parameters
         ----------
         self2 : ionocontainer
@@ -715,12 +656,12 @@ class IonoContainer(object):
     def __div__(self, thing2div):
         """
         This is the (/) division. The thing2div object can be a number, numpy array thats the same size as Param_List or another ionocontainer.
-        
+
         Parameters
         ----------
         thing2div : ionocontainer
             Object that the ionocontainer is divided by, can be a number, numpy array or ionocontainer.
-                
+
         Parameters
         ----------
         self2 : ionocontainer
@@ -772,11 +713,11 @@ class IonoContainer(object):
         ----------
         thing2div : ionocontainer
             Object that the ionocontainer is divided by, can be a number, numpy array or ionocontainer.
-                
+
         Parameters
         ----------
         self2 : ionocontainer
-            divided ionoconainter.    
+            divided ionoconainter.
         """
         return self.__div__(thing2div)
 
@@ -788,7 +729,7 @@ class IonoContainer(object):
         ----------
         self2 : ionocontainer
             Ionocontainer is added to the original.
-                
+
         Returns
         -------
         self2 : ionocontainer
@@ -818,12 +759,12 @@ class IonoContainer(object):
 
     def __sub__(self, self2):
         """This is the '-' operator. Assuming the locations, times and parameter types are the same, the data will be subtracted.
-        
+
         Parameters
         ----------
         self2 : ionocontainer
             Ionocontainer is subtracted from the original.
-                
+
         Returns
         -------
         self2 : ionocontainer
@@ -862,7 +803,7 @@ class IonoContainer(object):
             A function that will create all of the spectrums.
         sensdict : dict
             A dictionary will information on the sensor.
-        npts : int 
+        npts : int
             The number of points for the spectrum
         """
         return func(self, sensdict, simparams, npts, ifile, nfiles, print_line)
@@ -874,7 +815,7 @@ class IonoContainer(object):
         ----------
         self2 : ionocontainer
             Ionocontainer is added to the original.
-                
+
         Returns
         ----------
         self2 : ionocontainer
@@ -898,68 +839,26 @@ class IonoContainer(object):
         self.Velocity = np.concatenate((self.Velocity, self2.Velocity), 1)
         self.Param_List = np.concatenate((self.Param_List, self2.Param_List), 1)
 
-    def makespectruminstance(self, sensdict, npts):
-        """
-        This will create another instance of the Ionocont class
-        Inputs:
-            sensdict - The structured dictionary of for the sensor.
-            npts - The number of points the spectrum is to be evaluated at.
-        Output:
-            Iono1 - An instance of the IonoContainer class with the spectrums as the
-                param vectors and the param names will be the the frequency points.
-        """
-        (omeg, outspecs) = self.makeallspectrums(sensdict, npts)
-        #HACK velocity is from original parameters
-        return IonoContainer(
-            self.Cart_Coords,
-            outspecs,
-            self.Time_Vector,
-            self.Sensor_loc,
-            paramnames=omeg,
-            velocity=self.Velocity,
-        )
 
-    def makespectruminstanceopen(
-        self, func, sensdict, simparams, ifile=0.0, nfiles=1.0, print_line=True
-    ):
-        """
-        This will create another instance of the Ionocont class
-        Inputs:
-            func - A function used to create the spectrums
-            sensdict - The structured dictionary of for the sensor.
-            npts - The number of points the spectrum is to be evaluated at.
-        Output:
-            Iono1 - An instance of the IonoContainer class with the spectrums as the
-                param vectors and the param names will be the the frequency points
-        """
-        (omeg, outspecs) = self.makeallspectrumsopen(
-            func, sensdict, simparams, simparams["numpoints"], 0.0, 1.0, print_line
-        )
-        return IonoContainer(
-            self.Cart_Coords,
-            outspecs,
-            self.Time_Vector,
-            self.Sensor_loc,
-            paramnames=omeg,
-            velocity=self.Velocity,
-        )
 
-    def getDoppler(self, sensorloc=np.zeros(3)):
+    def getDoppler(self, origin=None):
         """
         This will return the line of sight velocity.
-        Inputs
+        Parameters
+        ----------
             sensorloc - The location of the sensor in local Cartisian coordinates.
-        Outputs
-            Vi - A numpy array Nlocation by Ntimes in m/s of the line of sight velocities.
+        Returns
+        -------
+            Vi : ndarray
+            A numpy array Nlocation by Ntimes in m/s of the line of sight velocities.
         """
         ncoords = self.Cart_Coords.shape[0]
         ntimes = len(self.Time_Vector)
-        if not np.alltrue(sensorloc == np.zeros(3)):
-            curcoords = self.Cart_Coords - np.tile(
-                sensorloc[np.newaxis, :], (ncoords, 1)
-            )
-        else:
+        if origin is None:
             curcoords = self.Cart_Coords
+        else:
+            curcoords = None
+
         denom = np.tile(np.sqrt(np.sum(curcoords**2, 1))[:, np.newaxis], (1, 3))
         unit_coords = curcoords / denom
 
@@ -1009,26 +908,29 @@ class IonoContainer(object):
 def makeionocombined(datapath, ext=".h5"):
     """
     This function make an ionocontainer for all of the points in a folder or a list
-   
+
     Parameters
     ----------
     datapath : list
         Can be a string containing the folder holding the ionocontaner files or can be list of file names.
     ext : :obj:`str`, optional
         The extention of the files that will be used. (default '.h5')
-    
+
     Returns
     -------
-    outiono : :obj:`ionocontainer` 
+    outiono : :obj:`ionocontainer`
         The ionocontainer with of all the time points.
 
     """
 
     if isinstance(datapath, string_types):
-        if os.path.splitext(datapath)[-1] == 0:
-            ionocontlist = [datapath]
+        p1 = Path(datapath)
+
+        if p1.suffix:
+            ionocontlist = [p1]
         else:
-            ionocontlist = glob.glob(os.path.join(datapath, "*" + ext))
+            ionocontlist = list(p1.parent.glob(p1.stem+"*"+ext))
+
     elif not isinstance(datapath, list):
         return datapath
     else:

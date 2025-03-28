@@ -1,0 +1,28 @@
+radars: any(include('radarobj'),list(include('radarobj')))
+sites: any(include('siteobj'),list(include('siteobj')),required=False)
+---
+radarobj:
+  name: str()
+  ant_type: str()
+  az_rotation: num()
+  el_tilt: num()
+  steering_mask: list(num())
+  freq: num()
+  tx_gain: num()
+  rx_gain: num()
+  tx_power: num(min=0)
+  duty: num(max=1.)
+  tsys_type: str()
+  xtra_tsys: num(min=0.,required=False)
+  kmat_file: str(required=False)
+  cal_temp: num(required=False)
+  notes: str(required=False)
+
+siteobj:
+  name: str()
+  latitude: num()
+  longitude: num()
+  altitude: num()
+  elevation_mask: num()
+  description: str()
+  notes: str()

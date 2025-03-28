@@ -28,9 +28,9 @@ def update_progress(progress, extstr=""):
 
     Parameters
     ----------
-    progress : float 
+    progress : float
         Proportion of progress on scale of 0 to one.
-    extstr : str 
+    extstr : str
         Extra string added to the progress bar.
     """
     bar_length = 20 # Modify this to change the length of the progress bar
@@ -60,16 +60,16 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
 
     Parameters
     ----------
-    Fsorg : float 
+    Fsorg : float
         A scalar, the original sampling frequency in Hertz.
-    m_up : int 
+    m_up : int
         The upsampled ratio between the original sampling rate and the rate of the ambiguity function up sampling.
-    nlags : int 
+    nlags : int
         The number of lags used.
 
     Returns
     -------
-    Wttdict :dict 
+    Wttdict :dict
         A dictionary with the keys 'WttAll' which is the full ambiguity function for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity function on a pulses.
     """
 
@@ -109,9 +109,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     # need to incorporate summation rule
     vol = 1.
     nvec = np.arange(-np.floor(nsamps/2.0), np.floor(nsamps/2.0)+1).astype(int)
-    pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett',
-                   'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall',
-                   'barthann']
+    pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann']
 
     curwin = scisig.get_window(winname, nsamps)
     # Apply window to the sinc function. This will act as the impulse respons of the filter
@@ -130,8 +128,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     # numback = int(nvec.min()/m_up-delay_num.min())
     # numfront = numdiff-numback
 #    imprespad  = np.pad(impres,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
-    imprespad = np.pad(impres, (numdiff/2, numdiff/2), mode='constant',
-                       constant_values=(0.0, 0.0))
+    imprespad = np.pad(impres, (numdiff/2, numdiff/2), mode='constant', constant_values = (0.0, 0.0))
     cursincrep = np.tile(imprespad[np.newaxis, :], (len(t_rng), 1))
 
     (d2d, srng) = np.meshgrid(delay, t_rng)
@@ -175,7 +172,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
         #create the ambiguity function for everything
 
         Wt0 = scfft.ifftshift(cursincrep*envfunc, axes=1)
-        Wt0fft = np.fft(Wt0, axis=1)
+        Wt0fft = scfft.fft(Wt0, axis=1)
         for ilag in range(nlags):
             Wtafft = np.roll(Wt0fft, ilag*m_up, axis=0)
             curwt =  scfft.ifftshift(scfft.ifft(Wtafft*np.conj(Wt0fft), axis=1).real, axes=1)
@@ -199,21 +196,21 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
 
 def spect2acf(omeg, spec, n_s=None):
     """Creates acf and time array associated with the given frequency vector and spectrum
-    
+
     Parameters
     ----------
     omeg : ndarray
         The frequency sampling vector
     spec : ndarray
         The spectrum array.
-    n : :obj:`int`, optional, 
+    n : :obj:`int`, optional,
         Length of output spectrum default len(spec)
-   
+
     Returns
     -------
     tau : ndarray
         The time sampling array.
-    acf : ndarray 
+    acf : ndarray
         The acf from the original spectrum.
     """
     if n_s is None:
@@ -229,16 +226,16 @@ def spect2acf(omeg, spec, n_s=None):
 
 def acf2spect(tau, acf, n_s=None, initshift=False):
     """ Creates spectrum and frequency vector associated with the given time array and acf.
-    
+
     Parameters
     ----------
     tau : ndarray
         The time sampling array.
-    acf : ndarray 
+    acf : ndarray
         The acf from the original spectrum.
-        n : :obj:`int`, optional, 
+        n : :obj:`int`, optional,
         Length of output spectrum default len(acf)
-    
+
     Returns
     -------
     omeg : ndarray
@@ -435,22 +432,27 @@ def makesumrule(ptype, nlags, lagtype='centered'):
 #%% Make pulse
 def makepulse(ptype, nsamps, t_s, nbauds=16):
     """ This will make the pulse array.
-    
+
     Parameters
     ----------
-    ptype : 
+    ptype :
         The type of pulse used.
-    plen : 
-        The length of the pulse in seconds.
-    ts : 
-        The sampling rate of the pulse.
-    
+    nsamps : int
+        Number of samples of the pulse at the
+    ts : float
+        The sampling period of the pulse.
+    nbauds : int
+
     Parameters
     ----------
-    pulse : ndarray 
+    pulse : ndarray
         The pulse array that will be used as the window in the data formation.
-    plen : float 
+    plen : float
         The length of the pulse with the sampling time taken into account.
+    sweepid : list
+        List of sweepids
+    sweepnum : list
+        sweep num
     """
     plen = nsamps*t_s
     if ptype.lower() == 'long':
@@ -490,16 +492,16 @@ def gen_ac(nsamps, nbauds):
 
     Parameters
     ----------
-    nsamps : int 
+    nsamps : int
         The length of the pulse in samples.
-    nbauds : int 
+    nbauds : int
         The number of bauds for each code.
 
     Returns
     -------
     pulse : ndarray
         A numpy array of shape 2nbaudsxnsamps holding the pulses.
-    sweepid : ndarray  
+    sweepid : ndarray
         Array of sweep ids.
     sweepnum : ndarray
         Array of sweep numbers.
@@ -532,7 +534,7 @@ def gen_ac(nsamps, nbauds):
 
 def makeconfigfile(fname, beamlist, radarname, simparams_orig):
     """This will write the config file to disk based off of the desired input parmeters.
-    
+
     Parameters
     ----------
     fname : str
@@ -560,7 +562,7 @@ def makeconfigfile(fname, beamlist, radarname, simparams_orig):
     if not 'outangles' in simparams_orig.keys():
         simparams_orig['outangles'] = beamlist
     simparams = {i:simparams_orig[i] for i in keys2save}
-    
+
     if fext == '.yml':
         with fname.open('w') as f:
             yaml.dump([{'beamlist':beamlist, 'radarname':radarname}, simparams], f)
@@ -573,16 +575,16 @@ def readconfigfile(fname, make_amb_bool=False):
 
     Parameters
     ----------
-    fname : str 
+    fname : str
         File name and location.
     make_amb_bool : bool
         A bool to determine if the ambiguity functions should be calculated because they take a lot of time.
 
     Returns
     -------
-    sensdict : dict 
+    sensdict : dict
         A dictionary that holds the sensor parameters.
-    simparams : dict 
+    simparams : dict
         A dictionary that holds the simulation parameters.
     """
 
@@ -795,4 +797,3 @@ def get_timing_dict():
                     0 : ('standby', {'full' : (0,34599), 'tx' : (100,2101), 'blank' : (0,2500), 'clutter' : (2501,2700), 'signal' : (2701,28100), 'noise' : (28101,30100),'txnoise' : (28101,30100),  'calibration' : (30101,32100)})
 
                     }
-

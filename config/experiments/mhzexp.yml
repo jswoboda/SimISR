@@ -1,0 +1,32 @@
+experiment_name: zenith_s
+radartx: millstone_zenith
+radarrx: millstone_zenith
+channels:
+  millstone_zenith:
+    - name: tx-h
+      sample_rate_numerator: 1000000
+      sample_rate_denominator: 1
+      is_complex: True
+      numtype: complexint
+      radardatatype: txpulse
+      uuid: SIMISRMHRztx
+      num_subchannels: 1
+    - name: zenith-l
+      sample_rate_numerator: 1000000
+      sample_rate_denominator: 1
+      is_complex: True
+      numtype: complexint
+      radardatatype: ionline
+      uuid: SIMISRMHRzlow
+      num_subchannels: 1
+save_directory: ~/DATA/SimISRv2testing
+sequence:
+  - name: zenith_longpulse
+    id_code: 45
+    txrxname: millstone_zenith
+    beamcodes: [23465]
+    pulsecodes: [300]
+
+sequence_order: [45]
+sequence_repeats: [0]
+exp_time: 100

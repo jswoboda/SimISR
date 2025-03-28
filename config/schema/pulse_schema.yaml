@@ -1,0 +1,30 @@
+name: str()
+code: int()
+nbauds: int()
+pulsetype: str()
+baudlen: int() # in ns
+raster: include('rasterobj')
+bauds: any(include('iqobj'),include('apobj'),include('bpobj'))
+
+---
+rasterobj: # all times in ns
+  blank: list(int(),min=2,max=2)
+  calibration: list(int(),min=2,max=2)
+  clutter: list(int(),min=2,max=2)
+  full: list(int(),min=2,max=2)
+  noise: list(int(),min=2,max=2)
+  signal: list(int(),min=2,max=2)
+  tx: list(int(),min=2,max=2)
+  txnoise: list(int(),min=2,max=2)
+
+iqobj:
+  real: list(num())
+  imag: list(num())
+
+apobj:
+  amp: list(num(),required=False)
+  phase: list(num())
+
+bpobj:
+  amp: list(num(),required=False)
+  pols: list(str(matches='[+-]'))
