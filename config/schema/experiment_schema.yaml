@@ -29,3 +29,4 @@ channelobj:
   num_subchannels: int(required=False)
   radardatatype: enum('txpulse','ionline','plasmaline')
   uuid: str()
+  declist: list(int(),required=False)

@@ -18,15 +18,57 @@ TSYS_CONV  = dict(fixed_zero=0.0, fixed_cooled=20.0, fixed_vlow=31.0, fixed_low=
 
 class Experiment(object):
     """Container class for the experiment information
+
+
+    Attributes
+    ----------
+    name : str
+        Name of experiment
+    radartx : list
+        Names of radar systems used for transmit.
+    radartx : list
+        Names of radar systems used for receive
+    codes :
+    code_order :
+    code_repeats:
+    tx_chans
+    iline_chans
+    plinechans
+    save_directory
     """
     def __init__(self, experiment_name, radartx, radarrx, sequence, sequence_order, sequence_repeats, exp_time, channels, save_directory='tmp', exp_start=None, exp_end=None, radar_files=None,pulse_files=None):
         """
+
+        Parameters
+        ----------
+        experiment_name,
+        radartx,
+        radarrx,
+        sequence,
+        sequence_order,
+        sequence_repeats,
+        exp_time,
+        channels,
+        save_directory
+        exp_start=None
+        exp_end,
+        radar_files : str or list
+            A string or list of strings of yaml files. Can also be a directory with yaml files in them.
+        pulse_files=None
+
         """
         self.name = experiment_name
         rdr,sites=get_radars(radar_files)
+        if isinstance(radartx,str):
+            self.radartx = [radartx]
+        elif isinstance(radartx,list):
+            self.radartx = radartx
 
-        self.radartx = radartx
-        self.radarrx = radarrx
+        if isinstance(radarrx,str):
+            self.radarrx = [radarrx]
+        elif isinstance(radarrx,list):
+            self.radarrx = radarrx
+
         self.codes = sequence
         self.code_order = sequence_order
         self.code_repeats = sequence_repeats
@@ -48,6 +90,26 @@ class Experiment(object):
 
 
 class Channel(object):
+    """Holds the information for each channel includingthe writer instance for digital RF.
+
+    Attributes
+    ----------
+    name : str
+        Name of the channel
+    sr : Fraction
+        Output sample rate of the channel.
+    numtype : str
+        Description of output datatype.
+    is_complex : bool
+        Is the data complex
+    radardatatype :
+    uuid : str
+        UUID string that will act as a unique identifier for the data and can be used to tie the data files to metadata. If None, a random UUID will be generated.
+    num : sub_channels
+        Number of subchannels in the data.
+    drf_out : DigitalRFWriter
+        Instance to write the digital RF data.
+    """
     def __init__(self,name,sample_rate_numerator,sample_rate_denominator, is_complex, numtype, radardatatype, uuid, num_subchannels = 1):
         """ """
         self.name = name
@@ -60,7 +122,15 @@ class Channel(object):
         self.drf_out = None
 
     def makedrf(self, outdir, start_time):
+        """Creates the digital rf dataset folders for the channel.
 
+        Parameters
+        ----------
+        outdir : str
+            Out directory where the overall data set will be stored.
+        start_time :
+             Start time of the folder as datetime (if in ISO8601 format: 2016-01-01T15:24:00Z) or Unix time (if float/int). (default: start ASAP)
+        """
         dtype_strs = {'complexint':np.dtype( [('r', '<i2'), ('i', '<i2')] ),
             "complexlong":np.dtype([('r', '<i4'), ('i', '<i4')]),
             "complexlonglong":np.dtype([('r', '<i8'), ('i', '<i8')]),
@@ -74,7 +144,7 @@ class Channel(object):
         dtype = dtype_strs.get(self.numtype,self.numtype)
 
         sub_cadence_secs = 3600  # Number of seconds of data in a subdirectory
-        file_cadence_millisecs = 1000  # Each file will have up to 400 ms of st_sample = drf.util.parse_identifier_to_sample(start_time,int(self.sr))
+        file_cadence_millisecs = 1000  # Each file will have up to 400 ms of
         compression_level = 0  # no compression
         checksum = False  # no checksum
         st_sample = drf.util.parse_identifier_to_sample(start_time,int(sr))
@@ -82,11 +152,11 @@ class Channel(object):
         marching_periods = False  # no marching periods when writing
 
         drf_out = drf.DigitalRFWriter(drfname, dtype, sub_cadence_secs,
-        file_cadence_millisecs, st_sample,
-        sr.numerator, sr.denominator,
-        uuid, compression_level, checksum,
-        self.is_complex, self.num_subchannels,
-        is_continuous, marching_periods)
+            file_cadence_millisecs, st_sample,
+            sr.numerator, sr.denominator,
+            uuid, compression_level, checksum,
+            self.is_complex, self.num_subchannels,
+            is_continuous, marching_periods)
 
         self.drf_out = drf_out
 class RadarSystem(object):
@@ -122,7 +192,8 @@ class RadarSystem(object):
         elif filepath.exists():
             param_dict = load_dict_from_hdf5(self.kmat_file)
         elif filepath.parent == ppath:
-            sensor_folder = Path(__file__).parent.joinpath('sensor_info')
+            modpath = Path(__file__).parent.parent
+            sensor_folder = modpath.joinpath("config",'sensor_info')
             newkfile = sensor_folder.joinpath(self.kmat_file)
             param_dict = load_dict_from_hdf5(str(newkfile))
 
@@ -233,7 +304,8 @@ def get_radars(files=None):
 
     """
     if files is None:
-        files = str(Path(__file__).expanduser().parent.joinpath("radar_info"))
+        modpath = Path(__file__).expanduser().parent.parent
+        files = str(modpath.joinpath("config","sensor_info"))
 
     if isinstance(files, str) or isinstance(files, Path):
         files = [files]
@@ -290,8 +362,8 @@ class PulseSequence(object):
             pulsefolders = [pulsefolders]
         pulsefolders = [Path(i) for i in pulsefolders]
 
-        cur_path = Path(__file__).expanduser().parent
-        ppath = cur_path.joinpath('pulse_files')
+        mod_path = Path(__file__).expanduser().parent.parent
+        ppath = mod_path.joinpath('config','pulse_files')
         pulsefolders.insert(0,ppath)
 
         pdict_all = {}
@@ -444,6 +516,8 @@ class PulseTime(object):
             outiq = orig_iq[tout]
         elif 'linear':
             outiq = np.interp(ts,tb,orig_iq)
+        else:
+            raise ValueError("interpmethod can only be linear or repeat.")
 
         return outiq
 
