@@ -1,11 +1,26 @@
 import numpy as np
 import xarray as xr
-from ISRSpectrum import Specinit
+from ISRSpectrum import Specinit, PLspecinit
 
 
 
+def make_pline_specds(i_ds,spec_args):
+    """
 
-def make_specds(i_ds,spec_args,spec_types=['i_line']):
+    i_ds : xarray.Dataset
+        A dataset for the ionosphere parameters.
+    spec_args : dict
+        Dictionary containing the arguments for the the spectrum.
+    """
+
+    attrs = i_ds.attrs.copy()
+
+    coords = i_ds.coords.copy()
+    idx_coords = coords.copy().to_index()
+
+    sp1 = PLspecinit(**spec_args)
+
+def make_iline_specds(i_ds,spec_args,spec_types=['i_line']):
     """Make an xarray dataset with the spectra data.
 
     Parameters
@@ -22,11 +37,13 @@ def make_specds(i_ds,spec_args,spec_types=['i_line']):
     sp_ds : xarray.Dataset
         The data set with the same location and time coordinates but now with a frequency vector.
     """
-    attrs = i_ds.attrs.copy()
 
+    # Copy the coordinates and attrs so we don't have issues with overwritting.
+    attrs = i_ds.attrs.copy()
     coords = i_ds.coords.copy()
     idx_coords = coords.copy().to_index()
 
+    # Get the main spectrum
     sp1 = Specinit(**spec_args)
     # Add the frequency vector
     coords['freqs'] = sp1.f

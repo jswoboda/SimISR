@@ -11,7 +11,7 @@ import yaml
 import numpy as np
 import scipy as sp
 import scipy.fftpack as scfft
-import scipy.signal as scisig
+import scipy.signal as sig
 import scipy.interpolate as spinterp
 import scipy.constants as sconst
 import SimISR.sensorConstants as sensconst
@@ -62,8 +62,8 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     ----------
     Fsorg : float
         A scalar, the original sampling frequency in Hertz.
-    m_up : int
-        The upsampled ratio between the original sampling rate and the rate of the ambiguity function up sampling.
+    ds_list : list
+        The list of upsamping steps between the original sampling rate and the rate of the ambiguity function.
     nlags : int
         The number of lags used.
 
@@ -86,7 +86,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
 
     nspec = int(nspec)
     plen = pulse.shape[-1]
-    nlags = plen/m_up
+    nlags = plen//m_up
 
     # find alternating codes and long pulse
     sweepu, u_ind = np.unique(sweepid, return_index=True)
@@ -111,7 +111,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     nvec = np.arange(-np.floor(nsamps/2.0), np.floor(nsamps/2.0)+1).astype(int)
     pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann']
 
-    curwin = scisig.get_window(winname, nsamps)
+    curwin = sig.get_window(winname, nsamps)
     # Apply window to the sinc function. This will act as the impulse respons of the filter
 
     impres = curwin*np.sinc(nvec.astype(float)/m_up)
@@ -128,14 +128,14 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     # numback = int(nvec.min()/m_up-delay_num.min())
     # numfront = numdiff-numback
 #    imprespad  = np.pad(impres,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
-    imprespad = np.pad(impres, (numdiff/2, numdiff/2), mode='constant', constant_values = (0.0, 0.0))
+    imprespad = np.pad(impres, (numdiff//2, numdiff//2), mode='constant', constant_values = (0.0, 0.0))
     cursincrep = np.tile(imprespad[np.newaxis, :], (len(t_rng), 1))
 
     (d2d, srng) = np.meshgrid(delay, t_rng)
     # envelop function
     t_p = np.arange(plen)*d_t
 
-    envfunc = sp.interp(np.ravel(srng-d2d), t_p, lp_pulse, left=0., right=0.).reshape(d2d.shape)
+    envfunc = np.interp(np.ravel(srng-d2d), t_p, lp_pulse, left=0., right=0.).reshape(d2d.shape)
 #    envfunc = np.zeros(d2d.shape)
 
 #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
@@ -165,7 +165,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
     Wttac = np.zeros((nlags, d2d.shape[0], d2d.shape[1]))
 
     for icn, i_pulse in enumerate(ac_pulses):
-        envfunc = sp.interp(np.ravel(srng-d2d), t_p, i_pulse, left=0., right=0.).reshape(d2d.shape)
+        envfunc = np.interp(np.ravel(srng-d2d), t_p, i_pulse, left=0., right=0.).reshape(d2d.shape)
     #    envfunc = np.zeros(d2d.shape)
     #    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
         envfunc = envfunc/np.sqrt(np.absolute(envfunc).sum(axis=0).max())
@@ -193,6 +193,92 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
                'WttMatrixac':lagmatac}
     return wttdict
 
+def make_amb_old(Fsorg,m_up,plen,pulse,nspec=128,winname = 'boxcar'):
+    """
+        Make the ambiguity function dictionary that holds the lag ambiguity and
+        range ambiguity. Uses a sinc function weighted by a blackman window. Currently
+        only set up for an uncoded pulse.
+
+        Args:
+            Fsorg (:obj:`float`): A scalar, the original sampling frequency in Hertz.
+            m_up (:obj:`int`): The upsampled ratio between the original sampling rate and the rate of
+            the ambiguity function up sampling.
+            plen (:obj:`int`): The length of the pulse in samples at the original sampling frequency.
+            nlags (:obj:`int`): The number of lags used.
+
+        Returns:
+            Wttdict (:obj:`dict`): A dictionary with the keys 'WttAll' which is the full ambiguity function
+            for each lag, 'Wtt' is the max for each lag for plotting, 'Wrange' is the
+            ambiguity in the range with the lag dimension summed, 'Wlag' The ambiguity
+            for the lag, 'Delay' the numpy array for the lag sampling, 'Range' the array
+            for the range sampling and 'WttMatrix' for a matrix that will impart the ambiguity
+            function on a pulses.
+    """
+    nspec = int(nspec)
+    nlags = len(pulse)
+    # Create an upsampled time vector for the sinc interpolation, size must be odd number.
+    nsamps = np.floor(8.5*m_up)
+    nsamps = int(nsamps-(1-np.mod(nsamps, 2)))
+    # need to incorporate summation rule
+    vol = 1.
+    nvec = np.arange(-1*(nsamps//2), nsamps//2+1)
+    pos_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann',
+                   'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris',
+                   'nuttall', 'barthann']
+    curwin = sig.get_window(winname, nsamps,fftbins=False)
+    # Apply window to the sinc function. This will act as the impulse respons of the filter
+    outsinc = curwin*np.sinc(nvec/m_up)
+    outsinc = outsinc/np.sum(outsinc)
+    dt = 1/(Fsorg*m_up)
+    #make delay vector
+    Delay_num = np.arange(-(len(nvec)-1),m_up*(nlags+5))
+    Delay = Delay_num*dt
+
+    t_rng = np.arange(0, 1.5*plen, dt)
+    if len(t_rng) > 2e4:
+        raise ValueError('The time array is way too large. plen should be in seconds.')
+    numdiff = len(Delay)-len(outsinc)
+    numback = int(nvec.min()/m_up-Delay_num.min())
+    numfront = numdiff-numback
+#    outsincpad  = np.pad(outsinc,(0,numdiff),mode='constant',constant_values=(0.0,0.0))
+    outsincpad  = np.pad(outsinc,(numback, numfront), mode='constant',
+                         constant_values=(0.0, 0.0))
+    (d2d, srng)=np.meshgrid(Delay, t_rng)
+    # envelop function
+    t_p = np.arange(nlags)/Fsorg
+    envfunc = np.interp(np.ravel(srng-d2d), t_p,pulse, left=0., right=0.).reshape(d2d.shape)
+#    envfunc = np.zeros(d2d.shape)
+#    envfunc[(d2d-srng+plen-Delay.min()>=0)&(d2d-srng+plen-Delay.min()<=plen)]=1
+#   Normalize the evaluation function
+    envfunc = envfunc/np.sqrt(envfunc.sum(axis=0).max())
+    #create the ambiguity function for everything
+    Wtt = np.zeros((nlags, d2d.shape[0], d2d.shape[1]))
+    cursincrep0 = np.tile(outsincpad[np.newaxis, :], (len(t_rng), 1))
+    Wt0 = cursincrep0*envfunc
+    Wt0fft = np.fft.fft(Wt0, axis=1)
+    for ilag in np.arange(nlags):
+        cursincrep = np.roll(cursincrep0, ilag*m_up,axis=1)
+        Wta = cursincrep*envfunc
+        #do fft based convolution, probably best method given sizes
+        Wtafft = np.fft.fft(Wta, axis=1)
+
+        nmove = len(nvec)-1
+        Wtt[ilag] = np.roll(scfft.ifft(Wtafft*np.conj(Wt0fft), axis=1).real,
+                            nmove, axis=1)
+
+    # make matrix to take
+    imat = np.eye(nspec)
+    tau = np.arange(-np.floor(nspec/2.), np.ceil(nspec/2.))/Fsorg
+    tauint = Delay
+    interpmat = spinterp.interp1d(tau, imat, bounds_error=0, axis=0)(tauint)
+    lagmat = np.dot(Wtt.sum(axis=1), interpmat)
+    W0 = lagmat[0].sum()
+    for ilag in range(nlags):
+        lagmat[ilag] = ((vol+ilag)/(vol*W0))*lagmat[ilag]
+    rng_m = sconst.c*t_rng/2.0
+    Wttdict = {'WttAll':Wtt, 'Wtt':Wtt.max(axis=0), 'Wrange':Wtt.sum(axis=1),
+               'Wlag':Wtt.sum(axis=2), 'Delay':Delay, 'Range':rng_m,         'WttMatrix':lagmat}
+    return Wttdict
 
 def spect2acf(omeg, spec, n_s=None):
     """Creates acf and time array associated with the given frequency vector and spectrum

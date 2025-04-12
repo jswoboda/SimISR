@@ -16,9 +16,9 @@ pulse_files: str(required=False)
 seqobj:
   name: str()
   id_code: int()
-  txrxname: str()
-  beamcodes: list(int()) #beamnumbers
-  pulsecodes: list(int()) #pulsenumbers
+  txrxname: any(str(),list(str())) # Can be one string, monostatic, or first string is tx and then rest are receivers
+  beamcodes: any(list(int()), list(list(int()))) #beamnumbers
+  pulsecodes: any(list(int()), list(list(int()))) #pulsenumbers
 
 channelobj:
   name: str()

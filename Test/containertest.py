@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 from SimISR.testfunctions import chapman_func, temp_profile
-from SimISR import IonoContainer
+from SimISR import IonoContainer,make_iline_specds
 
 
 def example_iono():
@@ -137,9 +137,25 @@ def example_xr1d():
 
     return i_ds
 
+def create_spectrum(i_ds):
 
+    cf = 440.2e6
+    sf = 50e3
+    nfft = int(2**10)
+    f_vec = np.fft.fftshift(np.fft.fftfreq(nfft,d=1/sf))
+    spec_args = dict(centerFrequency=440.2e6,sampfreq=sf,f=f_vec)
+    ilineds = make_iline_specds(i_ds,spec_args)
+    return ilineds
 
 if __name__ == '__main__':
     iono=example_xr1d()
-    iono.to_netcdf("onedionosphere_params.nc")
+    param_file = Path("onedionosphere_params.nc")
+    if param_file.exists():
+        param_file.unlink()
+    spec_file = Path("onedionosphere_spec.nc")
+    if spec_file.exists():
+        spec_file.unlink()
+    iono.to_netcdf(str(param_file))
+    iono_spec = create_spectrum(iono)
+    iono_spec.to_netcdf((spec_file))
     print('Saved data')

@@ -13,6 +13,7 @@ radarobj:
   tx_power: num(min=0)
   duty: num(max=1.)
   tsys_type: str()
+  site: str(required=False)
   xtra_tsys: num(min=0.,required=False)
   kmat_file: str(required=False)
   cal_temp: num(required=False)
