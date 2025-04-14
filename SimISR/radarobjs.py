@@ -35,10 +35,6 @@ class Experiment(object):
     ----------
     name : str
         Name of experiment
-    radartx : list
-        Names of radar systems used for transmit.
-    radarrx : list
-        Names of radar systems used for receive.
     codes : dict
         A dictionary with keys being the radar name string and values being lists of the sequence objects.
     code_order : list
@@ -58,8 +54,6 @@ class Experiment(object):
     def __init__(
         self,
         experiment_name,
-        radartx,
-        radarrx,
         sequence,
         sequence_order,
         sequence_repeats,
@@ -77,10 +71,6 @@ class Experiment(object):
         ----------
         experiment_name : str
             Name of experiment
-        radartx : list
-            Names of radar systems used for transmit.
-        radarrx : list
-            Names of radar systems used for receive.
         sequence : list
             List of dictionaries holding information to make a sequence objects.
         sequence_order : list
@@ -106,37 +96,23 @@ class Experiment(object):
         self.name = experiment_name
         rdr, sites = get_radars(radar_files)
 
-        if isinstance(radartx, str):
-            self.radartx = [radartx]
-        elif isinstance(radartx, list):
-            self.radartx = radartx
+        code_set = {}
+        seqcp = copy(sequence)
+        radarlist = []
+        for iseq in seqcp:
+            iseq["pulsefolders"] = pulse_files
+            pseq = PulseSequence(**iseq)
+            code_set[iseq['id_code']] = pseq
+            radarlist += pseq.radarnames
+        self.codes = code_set
 
-
-        if isinstance(radarrx, str):
-            self.radarrx = [radarrx]
-        elif isinstance(radarrx, list):
-            self.radarrx = radarrx
-
-        radarlist = list(set(self.radartx+self.radarrx))
         self.radarobjs = {}
         for irdr in radarlist:
             rdrobj = RadarSystem(**rdr[irdr])
             stobj = RadarSite(**sites[rdrobj.site])
             self.radarobjs[irdr] = {'radar':rdrobj,'site':stobj}
 
-        code_set = {}
-        seqcp = copy(sequence)
-        for iseq in seqcp:
-            rdrname = iseq["txrxname"]
-            del iseq["txrxname"]
-            if isinstance(rdrname,list):
-                rdrname = " ".join(rdrname)
-            if not rdrname in code_set.keys():
-                code_set[rdrname] = []
-            iseq["pulsefolders"] = pulse_files
-            pseq = PulseSequence(**iseq)
-            code_set[rdrname].append(pseq)
-        self.codes = code_set
+
         self.code_order = sequence_order
         self.code_repeats = sequence_repeats
         self.exp_time = exp_time
@@ -155,10 +131,12 @@ class Experiment(object):
                     self.pline_chans[isys + "-" + curchan.name] = curchan
 
     def setup_channels(self, save_directory, start_time):
-        """Perform teh set up of the drf channels
+        """Perform the set up of the drf channels
 
         Parameters
         ----------
+        save_directory : str
+            Base directory for the data sets.
         start_time :
             Start time of the folder as datetime (if in ISO8601 format: 2016-01-01T15:24:00Z) or Unix time (if float/int). (default: start ASAP)
         """
@@ -613,6 +591,10 @@ class PulseSequence(object):
         Name of the pulse.
     id_code : int
         Code for sequency type.
+    txorrx : list
+        Determines if it's tx or rx or both.
+    radarnames : list
+        Names of radars.
     pulseseq : dict
         Dictionary where keys are the pulse number and the values are the associated PulseTiming object.
     pulsecodes : list
@@ -621,7 +603,7 @@ class PulseSequence(object):
         List of coresponding beamcodes for each pulse.
     """
 
-    def __init__(self, name, id_code, pulsecodes, beamcodes, pulsefolders=[]):
+    def __init__(self, name, id_code, txrxname, pulsecodes, beamcodes, pulsefolders=[],txorrx=None):
         """Creates the sequence object.
 
         Parameters
@@ -639,6 +621,11 @@ class PulseSequence(object):
         """
         self.name = name
         self.id_code = id_code
+        self.radarnames = txrxname
+
+        if txorrx is None:
+            self.txorrx=['txrx']
+
         if isinstance(pulsefolders, str):
             pulsefolders = [pulsefolders]
         pulsefolders = [Path(i) for i in pulsefolders]
@@ -725,8 +712,6 @@ class PulseTime(object):
     """Holds information for each pulse mainly timing, in nanoseconds.
 
     Attributes
-    ----------
-    Parameters
     ----------
     code : int
         Pulse code for pulse type.

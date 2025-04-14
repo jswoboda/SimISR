@@ -37,12 +37,13 @@ class RadarDataCreate(object):
 
 
         """
-        for ixr,iseqlist in self.experiment.codes.items():
+        for ixr,iseq in self.experiment.codes.items():
 
             # split up each radar
-            rdr_list = ixr.split('')
-            # list of sequenes
-            for iseq in iseqlist:
+            rdr_list = iseq.radarnames
+            txrx = iseq.txorrx
+
+
 
 
 

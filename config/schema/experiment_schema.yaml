@@ -1,6 +1,4 @@
 experiment_name: str()
-radartx: any(str(),list(str()))
-radarrx: any(str(),list(str()))
 save_directory: str(required=False)
 sequence: list(include('seqobj'))
 sequence_order: list(int())
@@ -16,7 +14,8 @@ pulse_files: str(required=False)
 seqobj:
   name: str()
   id_code: int()
-  txrxname: any(str(),list(str())) # Can be one string, monostatic, or first string is tx and then rest are receivers
+  txrxname: list(str()) # List all of the radars active during the sequence
+  txorrx: list(enum('rx','tx'))
   beamcodes: any(list(int()), list(list(int()))) #beamnumbers
   pulsecodes: any(list(int()), list(list(int()))) #pulsenumbers
 

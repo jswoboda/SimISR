@@ -1,6 +1,4 @@
 experiment_name: zenith_s
-radartx: millstone_zenith
-radarrx: millstone_zenith
 channels:
   millstone_zenith:
     - name: tx-h
@@ -23,7 +21,8 @@ save_directory: ~/DATA/SimISRv2testing
 sequence:
   - name: zenith_longpulse
     id_code: 45
-    txrxname: millstone_zenith
+    txrxname: [millstone_zenith, millstone_zenith]
+    txorrx: [tx, rx]
     beamcodes: [23465]
     pulsecodes: [300]
 
