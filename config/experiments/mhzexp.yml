@@ -27,5 +27,4 @@ sequence:
     pulsecodes: [300]
 
 sequence_order: [45]
-sequence_repeats: [0]
 exp_time: 100

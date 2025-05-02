@@ -37,12 +37,15 @@ class RadarDataCreate(object):
 
 
         """
+        sp_count = 0
+        # each sequence will have to
         for ixr,iseq in self.experiment.codes.items():
 
             # split up each radar
             rdr_list = iseq.radarnames
             txrx = iseq.txorrx
-
+            tx_int = [inum  for inum,itxrx in enumerate(txrx) if itxrx=='tx']
+            rx_int = [inum  for inum,itxrx in enumerate(txrx) if itxrx=='rx']
 
 
 

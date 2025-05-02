@@ -2,7 +2,6 @@ experiment_name: str()
 save_directory: str(required=False)
 sequence: list(include('seqobj'))
 sequence_order: list(int())
-sequence_repeats: list(int())
 channels: map(list(include('channelobj')),key=str())
 exp_time: num(required=True) # in seconds
 exp_start: timestamp(min='1970-01-01 01:00:00', max='2100-01-01 23:00:00', required=False)

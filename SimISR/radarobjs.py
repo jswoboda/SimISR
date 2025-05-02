@@ -39,8 +39,6 @@ class Experiment(object):
         A dictionary with keys being the radar name string and values being lists of the sequence objects.
     code_order : list
         The order of the codes for each of the sequence.
-    code_repeats: : list
-        Repeats of each of the sequences.
     tx_chans : d dict
         Keys are the name of the channel and the values are the radar system object.
     iline_chans : dict
@@ -56,7 +54,6 @@ class Experiment(object):
         experiment_name,
         sequence,
         sequence_order,
-        sequence_repeats,
         exp_time,
         channels,
         save_directory="tmp",
@@ -74,9 +71,7 @@ class Experiment(object):
         sequence : list
             List of dictionaries holding information to make a sequence objects.
         sequence_order : list
-            List giving the order of the sequences.
-        sequence_repeats : list
-            Repeats of each of the sequences.
+            List giving the order of the sequences that the experiment will repeat until finished.
         exp_time : float
             Length of the experiment.
         channels : list
@@ -114,7 +109,6 @@ class Experiment(object):
 
 
         self.code_order = sequence_order
-        self.code_repeats = sequence_repeats
         self.exp_time = exp_time
         self.tx_chans = {}
         self.iline_chans = {}
@@ -311,7 +305,7 @@ class RadarSystem(object):
         kmat_file="",
         notes="",
     ):
-        """Initi
+        """Initializes radar system object.
 
         Parameters
         ----------
@@ -367,6 +361,14 @@ class RadarSystem(object):
         return tout
 
     def read_kmat(self):
+        """Reads the kmat file for the beam pattern.
+
+
+        Returns
+        -------
+        k_dict : dict
+            Dictionary where the values are the beam pattern info and the
+        """
         ppath = Path(".")
         filepath = Path(self.kmat_file)
         if filepath == Path(""):
@@ -594,13 +596,13 @@ class PulseSequence(object):
     txorrx : list
         Determines if it's tx or rx or both.
     radarnames : list
-        Names of radars.
+        Names of radars that will exist in the pulse sequence.
     pulseseq : dict
         Dictionary where keys are the pulse number and the values are the associated PulseTiming object.
     pulsecodes : list
-        This list holds the pulse code order because the dictionary holds the unique code.
+        This list of list holds the pulse code order because the dictionary holds the unique code.
     beamcodes : list
-        List of coresponding beamcodes for each pulse.
+        List of lists coresponding to beamcodes for each pulse.
     """
 
     def __init__(self, name, id_code, txrxname, pulsecodes, beamcodes, pulsefolders=[],txorrx=None):
@@ -617,14 +619,24 @@ class PulseSequence(object):
         beamcodes : list
             Sequency of beamcodes.
         pulsefolders : list
-            List of folders that have pulse yamls. Can overload with different pulse files.
+            List of folders that have pulse yaml files. Can overload with different pulse files.
         """
         self.name = name
         self.id_code = id_code
+
+        if isinstance(txrxname,str):
+            self.radarnames=[txrxname,txrxname]
+        elif isinstance(txrxname,list):
+            if len(txrxname)==1:
+                self.radarnames = [txrxname[0],txrxname[0]]
         self.radarnames = txrxname
 
-        if txorrx is None:
-            self.txorrx=['txrx']
+        if (txorrx is None) and (len(self.radarnames)==2):
+            self.txorrx=['tx','rx']
+        elif len(txorrx)!=len(self.radarnames):
+            raise ValueError("txorrx length does not align with txrxname")
+        else:
+            self.txorrx = txorrx
 
         if isinstance(pulsefolders, str):
             pulsefolders = [pulsefolders]
@@ -640,9 +652,16 @@ class PulseSequence(object):
         if isinstance(pulsecodes[0],list):
             allcodes = sum(pulsecodes,[])
             ucodes = list(set(allcodes))
+            if len(pulsecodes[0])==1:
+                mult=len(self.radarnames)
+            else:
+                mult=1
+            fullcodes = [iclist*mult for iclist in pulsecodes]
         elif isinstance(pulsecodes[0],int):
             ucodes = list(set(pulsecodes))
-        self.pulsecodes = pulsecodes
+            fullcodes = [[icode]*len(self.radarnames) for icode in pulsecodes]
+        self.pulsecodes = fullcodes
+
         for ifold in pulsefolders:
             # Use both the yml or yaml extention
             plist = list(ifold.glob("*.y*ml"))
@@ -653,11 +672,16 @@ class PulseSequence(object):
                 cur_pulse = PulseTime(**p_dict)
                 pdict_all[cur_pulse.code] = cur_pulse
         self.pulseseq = {icode: pdict_all[icode] for icode in ucodes}
-        if not hasattr(beamcodes, "__len__"):
-            beamcodes = [beamcodes]
-        if len(beamcodes) == 1:
-            beamcodes = beamcodes * len(self.pulseseq)
-        self.beamcodes = beamcodes
+
+        if isinstance(beamcodes[0],list):
+            if len(beamcodes[0])==1:
+                mult = len(self.radarnames)
+            else:
+                mult=1
+            fullbeams = [iclist*mult for iclist in beamcodes]
+        else:
+            fullbeams = [[icode]*len(self.radarnames) for icode in beamcodes]
+        self.beamcodes = fullbeams
 
     def get_pulse_codes(self):
         """Outputs the pulse codes in a list.

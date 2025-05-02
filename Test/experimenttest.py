@@ -76,7 +76,7 @@ def create_spectrum(i_ds):
     cf = 440.2e6
     sf = 50e3
     nfft = int(2**10)
-    f_vec = np.fft.fftshift(np.fft.fftfreq(nfft,d=1/sf))
-    spec_args = dict(centerFrequency=440.2e6,sampfreq=sf,f=f_vec)
+    f_vec = np.fft.fftshift(np.fft.fftfreq(nfft,d=1./sf))
+    spec_args = dict(centerFrequency=cf,sampfreq=sf,f=f_vec)
     ilineds = make_iline_specds(i_ds,spec_args)
     return ilineds
