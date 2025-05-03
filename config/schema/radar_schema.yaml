@@ -18,6 +18,7 @@ radarobj:
   kmat_file: str(required=False)
   cal_temp: num(required=False)
   notes: str(required=False)
+  antennaparmaeters: map(any(),key=str(),required=False)
 
 siteobj:
   name: str()

@@ -1,4 +1,3 @@
-from inspect import Attribute
 #!/usr/bin/env python
 """
 radarobjs.py
@@ -11,6 +10,7 @@ import shutil
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
+from .antennapatterncalc import antpatternplugs
 import yamale
 import digital_rf as drf
 

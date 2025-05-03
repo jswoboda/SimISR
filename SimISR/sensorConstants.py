@@ -232,7 +232,7 @@ def Millstone_Pattern_M(Az, El, Az0, El0, Angleoffset):
     return Circ_Ant_Pattern(Elr, 4.4e8, r)
 
 
-def Circ_Ant_Pattern(EL, freq=440e6, r=23):
+def Circ_Ant_Pattern(EL, freq=440e6, r=23.):
     """This function calculates an idealized antenna pattern for a circular antenna array.The pattern is normalized to broad side =1.
 
     Parameters

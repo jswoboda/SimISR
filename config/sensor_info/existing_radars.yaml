@@ -1,6 +1,6 @@
 radars:
   - name: millstone_misa
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -19,8 +19,10 @@ radars:
     cal_temp: 1689.21
     site: millstone
     kmat_file: Millstone_PARAMS.h5
+    antennaparmaeters:
+      rad: 23.0
   - name: millstone_zenith
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -39,8 +41,10 @@ radars:
     cal_temp: 1689.21
     site: millstone
     kmat_file: Millstonez_PARAMS.h5
+    antennaparmaeters:
+      rad: 33.5
   - name: millstone_lband
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -57,8 +61,10 @@ radars:
     tsys_type: fixed_high
     xtra_tsys: 50.0
     notes: L-band
+    antennaparmaeters:
+      rad: 30.0
   - name: greenbank_43m
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -75,6 +81,8 @@ radars:
     xtra_tsys: 0.0
     site: greenbank
     notes: 140 foot GB telescope
+    antennaparmaeters:
+      rad: 23.0
   - name: jicamarca
     ant_type: planar_array
     az_rotation: 0.0
@@ -94,7 +102,7 @@ radars:
     site: jicamarca
     notes: imaging radar
   - name: arecibo
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -110,9 +118,11 @@ radars:
     tsys_type: fixed_high
     xtra_tsys: 0.0
     site: arecibo
+    antennaparmaeters:
+      rad: 150
     notes: dual beam ; limited TX bandwidth
   - name: sondrestrom
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -129,9 +139,11 @@ radars:
     xtra_tsys: 30.0
     notes: ""
     site: sondrestrom
+    antennaparmaeters:
+      rad: 30
     kmat_file: Sondrestrom_PARAMS.h5
   - name: poker_flat
-    ant_type: planar_array
+    ant_type: amisr
     az_rotation: 16.0
     el_tilt: 15.0
     steering_mask:
@@ -149,8 +161,16 @@ radars:
     notes: AMISR
     site: poker_flat
     kmat_file: PFISR_PARAMS.h5
+    antennaparmaeters:
+      Angleoffset: [16.0, 15.0]
+      dx: 0.4343
+      dy: 0.4958
+      mpp: 8
+      mpan: 8
+      npp: 4
+      npan: 16
   - name: resolute_n
-    ant_type: planar_array
+    ant_type: amisr
     az_rotation: 35.0
     el_tilt: 26.0
     steering_mask:
@@ -168,8 +188,16 @@ radars:
     notes: AMISR
     kmat_file: RISR_PARAMS.h5
     site: resolute
+    antennaparmaeters:
+      Angleoffset: [35.0, 26.0]
+      dx: 0.4343
+      dy: 0.4958
+      mpp: 8
+      mpan: 8
+      npp: 4
+      npan: 16
   - name: resolute_c
-    ant_type: planar_array
+    ant_type: amisr
     az_rotation: 206.0
     el_tilt: 35.0
     steering_mask:
@@ -186,8 +214,16 @@ radars:
     xtra_tsys: 50.0
     notes: AMISR
     site: resolute
+    antennaparmaeters:
+      Angleoffset: [206.0, 35.0]
+      dx: 0.4343
+      dy: 0.4958
+      mpp: 8
+      mpan: 8
+      npp: 4
+      npan: 16
   - name: tromso
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -204,6 +240,8 @@ radars:
     xtra_tsys: 200.0
     notes: limited steering
     site: tromso
+    antennaparmaeters:
+      rad: 16
   - name: kilpisjarvi
     ant_type: planar_array
     az_rotation: 0.0
@@ -222,8 +260,10 @@ radars:
     xtra_tsys: 0.0
     notes: matched to VHF TX
     site: kilpisjarvi
+    antennaparmaeters:
+      rad: 16
   - name: sodonkyla
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -240,8 +280,10 @@ radars:
     xtra_tsys: 30.0
     notes: bistatic VHF RX only
     site: sodonkyla
+    antennaparmaeters:
+      rad: 16
   - name: kiruna
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -258,8 +300,10 @@ radars:
     xtra_tsys: 30.0
     notes: bistatic VHF RX only
     site: kiruna
+    antennaparmaeters:
+      rad: 16
   - name: svalbard
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -276,8 +320,10 @@ radars:
     xtra_tsys: 0.0
     notes: ""
     site: svalbard
+    antennaparmaeters:
+      rad: 16
   - name: svalbard_fa
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -294,8 +340,10 @@ radars:
     xtra_tsys: 0.0
     notes: field aligned fixed dish
     site: svalbard
+    antennaparmaeters:
+      rad: 16
   - name: kharkov
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -312,8 +360,10 @@ radars:
     xtra_tsys: 50.0
     notes: fixed zenith dish
     site: kharkov
+    antennaparmaeters:
+      rad: 23
   - name: irkutsk
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -330,6 +380,8 @@ radars:
     xtra_tsys: 700.0
     notes: parabolic trough antenna
     site: irkutsk
+    antennaparmaeters:
+      rad: 15
   - name: mu
     ant_type: planar_array
     az_rotation: 0.0
@@ -349,7 +401,7 @@ radars:
     notes: MST array
     site: mu
   - name: qujing
-    ant_type: dish
+    ant_type: circ
     az_rotation: 0.0
     el_tilt: 0.0
     steering_mask:
@@ -366,6 +418,8 @@ radars:
     xtra_tsys: 0.0
     site: qujing
     notes: approximate parameters
+    antennaparmaeters:
+      rad: 16
 sites:
   - name: millstone
     latitude: 42.6195
