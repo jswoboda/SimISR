@@ -12,6 +12,7 @@ radarobj:
   rx_gain: num()
   tx_power: num(min=0)
   duty: num(max=1.)
+  loss: num(min=0,required=False)
   tsys_type: str()
   site: str(required=False)
   xtra_tsys: num(min=0.,required=False)

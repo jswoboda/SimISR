@@ -1,4 +1,9 @@
 import numpy as np
+from pathlib import Path
+import sys
+
+sys.path.append(str(Path(__file__).parent))
+print(Path(__file__).parent)
 from mathutils import diric,rotcoords
 import scipy.constants as sconst
 d2r = np.pi/180.
@@ -11,9 +16,10 @@ class AntPatPlug(object):
 
     freq : float
         Frequency of emission in Hz. Default is 440e6 Hz
-    Angleoffset : list
-        A 2 element list holding the offset of the face of the array from north.
-
+    az_rotation :
+        Rotation off of North in degrees.
+    el_tilt : float
+        Rotation off of parallel to the ground.
     dx : float
         x spacing for elemets in meters, default = 0.4343
     dy : float
@@ -28,9 +34,10 @@ class AntPatPlug(object):
         Number of panels in the x direction, default = 16
 
     """
-    def __init__(self,freq = 440e6,Angleoffset=[0.,0.], dx=0.4343, dy=0.4958, mpp=8, mpan=8, npp=4, npan=16):
+    def __init__(self,freq = 440e6,az_rotation=0,el_tilt=0, dx=0.4343, dy=0.4958, mpp=8, mpan=8, npp=4, npan=16):
 
-        self.Angleoffset = Angleoffset
+        self.az_rotation = az_rotation
+        self.el_tilt = el_tilt
         self.ant_params = dict(freq=freq,dx = dx, dy = dy,mpp = mpp,mpan = mpan,npp = npp,npan = npan)
     def calc_pattern(self,Az, El, Az0, El0):
         """This function will call AMISR beam patern function after it rotates the coordinates given the offset of the phased array.
@@ -54,12 +61,12 @@ class AntPatPlug(object):
 
         d2r = np.pi / 180.0
 
-        Azs, Els = rotcoords(Az, El, -self.Angleoffset[0], -self.Angleoffset[1])
+        Azs, Els = rotcoords(Az, El, -self.az_rotation, -self.el_tilt)
         eps = np.finfo(Az.dtype).eps
         Azs[np.abs(Azs) < 15 * eps] = 0.0
         Azs = np.mod(Azs, 360.0)
 
-        Az0s, El0s = rotcoords(Az0, El0, -self.Angleoffset[0], -self.Angleoffset[1])
+        Az0s, El0s = rotcoords(Az0, El0, -self.az_rotation, -self.el_tilt)
         Elr = (90.0 - Els) * d2r
         El0r = (90.0 - El0s) * d2r
         Azr = Azs * d2r

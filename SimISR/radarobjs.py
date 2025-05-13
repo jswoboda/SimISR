@@ -4,6 +4,7 @@ radarobjs.py
 This module contains classes and functions for setting up and running the experiment.
 @author: John Swoboda
 """
+import warnings
 import yaml
 from copy import copy
 import shutil
@@ -13,8 +14,8 @@ import numpy as np
 from .antennapatterncalc import antpatternplugs
 import yamale
 import digital_rf as drf
-
-from SimISR import load_dict_from_hdf5
+import scipy.constants as sc
+from .h5fileIO import load_dict_from_hdf5,save_dict_to_hdf5
 
 TSYS_CONV = dict(
     fixed_zero=0.0,
@@ -275,6 +276,8 @@ class RadarSystem(object):
         Duty factor of the radar.
     tsys : float
         Noise power in K.
+    antennaparmaeters : dict
+        Parameters for the antenna
     kmat_file : str
         Location of the h5 file that holds the system constant information.
     notes : str
@@ -300,6 +303,8 @@ class RadarSystem(object):
         duty,
         tsys_type,
         site,
+        antennaparmaeters,
+        loss=0.0,
         cal_temp=1689.21,
         xtra_tsys=0.0,
         kmat_file="",
@@ -327,6 +332,8 @@ class RadarSystem(object):
             Peak poower in Watts.
         duty : float
             Duty factor of the radar.
+        loss : float
+            Loss in dB.
         tsys_type : str
             The type of tsys that will determine the base noise level.
         cal_temp : float
@@ -352,13 +359,74 @@ class RadarSystem(object):
         self.xtra_tsys = xtra_tsys
         self.kmat_file = kmat_file
         self.notes = notes
+        self.loss=loss
         self.k_dict, self.kmat = self.read_kmat()
         self.cal_temp = cal_temp
         self.site = site
+        ant_params = antennaparmaeters
+        ant_params['freq'] = freq
+        ant_params['az_rotation'] = az_rotation
+        ant_params['el_tilt'] = el_tilt
+        self.antenna_func = antpatternplugs[ant_type](**ant_params)
+
+    def calc_ksys(self,losses_db = 0):
+        """Calculates the system constant.
+
+        Parameters
+        ----------
+        losses_db : float
+            Additional losses in the system in dB.
+
+        Returns
+        -------
+        calc_ksys : float
+            Calculated ksys term.
+
+        """
+        totlos = self.loss+losses_db
+        losses = 10**(totlos/10.)
+        lamb = sc.c/self.freq
+        G = 10**(max(self.tx_gain,self.rx_gain)/10.)
+        e_rad = sc.e**2.0 * sc.mu_0 / (4.0*sc.pi * sc.m_e)
+        calc_ksys = G*sc.c*e_rad**2*lamb**2/(8*np.pi)/losses
+
+        return calc_ksys
 
     def get_tsys(self, tsys_type, xtra_tsys):
+        """
+
+        Parameters
+        ----------
+        tsys_type : str
+            Type of tsys key.
+        xtra_tsys : float
+            Extra system temperature in degrees.
+
+        Returns
+        -------
+        tout : float
+            Output tsys given the type and xtra tsys.
+        """
         tout = TSYS_CONV[tsys_type] + xtra_tsys
         return tout
+    def write_kmat(self,fname,losses_db = 0):
+        outdict = {"Params":{}}
+        if self.ant_type=='circ':
+            stmask = self.steering_mask
+            az_v = np.arange(stmask[0],stmask[1],dtype=float)
+            el_v = np.arange(stmask[2],stmask[3],dtype=float)
+            az_m,el_m = np.meshgrid(az_v,el_v)
+            az_all = az_m.flatten()
+            el_all = el_m.flatten()
+            if stmask[3] == 90.0:
+                az_all = np.append(az_all,0.)
+                el_all = np.append(el_all,0.)
+            bco = np.arange(len(az_all))
+            ksys = self.calc_ksys()*np.ones_like(az_all)
+            kmat = np.column_stack((bco,az_all,el_all,ksys))
+
+        outdict['Params']["Kmat"] = kmat
+        save_dict_to_hdf5(outdict,fname)
 
     def read_kmat(self):
         """Reads the kmat file for the beam pattern.
@@ -372,7 +440,8 @@ class RadarSystem(object):
         ppath = Path(".")
         filepath = Path(self.kmat_file)
         if filepath == Path(""):
-            raise ValueError(f"kmat file is not listed in the input.")
+            warnings.warn("the input is 0!")
+            return None,None
         elif filepath.exists():
             param_dict = load_dict_from_hdf5(self.kmat_file)
         elif filepath.parent == ppath:

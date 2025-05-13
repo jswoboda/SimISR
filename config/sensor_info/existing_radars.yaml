@@ -17,10 +17,12 @@ radars:
     xtra_tsys: 50.0
     notes: MISA
     cal_temp: 1689.21
+    loss: 6.0
     site: millstone
     kmat_file: Millstone_PARAMS.h5
     antennaparmaeters:
       rad: 23.0
+
   - name: millstone_zenith
     ant_type: circ
     az_rotation: 0.0
@@ -39,10 +41,12 @@ radars:
     xtra_tsys: 50.0
     notes: Zenith
     cal_temp: 1689.21
+    loss: 6.0
     site: millstone
-    kmat_file: Millstonez_PARAMS.h5
+    kmat_file: MHZ_kmat.h5
     antennaparmaeters:
       rad: 33.5
+
   - name: millstone_lband
     ant_type: circ
     az_rotation: 0.0
@@ -57,12 +61,14 @@ radars:
     rx_gain: 47.9
     tx_power: 3000000.0
     duty: 0.20
+    loss: 5.0
     site: millstone
     tsys_type: fixed_high
     xtra_tsys: 50.0
     notes: L-band
     antennaparmaeters:
       rad: 30.0
+
   - name: greenbank_43m
     ant_type: circ
     az_rotation: 0.0
@@ -77,12 +83,14 @@ radars:
     rx_gain: 42.0
     tx_power: 0.0
     duty: 0.0
+    loss: 6.0
     tsys_type: fixed_low
     xtra_tsys: 0.0
     site: greenbank
     notes: 140 foot GB telescope
     antennaparmaeters:
       rad: 23.0
+
   - name: jicamarca
     ant_type: planar_array
     az_rotation: 0.0
@@ -97,10 +105,12 @@ radars:
     rx_gain: 45.0
     tx_power: 4000000.0
     duty: 0.06
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 500.0
     site: jicamarca
     notes: imaging radar
+
   - name: arecibo
     ant_type: circ
     az_rotation: 0.0
@@ -115,12 +125,14 @@ radars:
     rx_gain: 58.5
     tx_power: 1600000.0
     duty: 0.06
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 0.0
     site: arecibo
     antennaparmaeters:
       rad: 150
     notes: dual beam ; limited TX bandwidth
+
   - name: sondrestrom
     ant_type: circ
     az_rotation: 0.0
@@ -135,6 +147,7 @@ radars:
     rx_gain: 49.9
     tx_power: 4000000.0
     duty: 0.03
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 30.0
     notes: ""
@@ -142,6 +155,7 @@ radars:
     antennaparmaeters:
       rad: 30
     kmat_file: Sondrestrom_PARAMS.h5
+
   - name: poker_flat
     ant_type: amisr
     az_rotation: 16.0
@@ -156,19 +170,20 @@ radars:
     rx_gain: 42.0
     tx_power: 1800000.0
     duty: 0.1
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 50.0
     notes: AMISR
     site: poker_flat
     kmat_file: PFISR_PARAMS.h5
     antennaparmaeters:
-      Angleoffset: [16.0, 15.0]
       dx: 0.4343
       dy: 0.4958
       mpp: 8
       mpan: 8
       npp: 4
       npan: 16
+
   - name: resolute_n
     ant_type: amisr
     az_rotation: 35.0
@@ -183,19 +198,20 @@ radars:
     rx_gain: 42.0
     tx_power: 1800000.0
     duty: 0.1
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 50.0
     notes: AMISR
     kmat_file: RISR_PARAMS.h5
     site: resolute
     antennaparmaeters:
-      Angleoffset: [35.0, 26.0]
       dx: 0.4343
       dy: 0.4958
       mpp: 8
       mpan: 8
       npp: 4
       npan: 16
+
   - name: resolute_c
     ant_type: amisr
     az_rotation: 206.0
@@ -210,18 +226,19 @@ radars:
     rx_gain: 42.0
     tx_power: 1800000.0
     duty: 0.1
+    loss: 6.0 # is this on?
     tsys_type: fixed_high
     xtra_tsys: 50.0
     notes: AMISR
     site: resolute
     antennaparmaeters:
-      Angleoffset: [206.0, 35.0]
       dx: 0.4343
       dy: 0.4958
       mpp: 8
       mpan: 8
       npp: 4
       npan: 16
+
   - name: tromso
     ant_type: circ
     az_rotation: 0.0
@@ -236,12 +253,14 @@ radars:
     rx_gain: 46.0
     tx_power: 1600000.0
     duty: 0.125
+    loss: 6.0
     tsys_type: fixed_medium
     xtra_tsys: 200.0
     notes: limited steering
     site: tromso
     antennaparmaeters:
       rad: 16
+
   - name: kilpisjarvi
     ant_type: planar_array
     az_rotation: 0.0
@@ -256,12 +275,14 @@ radars:
     rx_gain: 32.0
     tx_power: 0.0
     duty: 0.0
+    loss: 6.0
     tsys_type: fixed_low
     xtra_tsys: 0.0
     notes: matched to VHF TX
     site: kilpisjarvi
     antennaparmaeters:
       rad: 16
+
   - name: sodonkyla
     ant_type: circ
     az_rotation: 0.0
@@ -276,12 +297,14 @@ radars:
     rx_gain: 34.5
     tx_power: 0.0
     duty: 0.0
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 30.0
     notes: bistatic VHF RX only
     site: sodonkyla
     antennaparmaeters:
       rad: 16
+
   - name: kiruna
     ant_type: circ
     az_rotation: 0.0
@@ -296,12 +319,14 @@ radars:
     rx_gain: 34.5
     tx_power: 0.0
     duty: 0.0
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 30.0
     notes: bistatic VHF RX only
     site: kiruna
     antennaparmaeters:
       rad: 16
+
   - name: svalbard
     ant_type: circ
     az_rotation: 0.0
@@ -316,12 +341,14 @@ radars:
     rx_gain: 44.8
     tx_power: 1000000.0
     duty: 0.25
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 0.0
     notes: ""
     site: svalbard
     antennaparmaeters:
       rad: 16
+
   - name: svalbard_fa
     ant_type: circ
     az_rotation: 0.0
@@ -336,12 +363,14 @@ radars:
     rx_gain: 42.5
     tx_power: 1000000.0
     duty: 0.25
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 0.0
     notes: field aligned fixed dish
     site: svalbard
     antennaparmaeters:
       rad: 16
+
   - name: kharkov
     ant_type: circ
     az_rotation: 0.0
@@ -360,8 +389,10 @@ radars:
     xtra_tsys: 50.0
     notes: fixed zenith dish
     site: kharkov
+    loss: 6.0
     antennaparmaeters:
       rad: 23
+
   - name: irkutsk
     ant_type: circ
     az_rotation: 0.0
@@ -376,12 +407,14 @@ radars:
     rx_gain: 35.0
     tx_power: 3200000.0
     duty: 0.02
+    loss: 6.0
     tsys_type: fixed_high
     xtra_tsys: 700.0
     notes: parabolic trough antenna
     site: irkutsk
     antennaparmaeters:
       rad: 15
+
   - name: mu
     ant_type: planar_array
     az_rotation: 0.0
@@ -396,10 +429,12 @@ radars:
     rx_gain: 34.0
     tx_power: 1000000.0
     duty: 0.05
+    loss: 9.0
     tsys_type: fixed_high
     xtra_tsys: 200.0
     notes: MST array
     site: mu
+
   - name: qujing
     ant_type: circ
     az_rotation: 0.0

@@ -1,4 +1,7 @@
 import numpy as np
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).parent))
 from mathutils import jinc,rotcoords
 import scipy.constants as sconst
 d2r = np.pi/180.
@@ -12,8 +15,12 @@ class AntPatPlug(object):
         Frequency of the radiation in Hz. Default = 440e6
     r : float
         Radius of the antenna in meters. Default = 23
+    az_rotation :
+        Rotation off of North in degrees.
+    el_tilt : float
+        Rotation off of parallel to the ground.
     """
-    def __init__(self,freq,rad):
+    def __init__(self,freq,rad,az_rotation=0,el_tilt=0):
         """
 
         Parmeters
@@ -45,9 +52,11 @@ class AntPatPlug(object):
         Patout : ndarray
             The normalized antenna pattern.
         """
-        Azadj, Eladj = rotcoords(Az, El, -Az0, El0 - 90.0)
+
+        Azadj, Eladj = rotcoords(Az, El, -Az0, -El0)
         Elr = (90.0 - Eladj) * d2r
-        Circ_Ant_Pattern(Elr, self.freq, self.rad)
+        patout = Circ_Ant_Pattern(Elr, self.freq, self.rad)
+        return patout
 
 def Circ_Ant_Pattern(EL, freq=440e6, r=23.):
     """This function calculates an idealized antenna pattern for a circular antenna array.The pattern is normalized to broad side =1.

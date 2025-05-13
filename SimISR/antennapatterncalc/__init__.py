@@ -1,8 +1,7 @@
 # Get current path
 from importlib import util
-import importlib
 from pathlib import Path
-from mathutils import jinc,rotmatrix,diric
+from .mathutils import jinc,rotmatrix,diric
 
 
 def load_module(p2):

@@ -1,5 +1,3 @@
-from pickle import INT
-
 #!/usr/bin/env python
 """
 :platform: Unix, Windows, Mac

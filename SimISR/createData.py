@@ -37,6 +37,7 @@ class RadarDataCreate(object):
 
 
         """
+
         sp_count = 0
         # each sequence will have to
         for ixr,iseq in self.experiment.codes.items():
@@ -46,6 +47,8 @@ class RadarDataCreate(object):
             txrx = iseq.txorrx
             tx_int = [inum  for inum,itxrx in enumerate(txrx) if itxrx=='tx']
             rx_int = [inum  for inum,itxrx in enumerate(txrx) if itxrx=='rx']
+
+            # setup the tx maps
 
 
 
