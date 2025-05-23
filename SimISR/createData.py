@@ -10,14 +10,13 @@ from pathlib import Path
 import numpy as np
 import scipy.signal as sig
 import scipy.constants as sc
-
+elec_radius = sc.e**2.0 * sc.mu_0 / (4.0*sc.pi * sc.m_e)
 # My modules
-from .IonoContainer import IonoContainer
 from .utilFunctions import CenteredLagProduct, MakePulseDataRepLPC, readconfigfile, BarkerLag, update_progress
 from .h5fileIO import save_dict_to_hdf5, load_dict_from_hdf5
 import digital_rf as drf
 import xarray as xr
-
+from .CoordTransforms import cartisian2Sphereical,wgs2ecef,ecef2enul
 
 class RadarDataCreate(object):
     def __init__(self, experiment,coordinates,save_directory=None):
@@ -32,14 +31,38 @@ class RadarDataCreate(object):
         self.tx_beams = {}
         self.rx_beams = {}
 
-    def spatial_set_up(self,coordinates):
+    def spatial_set_up(self,coordinates,origlla):
         """Performs all of the coordinate transforms and weighting from the sensor and each beam pattern.
 
+        Parameters
+        ----------
+        coordinates : DatasetCoordinates
+            Dataset coordinates from xarray. Coordinates must be named x,y,z and be in the ENU configuration
+        origlla : ndarray
+            wgs coordinates of the origin point for the coordinates. Should be part of the attr object in the Dataset.
+
+        Returns
+        -------
+        phys_xr : Dataset
+            Xarray Dataset, uses input coordinates for spatial axis and adds a pairs coordinate. Holds range, and spatial losses as variables.
 
         """
 
-        sp_count = 0
+
+        origecef = wgs2ecef(origlla[:,np.newaxis])
+
+        # Index each spatial set up by name of tx and rx of radars and beam code. This leads to a spatial code number
+        spatial_code = 0
+        sp_setup = []
+        ksys_list = []
+        bi_rng_list = []
+        sp_loss_list = []
+        pair_num = 0
+        pair_dict = {}
+        beam_ls_list=[]
+        dims = ['locs', "pairs"]
         # each sequence will have to
+        rdr_objs = self.experiment.radarobjs
         for ixr,iseq in self.experiment.codes.items():
 
             # split up each radar
@@ -48,18 +71,122 @@ class RadarDataCreate(object):
             tx_int = [inum  for inum,itxrx in enumerate(txrx) if itxrx=='tx']
             rx_int = [inum  for inum,itxrx in enumerate(txrx) if itxrx=='rx']
 
+            bco = iseq.beamcodes
             # setup the tx maps
+            for itx_el in tx_int:
+
+                txname = rdr_list[itx_el]
+                tx_rdr = rdr_objs[txname]
+                tx_bco = bco[itx_el]
+                # Lets assume that the frequencies are from the transmitter?
+                lam = sc.c/tx_rdr['radar']
+                az_tx,el_tx, tx_ksys = tx_rdr['radar'].get_angle_info(tx_bco)
+                radarllat=tx_rdr['site'].get_lla()
+                enushift = ecef2enul(origecef,radarllat)
 
 
+                txecef = wgs2ecef(radarllat)
+                newx = coordinates['x'] + enushift[0,0]
+                newy = coordinates['y'] + enushift[1,0]
+                newz = coordinates['z'] + enushift[2,0]
+
+                sp_coords = cartisian2Sphereical(np.vstack((newx,newy,newz)))
+                r_coords_t,az_coords,el_coords = sp_coords[:]
+                tx_beam = tx_rdr['radar'].antenna_func.calc_pattern(az_coords, el_coords)
+                for irx_el in rx_int:
+                    rxname = rdr_list[irx_el]
+                    rx_rdr = rdr_objs[rxname]
+                    rx_bco = bco[irx_el]
+                    cur_sp_setup = (txname,rxname,tx_bco,rx_bco)
+
+                    if cur_sp_setup in sp_setup:
+                        continue
+                    else:
+                        spatial_code +=1
+                        sp_setup.append(cur_sp_setup)
+
+                    az_rx,el_rx, rx_ksys = rx_rdr['radar'].get_angle_info(rx_bco)
+
+                    radarlla=rx_rdr['site'].get_lla()
+                    enushift = ecef2enul(origecef,radarlla)
+                    rxecef = wgs2ecef(radarlla)
+                    newx = coordinates['x'] + enushift[0,0]
+                    newy = coordinates['y'] + enushift[1,0]
+                    newz = coordinates['z'] + enushift[2,0]
+                    sp_coords = cartisian2Sphereical(np.vstack((newx,newy,newz)))
+                    r_coords_r,az_coords,el_coords = sp_coords[:]
+                    rx_beam = rx_rdr['radar'].antenna_func.calc_pattern(az_coords, el_coords,az_rx,el_rx)
+
+                    r_tr2 = np.sum((txecef-rxecef)**2)
+                    cosalph = (r_coords_t**2 + r_coords_r**2 - r_tr2) / (2 * r_coords_t * r_coords_r)
+                    if rx_rdr['radar'].rx_gain >=tx_rdr['radar'].tx_gain:
+                        ant_gain = tx_rdr['radar'].tx_gain
+                        rngloss = 1/r_coords_t**2
+                    else:
+                        ant_gain = rx_rdr['radar'].rx_gain
+                        rngloss = 1/r_coords_r**2
+
+                    ant_los = np.power(10,(ant_gain-rx_rdr['radar'].loss)/10)
+                    # do ksys that is not spatial
+                    ksys_all = sc.c*elec_radius**2*ant_los*lam**2/(32.*np.log(2))
+                    ksys_list.append(ksys_all)
+                    # All of the spatial losses.
+                    sp_los = rngloss/(1+cosalph)
+                    sp_loss_list.append(sp_los)
+                    # Bistatic range
+                    bis_rng = r_coords_t+r_coords_r
+                    bi_rng_list.append(bis_rng)
+                    # Beam pattern loss
+                    beam_loss = tx_beam*rx_beam
+                    beam_ls_list.append(beam_loss)
 
 
+        coords_dict = dict(coordinates.variables)
+        del coords_dict['time']
+        coords_dict['pairs'] = np.arange(spatial_code)
+        attrs = {'pairs':sp_setup}
+        sp_all = np.column_stack(sp_loss_list)
+        beam_all =np.column_stack(beam_ls_list)
+        bis_rng_alls = np.column_stack(bi_rng_list)
+        idict = {"sploss":(dims,sp_all),
+                "beam_loss":(dims,beam_all),
+                "bi_rng": (dims,bis_rng_alls),
+                "ksys": (("pairs"),np.array(ksys_list))}
+        phys_xr = xr.Dataset(idict,coords=coords_dict,attrs=attrs)
+        return phys_xr
 
-    def create_data(self,specfile_obj,st_time,en_time,log_func=print):
+    def __make_seq_ord__(self,st_time,en_time):
+
+    def create_data(self,specfile_obj,phys_xr,st_time,en_time,log_func=print):
+
 
         if self.first_time:
             self.experiment.setup_channels(self.save_directory,st_time)
             self.first_time = False
+        if isinstance(specfile_obj,(Path,str)):
+            spec_ds = xr.open_dataset(str(specfile_obj), engine="netcdf4")
+        elif isinstance(specfile_obj,xr.Dataset):
+            spec_ds = specfile_obj
+        else:
+            raise ValueError("The specfile_obj needs to be a dataset or a filename.")
 
+        coords = spec_ds.coords
+        rdr_objs = self.experiment.radarobjs
+        seq = self.experiment.codes
+        seq_ord = self.experiment.code_order
+
+
+        #write out the Tx channels
+        for irdr, chan_dict in self.radar2chans.items():
+            tx_chans  = chan_dict['txpulse']
+            for itx_chan in tx_chans:
+
+
+        for ichname, ichan in self.experiment.tx_chans.items():
+
+        # write out the ion-line channesl
+        for ichname,
+        # #write out pline channels
 
 
 class RadarDataFile(object):

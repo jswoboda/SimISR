@@ -15,7 +15,7 @@ from .antennapatterncalc import antpatternplugs
 import yamale
 import digital_rf as drf
 import scipy.constants as sc
-from .h5fileIO import load_dict_from_hdf5,save_dict_to_hdf5
+from .h5fileIO import load_dict_from_hdf5, save_dict_to_hdf5
 
 TSYS_CONV = dict(
     fixed_zero=0.0,
@@ -98,16 +98,18 @@ class Experiment(object):
         for iseq in seqcp:
             iseq["pulsefolders"] = pulse_files
             pseq = PulseSequence(**iseq)
-            code_set[iseq['id_code']] = pseq
+            code_set[iseq["id_code"]] = pseq
             radarlist += pseq.radarnames
         self.codes = code_set
 
         self.radarobjs = {}
+        self.radar2chans = dict()
+        basedict = dict(txpulse=[],ionline=[],plasmaline=[])
         for irdr in radarlist:
+            self.radar2chans[irdr] = copy(basedict)
             rdrobj = RadarSystem(**rdr[irdr])
             stobj = RadarSite(**sites[rdrobj.site])
-            self.radarobjs[irdr] = {'radar':rdrobj,'site':stobj}
-
+            self.radarobjs[irdr] = {"radar": rdrobj, "site": stobj}
 
         self.code_order = sequence_order
         self.exp_time = exp_time
@@ -115,15 +117,60 @@ class Experiment(object):
         self.iline_chans = {}
         self.pline_chans = {}
         self.save_directory = save_directory
+
         for isys, dlist in channels.items():
             for idict in dlist:
                 curchan = Channel(**idict)
+                ckey = isys + "-" + curchan.name
                 if curchan.radardatatype == "txpulse":
-                    self.tx_chans[isys + "-" + curchan.name] = curchan
+                    self.tx_chans[ckey] = curchan
+                    self.radar2chans[isys]['txpulse'].append(ckey)
                 elif curchan.radardatatype == "ionline":
-                    self.iline_chans[isys + "-" + curchan.name] = curchan
+                    self.iline_chans[ckey] = curchan
+                    self.radar2chans[isys]['ionline'].append(ckey)
                 elif curchan.radardatatype == "plasmaline":
-                    self.pline_chans[isys + "-" + curchan.name] = curchan
+                    self.pline_chans[ckey] = curchan
+                    self.radar2chans[isys]['plasmaline'].append(ckey)
+
+    def make_sequence(self,nseconds):
+        """"""
+        code_ord = self.code_order
+        tot_list = []
+        time_list = []
+        rdr_combo_lists = {i:{'tx':[],'rx':[]} for i in self.radarobjs.keys()}
+
+        npulse = 0
+        # Run through the sequencies and get all of the timing
+        for icode in code_ord:
+            cur_code = self.codes[icode]
+            tnano, time_vec = cur_code.get_pulse_timing()
+            tot_list.append(tnano)
+            time_list.append(time_vec)
+            combos = np.arange(npulse,npulse+len(time_vec))
+            npulse+=len(time_vec)
+            for irdr,itx in zip(cur_code.radarnames,cur_code.txorrx):
+                rdr_combo_lists[irdr][itx].append(combos)
+
+        # Fill out a dictionary for the codes, tying the radar to the codes.
+        rdr_combos = {}
+        for irdr,idict in rdr_combo_lists.items():
+            tmp = {'tx':np.arange(0),'rx':np.arange(0)}
+            for ix, ilist in idict.items():
+                if ilist:
+                    tmp[ix] = np.concatenate(ilist)
+            rdr_combos[irdr] = tmp
+
+        time_vec = np.concatenate(time_list,axis=0)
+        tot = sum(tot_list)
+        num_repeats = nseconds//tot
+        combo_vec = np.arange(len(time_vec))
+        combo_all = np.tile(combo_vec,num_repeats)
+        t_rep,rep_num = np.meshgrid(time_vec,np.arange(num_repeats))
+        time_mat = t_rep+tot*rep_num
+        # import ipdb
+        # ipdb.set_trace()
+        time_all = time_mat.flatten()
+        return rdr_combos,combo_all,time_all
 
     def setup_channels(self, save_directory, start_time):
         """Perform the set up of the drf channels
@@ -359,17 +406,17 @@ class RadarSystem(object):
         self.xtra_tsys = xtra_tsys
         self.kmat_file = kmat_file
         self.notes = notes
-        self.loss=loss
+        self.loss = loss
         self.k_dict, self.kmat = self.read_kmat()
         self.cal_temp = cal_temp
         self.site = site
         ant_params = antennaparmaeters
-        ant_params['freq'] = freq
-        ant_params['az_rotation'] = az_rotation
-        ant_params['el_tilt'] = el_tilt
+        ant_params["freq"] = freq
+        ant_params["az_rotation"] = az_rotation
+        ant_params["el_tilt"] = el_tilt
         self.antenna_func = antpatternplugs[ant_type](**ant_params)
 
-    def calc_ksys(self,losses_db = 0):
+    def calc_ksys(self, losses_db=0):
         """Calculates the system constant.
 
         Parameters
@@ -383,12 +430,12 @@ class RadarSystem(object):
             Calculated ksys term.
 
         """
-        totlos = self.loss+losses_db
-        losses = 10**(totlos/10.)
-        lamb = sc.c/self.freq
-        G = 10**(max(self.tx_gain,self.rx_gain)/10.)
-        e_rad = sc.e**2.0 * sc.mu_0 / (4.0*sc.pi * sc.m_e)
-        calc_ksys = G*sc.c*e_rad**2*lamb**2/(8*np.pi)/losses
+        totlos = self.loss + losses_db
+        losses = 10 ** (totlos / 10.0)
+        lamb = sc.c / self.freq
+        G = 10 ** (max(self.tx_gain, self.rx_gain) / 10.0)
+        e_rad = sc.e**2.0 * sc.mu_0 / (4.0 * sc.pi * sc.m_e)
+        calc_ksys = G * sc.c * e_rad**2 * lamb**2 / (8 * np.pi) / losses
 
         return calc_ksys
 
@@ -409,24 +456,34 @@ class RadarSystem(object):
         """
         tout = TSYS_CONV[tsys_type] + xtra_tsys
         return tout
-    def write_kmat(self,fname,losses_db = 0):
-        outdict = {"Params":{}}
-        if self.ant_type=='circ':
+
+    def write_kmat(self, fname, losses_db=0):
+        """Write out a kmat file that can be saved.
+
+        Parameters
+        ----------
+        fname : str
+            Name of the file to be saved.
+        losses_db : float
+            Extra system losses in dB to be added.
+        """
+        outdict = {"Params": {}}
+        if self.ant_type == "circ":
             stmask = self.steering_mask
-            az_v = np.arange(stmask[0],stmask[1],dtype=float)
-            el_v = np.arange(stmask[2],stmask[3],dtype=float)
-            az_m,el_m = np.meshgrid(az_v,el_v)
+            az_v = np.arange(stmask[0], stmask[1], dtype=float)
+            el_v = np.arange(stmask[2], stmask[3], dtype=float)
+            az_m, el_m = np.meshgrid(az_v, el_v)
             az_all = az_m.flatten()
             el_all = el_m.flatten()
             if stmask[3] == 90.0:
-                az_all = np.append(az_all,0.)
-                el_all = np.append(el_all,0.)
+                az_all = np.append(az_all, 0.0)
+                el_all = np.append(el_all, 0.0)
             bco = np.arange(len(az_all))
-            ksys = self.calc_ksys()*np.ones_like(az_all)
-            kmat = np.column_stack((bco,az_all,el_all,ksys))
+            ksys = self.calc_ksys() * np.ones_like(az_all)
+            kmat = np.column_stack((bco, az_all, el_all, ksys))
 
-        outdict['Params']["Kmat"] = kmat
-        save_dict_to_hdf5(outdict,fname)
+        outdict["Params"]["Kmat"] = kmat
+        save_dict_to_hdf5(outdict, fname)
 
     def read_kmat(self):
         """Reads the kmat file for the beam pattern.
@@ -435,13 +492,15 @@ class RadarSystem(object):
         Returns
         -------
         k_dict : dict
-            Dictionary where the values are the beam pattern info and the
+            Dictionary with keys of the beamcode and values angles and system constants.
+        kmat : ndarray
+            First column is beamcodes, second column is az angle, third is el angle, and last is system constant.
         """
         ppath = Path(".")
         filepath = Path(self.kmat_file)
         if filepath == Path(""):
             warnings.warn("the input is 0!")
-            return None,None
+            return None, None
         elif filepath.exists():
             param_dict = load_dict_from_hdf5(self.kmat_file)
         elif filepath.parent == ppath:
@@ -466,6 +525,7 @@ class RadarSystem(object):
     def get_closest(self, az, el):
         """ """
         assert el > 0, "Elevation must be in degrees > 0"
+        assert ~(self.kmat is None), "kmat is set to None, make a kmat h5 file. "
         az_a = self.kmat[:, 1]
         el_a = self.kmat[:, 2]
 
@@ -475,7 +535,28 @@ class RadarSystem(object):
         return int(self.kmat[min_ind, 0])
 
     def get_angle_info(self, beamcodes):
-        """ """
+        """Using the beamcode table lookup for the angle and ksys info.
+
+        Parameters
+        ----------
+        beamcodes : list
+            Beamcodes for the lookup.
+
+        Returns
+        -------
+        az : ndarray
+            Azimuth angle for beamcode in degrees.
+        el : ndarray
+            Elevation angle for the beamcode in degrees
+        ksys:
+            System constant for the beamcode.
+        """
+
+
+        assert ~(self.kmat is None), "kmat is set to None, make a kmat h5 file. "
+
+        if not  hasattr(beamcodes,'__len__'):
+            beamcodes = beamcodes[0]
         az_out = []
         el_out = []
         k_out = []
@@ -491,6 +572,7 @@ class RadarSystem(object):
         ksys = np.array(k_out)
 
         return az, el, ksys
+
 
 class RadarSite(object):
     """Holds information on the radar site and gives out the location info.
@@ -510,7 +592,10 @@ class RadarSite(object):
     notes : str
         Notes on the site.
     """
-    def __init__(self,latitude,longitude, altitude, elevation_mask, description, notes):
+
+    def __init__(
+        self, latitude, longitude, altitude, elevation_mask, description, notes
+    ):
         """Initializes the radar site object.
 
         Parameters
@@ -543,8 +628,9 @@ class RadarSite(object):
         lla : ndarray
             Numpy array with latitude longitude and altitude.
         """
-        lla = [self.latitude, self.longitude,self.altitude]
+        lla = [self.latitude, self.longitude, self.altitude]
         return np.array(lla)
+
 
 def read_config_yaml(yamlfile, schematype):
     """Parse config files.
@@ -622,9 +708,9 @@ def get_radars(files=None):
         files = files_base
 
     if isinstance(files, str) or isinstance(files, Path):
-        files = [files_base,files]
+        files = [files_base, files]
     elif isinstance(files, list):
-        files.insert(0,files_base)
+        files.insert(0, files_base)
 
     paths = []
     for ifile in files:
@@ -674,7 +760,16 @@ class PulseSequence(object):
         List of lists coresponding to beamcodes for each pulse.
     """
 
-    def __init__(self, name, id_code, txrxname, pulsecodes, beamcodes, pulsefolders=[],txorrx=None):
+    def __init__(
+        self,
+        name,
+        id_code,
+        txrxname,
+        pulsecodes,
+        beamcodes,
+        pulsefolders=[],
+        txorrx=None,
+    ):
         """Creates the sequence object.
 
         Parameters
@@ -693,16 +788,16 @@ class PulseSequence(object):
         self.name = name
         self.id_code = id_code
 
-        if isinstance(txrxname,str):
-            self.radarnames=[txrxname,txrxname]
-        elif isinstance(txrxname,list):
-            if len(txrxname)==1:
-                self.radarnames = [txrxname[0],txrxname[0]]
+        if isinstance(txrxname, str):
+            self.radarnames = [txrxname, txrxname]
+        elif isinstance(txrxname, list):
+            if len(txrxname) == 1:
+                self.radarnames = [txrxname[0], txrxname[0]]
         self.radarnames = txrxname
 
-        if (txorrx is None) and (len(self.radarnames)==2):
-            self.txorrx=['tx','rx']
-        elif len(txorrx)!=len(self.radarnames):
+        if (txorrx is None) and (len(self.radarnames) == 2):
+            self.txorrx = ["tx", "rx"]
+        elif len(txorrx) != len(self.radarnames):
             raise ValueError("txorrx length does not align with txrxname")
         else:
             self.txorrx = txorrx
@@ -718,17 +813,18 @@ class PulseSequence(object):
         pdict_all = {}
         allcodes = []
 
-        if isinstance(pulsecodes[0],list):
-            allcodes = sum(pulsecodes,[])
+        if isinstance(pulsecodes[0], list):
+            allcodes = sum(pulsecodes, [])
             ucodes = list(set(allcodes))
-            if len(pulsecodes[0])==1:
-                mult=len(self.radarnames)
+            if len(pulsecodes[0]) == 1:
+                mult = len(self.radarnames)
             else:
-                mult=1
-            fullcodes = [iclist*mult for iclist in pulsecodes]
-        elif isinstance(pulsecodes[0],int):
+                mult = 1
+            fullcodes = [iclist * mult for iclist in pulsecodes]
+        elif isinstance(pulsecodes[0], int):
             ucodes = list(set(pulsecodes))
-            fullcodes = [[icode]*len(self.radarnames) for icode in pulsecodes]
+            fullcodes = [[icode] * len(self.radarnames) for icode in pulsecodes]
+
         self.pulsecodes = fullcodes
 
         for ifold in pulsefolders:
@@ -742,14 +838,14 @@ class PulseSequence(object):
                 pdict_all[cur_pulse.code] = cur_pulse
         self.pulseseq = {icode: pdict_all[icode] for icode in ucodes}
 
-        if isinstance(beamcodes[0],list):
-            if len(beamcodes[0])==1:
+        if isinstance(beamcodes[0], list):
+            if len(beamcodes[0]) == 1:
                 mult = len(self.radarnames)
             else:
-                mult=1
-            fullbeams = [iclist*mult for iclist in beamcodes]
+                mult = 1
+            fullbeams = [iclist * mult for iclist in beamcodes]
         else:
-            fullbeams = [[icode]*len(self.radarnames) for icode in beamcodes]
+            fullbeams = [[icode] * len(self.radarnames) for icode in beamcodes]
         self.beamcodes = fullbeams
 
     def get_pulse_codes(self):
@@ -800,6 +896,31 @@ class PulseSequence(object):
 
         return outiq, self.beamcodes
 
+
+    def get_pulse_timing(self):
+        """Get the full time of the sequence in ns.
+
+        Returns
+        -------
+        n_nano : int
+            The length of the sequence in nano seconds.
+        time_vec : ndarray
+            Holds the start time in ns for pulse in the sequence
+        """
+        totnano = 0
+        codes = self.get_pulse_codes()
+        time_vec = np.zeros(len(codes),dtype=np.int64)
+        for icn, icode in enumerate(codes):
+            # HACK
+            # Assume for now that pulse times in tx and rx all the same!
+            curcode = icode[0]
+            rast = self.pulseseq[curcode].get_raster()
+            flist = rast['full']
+            n_nano = flist[-1]
+            time_vec[icn] = totnano
+            totnano+=n_nano
+
+        return totnano,time_vec
 
 class PulseTime(object):
     """Holds information for each pulse mainly timing, in nanoseconds.

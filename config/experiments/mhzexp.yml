@@ -23,7 +23,7 @@ sequence:
     id_code: 45
     txrxname: [millstone_zenith, millstone_zenith]
     txorrx: [tx, rx]
-    beamcodes: [23465]
+    beamcodes: [0]
     pulsecodes: [300]
 
 sequence_order: [45]
