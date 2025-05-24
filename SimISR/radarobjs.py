@@ -16,7 +16,7 @@ import yamale
 import digital_rf as drf
 import scipy.constants as sc
 from .h5fileIO import load_dict_from_hdf5, save_dict_to_hdf5
-
+from datetime import datetime,timedelta
 TSYS_CONV = dict(
     fixed_zero=0.0,
     fixed_cooled=20.0,
@@ -112,12 +112,16 @@ class Experiment(object):
             self.radarobjs[irdr] = {"radar": rdrobj, "site": stobj}
 
         self.code_order = sequence_order
-        self.exp_time = exp_time
+        self.exp_time = timedelta(seconds=exp_time)
         self.tx_chans = {}
         self.iline_chans = {}
         self.pline_chans = {}
         self.save_directory = save_directory
 
+        self.exp_start = None
+        self.exp_end = None
+
+        self.set_times(exp_start,exp_end)
         for isys, dlist in channels.items():
             for idict in dlist:
                 curchan = Channel(**idict)
@@ -132,8 +136,63 @@ class Experiment(object):
                     self.pline_chans[ckey] = curchan
                     self.radar2chans[isys]['plasmaline'].append(ckey)
 
-    def make_sequence(self,nseconds):
-        """"""
+    def set_times(self,exp_start,exp_end):
+        """This will update the exp_start and exp_end attributes. This is done so it will update those attributes if only one is given but there is a exp_time attribute. This will also update the exp_time attribute if one or both of the exp_start and exp_end attributes are updated.
+
+        Parameters
+        ----------
+        exp_start :
+            Start time of the folder as datetime (if in ISO8601 format: 2016-01-01T15:24:00Z) or Unix time (if float/int).
+        exp_end :
+            End time of the folder as datetime (if in ISO8601 format: 2016-01-01T15:24:00Z) or Unix time (if float/int).
+        """
+
+        # a bit tourtured to make sure you have the start and stop times set up.
+        if not (exp_start is None ):
+            outstart = drf.util.parse_identifier_to_time(exp_start)
+            self.exp_start = outstart
+        elif self.exp_start is None:
+            self.exp_start = None
+            outstart = None
+
+        # Again, this is tourtured but its to set up the exp_end attribute.
+        if not (exp_end is None ):
+            outstop  = drf.util.parse_identifier_to_time(exp_end)
+            self.exp_end = outstop
+            if outstart is None:
+                outstart = outstop-self.exp_time
+                self.exp_start = outstart
+        elif self.exp_end is None:
+            outstop = None
+            if not(outstart is None):
+                outstop = outstart + self.exp_time
+                self.exp_end = outstop
+
+        # Update the exp_time if you have updated start and end points.
+        checkd1 =(outstart is None) or (outstop is None)
+        if not checkd1:
+            new_exp_time = outstop-outstart
+            if new_exp_time!=self.exp_time:
+                self.exp_time = new_exp_time
+                warnings.warn("Updated the experiment time as new start and stop times were put in")
+
+
+
+    def make_sequence(self):
+        """This will create the sequencies for the experiment. They will output arrays that allow for the timing to take place and tie individual radar systems to each pulse. The way to do that is being called "combos" at the moment which is tied to the exact sequence, beamcode, tx rx radar.
+
+        Returns
+        -------
+        rdr_combos : dict
+            Dictionary with keys as the radars and items of numpy array of the "combos" which is tied to the exact sequence, beamcode, tx rx radar.
+
+        combo_all : ndarray
+            The list of numbers that tie the sequence, beamcode, tx and rx radar.
+        time_all : ndarray
+            The time in the nano seconds with zero time as the begining of the experiment.
+        """
+
+        nseconds = int(1000*self.exp_time/timedelta(microseconds=1))
         code_ord = self.code_order
         tot_list = []
         time_list = []
@@ -170,6 +229,7 @@ class Experiment(object):
         # import ipdb
         # ipdb.set_trace()
         time_all = time_mat.flatten()
+
         return rdr_combos,combo_all,time_all
 
     def setup_channels(self, save_directory, start_time):
@@ -847,6 +907,42 @@ class PulseSequence(object):
         else:
             fullbeams = [[icode] * len(self.radarnames) for icode in beamcodes]
         self.beamcodes = fullbeams
+
+    def check_pulse_timing(self):
+        """Checks that each pulse in each section total length aligns.
+
+        Returns
+        -------
+        outcheck : ndarray
+            A numpy array of bools that is true if the total pulse length is equal.
+        """
+        rasters = self.get_pulse_rasters()
+
+        outcheck = np.ones(len(rasters),dtype=bool)
+        for list_el, itime in enumerate(rasters):
+            r1 = itime[0]['full']
+
+            for iras in itime[1:]:
+                if iras['full']!=r1:
+                    outcheck[list_el] = False
+                    break
+        return outcheck
+
+    def get_pulse_rasters(self):
+        """Gets a list of list of rasters representing each radar.
+
+        Returns
+        outlist : list
+            A list of lists of raster dictionaries.
+        """
+        pulse_list = self.get_pulse_codes()
+        outlist = []
+        for ilist in pulse_list:
+            curlist = []
+            for iel in ilist:
+                curlist.append(self.pulseseq[iel].get_raster())
+            outlist.append(curlist)
+        return outlist
 
     def get_pulse_codes(self):
         """Outputs the pulse codes in a list.

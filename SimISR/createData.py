@@ -155,11 +155,12 @@ class RadarDataCreate(object):
         phys_xr = xr.Dataset(idict,coords=coords_dict,attrs=attrs)
         return phys_xr
 
-    def __make_seq_ord__(self,st_time,en_time):
 
     def create_data(self,specfile_obj,phys_xr,st_time,en_time,log_func=print):
 
+        opentime = en_time-st_time
 
+        self.experiment.make_sequence()
         if self.first_time:
             self.experiment.setup_channels(self.save_directory,st_time)
             self.first_time = False
