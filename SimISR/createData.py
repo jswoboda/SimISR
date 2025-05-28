@@ -128,10 +128,10 @@ class RadarDataCreate(object):
                         cosalph = (r_coords_t**2 + r_coords_r**2 - r_tr2) / (2 * r_coords_t * r_coords_r)
                         if rx_rdr['radar'].rx_gain >=tx_rdr['radar'].tx_gain:
                             ant_gain = tx_rdr['radar'].tx_gain
-                            rngloss = 1/r_coords_t**2
+                            rngloss = np.power(r_coords_t*1e3,-2.)
                         else:
                             ant_gain = rx_rdr['radar'].rx_gain
-                            rngloss = 1/r_coords_r**2
+                            rngloss = np.power(r_coords_r*1e3,-2.)
 
 
                         ant_los = np.power(10,(ant_gain-rx_rdr['radar'].loss)/10)
