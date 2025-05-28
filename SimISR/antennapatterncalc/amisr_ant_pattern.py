@@ -3,7 +3,6 @@ from pathlib import Path
 import sys
 
 sys.path.append(str(Path(__file__).parent))
-print(Path(__file__).parent)
 from mathutils import diric,rotcoords
 import scipy.constants as sconst
 d2r = np.pi/180.

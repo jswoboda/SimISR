@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
+import pandas as pd
 from .antennapatterncalc import antpatternplugs
 import yamale
 import digital_rf as drf
@@ -112,7 +113,7 @@ class Experiment(object):
             self.radarobjs[irdr] = {"radar": rdrobj, "site": stobj}
 
         self.code_order = sequence_order
-        self.exp_time = timedelta(seconds=exp_time)
+        self.exp_time = pd.Timedelta(seconds=exp_time)
         self.tx_chans = {}
         self.iline_chans = {}
         self.pline_chans = {}
@@ -136,6 +137,8 @@ class Experiment(object):
                     self.pline_chans[ckey] = curchan
                     self.radar2chans[isys]['plasmaline'].append(ckey)
 
+        self.seq_info = self.__make_seq_dict__()
+
     def set_times(self,exp_start,exp_end):
         """This will update the exp_start and exp_end attributes. This is done so it will update those attributes if only one is given but there is a exp_time attribute. This will also update the exp_time attribute if one or both of the exp_start and exp_end attributes are updated.
 
@@ -149,7 +152,8 @@ class Experiment(object):
 
         # a bit tourtured to make sure you have the start and stop times set up.
         if not (exp_start is None ):
-            outstart = drf.util.parse_identifier_to_time(exp_start)
+            ts = drf.util.parse_identifier_to_time(exp_start)
+            outstart = pd.Timestamp(ts)
             self.exp_start = outstart
         elif self.exp_start is None:
             self.exp_start = None
@@ -157,7 +161,8 @@ class Experiment(object):
 
         # Again, this is tourtured but its to set up the exp_end attribute.
         if not (exp_end is None ):
-            outstop  = drf.util.parse_identifier_to_time(exp_end)
+            ts = drf.util.parse_identifier_to_time(exp_end)
+            outstop  = pd.Timestamp(ts)
             self.exp_end = outstop
             if outstart is None:
                 outstart = outstop-self.exp_time
@@ -178,6 +183,32 @@ class Experiment(object):
 
 
 
+
+    def __make_seq_dict__(self):
+        """Create a dictionary with all of the sequence information """
+        cord_ord = self.code_order
+
+        combo_count = 0
+        combo_dict = {}
+        for icode in cord_ord:
+            cur_code = self.codes[icode]
+
+            pcodes = cur_code.get_pulse_codes()
+            bcos = cur_code.beamcodes
+            rasters = cur_code.get_pulse_rasters()
+            for inum in range(len(pcodes)):
+                curdict = {}
+                curdict['pcode'] = pcodes[inum]
+                curdict['bco'] = bcos[inum]
+                curdict['radars'] = cur_code.radarnames
+                curdict['seq'] = icode
+                curdict['txrx'] = cur_code.txorrx
+                curdict['rasters'] = rasters[inum]
+                combo_dict[combo_count] = curdict
+                combo_count+=1
+
+        return combo_dict
+
     def make_sequence(self):
         """This will create the sequencies for the experiment. They will output arrays that allow for the timing to take place and tie individual radar systems to each pulse. The way to do that is being called "combos" at the moment which is tied to the exact sequence, beamcode, tx rx radar.
 
@@ -185,7 +216,6 @@ class Experiment(object):
         -------
         rdr_combos : dict
             Dictionary with keys as the radars and items of numpy array of the "combos" which is tied to the exact sequence, beamcode, tx rx radar.
-
         combo_all : ndarray
             The list of numbers that tie the sequence, beamcode, tx and rx radar.
         time_all : ndarray
@@ -197,11 +227,15 @@ class Experiment(object):
         tot_list = []
         time_list = []
         rdr_combo_lists = {i:{'tx':[],'rx':[]} for i in self.radarobjs.keys()}
-
         npulse = 0
+        seq = []
+        pcodes = []
+        bcodes = []
+
         # Run through the sequencies and get all of the timing
         for icode in code_ord:
             cur_code = self.codes[icode]
+
             tnano, time_vec = cur_code.get_pulse_timing()
             tot_list.append(tnano)
             time_list.append(time_vec)
@@ -223,11 +257,11 @@ class Experiment(object):
         tot = sum(tot_list)
         num_repeats = nseconds//tot
         combo_vec = np.arange(len(time_vec))
+
+        seqall = [item for sublist in seq for item in sublist]
         combo_all = np.tile(combo_vec,num_repeats)
         t_rep,rep_num = np.meshgrid(time_vec,np.arange(num_repeats))
         time_mat = t_rep+tot*rep_num
-        # import ipdb
-        # ipdb.set_trace()
         time_all = time_mat.flatten()
 
         return rdr_combos,combo_all,time_all

@@ -3,16 +3,21 @@
 from pathlib import Path
 import numpy as np
 import xarray as xr
-from datetime import datetime, timedelta
+import pandas as pd
 from SimISR import Experiment, read_config_yaml
 from SimISR.testfunctions import chapman_func, temp_profile
 from SimISR import make_iline_specds
+from SimISR.CoordTransforms import sphereical2Cartisian
 
-
+from SimISR import RadarDataCreate
 
 def experiment_setup(exp_file,test_dir,start_time):
     """"""
+
     exp_1 = read_config_yaml(exp_file,'experiment')
+
+    # add the starttime
+    exp_1['exp_start'] = start_time
     exp_obj = Experiment(**exp_1)
     exp_obj.setup_channels(test_dir,start_time)
 
@@ -23,17 +28,9 @@ def experiment_close(exp_obj):
 
     exp_obj.close_channels()
 
-def example_xr1d():
+def example_ionosphere(coords):
 
-    xy = np.zeros(1)
-    z = np.linspace(100,1000,100)
-
-    xm,ym,zm = np.meshgrid(xy,xy,z)
-
-    coords = np.zeros((xm.size, 3))
-    coords[:, 0] = xm.flatten()
-    coords[:, 1] = ym.flatten()
-    coords[:, 2] = zm.flatten()
+    xm,ym,zm = np.split(coords,3,axis=-1)
     N_0=1e11
     z_0=250.0
     H_0=50.0
@@ -43,7 +40,8 @@ def example_xr1d():
     Te = Te[:,np.newaxis].repeat(2,axis=1)
     Ti = Ti[:,np.newaxis].repeat(2,axis=1)
 
-    times=pd.date_range("2024-01-01T15:24:00Z", freq=timedelta(hours=1),periods=2)
+
+    times=pd.date_range("2024-01-01T15:24:00Z", freq=pd.Timedelta(hours=1),periods=2)
     d1 = ['locs','time']
     # d2 = ['locs','time','spdims']
 
@@ -71,6 +69,35 @@ def example_xr1d():
 
     return i_ds
 
+def example_xr1d():
+
+    xy = np.zeros(1)
+    z = np.linspace(100,1000,500)
+
+
+    xm,ym,zm = np.meshgrid(xy,xy,z)
+
+    coords = np.zeros((xm.size, 3))
+    coords[:, 0] = xm.flatten()
+    coords[:, 1] = ym.flatten()
+    coords[:, 2] = zm.flatten()
+
+    return example_ionosphere(coords)
+
+def example_xr1d_zenith():
+
+    az_vec = np.array([178.0])
+    el_vec = np.array([88.0])
+    r_vec = np.linspace(100,1000,500)
+
+    rm,am,elm, = np.meshgrid(r_vec,az_vec,el_vec)
+    coords = np.zeros((rm.size, 3))
+    coords[:, 0] = rm.flatten()
+    coords[:, 1] = am.flatten()
+    coords[:, 2] = elm.flatten()
+
+    cart_coords = sphereical2Cartisian(coords)
+    return example_ionosphere(cart_coords)
 def create_spectrum(i_ds):
 
     cf = 440.2e6
@@ -80,3 +107,19 @@ def create_spectrum(i_ds):
     spec_args = dict(centerFrequency=cf,sampfreq=sf,f=f_vec)
     ilineds = make_iline_specds(i_ds,spec_args)
     return ilineds
+
+def run_full():
+    expfile = "/Users/swoboj/Documents/Python/SimISR/config/experiments/mhzexp.yml"
+
+    test_dir = "/Users/swoboj/DATA/SimISR/version2tests/experimentclass"
+    start_time = "2024-01-01T15:24:00Z"
+    exp_obj = experiment_setup(expfile,test_dir,start_time)
+    i_ds = example_xr1d_zenith()
+    attrs = i_ds.attrs
+    spec_ds = create_spectrum(i_ds)
+    rdr = RadarDataCreate(exp_obj,test_dir)
+    phys_ds = rdr.spatial_set_up(spec_ds.coords,attrs['originlla'])
+    rx_name = "millstone_zenith"
+    chan_name = 'millstone_zenith-zenith-l'
+    rdr.write_chan(spec_ds,phys_ds,rx_name,chan_name)
+    experiment_close(exp_obj)

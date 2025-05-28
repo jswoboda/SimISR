@@ -48,6 +48,10 @@ def make_iline_specds(i_ds,spec_args,spec_types=['i_line']):
     # Add the frequency vector
     coords['freqs'] = sp1.f
     nfreq = len(sp1.f)
+    sr_num = int(spec_args['sampfreq'])
+    sr_den = 1
+    attrs['sr_num'] = sr_num
+    attrs['sr_den'] = sr_den
 
     species = attrs['species']
     n_sp = len(species)

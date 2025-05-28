@@ -7,6 +7,7 @@ This file holds the RadarData class that hold the radar data and processes it.
 """
 import ipdb
 from pathlib import Path
+from fractions import Fraction
 import numpy as np
 import scipy.signal as sig
 import scipy.constants as sc
@@ -18,8 +19,17 @@ import digital_rf as drf
 import xarray as xr
 from .CoordTransforms import cartisian2Sphereical,wgs2ecef,ecef2enul
 
+from mitarspysigproc import (
+    pfb_decompose,
+    pfb_reconstruct,
+    kaiser_coeffs,
+    kaiser_syn_coeffs,
+    npr_analysis,
+    npr_synthesis,
+    rref_coef,
+)
 class RadarDataCreate(object):
-    def __init__(self, experiment,coordinates,save_directory=None):
+    def __init__(self, experiment,save_directory=None):
         self.experiment = experiment
 
         if save_directory is None:
@@ -47,8 +57,6 @@ class RadarDataCreate(object):
             Xarray Dataset, uses input coordinates for spatial axis and adds a pairs coordinate. Holds range, and spatial losses as variables.
 
         """
-
-
         origecef = wgs2ecef(origlla[:,np.newaxis])
 
         # Index each spatial set up by name of tx and rx of radars and beam code. This leads to a spatial code number
@@ -63,6 +71,7 @@ class RadarDataCreate(object):
         dims = ['locs', "pairs"]
         # each sequence will have to
         rdr_objs = self.experiment.radarobjs
+
         for ixr,iseq in self.experiment.codes.items():
 
             # split up each radar
@@ -70,79 +79,80 @@ class RadarDataCreate(object):
             txrx = iseq.txorrx
             tx_int = [inum  for inum,itxrx in enumerate(txrx) if itxrx=='tx']
             rx_int = [inum  for inum,itxrx in enumerate(txrx) if itxrx=='rx']
-
             bco = iseq.beamcodes
             # setup the tx maps
-            for itx_el in tx_int:
+            for ibco in bco:
+                for itx_el in tx_int:
+                    txname = rdr_list[itx_el]
+                    tx_rdr = rdr_objs[txname]
+                    tx_bco = [ibco[itx_el]]
+                    # Lets assume that the frequencies are from the transmitter?
+                    lam = sc.c/tx_rdr['radar'].freq
+                    az_tx,el_tx, tx_ksys = tx_rdr['radar'].get_angle_info(tx_bco)
+                    radarllat=tx_rdr['site'].get_lla()[:,np.newaxis]
+                    enushift = ecef2enul(origecef,radarllat)
 
-                txname = rdr_list[itx_el]
-                tx_rdr = rdr_objs[txname]
-                tx_bco = bco[itx_el]
-                # Lets assume that the frequencies are from the transmitter?
-                lam = sc.c/tx_rdr['radar']
-                az_tx,el_tx, tx_ksys = tx_rdr['radar'].get_angle_info(tx_bco)
-                radarllat=tx_rdr['site'].get_lla()
-                enushift = ecef2enul(origecef,radarllat)
-
-
-                txecef = wgs2ecef(radarllat)
-                newx = coordinates['x'] + enushift[0,0]
-                newy = coordinates['y'] + enushift[1,0]
-                newz = coordinates['z'] + enushift[2,0]
-
-                sp_coords = cartisian2Sphereical(np.vstack((newx,newy,newz)))
-                r_coords_t,az_coords,el_coords = sp_coords[:]
-                tx_beam = tx_rdr['radar'].antenna_func.calc_pattern(az_coords, el_coords)
-                for irx_el in rx_int:
-                    rxname = rdr_list[irx_el]
-                    rx_rdr = rdr_objs[rxname]
-                    rx_bco = bco[irx_el]
-                    cur_sp_setup = (txname,rxname,tx_bco,rx_bco)
-
-                    if cur_sp_setup in sp_setup:
-                        continue
-                    else:
-                        spatial_code +=1
-                        sp_setup.append(cur_sp_setup)
-
-                    az_rx,el_rx, rx_ksys = rx_rdr['radar'].get_angle_info(rx_bco)
-
-                    radarlla=rx_rdr['site'].get_lla()
-                    enushift = ecef2enul(origecef,radarlla)
-                    rxecef = wgs2ecef(radarlla)
+                    txecef = wgs2ecef(radarllat)
                     newx = coordinates['x'] + enushift[0,0]
                     newy = coordinates['y'] + enushift[1,0]
                     newz = coordinates['z'] + enushift[2,0]
+
                     sp_coords = cartisian2Sphereical(np.vstack((newx,newy,newz)))
-                    r_coords_r,az_coords,el_coords = sp_coords[:]
-                    rx_beam = rx_rdr['radar'].antenna_func.calc_pattern(az_coords, el_coords,az_rx,el_rx)
+                    r_coords_t,az_coords,el_coords = sp_coords[:]
+                    tx_beam = tx_rdr['radar'].antenna_func.calc_pattern(az_coords, el_coords,az_tx[0],el_tx[0])
+                    for irx_el in rx_int:
+                        rxname = rdr_list[irx_el]
+                        rx_rdr = rdr_objs[rxname]
+                        rx_bco = [ibco[irx_el]]
+                        cur_sp_setup = (txname,rxname,tx_bco[0],rx_bco[0])
 
-                    r_tr2 = np.sum((txecef-rxecef)**2)
-                    cosalph = (r_coords_t**2 + r_coords_r**2 - r_tr2) / (2 * r_coords_t * r_coords_r)
-                    if rx_rdr['radar'].rx_gain >=tx_rdr['radar'].tx_gain:
-                        ant_gain = tx_rdr['radar'].tx_gain
-                        rngloss = 1/r_coords_t**2
-                    else:
-                        ant_gain = rx_rdr['radar'].rx_gain
-                        rngloss = 1/r_coords_r**2
+                        if cur_sp_setup in sp_setup:
+                            continue
+                        else:
+                            spatial_code +=1
+                            sp_setup.append(cur_sp_setup)
 
-                    ant_los = np.power(10,(ant_gain-rx_rdr['radar'].loss)/10)
-                    # do ksys that is not spatial
-                    ksys_all = sc.c*elec_radius**2*ant_los*lam**2/(32.*np.log(2))
-                    ksys_list.append(ksys_all)
-                    # All of the spatial losses.
-                    sp_los = rngloss/(1+cosalph)
-                    sp_loss_list.append(sp_los)
-                    # Bistatic range
-                    bis_rng = r_coords_t+r_coords_r
-                    bi_rng_list.append(bis_rng)
-                    # Beam pattern loss
-                    beam_loss = tx_beam*rx_beam
-                    beam_ls_list.append(beam_loss)
+                        az_rx, el_rx, rx_ksys = rx_rdr['radar'].get_angle_info(rx_bco)
+
+                        radarlla=rx_rdr['site'].get_lla()[:,np.newaxis]
+                        enushift = ecef2enul(origecef,radarlla)
+                        rxecef = wgs2ecef(radarlla)
+                        newx = coordinates['x'] + enushift[0,0]
+                        newy = coordinates['y'] + enushift[1,0]
+                        newz = coordinates['z'] + enushift[2,0]
+                        sp_coords = cartisian2Sphereical(np.vstack((newx,newy,newz)))
+                        r_coords_r,az_coords,el_coords = sp_coords[:]
+                        rx_beam = rx_rdr['radar'].antenna_func.calc_pattern(az_coords, el_coords,az_rx[0],el_rx[0])
+
+                        r_tr2 = np.sum((txecef-rxecef)**2)
+                        cosalph = (r_coords_t**2 + r_coords_r**2 - r_tr2) / (2 * r_coords_t * r_coords_r)
+                        if rx_rdr['radar'].rx_gain >=tx_rdr['radar'].tx_gain:
+                            ant_gain = tx_rdr['radar'].tx_gain
+                            rngloss = 1/r_coords_t**2
+                        else:
+                            ant_gain = rx_rdr['radar'].rx_gain
+                            rngloss = 1/r_coords_r**2
+
+
+                        ant_los = np.power(10,(ant_gain-rx_rdr['radar'].loss)/10)
+                        # do ksys that is not spatial
+                        ksys_all = sc.c*elec_radius**2*ant_los*lam**2/(32.*np.log(2))
+                        ksys_list.append(ksys_all)
+                        # All of the spatial losses.
+                        sp_los = rngloss/(1+cosalph)
+                        sp_loss_list.append(sp_los)
+                        # Bistatic range
+                        bis_rng = r_coords_t+r_coords_r
+                        bi_rng_list.append(bis_rng)
+                        # Beam pattern loss
+                        beam_loss = tx_beam*rx_beam
+                        beam_ls_list.append(beam_loss)
 
 
         coords_dict = dict(coordinates.variables)
         del coords_dict['time']
+        if 'freqs' in coords_dict.keys():
+            del coords_dict['freqs']
         coords_dict['pairs'] = np.arange(spatial_code)
         attrs = {'pairs':sp_setup}
         sp_all = np.column_stack(sp_loss_list)
@@ -156,39 +166,257 @@ class RadarDataCreate(object):
         return phys_xr
 
 
-    def create_data(self,specfile_obj,phys_xr,st_time,en_time,log_func=print):
+    def write_chan(self,sp_obj,phys_ds,rx_name,ichan_name, log_func=print):
+        """Writes out channel of data over the whole expeirment
 
-        opentime = en_time-st_time
+        Parameters
+        ----------
+        phys_ds : Dataset
+            Xarray Dataset, uses input coordinates for spatial axis and adds a pairs coordinate. Holds range, and spatial losses as variables.
+        origlla : ndarray
+            wgs coordinates of the origin point for the coordinates. Should be part of the attr object in the Dataset.
 
-        self.experiment.make_sequence()
-        if self.first_time:
-            self.experiment.setup_channels(self.save_directory,st_time)
-            self.first_time = False
-        if isinstance(specfile_obj,(Path,str)):
-            spec_ds = xr.open_dataset(str(specfile_obj), engine="netcdf4")
-        elif isinstance(specfile_obj,xr.Dataset):
-            spec_ds = specfile_obj
+        Returns
+        -------
+        phys_xr : Dataset
+            Xarray Dataset, uses input coordinates for spatial axis and adds a pairs coordinate. Holds range, and spatial losses as variables.
+
+        """
+        rdr_cmb, cmball, tall= self.experiment.make_sequence()
+
+
+        if isinstance(sp_obj,(Path,str)):
+            spec_ds = xr.open_dataset(str(sp_obj), engine="netcdf4")
+        elif isinstance(sp_obj,xr.Dataset):
+            spec_ds = sp_obj
         else:
             raise ValueError("The specfile_obj needs to be a dataset or a filename.")
+
 
         coords = spec_ds.coords
         rdr_objs = self.experiment.radarobjs
         seq = self.experiment.codes
         seq_ord = self.experiment.code_order
+        simdtype = 'complex64'
+        rx_obj = rdr_objs[rx_name]['radar']
+
+        # Slice up time
+        st_ns =int(self.experiment.exp_start.timestamp()*1e9)
+        end_ns =int(self.experiment.exp_end.timestamp()*1e9)
+        tvec_norm = spec_ds.coords['time'].data-st_ns
+        tall_q = np.digitize(tall,tvec_norm.astype(tall.dtype))-1
+
+        pair_dict = {i:inum for inum, i in enumerate(phys_ds.attrs['pairs'])}
+        spec_attrs = spec_ds.attrs
+        sr_create = Fraction(spec_attrs['sr_num'],spec_attrs['sr_den'])
+        chan_obj = self.experiment.iline_chans[ichan_name]
+        sr_save = chan_obj.sr
+        ds_fac = int(sr_save/sr_create)
+        nlevel = sc.k*float(sr_save)*rx_obj.tsys
+        clevel = sc.k*float(sr_save)*rx_obj.cal_temp
+        #HACK number of lpc points connected to ratio of sampling frequency and
+        # notial ion-line spectra with a factor of 10.
+        nlpc = int(10*sr_create/20e3) + 1
+        comboarr = rdr_cmb[rx_name]['rx']
+        pulse_perwrite = 200000
+        tstart = np.arange(0,len(cmball),pulse_perwrite)
+        tstop = np.roll(tstart,-1)
+        tstop[-1] = len(cmball)
+        outlist = []
+        ord_list = []
+        for ist,iend in zip(tstart,tstop):
+            curcmball = cmball[ist:iend]
+            cur_tq = tall_q[ist:iend]
+
+            for cur_comb in comboarr:
+                cur_pidx = np.where(curcmball==cur_comb)[0]
+                pl = len(cur_pidx)
+                seq_info = self.experiment.seq_info[cur_comb]
+                rdr_list = seq_info['radars']
+                txrx = seq_info['txrx']
+                bco = seq_info['bco']
+                pcodes = seq_info['pcode']
+                seq_num = seq_info['seq']
+                seq_obj = self.experiment.codes[seq_num]
+
+                rx_log = np.logical_and(np.array(txrx)=='rx',np.array(rdr_list)==rx_name)
+
+                rx_rdr = np.where(rx_log)[0][0]
+                cur_rx_pcode = pcodes[rx_rdr]
+                rx_pobj = seq_obj.pulseseq[cur_rx_pcode]
+
+                # get the rx raster
+                rst = self.experiment.seq_info[cur_comb]['rasters'][rx_rdr]
+                ns2save = int(1e9/sr_save)
+                # create the timing vectors for the pulse in ns and then down sample appropriately.
+
+                fasttime_sig = np.arange(*rst['signal'])[::ns2save]
+                nsamp = rst['full'][1]//ns2save
+                sig_pos = fasttime_sig//ns2save
+                full_sig = np.arange(*rst['full'])[::ns2save] #pulse pulse
+                cal_sig = np.arange(*rst['calibration'])[::ns2save]#cal time
+                cal_sam = cal_sig//(ns2save)
+                ncal = (rst['calibration'][1]-rst['calibration'][0])//ns2save
+                fast_time_cr = fasttime_sig[::ds_fac]
+
+                rx_rng = fast_time_cr*sc.c*1e-9*1e-3
+                rng_res = sc.c*1e-9*1e-3*ns2save*ds_fac
+                ft_res = 1e-9*ns2save*ds_fac
+                # Now go through all of the transmiters for this receiver
+                tx_locs = np.where(np.array(txrx)=='tx')[0]
+                rawdata = np.zeros((len(cur_pidx),len(rx_rng)),dtype= simdtype)
+                uniqtq, inv_ind = np.unique(cur_tq,return_inverse=True)
+
+                for iutn,iut in enumerate(uniqtq):
+                    cur_ind = np.where(inv_ind==iutn)[0]
+                    for itx_loc in tx_locs:
+                        txname = rdr_list[itx_loc]
+                        tx_obj = rdr_objs[txname]['radar']
+                        txp = tx_obj.tx_power
+
+                        pair_tup = (rdr_list[itx_loc],rx_name,bco[itx_loc],bco[rx_rdr])
+                        curpair = pair_dict[pair_tup]
+
+                        cur_tx_pcode = pcodes[itx_loc]
+                        tx_pobj = seq_obj.pulseseq[cur_tx_pcode]
+                        pulse_env =  tx_pobj.get_iq(sr_create)
+                        # change grom bistatic range to km
+                        phys_ds_cur_pair = phys_ds.isel(pairs=curpair)
+                        sysw = phys_ds_cur_pair.ksys.data*ft_res*txp
+                        bi_rng_data  = phys_ds_cur_pair.bi_rng.data
 
 
+                        rx_rng_log = np.logical_and(rx_rng>=bi_rng_data.min(),rx_rng+rng_res<bi_rng_data.max())
+                        rx_rng_it= np.where(rx_rng_log)[0]
+
+
+                        # get info for each range gate
+
+                        for irng in rx_rng_it:
+                            cur_rng = rx_rng[irng]
+                            cur_rng_log = np.logical_and(bi_rng_data>=cur_rng,bi_rng_data<cur_rng+rng_res)
+                            rng_locs = np.where(cur_rng_log)[0]
+                            # Hack if this is the case should we do interpolation?
+                            if sum(cur_rng_log)==0:
+                                continue
+                            pds = phys_ds.isel(pairs=curpair, locs=rng_locs)
+                            scene = pds.beam_loss*pds.sploss
+                            sds = spec_ds.isel(locs=rng_locs,time=iut)
+
+                            spec_scen = scene*sds.iline
+                            cur_spec = spec_scen.mean(dim='locs').data
+                            rcs = scene*sds.rcs
+                            mainmult = sysw*rcs.mean(dim='locs').data
+                            nrepp = len(cur_ind)
+                            hkidn = np.arange(nrepp,dtype=int)
+                            p_mat = np.tile(pulse_env[np.newaxis,:],(nrepp,1))
+                            cur_pulse_data = MakePulseDataRepLPC(p_mat, cur_spec, nlpc, hkidn, numtype=simdtype)
+                            rngspd = min(irng+len(pulse_env),len(rx_rng))
+                            rng_sl = slice(irng,rngspd)
+                            pden = cur_pulse_data.flatten().var()
+                            cpd= np.sqrt(mainmult/pden)*cur_pulse_data
+
+                            for idatn, idat in enumerate(cur_ind):
+                                rawdata[idat, rng_sl] += cpd[idatn,:rngspd-irng]
+                r_rand = np.random.randn(pl,nsamp)
+                i_rand = np.random.randn(pl,nsamp)
+                r_cal = np.random.randn(pl,len(cal_sam))
+                i_cal = np.random.randn(pl,len(cal_sam))
+                xout = np.sqrt(nlevel/2)*(r_rand+1j*i_rand)
+                xout[:,cal_sam]+=np.sqrt(clevel/2)*(r_cal+1j*i_cal)
+                rawout =sig.resample(rawdata,len(rx_rng)*ds_fac,axis=1)
+                xout[:,sig_pos] += rawout
+                xout = xout/np.sqrt(nlevel/2)
+                xlist = [i for i in xout]
+                outlist = outlist+xlist
+                ord_list= ord_list+list(cur_ind)
+
+
+
+            sort_idx = np.argsort(ord_list)
+            out_2 = [outlist[ind] for ind in sort_idx]
+            outdata = np.concatenate(out_2,axis=0)
+            chan_obj.drf_out.rf_write(outdata.astype(chan_obj.numtype))
         #write out the Tx channels
-        for irdr, chan_dict in self.radar2chans.items():
-            tx_chans  = chan_dict['txpulse']
-            for itx_chan in tx_chans:
+        # for irdr, chan_dict in self.radar2chans.items():
+        #     tx_chans  = chan_dict['txpulse']
+        #     for itx_chan in tx_chans:
 
 
-        for ichname, ichan in self.experiment.tx_chans.items():
+        # for ichname, ichan in self.experiment.tx_chans.items():
 
-        # write out the ion-line channesl
-        for ichname,
-        # #write out pline channels
+        # # write out the ion-line channesl
+        # for ichname,
+        # # #write out pline channels
 
+def create_pline(rng_vec,specs,nchans,numtaps,):
+    fs = 25000000
+
+    nchans = 250
+    c_bw = fs/nchans
+    n_fpfb = 1024
+    freq_vec = np.fft.fftshift(np.fft.fftfreq(nchans,1/fs))
+    freq_ind = np.arange(nchans)
+    bw2 = fs/nchans/2
+    freq_l = freq_vec-bw2
+    freq_h = freq_vec+bw2
+    cfreqvec = np.fft.fftshift(np.fft.fftfreq(n_fpfb,1/c_bw))
+    fwhm = 2*gam
+    skirt = fwhm*2
+    npulses=100
+
+    g_del = nchans*(ntaps-1)//2//2
+    g_delp = nchans*(ntaps-1)//2
+
+    n_rg_bins = len(rng_vec)+plen+g_delp//nchans
+    rng_s = 1e-3*sconst.c/c_bw/2
+
+    dout =  np.zeros((nchans,n_rg_bins,npulses),dtype=np.complex64)
+    dpulse = np.ones((npulses,plen))
+    pkeep = np.arange(npulses)
+    for irng,irngv in enumerate(rng_vec):
+        #lower line
+        f_0m = frm[irng]
+        lb = freq_ind[f_0m-skirt>freq_l][-1]
+        ub = freq_ind[f_0m+skirt<freq_h][0]
+        cur_bin = freq_ind[lb:ub+1]
+        # cur_bin = np.where(np.logical_and(ub,lb))[0]
+
+        # if len(cur_bin)==0:
+        #     ipdb.set_trace()
+        for bin_i in cur_bin:
+            cf_i = freq_vec[bin_i]
+            spec_i = spec_func(cfreqvec+cf_i,f_0m,gam)
+            data_i = MakePulseDataRepLPC(dpulse,spec_i,25,pkeep,numtype=np.complex64)
+            dout[bin_i,irng:irng+plen,pkeep] += data_i
+
+        # #upper line
+        f_0p = frp[irng]
+        lb = freq_ind[f_0p-skirt>freq_l][-1]
+        ub = freq_ind[f_0p+skirt<freq_h][0]
+        cur_bin = freq_ind[lb:ub+1]
+
+        for bin_i in cur_bin:
+            cf_i = freq_vec[bin_i]
+            spec_i = spec_func(cfreqvec+cf_i,f_0p,gam)
+            data_i = MakePulseDataRepLPC(dpulse,spec_i,25,pkeep,numtype=np.complex64)
+            dout[bin_i,irng:irng+plen,pkeep] += data_i
+
+    coeffs = rref_coef(nchans, ntaps)
+    # have to flip the bins because the synthesis is expecting things to be in the wrong direction.
+    dout = np.fft.fftshift(dout[::-1],axes=0)
+    full_data = npr_synthesis(dout,nchans,coeffs)
+    full_data = np.roll(full_data,-g_del,axis=0)
+    syn_coeffs = kaiser_syn_coeffs(nchans, 8)
+    mask = np.ones(nchans, dtype=bool)
+    fillmethod = ""
+    fillparams = [0, 0]
+
+    full_data_pfb = pfb_reconstruct(
+        dout, nchans, syn_coeffs, mask, fillmethod, fillparams=[], realout=False
+    )
+    full_data_pfb = np.roll(full_data_pfb,-g_delp,0)
+    return full_data_pfb
 
 class RadarDataFile(object):
     """

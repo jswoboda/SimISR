@@ -10,7 +10,7 @@ from __future__ import division, absolute_import
 import numpy as np
 
 def sphereical2Cartisian(spherecoords):
-    """This function will convert Spherical coordinates to Cartisian coordinates.
+    """This function will convert Spherical coordinates to Cartisian coordinates. This is east, north, up x,y,z coordinates. Spherical angles az is reference to North(yaxis) and moves clockwise. El is referenced from ground level.
 
     Parameters
     ----------
@@ -51,7 +51,7 @@ def sphereical2Cartisian(spherecoords):
 
 
 def cartisian2Sphereical(cartcoords):
-    """This function will convert Cartisian coordinates to Spherical coordinates.
+    """This function will convert Cartisian coordinates to Spherical coordinates. This is east, north, up x,y,z coordinates. Spherical angles az is reference to North(yaxis) and moves clockwise. El is referenced from ground level.
 
     Parameters
     ----------

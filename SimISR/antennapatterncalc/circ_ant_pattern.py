@@ -53,7 +53,7 @@ class AntPatPlug(object):
             The normalized antenna pattern.
         """
 
-        Azadj, Eladj = rotcoords(Az, El, -Az0, -El0)
+        Azadj, Eladj = rotcoords(Az, El, -Az0, El0 - 90.0)
         Elr = (90.0 - Eladj) * d2r
         patout = Circ_Ant_Pattern(Elr, self.freq, self.rad)
         return patout
