@@ -1,4 +1,4 @@
-from .utilFunctions import MakePulseDataRepLPC, makeconfigfile, readconfigfile, update_progress
+from .utilFunctions import MakePulseDataRepLPC, update_progress
 from .createData import RadarDataCreate
 from .h5fileIO import save_dict_to_hdf5, load_dict_from_hdf5
 from .testfunctions import make_test_ex
