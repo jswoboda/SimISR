@@ -14,7 +14,7 @@ import scipy.fftpack as scfft
 import scipy.signal as sig
 import scipy.interpolate as spinterp
 import scipy.constants as sconst
-import SimISR.sensorConstants as sensconst
+# import SimISR.sensorConstants as sensconst
 from pathlib import Path
 
 # utility functions
@@ -305,7 +305,7 @@ def spect2acf(omeg, spec, n_s=None):
     d_f = omeg[1]-omeg[0]
 
 #    specpadd = np.pad(spec,(padnum,padnum),mode='constant',constant_values=(0.0,0.0))
-    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec, axes=-1), n_s, axis=-1), axes=-1)
+    acf = scfft.fftshift(scfft.ifft(scfft.ifftshift(spec, axes=-1), int(n_s), axis=-1), axes=-1)
     d_t = 1/(d_f*n_s)
     tau = np.arange(-np.ceil(float(n_s-1)/2.), np.floor(float(n_s-1)/2.)+1)*d_t
     return tau, acf
@@ -336,7 +336,7 @@ def acf2spect(tau, acf, n_s=None, initshift=False):
 
     if initshift:
         acf = scfft.ifftshift(acf, axes=-1)
-    spec = scfft.fftshift(scfft.fft(acf, n=n_s, axis=-1), axes=-1)
+    spec = scfft.fftshift(scfft.fft(acf, n=int(n_s), axis=-1), axes=-1)
     fs = 1/d_t
     omeg = np.arange(-np.ceil(n_s/2.), np.floor(n_s/2.)+1)*fs
     return omeg, spec

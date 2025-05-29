@@ -5,7 +5,6 @@ This file holds the RadarData class that hold the radar data and processes it.
 
 @author: John Swoboda
 """
-import ipdb
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
@@ -13,8 +12,7 @@ import scipy.signal as sig
 import scipy.constants as sc
 elec_radius = sc.e**2.0 * sc.mu_0 / (4.0*sc.pi * sc.m_e)
 # My modules
-from .utilFunctions import CenteredLagProduct, MakePulseDataRepLPC, readconfigfile, BarkerLag, update_progress
-from .h5fileIO import save_dict_to_hdf5, load_dict_from_hdf5
+from .utilFunctions import MakePulseDataRepLPC,  update_progress
 import digital_rf as drf
 import xarray as xr
 from .CoordTransforms import cartisian2Sphereical,wgs2ecef,ecef2enul
@@ -1228,178 +1226,9 @@ class RadarDataFile(object):
                       'Time':timemat}
         return(data_lags, noise_lags)
 
-def pulseworkerfunction(pulse, cur_spec, nlpc, cur_pidx, cur_pnts, curdataloc, isamp, simdtype, mult_term):
-    """
-        Worker function for the multiprocess stuff
-    """
-    cur_pulse_data = MakePulseDataRepLPC(pulse, cur_spec, nlpc,
-                                         cur_pidx, numtype=simdtype)
-    cur_pulse_data = cur_pulse_data[:, cur_pnts-isamp]*mult_term
-    return (cur_pnts, curdataloc, cur_pulse_data,cur_pidx)
-def resample_worker(indx, data, resfac, axis):
-    data_out = sig.resample(data,resfac, axis=axis)
-    return (indx, data_out)
 
 
-#%% Make Lag dict to an iono container
-def lagdict2ionocont(DataLags, NoiseLags, sensdict, simparams, time_vec):
-    """This function will take the data and noise lags and create an instance of the
-    Ionocontanier class. This function will also apply the summation rule to the lags.
-    Inputs
-    DataLags - A dictionary """
-    # Pull in Location Data
-    angles = simparams['angles']
-    ang_data = np.array([[iout[0], iout[1]] for iout in angles])
 
-    # pull in other data
-    t_s = float(simparams['fsden'])/simparams['fsnum']
-    ds_fac = np.prod(simparams['declist'])
-
-    rng_vec = simparams['Rangegates'][::ds_fac]
-    n_samps = len(rng_vec)
-    p_samps = len(simparams['Pulse'][::ds_fac])
-    pulsewidth = p_samps*t_s*ds_fac
-
-    txpower = sensdict['Pt']
-    if sensdict['Name'].lower() in ['risr', 'pfisr', 'risr-n']:
-        Ksysvec = sensdict['Ksys']
-    else:
-        beamlistlist = np.array(simparams['outangles']).astype(int)
-        inplist = np.array([i[0] for i in beamlistlist])
-        Ksysvec = sensdict['Ksys'][inplist]
-        ang_data_temp = ang_data.copy()
-        ang_data = np.array([ang_data_temp[i].mean(axis=0) for i in beamlistlist])
-
-
-    sumrule = simparams['SUMRULE']
-    rng_vec2 = simparams['Rangegatesfinal']
-    Nrng2 = len(rng_vec2)
-    minrg = p_samps-1+sumrule[0].min()
-    maxrg = Nrng2+minrg
-
-
-    minrg = -sumrule[0].min()
-    maxrg = Nrng2 + minrg
-
-    # Copy the lags
-    lagsData = DataLags['ACF'].copy()
-    calfactor = DataLags['CalFactor'].copy().real
-    # Set up the constants for the lags so they are now
-    # in terms of density fluxtuations.
-    angtile = np.tile(ang_data, (Nrng2, 1))
-    rng_rep = np.repeat(rng_vec2, ang_data.shape[0], axis=0)
-    coordlist = np.zeros((len(rng_rep), 3))
-    [coordlist[:, 0], coordlist[:, 1:]] = [rng_rep, angtile]
-    (Nt, n_beams, Nrng, Nlags) = lagsData.shape
-    plen2 = float(p_samps-1)/2
-    samps = np.arange(0, p_samps, dtype=int)
-    rng_ave = np.ones_like(rng_vec)
-    rng_vectemp = rng_vec.copy()
-    rng_vectemp[rng_vec <= 0] = 0
-    for isamp in range(n_samps):
-        cursamps = isamp-samps
-        keepsamps = cursamps >= 0
-        cursamps = cursamps[keepsamps]
-        rng_samps = rng_vectemp[cursamps]
-        keepsamps2 = rng_samps > 0
-        if keepsamps2.sum() == 0:
-            continue
-        rng_samps = rng_samps[keepsamps2]
-        rng_ave[isamp] = 1./np.sqrt(np.sum(1./np.power(rng_samps*1e3, 2))/p_samps)
-    rng_ave_temp = rng_ave.copy()
-    rng_ave = rng_ave[int(np.floor(plen2)):-int(np.ceil(plen2))]
-    rng_ave = rng_ave[minrg:maxrg]
-
-
-    pulses = np.tile(DataLags['Pulses'][:, :, np.newaxis, np.newaxis], (1, 1, Nrng, Nlags))
-
-    time_vec = time_vec[:Nt]
-    # Divid lags by number of pulses
-    lagsData = lagsData/pulses
-    # Set up the noise lags and divid out the noise.
-    lagsNoise = NoiseLags['ACF'].copy()
-    lagsNoise = np.mean(lagsNoise, axis=2)
-    pulsesnoise = np.tile(NoiseLags['Pulses'][:, :, np.newaxis], (1, 1, Nlags))
-    lagsNoise = lagsNoise/pulsesnoise
-    lagsNoise = np.tile(lagsNoise[:, :, np.newaxis, :],(1, 1, Nrng, 1))
-
-    # Set Up arrays for range adjustment
-    rng3d = np.tile(rng_ave[:, np.newaxis, np.newaxis, np.newaxis], (1, Nlags, Nt, n_beams))
-    ksys3d = np.tile(Ksysvec[np.newaxis, np.newaxis, np.newaxis, :], (Nrng2, Nlags, Nt, 1))
-    cal_fac = np.tile(calfactor[np.newaxis, np.newaxis, :, :], (Nrng2, Nlags, 1, 1))
-    radar2acfmult = cal_fac*rng3d*rng3d/(pulsewidth*txpower*ksys3d)
-
-    # subtract out noise lags
-    lagsData = lagsData-lagsNoise
-    # Calculate a variance using equation 2 from Hysell's 2008 paper. Done use full covariance matrix because assuming nearly diagonal.
-
-    # multiply the data and the sigma by inverse of the scaling from the radar
-    # lagsData = lagsData*radar2acfmult
-    # lagsNoise = lagsNoise*radar2acfmult
-
-    # Apply summation rule
-    # lags transposed from (time,beams,range,lag)to (range,lag,time,beams)
-    lagsData = np.transpose(lagsData, axes=(2, 3, 0, 1))
-    lagsNoise = np.transpose(lagsNoise, axes=(2, 3, 0, 1))
-    lagsDatasum = np.zeros((Nrng2, Nlags, Nt, n_beams), dtype=lagsData.dtype)
-    lagsNoisesum = np.zeros((Nrng2 ,Nlags, Nt, n_beams), dtype=lagsNoise.dtype)
-
-
-    for irngnew,irng in enumerate(np.arange(minrg,maxrg)):
-        for ilag in range(Nlags):
-            lagsDatasum[irngnew, ilag] = lagsData[irng+sumrule[0, ilag]:irng+sumrule[1, ilag]+1, ilag].sum(axis=0)
-            lagsNoisesum[irngnew, ilag] = lagsNoise[irng+sumrule[0, ilag]:irng+sumrule[1, ilag]+1, ilag].sum(axis=0)
-    # Put everything in a parameter list
-    Paramdata = np.zeros((n_beams*Nrng2, Nt, Nlags), dtype=lagsData.dtype)
-    lagsDatasum = lagsDatasum*radar2acfmult
-    lagsNoisesum = lagsNoisesum*radar2acfmult
-    # Put everything in a parameter list
-    # transpose from (range,lag,time,beams) to (beams,range,time,lag)
-    lagsDatasum = np.transpose(lagsDatasum, axes=(3, 0, 2, 1))
-    lagsNoisesum = np.transpose(lagsNoisesum, axes=(3, 0, 2, 1))
-    # Get the covariance matrix
-    pulses_s = np.transpose(pulses, axes=(1, 2, 0, 3))[:, :Nrng2]
-    Cttout = makeCovmat(lagsDatasum, lagsNoisesum, pulses_s, Nlags)
-
-    Paramdatasig = np.zeros((n_beams*Nrng2, Nt, Nlags, Nlags), dtype=Cttout.dtype)
-
-    curloc = 0
-    for irng in range(Nrng2):
-        for ibeam in range(n_beams):
-            Paramdata[curloc] = lagsDatasum[ibeam, irng].copy()
-            Paramdatasig[curloc] = Cttout[ibeam, irng].copy()
-            curloc += 1
-    ionodata = IonoContainer(coordlist, Paramdata, times=time_vec, ver=1,
-                             paramnames=np.arange(Nlags)*t_s*ds_fac)
-    ionosigs = IonoContainer(coordlist, Paramdatasig, times=time_vec, ver=1,
-                             paramnames=np.arange(Nlags*Nlags).reshape(Nlags, Nlags)*t_s*ds_fac)
-    return (ionodata,ionosigs)
-
-def makeCovmat(lagsDatasum,lagsNoisesum,pulses_s,Nlags):
-
-    """
-        Makes the covariance matrix for the lags given the noise acf and number
-        of pulses.
-    """
-    axvec = np.roll(np.arange(lagsDatasum.ndim), 1)
-    # Get the covariance matrix
-    R = np.transpose(lagsDatasum/np.sqrt(2.*pulses_s), axes=axvec)
-    Rw = np.transpose(lagsNoisesum/np.sqrt(2.*pulses_s), axes=axvec)
-    l = np.arange(Nlags)
-    T1, T2 = np.meshgrid(l,l)
-    R0 = R[np.zeros_like(T1)]
-    Rw0 = Rw[np.zeros_like(T1)]
-    Td = np.absolute(T1-T2)
-    Tl = T1>T2
-    R12 = R[Td]
-    R12[Tl] = np.conjugate(R12[Tl])
-    Rw12 = Rw[Td]
-    Rw12[Tl] = np.conjugate(Rw12[Tl])
-    Ctt = R0*R12+R[T1]*np.conjugate(R[T2])+Rw0*Rw12+Rw[T1]*np.conjugate(Rw[T2])
-    avecback = np.roll(np.arange(Ctt.ndim),-2)
-    Cttout = np.transpose(Ctt,avecback)
-
-    return Cttout
 
 def makedrf(name, start_global_index, dtypestr, is_complex, sample_rate_numerator, sample_rate_denominator, uuid,num_subchannels):
 

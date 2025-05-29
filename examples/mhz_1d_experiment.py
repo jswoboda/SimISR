@@ -108,10 +108,8 @@ def create_spectrum(i_ds):
     ilineds = make_iline_specds(i_ds,spec_args)
     return ilineds
 
-def run_full():
-    expfile = "/Users/swoboj/Documents/Python/SimISR/config/experiments/mhzexp.yml"
+def run_full(expfile,test_dir):
 
-    test_dir = "/Users/swoboj/DATA/SimISR/version2tests/experimentclass"
     start_time = "2024-01-01T15:24:00Z"
     exp_obj = experiment_setup(expfile,test_dir,start_time)
     i_ds = example_xr1d_zenith()
@@ -123,3 +121,13 @@ def run_full():
     chan_name = 'millstone_zenith-zenith-l'
     rdr.write_chan(spec_ds,phys_ds,rx_name,chan_name)
     experiment_close(exp_obj)
+
+if __name__ == "__main__":
+
+    curfile = Path(__file__)
+    expfile = str(curfile.parent.parent.joinpath("config","experiments","mhzexp.yml"))
+
+    test_dir = "/Users/swoboj/DATA/SimISR/version2tests/experimentclass"
+    print(f"Experiment file: {expfile}")
+    print(f"Output directory: {test_dir}")
+    run_full(expfile,test_dir)
