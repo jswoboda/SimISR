@@ -49,6 +49,12 @@ class Experiment(object):
         Keys are the name of the channel and the values are the radar system object.
     save_directory : str
         Overall directory all of the data will be saved.
+    exp_start : pandas.Timestamp
+        UTC time stamp of the experiment start.
+    exp_end : pandas.Timestamp
+        UTC time stamp of the experiment end.
+    exp_time : pandas.Timedelta
+        Length of time of the experiment
     """
 
     def __init__(
