@@ -9,7 +9,7 @@ Welcome to SimISR's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
+   simisr
 
 
 Indices and tables

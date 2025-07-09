@@ -1,0 +1,9 @@
+six
+numpy
+scipy
+matplotlib
+pyyaml
+pandas
+digital_rf
+xarray
+yamale
