@@ -1,0 +1,46 @@
+package:
+  name: simisr
+  version: 4.2.0
+
+source:
+  git_url: https://github.com/jswoboda/SimISR.git
+  git_rev: 4.2.0
+
+build:
+  noarch: python
+  number: 0
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - numpy >=1.20
+    - scipy
+    - six
+    - nose
+    - pandas
+    - digital_rf
+    - ISRSpectrum
+    - mitarspysigproc
+    - yamale
+    - pyyaml
+    - xarray
+    - pandas
+
+  run:
+    - python
+    - pandas
+    - scipy
+    - matplotlib
+
+test:
+  imports:
+    - SimISR
+
+about:
+  home: https://github.com/jswoboda/SimISR
+  license: MIT License
+  summary: Creates Synthetic ISR data
+  description: |
+    Creates syntehtic incoherent scatter (Thomson) radar data. This will create realistic data that can be processed as standard radar data.
+  dev_url: https://github.com/jswoboda/ISRSpectrum

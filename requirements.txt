@@ -7,3 +7,6 @@ pandas
 digital_rf
 xarray
 yamale
+mitarspysigproc
+digital_rf
+ISRSpectrum
