@@ -9,6 +9,8 @@ Welcome to SimISR's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   intro
    simisr
 
 
