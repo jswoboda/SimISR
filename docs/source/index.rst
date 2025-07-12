@@ -11,8 +11,7 @@ Welcome to SimISR's documentation!
    :caption: Contents:
 
    intro
-   simisr
-
+   modules
 
 Indices and tables
 ==================
