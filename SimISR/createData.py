@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 """
+
 radarData.py
 This file holds the RadarData class that hold the radar data and processes it.
 
 @author: John Swoboda
+
 """
+
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
@@ -32,6 +35,20 @@ from mitarspysigproc import (
 
 
 class RadarDataCreate(object):
+    """Runs the overall process for SimISR for the ion line.
+
+    Attributes
+    ----------
+    experiment : Experiment
+        Experiment settings.
+    save_directory : str
+        Directory where the digital RF data will be saved.
+    save_path : Path
+        save_directory but as a Path object.
+    first_time : bool
+        Is this the first write.
+
+    """
     def __init__(self, experiment, save_directory=None):
         self.experiment = experiment
 
@@ -460,8 +477,7 @@ class RadarDataFile(object):
     at the IQ and fitted level.
 
     Variables
-    simparams - A dictionary that holds simulation parameters the keys are the
-        following
+    simparams - A dictionary that holds simulation parameters the keys are the following
         'angles': Angles (in degrees) for the simulation.  The az and el angles
             are stored in a list of tuples [(az_0,el_0),(az_1,el_1)...]
         'IPP' : Interpulse period in seconds, this is the IPP from position to

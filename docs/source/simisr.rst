@@ -1,5 +1,52 @@
-simisr package
+SimISR package
 ==============
+
+Classes
+-------
+
+The ``RadarDataCreate`` class
+*****************************
+.. autoclass:: SimISR.RadarDataCreate
+   :members:
+   :undoc-members:
+
+The ``Experiment`` class
+*****************************
+.. autoclass:: SimISR.Experiment
+   :members:
+   :undoc-members:
+
+The ``Channel`` class
+*****************************
+.. autoclass:: SimISR.Channel
+   :members:
+   :undoc-members:
+
+
+The ``RadarSystem`` class
+*****************************
+.. autoclass:: SimISR.RadarSystem
+   :members:
+   :undoc-members:
+
+The ``RadarSite`` class
+*****************************
+.. autoclass:: SimISR.RadarSite
+   :members:
+   :undoc-members:
+
+
+The ``PulseSequence`` class
+*****************************
+.. autoclass:: SimISR.PulseSequence
+   :members:
+   :undoc-members:
+
+The ``PulseTime`` class
+*****************************
+.. autoclass:: SimISR.PulseTime
+   :members:
+   :undoc-members:
 
 Subpackages
 -----------
@@ -7,71 +54,71 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   simisr.antennapatterncalc
+   SimISR.antennapatterncalc
 
 Submodules
 ----------
 
-simisr.CoordTransforms module
+CoordTransforms module
 -----------------------------
 
-.. automodule:: simisr.CoordTransforms
+.. automodule:: SimISR.CoordTransforms
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.createData module
+createData module
 ------------------------
 
-.. automodule:: simisr.createData
+.. automodule:: SimISR.createData
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.h5fileIO module
+h5fileIO module
 ----------------------
 
-.. automodule:: simisr.h5fileIO
+.. automodule:: SimISR.h5fileIO
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.mathutils module
+mathutils module
 -----------------------
 
-.. automodule:: simisr.mathutils
+.. automodule:: SimISR.mathutils
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.radarobjs module
+radarobjs module
 -----------------------
 
-.. automodule:: simisr.radarobjs
+.. automodule:: SimISR.radarobjs
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.speccontainer module
+speccontainer module
 ---------------------------
 
-.. automodule:: simisr.speccontainer
+.. automodule:: SimISR.speccontainer
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.testfunctions module
+testfunctions module
 ---------------------------
 
-.. automodule:: simisr.testfunctions
+.. automodule:: SimISR.testfunctions
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.utilFunctions module
+utilFunctions module
 ---------------------------
 
-.. automodule:: simisr.utilFunctions
+.. automodule:: SimISR.utilFunctions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -79,7 +126,7 @@ simisr.utilFunctions module
 Module contents
 ---------------
 
-.. automodule:: simisr
+.. automodule:: SimISR
    :members:
    :undoc-members:
    :show-inheritance:

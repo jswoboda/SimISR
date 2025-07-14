@@ -7,13 +7,10 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 from SimISR import Experiment, read_config_yaml
-from SimISR.testfunctions import chapman_func, temp_profile
 from SimISR import make_iline_specds
 from SimISR.CoordTransforms import sphereical2Cartisian
 
 from SimISR import RadarDataCreate
-from test.test_buffer import ndarray_print
-
 
 def experiment_setup(exp_file, test_dir, start_time):
     """Sets Gets the experiment set up but doing some quick editing of the example experiment file.

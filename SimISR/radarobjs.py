@@ -623,7 +623,20 @@ class RadarSystem(object):
         return k_dict, kmat
 
     def get_closest(self, az, el):
-        """ """
+        """Find the beamcode that will give the closes az and el angle to what is entered.
+
+        Parameters
+        ----------
+        az : float
+            Desired azimuth angle in degrees.
+        el : ndarray
+            Desired elevation angle in degrees
+
+        Returns
+        -------
+        beamcode : int
+            The beam code closest to the angles.
+        """
         assert el > 0, "Elevation must be in degrees > 0"
         assert ~(self.kmat is None), "kmat is set to None, make a kmat h5 file. "
         az_a = self.kmat[:, 1]

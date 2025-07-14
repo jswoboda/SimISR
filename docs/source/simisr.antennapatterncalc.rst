@@ -1,29 +1,29 @@
-simisr.antennapatterncalc package
+SimISR.antennapatterncalc package
 =================================
 
 Submodules
 ----------
 
-simisr.antennapatterncalc.amisr\_ant\_pattern module
+SimISR.antennapatterncalc.amisr\_ant\_pattern module
 ----------------------------------------------------
 
-.. automodule:: simisr.antennapatterncalc.amisr_ant_pattern
+.. automodule:: SimISR.antennapatterncalc.amisr_ant_pattern
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.antennapatterncalc.circ\_ant\_pattern module
+SimISR.antennapatterncalc.circ\_ant\_pattern module
 ---------------------------------------------------
 
-.. automodule:: simisr.antennapatterncalc.circ_ant_pattern
+.. automodule:: SimISR.antennapatterncalc.circ_ant_pattern
    :members:
    :undoc-members:
    :show-inheritance:
 
-simisr.antennapatterncalc.mathutils module
+SimISR.antennapatterncalc.ant_math_utils module
 ------------------------------------------
 
-.. automodule:: simisr.antennapatterncalc.mathutils
+.. automodule:: SimISR.antennapatterncalc.ant_math_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -31,7 +31,7 @@ simisr.antennapatterncalc.mathutils module
 Module contents
 ---------------
 
-.. automodule:: simisr.antennapatterncalc
+.. automodule:: SimISR.antennapatterncalc
    :members:
    :undoc-members:
    :show-inheritance:

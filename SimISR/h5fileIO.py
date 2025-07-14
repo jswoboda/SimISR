@@ -1,8 +1,10 @@
 #!python
 """
+
 fileIO.py
 Holds functions for file input/output
 @author: John Swoboda
+
 """
 
 
@@ -49,8 +51,8 @@ def load_dict_from_hdf5(filename):
         Dictionary to be read.
     """
     if not Path(filename).exists():
-        raise FileNotFoundError(f'{filename}, no such file exists')    
-    
+        raise FileNotFoundError(f'{filename}, no such file exists')
+
     with h5py.File(filename, "r") as h5file:
         return recursively_load_dict_contents_from_group(h5file, "/")
 

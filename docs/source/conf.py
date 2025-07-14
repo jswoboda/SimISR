@@ -13,7 +13,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.abspath(os.path.join("..", "..", "SimISR"))))
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.join("..", ".."))))
 
 
 # -- Project information -----------------------------------------------------
@@ -35,7 +35,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.githubpages",
-    "nbsphinx",
+ #   "nbsphinx",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
