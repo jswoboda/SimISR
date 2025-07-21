@@ -1,6 +1,6 @@
 **Added:**
 
-* <news item>
+* New radars added to existing_radars
 
 **Changed:**
 

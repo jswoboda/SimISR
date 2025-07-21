@@ -69,6 +69,54 @@ radars:
     antennaparmaeters:
       rad: 30.0
 
+  - name: altair_uhf
+    ant_type: circ
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 90.0
+    freq: 420000000.0
+    tx_gain: 42.5
+    rx_gain: 42.5
+    tx_power: 2500000.0
+    duty: 0.06
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: MISA
+    cal_temp: 1689.21
+    loss: 6.0
+    site: millstone
+    kmat_file: Millstone_PARAMS.h5
+    antennaparmaeters:
+      rad: 23.0
+
+  - name: altair_vhf
+    ant_type: circ
+    az_rotation: 0.0
+    el_tilt: 0.0
+    steering_mask:
+      - 0.0
+      - 360.0
+      - 0.0
+      - 90.0
+    freq: 420000000.0
+    tx_gain: 42.5
+    rx_gain: 42.5
+    tx_power: 2500000.0
+    duty: 0.06
+    tsys_type: fixed_high
+    xtra_tsys: 50.0
+    notes: MISA
+    cal_temp: 1689.21
+    loss: 6.0
+    site: millstone
+    kmat_file: Millstone_PARAMS.h5
+    antennaparmaeters:
+      rad: 23.0
+
   - name: greenbank_43m
     ant_type: circ
     az_rotation: 0.0
@@ -455,6 +503,7 @@ radars:
     notes: approximate parameters
     antennaparmaeters:
       rad: 16
+
 sites:
   - name: millstone
     latitude: 42.6195
@@ -463,6 +512,7 @@ sites:
     elevation_mask: 2.5
     description: Millstone Hill UHF radar site
     notes: existing 46 meter IS radar
+
   - name: greenbank
     latitude: 38.43771
     longitude: -79.83570
@@ -470,6 +520,7 @@ sites:
     elevation_mask: 2.5
     description: NRAO Greenbank WV Site
     notes: existing 140 foot antenna
+
   - name: jicamarca
     latitude: -11.95
     longitude: -76.87
@@ -477,6 +528,7 @@ sites:
     elevation_mask: 30.0
     description: Jicamarca radar site
     notes: existing 300 meter HF IS radar
+
   - name: arecibo
     latitude: 18.34417
     longitude: -66.75278
@@ -484,6 +536,7 @@ sites:
     elevation_mask: 45.0
     description: Arecibo radar site
     notes: existing 300 meter UHF IS radar and HF heater
+
   - name: sondrestrom
     latitude: 66.978
     longitude: -50.949
@@ -491,6 +544,7 @@ sites:
     elevation_mask: 30.0
     description: Sondrestrom radar site
     notes: existing L-band IS radar
+
   - name: poker_flat
     latitude: 65.126
     longitude: -147.4789
@@ -498,6 +552,7 @@ sites:
     elevation_mask: 20.0
     description: Poker flat rocket range and radar
     notes: existing UHF AMISR IS radar
+
   - name: resolute
     latitude: 74.72955
     longitude: -94.90576
@@ -505,6 +560,7 @@ sites:
     elevation_mask: 5.0
     description: Resolute bay radar site
     notes: Dual existing UHF AMISR IS radars
+
   - name: altair
     latitude: 9.39538
     longitude: 167.479181
@@ -512,6 +568,7 @@ sites:
     elevation_mask: 5.0
     description: Altair radar site
     notes: Existing VHF and UHF IS capable radar
+
   - name: tromso
     latitude: 69.5864
     longitude: 19.2272
@@ -519,6 +576,7 @@ sites:
     elevation_mask: 30.0
     description: EISCAT VHF radar site
     notes: VHF radar and HF heater
+
   - name: sodonkyla
     latitude: 67.36361
     longitude: 26.62694
@@ -526,6 +584,7 @@ sites:
     elevation_mask: 20.0
     description: EISCAT VHF receiver site
     notes: VHF receive only dish
+
   - name: kiruna
     latitude: 67.86056
     longitude: 20.43528
@@ -533,6 +592,7 @@ sites:
     elevation_mask: 20.0
     description: EISCAT VHF receiver site
     notes: VHF receive only dish
+
   - name: kilpisjarvi
     latitude: 69.097253
     longitude: 20.753892
@@ -547,6 +607,7 @@ sites:
     elevation_mask: 30.0
     description: EISCAT Svalbard radar site
     notes: existing UHF IS radar
+
   - name: kharkov
     latitude: 50.0
     longitude: 36.2
@@ -554,6 +615,7 @@ sites:
     elevation_mask: 5.0
     description: Kharkov IS radar site
     notes: existing VHF IS radar and HF heater ; coordinates not accurate
+
   - name: irkutsk
     latitude: 52.878012
     longitude: 103.265857
@@ -561,6 +623,7 @@ sites:
     elevation_mask: 5.0
     description: Irkutsk IS radar site
     notes: existing VHF IS radar
+
   - name: mu
     latitude: 34.854083
     longitude: 136.105517
@@ -568,6 +631,7 @@ sites:
     elevation_mask: 5.0
     description: Mu IS radar site
     notes: existing HF IS radar
+
   - name: qujing
     latitude: 25.6
     longitude: 103.8
@@ -575,6 +639,7 @@ sites:
     elevation_mask: 5.0
     description: Qujing IS radar site
     notes: existing UHF IS radar ; coordinates not accurate
+
   - name: sanya
     latitude: 18.3
     longitude: 109.6
@@ -582,6 +647,7 @@ sites:
     elevation_mask: 5.0
     description: Sanya IS radar site
     notes: planned UHF phased array radar ; coordinates not accurate
+
   - name: skibotn
     latitude: 69.34
     longitude: 20.313
@@ -589,6 +655,7 @@ sites:
     elevation_mask: 15.0
     description: planned E3D IS radar site
     notes: planned VHF phased array radar TX / RX site
+
   - name: kaiseniemi
     latitude: 68.26711
     longitude: 19.44805
@@ -596,6 +663,7 @@ sites:
     elevation_mask: 15.0
     description: planned E3D IS radar site
     notes: planned VHF phased array radar RX site
+
   - name: karesuvanto
     latitude: 68.463
     longitude: 22.458
@@ -603,6 +671,7 @@ sites:
     elevation_mask: 15.0
     description: planned E3D IS radar site
     notes: planned VHF phased array radar RX site
+
   - name: palojoensuu
     latitude: 68.296716
     longitude: 23.079827
@@ -610,6 +679,7 @@ sites:
     elevation_mask: 5.0
     description: planned E3D IS radar site
     notes: possible VHF phased array radar RX site
+
   - name: kaitum
     latitude: 67.637338
     longitude: 19.739984
@@ -617,6 +687,7 @@ sites:
     elevation_mask: 5.0
     description: planned E3D IS radar site
     notes: possible VHF phased array radar RX site ; middle of nowhere?
+
   - name: andoya
     latitude: 68.967142
     longitude: 15.872391
