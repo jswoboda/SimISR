@@ -16,7 +16,8 @@ seqobj:
   txrxname: list(str()) # List all of the radars active during the sequence
   txorrx: list(enum('rx','tx'))
   beamcodes: any(list(int()), list(list(int()))) #beamnumbers
-  pulsecodes: any(list(int()), list(list(int()))) #pulsenumbers
+  pulsecodes: any(list(int()), list(list(int()))) #pulsecodes
+  pulsenums: any(list(int()), list(list(int())),required=False) #pulsenum
 
 channelobj:
   name: str()

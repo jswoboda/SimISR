@@ -200,11 +200,13 @@ class Experiment(object):
             cur_code = self.codes[icode]
 
             pcodes = cur_code.get_pulse_codes()
+            pnums = cur_code.get_pulse_nums()
             bcos = cur_code.beamcodes
             rasters = cur_code.get_pulse_rasters()
             for inum in range(len(pcodes)):
                 curdict = {}
                 curdict['pcode'] = pcodes[inum]
+                curdict['pnum'] = pnums[inum]
                 curdict['bco'] = bcos[inum]
                 curdict['radars'] = cur_code.radarnames
                 curdict['seq'] = icode
@@ -869,6 +871,8 @@ class PulseSequence(object):
         Dictionary where keys are the pulse number and the values are the associated PulseTiming object.
     pulsecodes : list
         This list of list holds the pulse code order because the dictionary holds the unique code.
+    pulsenums : list
+        This list of list holds the pulse numbers for the user to assign to help with analysis.
     beamcodes : list
         List of lists coresponding to beamcodes for each pulse.
     """
@@ -880,6 +884,7 @@ class PulseSequence(object):
         txrxname,
         pulsecodes,
         beamcodes,
+        pulsenums = [],
         pulsefolders=[],
         txorrx=None,
     ):
@@ -895,6 +900,8 @@ class PulseSequence(object):
             Sequence of pulse codes.
         beamcodes : list
             Sequency of beamcodes.
+        pulsenums : list
+            Sequence of pulse numbers that can be saved to metadata.
         pulsefolders : list
             List of folders that have pulse yaml files. Can overload with different pulse files.
         """
@@ -924,7 +931,7 @@ class PulseSequence(object):
         pulsefolders.insert(0, ppath)
 
         pdict_all = {}
-        allcodes = []
+
 
         if isinstance(pulsecodes[0], list):
             allcodes = sum(pulsecodes, [])
@@ -960,6 +967,21 @@ class PulseSequence(object):
         else:
             fullbeams = [[icode] * len(self.radarnames) for icode in beamcodes]
         self.beamcodes = fullbeams
+
+        if not pulsenums:
+            fullnums=[[inum]*len(ilist) for inum,ilist in enumerate(fullcodes)]
+        elif isinstance(pulsenums[0], list):
+            allnums = sum(pulsenums, [])
+            ucodes = list(set(allnums))
+            if len(pulsecodes[0]) == 1:
+                mult = len(self.radarnames)
+            else:
+                mult = 1
+            fullcodes = [iclist * mult for iclist in pulsenums]
+        elif isinstance(pulsenums[0], int):
+            fullnums= [[icode] * len(self.radarnames) for icode in pulsenums]
+        self.pulsenums = fullnums
+
 
     def check_pulse_timing(self):
         """Checks that each pulse in each section total length aligns.
@@ -1007,6 +1029,17 @@ class PulseSequence(object):
         """
         pcodes = list(self.pulsecodes)
         return pcodes
+
+    def get_pulse_nums(self):
+        """Outputs the pulse nums in a list.
+
+        Returns
+        -------
+        pnums : list
+            Pulse nums in the sequence.
+        """
+        pnums = list(self.pulsenums)
+        return pnums
 
     def outforyaml(self):
         """Outputs a dictionary that should be easy to write as part of a yaml file.
