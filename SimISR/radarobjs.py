@@ -236,9 +236,6 @@ class Experiment(object):
         time_list = []
         rdr_combo_lists = {i:{'tx':[],'rx':[]} for i in self.radarobjs.keys()}
         npulse = 0
-        seq = []
-        pcodes = []
-        bcodes = []
 
         # Run through the sequencies and get all of the timing
         for icode in code_ord:
@@ -266,7 +263,6 @@ class Experiment(object):
         num_repeats = nseconds//tot
         combo_vec = np.arange(len(time_vec))
 
-        seqall = [item for sublist in seq for item in sublist]
         combo_all = np.tile(combo_vec,num_repeats)
         t_rep,rep_num = np.meshgrid(time_vec,np.arange(num_repeats))
         time_mat = t_rep+tot*rep_num
@@ -294,6 +290,7 @@ class Experiment(object):
             ipl.makedrf(save_directory, start_time)
 
     def close_channels(self):
+        """This will close out the digital RF channels."""
         for ikey, itx in self.tx_chans.items():
             itx.drf_out.close()
         for ikey, iil in self.iline_chans.items():
@@ -334,9 +331,30 @@ class Channel(object):
         numtype,
         radardatatype,
         uuid,
+        metadata=[],
         num_subchannels=1,
     ):
-        """ """
+        """This is a channel initialization function.
+
+        Parameters
+        ----------
+        name : str
+            Name of the channel
+        sample_rate_numerator : int
+            Sample rate numerator of the channel.
+        sample_rate_denominator : int
+            Sample rate numerator of the channel.
+        numtype : str
+            Description of output datatype.
+        is_complex : bool
+            Is the data complex
+        radardatatype : str
+            This labels the type of data, either transmit, ion-line receive or plasma line receive.
+        uuid : str
+            UUID string that will act as a unique identifier for the data and can be used to tie the data files to metadata. If None, a random UUID will be generated.
+        num_subchannels : sub_channels
+            Number of subchannels in the data.
+        """
         self.name = name
         self.sr = Fraction(sample_rate_numerator, sample_rate_denominator)
         self.numtype = numtype
@@ -345,6 +363,13 @@ class Channel(object):
         self.uuid = uuid
         self.num_subchannels = num_subchannels
         self.drf_out = None
+        self.metadata=[]
+    def makedmd(self,outdir,start_time):
+        """
+        """
+        outpath = Path(outdir).expanduser()
+        drfname = outpath.joinpath(self.name)
+        sr = self.sr
 
     def makedrf(self, outdir, start_time):
         """Creates the digital rf dataset folders for the channel.

@@ -27,5 +27,10 @@ channelobj:
   numtype: str()
   num_subchannels: int(required=False)
   radardatatype: enum('txpulse','ionline','plasmaline')
+  metadata: list(include('metadataobj'),required=False)
   uuid: str()
   declist: list(int(),required=False)
+
+metadataobj:
+  folder_name: str()
+  type: str()

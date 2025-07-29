@@ -89,9 +89,9 @@ class RadarDataCreate(object):
         pair_dict = {}
         beam_ls_list = []
         dims = ["locs", "pairs"]
-        # each sequence will have to
+        # each sequence will have it's own spatial setup.
         rdr_objs = self.experiment.radarobjs
-
+        # Go through each sequence
         for ixr, iseq in self.experiment.codes.items():
 
             # split up each radar
@@ -198,7 +198,7 @@ class RadarDataCreate(object):
         return phys_xr
 
     def write_chan(self, sp_obj, phys_ds, rx_name, ichan_name, log_func=print):
-        """Writes out channel of data over the whole expeirment
+        """Writes out channel of data over the whole expeirment for a single channel.
 
         Parameters
         ----------
@@ -240,8 +240,10 @@ class RadarDataCreate(object):
 
         pair_dict = {ip: inum for inum, ip in enumerate(phys_ds.attrs["pairs"])}
         spec_attrs = spec_ds.attrs
+        # sample rate that the data will be created at.
         sr_create = Fraction(spec_attrs["sr_num"], spec_attrs["sr_den"])
         chan_obj = self.experiment.iline_chans[ichan_name]
+        # Sample rate data will be saved at.
         sr_save = chan_obj.sr
         ds_fac = int(sr_save / sr_create)
         nlevel = sc.k * float(sr_save) * rx_obj.tsys
@@ -257,6 +259,7 @@ class RadarDataCreate(object):
         tstop[-1] = len(cmball)
         outlist = []
         ord_list = []
+        #
         for ist, iend in zip(tstart, tstop):
             curcmball = cmball[ist:iend]
             cur_tq = tall_q[ist:iend]
@@ -363,23 +366,32 @@ class RadarDataCreate(object):
 
                             for idatn, idat in enumerate(cur_ind):
                                 rawdata[idat, rng_sl] += cpd[idatn, : rngspd - irng]
+                # Data for receiver noise across entire IPP
                 r_rand = np.random.randn(pl, nsamp)
                 i_rand = np.random.randn(pl, nsamp)
+                # Calibration noise injected
                 r_cal = np.random.randn(pl, len(cal_sam))
                 i_cal = np.random.randn(pl, len(cal_sam))
+                # Create vector of noise after it properly measured
                 xout = np.sqrt(nlevel / 2) * (r_rand + 1j * i_rand)
+                # Add the calibration information to the pulses
                 xout[:, cal_sam] += np.sqrt(clevel / 2) * (r_cal + 1j * i_cal)
+                # up sample the data
+                # This specific type of resampling keeps the power level the same without any sort of extra factors thrown in.
                 rawout = sig.resample(rawdata, len(rx_rng) * ds_fac, axis=1)
                 xout[:, sig_pos] += rawout
+                # Now scale everything to be approximately at the noise level.
                 xout = xout / np.sqrt(nlevel / 2)
                 xlist = [i for i in xout]
                 outlist = outlist + xlist
                 ord_list = ord_list + list(cur_ind)
 
+            # for the id_meta need index,modeid(sequence code), sweepid(pulsecode), sweepnum (pulsenum)
             sort_idx = np.argsort(ord_list)
             out_2 = [outlist[ind] for ind in sort_idx]
             outdata = np.concatenate(out_2, axis=0)
             chan_obj.drf_out.rf_write(outdata.astype(chan_obj.numtype))
+
         # write out the Tx channels
         # for irdr, chan_dict in self.radar2chans.items():
         #     tx_chans  = chan_dict['txpulse']
