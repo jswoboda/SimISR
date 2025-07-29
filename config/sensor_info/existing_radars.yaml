@@ -78,18 +78,18 @@ radars:
       - 360.0
       - 0.0
       - 90.0
-    freq: 420000000.0
-    tx_gain: 42.5
-    rx_gain: 42.5
+    freq: 422000000.0
+    tx_gain: 40.2
+    rx_gain: 40.2
     tx_power: 2500000.0
     duty: 0.06
     tsys_type: fixed_high
     xtra_tsys: 50.0
-    notes: MISA
+    notes: Best guess on gain given antenna size
     cal_temp: 1689.21
     loss: 6.0
     site: millstone
-    kmat_file: Millstone_PARAMS.h5
+    kmat_file: Altair_UHF_kmat.h5
     antennaparmaeters:
       rad: 23.0
 
@@ -102,18 +102,18 @@ radars:
       - 360.0
       - 0.0
       - 90.0
-    freq: 420000000.0
-    tx_gain: 42.5
-    rx_gain: 42.5
+    freq: 158000000.0
+    tx_gain: 31.7
+    rx_gain: 31.7
     tx_power: 2500000.0
     duty: 0.06
     tsys_type: fixed_high
     xtra_tsys: 50.0
-    notes: MISA
+    notes: Best guess on gain given antenna size
     cal_temp: 1689.21
     loss: 6.0
     site: millstone
-    kmat_file: Millstone_PARAMS.h5
+    kmat_file: Altair_VHF_kmat.h5
     antennaparmaeters:
       rad: 23.0
 
