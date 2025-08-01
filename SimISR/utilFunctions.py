@@ -6,6 +6,7 @@ This module holds many of the
 """
 from __future__ import print_function
 import sys
+import logging
 import warnings
 import yaml
 import numpy as np
@@ -54,6 +55,46 @@ def update_progress(progress, extstr=""):
     print(text, end="")
     sys.stdout.flush()
 
+def setuplog(logfile=None,datafolder=""):
+    """Set up the logger object.
+
+    Parameters
+    ----------
+    logfile : str
+        Name of the log file.
+
+    Returns
+    -------
+    logger : logger
+        Logger object.
+    """
+    logger = logging.getLogger(__file__)
+    logger.setLevel(logging.INFO)
+    # Create handlers
+    c_handler = logging.StreamHandler()
+    c_format = logging.Formatter("%(message)s")
+    c_handler.setLevel(logging.INFO)
+    c_handler.setFormatter(c_format)
+    # Add handlers to the logger
+    logger.addHandler(c_handler)
+
+    if not logfile is None:
+        logpath = Path(logfile)
+        if logpath.anchor=="":
+            datapath = Path(datafolder)
+            datapath = datapath.joinpath(logpath)
+            logfile = str(datapath)
+
+        f_handler = logging.FileHandler(logfile)
+        f_handler.setLevel(logging.INFO)
+        # Create formatters and add it to handlers
+        f_format = logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        f_handler.setFormatter(f_format)
+        logger.addHandler(f_handler)
+    return logger
 
 def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'):
     """Make the ambiguity function dictionary that holds the lag ambiguity and range ambiguity. Uses a sinc function weighted by a blackman window. Currently only set up for an uncoded pulse.

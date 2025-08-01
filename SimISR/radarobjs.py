@@ -17,7 +17,8 @@ import yamale
 import digital_rf as drf
 import scipy.constants as sc
 from .h5fileIO import load_dict_from_hdf5, save_dict_to_hdf5
-from datetime import datetime,timedelta
+from .utilFunctions import setuplog
+from datetime import timedelta
 TSYS_CONV = dict(
     fixed_zero=0.0,
     fixed_cooled=20.0,
@@ -69,6 +70,7 @@ class Experiment(object):
         exp_end=None,
         radar_files=[],
         pulse_files=[],
+        logfile=None
     ):
         """
 
@@ -94,7 +96,8 @@ class Experiment(object):
             A string or list of strings of yaml files. Can also be a directory with yaml files in them.
         pulse_files :  str or list
             A string or list of strings of yaml files. Can also be a directory with yaml files in them.
-
+        logfile : str
+            Name of a log file.
         """
         self.name = experiment_name
         rdr, sites = get_radars(radar_files)
@@ -124,9 +127,11 @@ class Experiment(object):
         self.iline_chans = {}
         self.pline_chans = {}
         self.save_directory = save_directory
-
+        self.logfile = logfile
+        self.logger = None
         self.exp_start = None
         self.exp_end = None
+
 
         self.set_times(exp_start,exp_end)
         for isys, dlist in channels.items():
@@ -186,8 +191,6 @@ class Experiment(object):
             if new_exp_time!=self.exp_time:
                 self.exp_time = new_exp_time
                 warnings.warn("Updated the experiment time as new start and stop times were put in")
-
-
 
 
     def __make_seq_dict__(self):
@@ -271,7 +274,7 @@ class Experiment(object):
         return rdr_combos,combo_all,time_all
 
     def setup_channels(self, save_directory, start_time):
-        """Perform the set up of the drf channels
+        """Perform the set up of the drf channels.
 
         Parameters
         ----------
@@ -280,15 +283,18 @@ class Experiment(object):
         start_time :
             Start time of the folder as datetime (if in ISO8601 format: 2016-01-01T15:24:00Z) or Unix time (if float/int). (default: start ASAP)
         """
+
         # Write Tx channels
         for ikey, itx in self.tx_chans.items():
             itx.makedrf(save_directory, start_time)
 
         for ikey, iil in self.iline_chans.items():
             iil.makedrf(save_directory, start_time)
+            iil.makedmd(save_directory)
         for ikey, ipl in self.pline_chans.items():
             ipl.makedrf(save_directory, start_time)
 
+        self.logger = setuplog(self.logfile,save_directory)
     def close_channels(self):
         """This will close out the digital RF channels."""
         for ikey, itx in self.tx_chans.items():
@@ -363,13 +369,55 @@ class Channel(object):
         self.uuid = uuid
         self.num_subchannels = num_subchannels
         self.drf_out = None
-        self.metadata=[]
-    def makedmd(self,outdir,start_time):
-        """
+        self.mdlist=metadata
+        self.metadata = None
+
+    def makedmd(self,outdir):
+        """Create digital metadata folders and channels.
+
+        Parameters
+        ----------
+        outdir : str
+            The overall output directory where the metadata channels will be saved.
+
+
         """
         outpath = Path(outdir).expanduser()
-        drfname = outpath.joinpath(self.name)
-        sr = self.sr
+        md_all = []
+        for idmd in self.mdlist:
+
+            dmd_folder = outpath.joinpath(idmd['folder_name'])
+            if dmd_folder.exists():
+                shutil.rmtree(str(dmd_folder))
+            dmd_folder.mkdir(parents=True)
+            sr = self.sr
+            sub_dir_cad = 3600
+            file_cad_sec = 60
+            dmd_obj = drf.DigitalMetadataWriter(
+                str(dmd_folder), sub_dir_cad, file_cad_sec, sr.numerator, sr.denominator, idmd['name']
+            )
+            md_all.append((idmd['dmd_type'],dmd_obj))
+        self.metadata = md_all
+
+    def writedmd(self,id_meta):
+        """Metadata write function. HACK: Currently only does id metadata
+
+        Parameters
+        ----------
+        id_meta : dict
+            Dictionary holding sweepid, sweepnum, index, modeid.
+        """
+
+        indx = id_meta['index']
+        del id_meta['index']
+        sr = int(self.sr)
+        id_meta['sample_rate'] = np.ones_like(indx)*sr
+        for imtup in self.metadata:
+            if imtup[0].lower()=='id':
+                imtup[1].write(indx, id_meta)
+
+
+
 
     def makedrf(self, outdir, start_time):
         """Creates the digital rf dataset folders for the channel.

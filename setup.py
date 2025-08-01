@@ -7,7 +7,7 @@ This is the setup file for the SimISR python package
 """
 with open("requirements.txt") as f:
     req = f.read().splitlines()
-# req = ['ISRSpectrum', "mitarspysigproc",'nose', 'six', 'numpy', 'scipy', 'matplotlib', 'pyyaml', 'pandas', 'digital_rf', "xarray"]
+
 
 from setuptools import setup, find_packages
 
@@ -19,10 +19,6 @@ config = {
     "install_requires": req,
     "setup_requires": req,
     "python_requires": ">=3.6",
-    "dependency_links": [
-        "https://github.com/jswoboda/ISRSpectrum/tarball/main#egg=ISRSpectrum-999.0",
-        "https://github.com/MIT-Adaptive-Radio-Science/sigprocpython/tarball/main#egg=repo-1.0.0",
-    ],
     "packages": find_packages(),
     "name": "SimISR",
 }

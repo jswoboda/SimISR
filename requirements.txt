@@ -9,4 +9,4 @@ xarray
 yamale
 mitarspysigproc
 digital_rf
-ISRSpectrum
+isrspectrum

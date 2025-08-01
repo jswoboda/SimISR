@@ -13,6 +13,10 @@ channels:
       sample_rate_numerator: 1000000
       sample_rate_denominator: 1
       is_complex: True
+      metadata:
+        - folder_name: metadata/id
+          dmd_type: id
+          name: id
       numtype: complex64
       radardatatype: ionline
       uuid: SIMISRMHRzlow
@@ -27,4 +31,4 @@ sequence:
     pulsecodes: [300]
 
 sequence_order: [45]
-exp_time: 100
+exp_time: 3600

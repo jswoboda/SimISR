@@ -1,5 +1,6 @@
 experiment_name: str()
 save_directory: str(required=False)
+logfile: str(required=False)
 sequence: list(include('seqobj'))
 sequence_order: list(int())
 channels: map(list(include('channelobj')),key=str())
@@ -33,4 +34,5 @@ channelobj:
 
 metadataobj:
   folder_name: str()
-  type: str()
+  dmd_type: str()
+  name: str()

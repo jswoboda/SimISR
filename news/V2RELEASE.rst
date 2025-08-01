@@ -1,18 +1,20 @@
 **Added:**
 
-* New radars added to existing_radars
+* New radars added to existing_radars.
+* New ways of saving metadata, using digital metadata.
 
 **Changed:**
 
 * All data is output via Digital RF.
+* Logging is now done through direct files.
 
 **Deprecated:**
 
-* Processing code has moved to different repository.
+* <news item>
 
 **Removed:**
 
-* <news item>
+* Processing code has moved to different repository.
 
 **Fixed:**
 

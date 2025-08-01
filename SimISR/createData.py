@@ -7,7 +7,7 @@ This file holds the RadarData class that hold the radar data and processes it.
 @author: John Swoboda
 
 """
-
+import ipdb
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
@@ -245,25 +245,38 @@ class RadarDataCreate(object):
         chan_obj = self.experiment.iline_chans[ichan_name]
         # Sample rate data will be saved at.
         sr_save = chan_obj.sr
+        ns2save = int(1e9 / sr_save)
         ds_fac = int(sr_save / sr_create)
         nlevel = sc.k * float(sr_save) * rx_obj.tsys
         clevel = sc.k * float(sr_save) * rx_obj.cal_temp
 
+        t_pos = tall+st_dt.value
+        t_ind = t_pos//ns2save
         # HACK number of lpc points connected to ratio of sampling frequency and
         # notial ion-line spectra with a factor of 10.
         nlpc = int(10 * sr_create / 20e3) + 1
         comboarr = rdr_cmb[rx_name]["rx"]
-        pulse_perwrite = 200000
+        pulse_perwrite = 2000
         tstart = np.arange(0, len(cmball), pulse_perwrite)
         tstop = np.roll(tstart, -1)
         tstop[-1] = len(cmball)
         outlist = []
         ord_list = []
         #
-        for ist, iend in zip(tstart, tstop):
+        #
+        c_str = "Writting channel {0} data to {1}"
+        c_strout = c_str.format(ichan_name, chan_obj.drf_out.directory)
+        self.experiment.logger.info(c_strout)
+        progstr1 = "Data written, {:d} of {:d} now being created."
+        nwrite = len(tstart)
+        for iwrite, (ist, iend) in enumerate(zip(tstart, tstop)):
             curcmball = cmball[ist:iend]
             cur_tq = tall_q[ist:iend]
-
+            cur_t_ind = t_ind[ist:iend]
+            idnames = ['index','modeid', 'sweepid', 'sweepnum']
+            n_w = len(curcmball)
+            id_meta = {iname:np.zeros(n_w,dtype=np.int64) for iname in idnames}
+            self.experiment.logger.info(progstr1.format(iwrite,nwrite))
             for cur_comb in comboarr:
                 cur_pidx = np.where(curcmball == cur_comb)[0]
                 pl = len(cur_pidx)
@@ -273,6 +286,8 @@ class RadarDataCreate(object):
                 bco = seq_info["bco"]
                 pcodes = seq_info["pcode"]
                 seq_num = seq_info["seq"]
+                pnum = seq_info['pnum']
+
                 seq_obj = self.experiment.codes[seq_num]
 
                 rx_log = np.logical_and(
@@ -280,12 +295,21 @@ class RadarDataCreate(object):
                 )
 
                 rx_rdr = np.where(rx_log)[0][0]
+
+
+
                 cur_rx_pcode = pcodes[rx_rdr]
+
                 rx_pobj = seq_obj.pulseseq[cur_rx_pcode]
+                # fill in metadata
+                # for the id_meta need index,modeid(sequence code), sweepid(pulsecode), sweepnum (pulsenum)
+                id_meta['index'][cur_pidx] = cur_t_ind[cur_pidx]
+                id_meta['modeid'][cur_pidx] = seq_num
+                id_meta['sweepid'][cur_pidx] = cur_rx_pcode
+                id_meta['sweepnum'][cur_pidx] = pnum[rx_rdr]
 
                 # get the rx raster
                 rst = self.experiment.seq_info[cur_comb]["rasters"][rx_rdr]
-                ns2save = int(1e9 / sr_save)
                 # create the timing vectors for the pulse in ns and then down sample appropriately.
 
                 fasttime_sig = np.arange(*rst["signal"])[::ns2save]
@@ -391,7 +415,7 @@ class RadarDataCreate(object):
             out_2 = [outlist[ind] for ind in sort_idx]
             outdata = np.concatenate(out_2, axis=0)
             chan_obj.drf_out.rf_write(outdata.astype(chan_obj.numtype))
-
+            chan_obj.writedmd(id_meta)
         # write out the Tx channels
         # for irdr, chan_dict in self.radar2chans.items():
         #     tx_chans  = chan_dict['txpulse']
