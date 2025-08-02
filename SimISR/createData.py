@@ -260,8 +260,7 @@ class RadarDataCreate(object):
         tstart = np.arange(0, len(cmball), pulse_perwrite)
         tstop = np.roll(tstart, -1)
         tstop[-1] = len(cmball)
-        outlist = []
-        ord_list = []
+
         #
         #
         c_str = "Writting channel {0} data to {1}"
@@ -270,6 +269,8 @@ class RadarDataCreate(object):
         progstr1 = "Data written, {:d} of {:d} now being created."
         nwrite = len(tstart)
         for iwrite, (ist, iend) in enumerate(zip(tstart, tstop)):
+            outlist = []
+            ord_list = []
             curcmball = cmball[ist:iend]
             cur_tq = tall_q[ist:iend]
             cur_t_ind = t_ind[ist:iend]
@@ -416,6 +417,7 @@ class RadarDataCreate(object):
             outdata = np.concatenate(out_2, axis=0)
             chan_obj.drf_out.rf_write(outdata.astype(chan_obj.numtype))
             chan_obj.writedmd(id_meta)
+            del outdata
         # write out the Tx channels
         # for irdr, chan_dict in self.radar2chans.items():
         #     tx_chans  = chan_dict['txpulse']

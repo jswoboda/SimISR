@@ -212,8 +212,12 @@ def iri_tp_to_simisr(iri_prof, coord_vecs):
             idict[iname] = (dims, iitem["data"])
 
     xrout = xr.Dataset(idict, coords=coords, attrs=attrs)
-    xrout = xrout.drop_vars(["glat", "glon"])
-    xrout = xrout.assign_coords(time=pd.DatetimeIndex(xrout.time.data))
+    if "glat" in xrout:
+        xrout.drop_vars(["glat"])
+    if "glon" in xrout:
+        xrout.drop_vars(["glon"])
+
+    xrout = xrout.assign_coords(time=pd.DatetimeIndex(xrout.time.data,tz=pytz.utc))
     return xrout
 
 
@@ -249,12 +253,17 @@ def run_full(expfile, test_dir):
 
     """
     utc_tz = pytz.timezone("UTC")
-    st = datetime.fromisoformat("2020-01-01T15:24:00").replace(tzinfo=utc_tz)
-    et = datetime.fromisoformat("2020-01-01T17:24:00").replace(tzinfo=utc_tz)
-    t_step = timedelta(hours=1)
-    exp_obj = experiment_setup(expfile, test_dir, st.strftime("%Y%m%dT%H%M%SZ"))
+    st_str = "2024-11-17T15:24:00"
+    et_str = "2024-11-17T17:24:00"
+    t_2020 = .1
+    st = datetime.fromisoformat(st_str).replace(tzinfo=utc_tz)
+    et = datetime.fromisoformat(et_str).replace(tzinfo=utc_tz)
+    t_step = timedelta(minutes=5)
+    exp_obj = experiment_setup(expfile, test_dir, st.strftime("%Y-%m-%dT%H%M%SZ"))
     iri2016_data = example_iri2016(st, et, t_step)
-    i_ds = iri_to_MHz(iri2016_data)
+    iri2020_data = example_iri2020(st_str, et_str, t_2020)
+    i_ds = iri_to_MHz(iri2020_data)
+
     attrs = i_ds.attrs
     spec_ds = create_spectrum(i_ds)
     rdr = RadarDataCreate(exp_obj, test_dir)
@@ -270,7 +279,7 @@ if __name__ == "__main__":
     curfile = Path(__file__)
     expfile = str(curfile.parent.parent.joinpath("config", "experiments", "mhzexp.yml"))
 
-    test_dir = "/Users/swoboj/DATA/SimISR/version2tests/iri2016"
+    test_dir = "/Users/swoboj/DATA/SimISR/version2tests/iri2020"
     print(f"Experiment file: {expfile}")
     print(f"Output directory: {test_dir}")
     run_full(expfile, test_dir)

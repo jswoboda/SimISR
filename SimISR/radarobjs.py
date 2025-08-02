@@ -273,7 +273,7 @@ class Experiment(object):
 
         return rdr_combos,combo_all,time_all
 
-    def setup_channels(self, save_directory, start_time):
+    def setup_channels(self, save_directory, start_time=None):
         """Perform the set up of the drf channels.
 
         Parameters
@@ -995,16 +995,7 @@ class PulseSequence(object):
         else:
             self.txorrx = txorrx
 
-        if isinstance(pulsefolders, str):
-            pulsefolders = [pulsefolders]
-        pulsefolders = [Path(i) for i in pulsefolders]
-
-        mod_path = Path(__file__).expanduser().parent.parent
-        ppath = mod_path.joinpath("config", "pulse_files")
-        pulsefolders.insert(0, ppath)
-
-        pdict_all = {}
-
+        pdict_all = get_pulse_times(pulsefolders)
 
         if isinstance(pulsecodes[0], list):
             allcodes = sum(pulsecodes, [])
@@ -1020,15 +1011,6 @@ class PulseSequence(object):
 
         self.pulsecodes = fullcodes
 
-        for ifold in pulsefolders:
-            # Use both the yml or yaml extention
-            plist = list(ifold.glob("*.y*ml"))
-
-            for ifile in plist:
-                #                p_dict = read_from_yamle(str(ifile),str(schemafile))
-                p_dict = read_config_yaml(str(ifile), "pulse")
-                cur_pulse = PulseTime(**p_dict)
-                pdict_all[cur_pulse.code] = cur_pulse
         self.pulseseq = {icode: pdict_all[icode] for icode in ucodes}
 
         if isinstance(beamcodes[0], list):
@@ -1176,6 +1158,41 @@ class PulseSequence(object):
             totnano+=n_nano
 
         return totnano,time_vec
+
+def get_pulse_times(pulsefolders=[]):
+    """Exposes method to get dictionary of Pulse Time objects for other processing.
+
+    Parameters
+    ----------
+    pulsefolders : list
+        List of folders that have pulse yaml files. Can overload with different pulse files.
+
+    Returns
+    -------
+    pdict_all : dict
+        Dictionary where keys are the pulse code and the value is the PulseTime object.
+
+    """
+    if isinstance(pulsefolders, str):
+        pulsefolders = [pulsefolders]
+    pulsefolders = [Path(i) for i in pulsefolders]
+
+    mod_path = Path(__file__).expanduser().parent.parent
+    ppath = mod_path.joinpath("config", "pulse_files")
+    pulsefolders.insert(0, ppath)
+
+    pdict_all = {}
+
+    for ifold in pulsefolders:
+        # Use both the yml or yaml extention
+        plist = list(ifold.glob("*.y*ml"))
+
+        for ifile in plist:
+
+            p_dict = read_config_yaml(str(ifile), "pulse")
+            cur_pulse = PulseTime(**p_dict)
+            pdict_all[cur_pulse.code] = cur_pulse
+    return pdict_all
 
 class PulseTime(object):
     """Holds information for each pulse mainly timing, in nanoseconds.
