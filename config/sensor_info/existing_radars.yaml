@@ -179,7 +179,7 @@ radars:
     site: arecibo
     antennaparmaeters:
       rad: 150
-    notes: dual beam ; limited TX bandwidth
+    notes: dual beam ; limited TX bandwidth RIP
 
   - name: sondrestrom
     ant_type: circ
