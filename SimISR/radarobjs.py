@@ -283,6 +283,9 @@ class Experiment(object):
         start_time :
             Start time of the folder as datetime (if in ISO8601 format: 2016-01-01T15:24:00Z) or Unix time (if float/int). (default: start ASAP)
         """
+        self.logger = setuplog(self.logfile,save_directory)
+        if self.save_directory != save_directory:
+            self.save_directory = save_directory
 
         # Write Tx channels
         for ikey, itx in self.tx_chans.items():
@@ -294,7 +297,7 @@ class Experiment(object):
         for ikey, ipl in self.pline_chans.items():
             ipl.makedrf(save_directory, start_time)
 
-        self.logger = setuplog(self.logfile,save_directory)
+
     def close_channels(self):
         """This will close out the digital RF channels."""
         for ikey, itx in self.tx_chans.items():

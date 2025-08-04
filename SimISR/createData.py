@@ -197,7 +197,7 @@ class RadarDataCreate(object):
         phys_xr = xr.Dataset(idict, coords=coords_dict, attrs=attrs)
         return phys_xr
 
-    def write_chan(self, sp_obj, phys_ds, rx_name, ichan_name, log_func=print):
+    def write_chan(self, sp_obj, phys_ds, rx_name, ichan_name):
         """Writes out channel of data over the whole expeirment for a single channel.
 
         Parameters
@@ -234,7 +234,7 @@ class RadarDataCreate(object):
         end_dt = self.experiment.exp_end
 
         # Normalize everything to the beginning of the experiment.
-        tvec_norm = spec_ds.coords["time"].data - st_dt
+        tvec_norm = coords["time"].data - st_dt
         # This is an overly clever way of finding things that are inbetween different data points.
         tall_q = np.digitize(tall, tvec_norm.astype(tall.dtype)) - 1
 

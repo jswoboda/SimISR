@@ -106,6 +106,10 @@ def example_iri2020(t_st, t_end, t_step):
     # t_end = "2020-06-01T02:00:00"
     # t_step = 1.0
 
+
+        # latitude: 9.39538
+        # longitude: 167.479181
+        # altitude: 2.0
     alt_km_range = (100, 1000, 2.0)
     glat = 42.6195
     glon = -71.49173

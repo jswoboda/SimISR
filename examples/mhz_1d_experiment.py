@@ -9,47 +9,47 @@ from SimISR.testfunctions import chapman_func, temp_profile
 from SimISR import make_iline_specds
 from SimISR.CoordTransforms import sphereical2Cartisian
 
-from SimISR import RadarDataCreate
+from SimISR import RadarDataCreate,experiment_setup,experiment_close,run_exp
 
 
-def experiment_setup(exp_file, test_dir, start_time):
-    """Sets Gets the experiment set up but doing some quick editing of the example experiment file.
+# def experiment_setup(exp_file, test_dir, start_time):
+#     """Sets Gets the experiment set up but doing some quick editing of the example experiment file.
 
-    Parameters
-    ----------
-    exp_file : str
-        Name of the experiment file used as the prototype.
-    test_dir : str
-        Location of the directory.
-    start_time : str
-        ISO time string.
+#     Parameters
+#     ----------
+#     exp_file : str
+#         Name of the experiment file used as the prototype.
+#     test_dir : str
+#         Location of the directory.
+#     start_time : str
+#         ISO time string.
 
-    Returns
-    -------
-    exp_obj : SimISR.Experiment
-        Experiment class object.
-    """
+#     Returns
+#     -------
+#     exp_obj : SimISR.Experiment
+#         Experiment class object.
+#     """
 
-    exp_1 = read_config_yaml(exp_file, "experiment")
+#     exp_1 = read_config_yaml(exp_file, "experiment")
 
-    # add the starttime
-    exp_1["exp_start"] = start_time
-    exp_obj = Experiment(**exp_1)
-    exp_obj.setup_channels(test_dir, start_time)
+#     # add the starttime
+#     exp_1["exp_start"] = start_time
+#     exp_obj = Experiment(**exp_1)
+#     exp_obj.setup_channels(test_dir, start_time)
 
-    return exp_obj
+#     return exp_obj
 
 
-def experiment_close(exp_obj):
-    """Closes the files at the end of the experiment.
+# def experiment_close(exp_obj):
+#     """Closes the files at the end of the experiment.
 
-    Parameters
-    ----------
-    exp_obj : SimISR.Experiment
-        Experiment class object to be closed.
-    """
+#     Parameters
+#     ----------
+#     exp_obj : SimISR.Experiment
+#         Experiment class object to be closed.
+#     """
 
-    exp_obj.close_channels()
+#     exp_obj.close_channels()
 
 
 def example_ionosphere(coords):
