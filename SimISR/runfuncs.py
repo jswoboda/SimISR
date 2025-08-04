@@ -27,7 +27,9 @@ def experiment_setup(exp_file, test_dir, start_time=None, end_time=None):
     # add the starttime
     exp_obj = Experiment(**exp_1)
     exp_obj.set_times(start_time, end_time)
-    exp_obj.setup_channels(test_dir)
+    if start_time is None:
+        start_time = exp_obj.exp_start
+    exp_obj.setup_channels(test_dir,start_time)
 
     return exp_obj
 

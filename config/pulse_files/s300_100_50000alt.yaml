@@ -1,0 +1,39 @@
+code: 568
+name: s300_100_50000alt
+pulsetype: uncoded
+baudlen: 100000
+nbauds: 3
+raster:
+  blank:
+    - 0
+    - 540000
+  calibration:
+    - 48180000
+    - 48810000
+  clutter:
+    - 540000
+    - 1100000
+  full:
+    - 0
+    - 50000000
+  noise:
+    - 47180000
+    - 48180000
+  signal:
+    - 1100000
+    - 7180000
+  tx:
+    - 0
+    - 480000
+  txnoise:
+    - 47180000
+    - 48180000
+bauds:
+  real:
+    - 1
+    - 1
+    - 1
+  imag:
+    - 0
+    - 0
+    - 0

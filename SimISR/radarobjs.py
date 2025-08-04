@@ -273,7 +273,7 @@ class Experiment(object):
 
         return rdr_combos,combo_all,time_all
 
-    def setup_channels(self, save_directory, start_time=None):
+    def setup_channels(self, save_directory, start_time):
         """Perform the set up of the drf channels.
 
         Parameters

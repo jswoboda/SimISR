@@ -6,50 +6,12 @@ import pytz
 import numpy as np
 import xarray as xr
 import pandas as pd
-from SimISR import Experiment, read_config_yaml
 from SimISR import make_iline_specds
 from SimISR.CoordTransforms import sphereical2Cartisian
 
-from SimISR import RadarDataCreate
-
-def experiment_setup(exp_file, test_dir, start_time):
-    """Sets Gets the experiment set up but doing some quick editing of the example experiment file.
-
-    Parameters
-    ----------
-    exp_file : str
-        Name of the experiment file used as the prototype.
-    test_dir : str
-        Location of the directory.
-    start_time : str
-        ISO time string.
-
-    Returns
-    -------
-    exp_obj : SimISR.Experiment
-        Experiment class object.
-    """
-
-    exp_1 = read_config_yaml(exp_file, "experiment")
-
-    # add the starttime
-    exp_1["exp_start"] = start_time
-    exp_obj = Experiment(**exp_1)
-    exp_obj.setup_channels(test_dir, start_time)
-
-    return exp_obj
+from SimISR import experiment_setup,experiment_close,run_exp
 
 
-def experiment_close(exp_obj):
-    """Closes the files at the end of the experiment.
-
-    Parameters
-    ----------
-    exp_obj : SimISR.Experiment
-        Experiment class object to be closed.
-    """
-
-    exp_obj.close_channels()
 
 
 def example_iri2016(t_st, t_end, t_step):
@@ -264,17 +226,24 @@ def run_full(expfile, test_dir):
     et = datetime.fromisoformat(et_str).replace(tzinfo=utc_tz)
     t_step = timedelta(minutes=5)
     exp_obj = experiment_setup(expfile, test_dir, st.strftime("%Y-%m-%dT%H%M%SZ"))
-    iri2016_data = example_iri2016(st, et, t_step)
+    # iri2016_data = example_iri2016(st, et, t_step)
     iri2020_data = example_iri2020(st_str, et_str, t_2020)
+    test_path = Path(test_dir)
+    iri2020_data.to_netcdf(str(test_path.joinpath("iri_out.h5")))
     i_ds = iri_to_MHz(iri2020_data)
 
-    attrs = i_ds.attrs
     spec_ds = create_spectrum(i_ds)
-    rdr = RadarDataCreate(exp_obj, test_dir)
-    phys_ds = rdr.spatial_set_up(spec_ds.coords, attrs["originlla"])
-    rx_name = "millstone_zenith"
-    chan_name = "millstone_zenith-zenith-l"
-    rdr.write_chan(spec_ds, phys_ds, rx_name, chan_name)
+    i_ds_cp = i_ds.copy()
+    t1 = i_ds_cp['time'].data
+    i_ds_cp = i_ds_cp.assign_coords(time=t1.tz_localize(None))
+    i_ds_cp.to_netcdf(str(test_path.joinpath("ionoparams.nc")))
+
+    run_exp(exp_obj,spec_ds)
+    spec_ds_cp = spec_ds.copy()
+    t1 = spec_ds_cp['time'].data
+    spec_ds_cp = spec_ds_cp.assign_coords(time=t1.tz_localize(None))
+    spec_ds_cp.to_netcdf(str(test_path.joinpath("spectrum.nc")))
+
     experiment_close(exp_obj)
 
 
@@ -282,8 +251,8 @@ if __name__ == "__main__":
 
     curfile = Path(__file__)
     expfile = str(curfile.parent.parent.joinpath("config", "experiments", "mhzexp.yml"))
-
-    test_dir = "/Users/swoboj/DATA/SimISR/version2tests/iri2020"
+    test_path = Path("~/DATA/SimISR/version2tests/iri2020")
+    test_dir = str(test_path.expanduser())
     print(f"Experiment file: {expfile}")
     print(f"Output directory: {test_dir}")
     run_full(expfile, test_dir)

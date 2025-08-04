@@ -4,52 +4,13 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 import pandas as pd
-from SimISR import Experiment, read_config_yaml
 from SimISR.testfunctions import chapman_func, temp_profile
 from SimISR import make_iline_specds
 from SimISR.CoordTransforms import sphereical2Cartisian
 
-from SimISR import RadarDataCreate,experiment_setup,experiment_close,run_exp
+from SimISR import experiment_setup,experiment_close,run_exp
 
 
-# def experiment_setup(exp_file, test_dir, start_time):
-#     """Sets Gets the experiment set up but doing some quick editing of the example experiment file.
-
-#     Parameters
-#     ----------
-#     exp_file : str
-#         Name of the experiment file used as the prototype.
-#     test_dir : str
-#         Location of the directory.
-#     start_time : str
-#         ISO time string.
-
-#     Returns
-#     -------
-#     exp_obj : SimISR.Experiment
-#         Experiment class object.
-#     """
-
-#     exp_1 = read_config_yaml(exp_file, "experiment")
-
-#     # add the starttime
-#     exp_1["exp_start"] = start_time
-#     exp_obj = Experiment(**exp_1)
-#     exp_obj.setup_channels(test_dir, start_time)
-
-#     return exp_obj
-
-
-# def experiment_close(exp_obj):
-#     """Closes the files at the end of the experiment.
-
-#     Parameters
-#     ----------
-#     exp_obj : SimISR.Experiment
-#         Experiment class object to be closed.
-#     """
-
-#     exp_obj.close_channels()
 
 
 def example_ionosphere(coords):
@@ -194,13 +155,10 @@ def run_full(expfile, test_dir):
     start_time = "2024-01-01T15:24:00Z"
     exp_obj = experiment_setup(expfile, test_dir, start_time)
     i_ds = example_xr1d_zenith()
-    attrs = i_ds.attrs
     spec_ds = create_spectrum(i_ds)
-    rdr = RadarDataCreate(exp_obj, test_dir)
-    phys_ds = rdr.spatial_set_up(spec_ds.coords, attrs["originlla"])
-    rx_name = "millstone_zenith"
-    chan_name = "millstone_zenith-zenith-l"
-    rdr.write_chan(spec_ds, phys_ds, rx_name, chan_name)
+
+    run_exp(exp_obj,spec_ds)
+
     experiment_close(exp_obj)
 
 
@@ -209,7 +167,7 @@ if __name__ == "__main__":
     curfile = Path(__file__)
     expfile = str(curfile.parent.parent.joinpath("config", "experiments", "mhzexp.yml"))
 
-    test_dir = "/Users/swoboj/DATA/SimISR/version2tests/experimentclass"
+    test_dir = "~/DATA/SimISR/version2tests/experimentclass"
     print(f"Experiment file: {expfile}")
     print(f"Output directory: {test_dir}")
     run_full(expfile, test_dir)
