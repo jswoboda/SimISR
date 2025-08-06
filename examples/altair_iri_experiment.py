@@ -73,10 +73,10 @@ def example_iri2020(t_st, t_end, t_step):
         # longitude: 167.479181
         # altitude: 2.0
     alt_km_range = (100, 1000, 2.0)
-    glat = 42.6195
-    glon = -71.49173
+    glat = 9.39538
+    glon = 167.479181
     sim = time_profile.main((t_st, t_end, t_step), alt_km_range, glat, glon)
-    sim.attrs.update({"alt": 146.0})
+    sim.attrs.update({"alt": 2.0})
     return sim
 
 
@@ -89,8 +89,8 @@ def get_zenith_coords():
         xyz coordinates for the Millstone Hill Zenith antenna.
     """
     r_vec = np.arange(100, 1000, 2.0)
-    az_vec = np.array([178.0])
-    el_vec = np.array([88.0])
+    az_vec = np.array([320.0])
+    el_vec = np.array([85.0])
     (
         rm,
         am,
@@ -183,7 +183,7 @@ def iri_tp_to_simisr(iri_prof, coord_vecs):
     if "glon" in xrout:
         xrout.drop_vars(["glon"])
 
-
+    # xrout = xrout.assign_coords(time=pd.DatetimeIndex(xrout.time.data,tz=pytz.utc))
     return xrout
 
 
@@ -200,8 +200,8 @@ def create_spectrum(i_ds):
     ilineds : xarray.DataSet
         Holds the ion-line spectra.
     """
-    cf = 440.2e6
-    sf = 50e3
+    cf = 422.0e6
+    sf = 25e3
     nfft = int(2**10)
     f_vec = np.fft.fftshift(np.fft.fftfreq(nfft, d=1.0 / sf))
     spec_args = dict(centerFrequency=cf, sampfreq=sf, f=f_vec)
@@ -219,24 +219,27 @@ def run_full(expfile, test_dir):
 
     """
     utc_tz = pytz.timezone("UTC")
-    st_str = "2024-11-17T15:24:00"
-    et_str = "2024-11-17T17:24:00"
+    st_str = "2024-11-17T04:30:00"
+    et_str = "2024-11-17T09:00:00"
     t_2020 = .1
+
+
     st = datetime.fromisoformat(st_str).replace(tzinfo=utc_tz)
     et = datetime.fromisoformat(et_str).replace(tzinfo=utc_tz)
     t_step = timedelta(minutes=5)
     exp_obj = experiment_setup(expfile, test_dir, st.strftime("%Y-%m-%dT%H%M%SZ"))
-    # iri2016_data = example_iri2016(st, et, t_step)
+    iri2016_data = example_iri2016(st, et, t_step)
     iri2020_data = example_iri2020(st_str, et_str, t_2020)
     test_path = Path(test_dir)
-    iri2020_data.to_netcdf(str(test_path.joinpath("iri_out.h5")))
+    iri2020_data.to_netcdf(str(test_path.joinpath("iri_out.nc")))
     i_ds = iri_to_MHz(iri2020_data)
-
-    spec_ds = create_spectrum(i_ds)
     i_ds.to_netcdf(str(test_path.joinpath("ionoparams.nc")))
 
-    run_exp(exp_obj,spec_ds)
+
+    spec_ds = create_spectrum(i_ds)
     spec_ds.to_netcdf(str(test_path.joinpath("spectrum.nc")))
+
+    run_exp(exp_obj,spec_ds)
 
     experiment_close(exp_obj)
 
@@ -244,8 +247,9 @@ def run_full(expfile, test_dir):
 if __name__ == "__main__":
 
     curfile = Path(__file__)
-    expfile = str(curfile.parent.parent.joinpath("config", "experiments", "mhzexp.yml"))
-    test_path = Path("~/DATA/SimISR/version2tests/iri2020")
+    expfile = str(curfile.parent.parent.joinpath("config", "experiments", "altaiririuncoded.yml"))
+
+    test_path = Path("~/DATA/SimISR/version2tests/altaiririuc")
     test_dir = str(test_path.expanduser())
     print(f"Experiment file: {expfile}")
     print(f"Output directory: {test_dir}")

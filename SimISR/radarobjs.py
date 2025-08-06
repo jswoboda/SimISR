@@ -373,7 +373,7 @@ class Channel(object):
         self.num_subchannels = num_subchannels
         self.drf_out = None
         self.mdlist=metadata
-        self.metadata = None
+        self.metadata = []
 
     def makedmd(self,outdir):
         """Create digital metadata folders and channels.
@@ -382,7 +382,6 @@ class Channel(object):
         ----------
         outdir : str
             The overall output directory where the metadata channels will be saved.
-
 
         """
         outpath = Path(outdir).expanduser()
@@ -418,8 +417,6 @@ class Channel(object):
         for imtup in self.metadata:
             if imtup[0].lower()=='id':
                 imtup[1].write(indx, id_meta)
-
-
 
 
     def makedrf(self, outdir, start_time):

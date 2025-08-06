@@ -88,7 +88,7 @@ radars:
     notes: Best guess on gain given antenna size
     cal_temp: 1689.21
     loss: 6.0
-    site: millstone
+    site: altair
     kmat_file: Altair_UHF_kmat.h5
     antennaparmaeters:
       rad: 23.0
@@ -112,7 +112,7 @@ radars:
     notes: Best guess on gain given antenna size
     cal_temp: 1689.21
     loss: 6.0
-    site: millstone
+    site: altair
     kmat_file: Altair_VHF_kmat.h5
     antennaparmaeters:
       rad: 23.0

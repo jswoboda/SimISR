@@ -92,6 +92,7 @@ class RadarDataCreate(object):
         # each sequence will have it's own spatial setup.
         rdr_objs = self.experiment.radarobjs
         # Go through each sequence
+        #
         for ixr, iseq in self.experiment.codes.items():
 
             # split up each radar
@@ -233,8 +234,10 @@ class RadarDataCreate(object):
         st_dt = self.experiment.exp_start
         end_dt = self.experiment.exp_end
 
+        # HACK! We're making the assumption here everything is in UTC! This line makes it explicit if we don't do this it we cna't compare the differnet time stamps properly. If it's explicit in the xarray datasets this creates a bunch of problems with saving the data.
+        time_ds = pd.DatetimeIndex(coords['time'].data,tz=pytz.utc)
         # Normalize everything to the beginning of the experiment.
-        tvec_norm = coords["time"].data - st_dt
+        tvec_norm = time_ds - st_dt
         # This is an overly clever way of finding things that are inbetween different data points.
         tall_q = np.digitize(tall, tvec_norm.astype(tall.dtype)) - 1
 
@@ -274,7 +277,7 @@ class RadarDataCreate(object):
             curcmball = cmball[ist:iend]
             cur_tq = tall_q[ist:iend]
             cur_t_ind = t_ind[ist:iend]
-            idnames = ['index','modeid', 'sweepid', 'sweepnum']
+            idnames = ['index','modeid', 'sweepid', 'sweepnum','beamcode']
             n_w = len(curcmball)
             id_meta = {iname:np.zeros(n_w,dtype=np.int64) for iname in idnames}
             self.experiment.logger.info(progstr1.format(iwrite,nwrite))
@@ -308,6 +311,7 @@ class RadarDataCreate(object):
                 id_meta['modeid'][cur_pidx] = seq_num
                 id_meta['sweepid'][cur_pidx] = cur_rx_pcode
                 id_meta['sweepnum'][cur_pidx] = pnum[rx_rdr]
+                id_meta["beamcode"][cur_pidx] = bco[rx_rdr]
 
                 # get the rx raster
                 rst = self.experiment.seq_info[cur_comb]["rasters"][rx_rdr]
