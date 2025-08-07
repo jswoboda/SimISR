@@ -249,6 +249,7 @@ class RadarDataCreate(object):
         # Sample rate data will be saved at.
         sr_save = chan_obj.sr
         ns2save = int(1e9 / sr_save)
+        ns2create = int(1e9/sr_create)
         ds_fac = int(sr_save / sr_create)
         nlevel = sc.k * float(sr_save) * rx_obj.tsys
         clevel = sc.k * float(sr_save) * rx_obj.cal_temp
@@ -316,8 +317,8 @@ class RadarDataCreate(object):
                 # get the rx raster
                 rst = self.experiment.seq_info[cur_comb]["rasters"][rx_rdr]
                 # create the timing vectors for the pulse in ns and then down sample appropriately.
-
-                fasttime_sig = np.arange(*rst["signal"])[::ns2save]
+                full_rast = [rst['clutter'][0],rst['signal'][1]]
+                fasttime_sig = np.arange(*full_rast)[::ns2save]
                 nsamp = rst["full"][1] // ns2save
                 sig_pos = fasttime_sig // ns2save
                 full_sig = np.arange(*rst["full"])[::ns2save]  # pulse pulse
@@ -325,7 +326,7 @@ class RadarDataCreate(object):
                 cal_sam = cal_sig // (ns2save)
                 ncal = (rst["calibration"][1] - rst["calibration"][0]) // ns2save
                 fast_time_cr = fasttime_sig[::ds_fac]
-
+                ns_create = len(fast_time_cr)
                 rx_rng = fast_time_cr * sc.c * 1e-9 * 1e-3
                 rng_res = sc.c * 1e-9 * 1e-3 * ns2save * ds_fac
                 ft_res = 1e-9 * ns2save * ds_fac
@@ -407,8 +408,10 @@ class RadarDataCreate(object):
                 xout[:, cal_sam] += np.sqrt(clevel / 2) * (r_cal + 1j * i_cal)
                 # up sample the data
                 # This specific type of resampling keeps the power level the same without any sort of extra factors thrown in.
-                rawout = sig.resample(rawdata, len(rx_rng) * ds_fac, axis=1)
-                xout[:, sig_pos] += rawout
+                # HACK check the resampling makes sense
+                rawout = sig.resample(rawdata, ns_create*ds_fac, axis=1)
+
+                xout[:, sig_pos] += rawout[:,:len(sig_pos)]
                 # Now scale everything to be approximately at the noise level.
                 xout = xout / np.sqrt(nlevel / 2)
                 xlist = [i for i in xout]

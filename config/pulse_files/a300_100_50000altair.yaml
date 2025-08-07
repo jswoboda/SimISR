@@ -6,12 +6,12 @@ nbauds: 3
 raster:
   blank:
     - 0
-    - 540000
+    - 360000
   calibration:
     - 48180000
     - 48810000
   clutter:
-    - 540000
+    - 360000
     - 1100000
   full:
     - 0
