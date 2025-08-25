@@ -85,8 +85,7 @@ class RadarDataCreate(object):
         ksys_list = []
         bi_rng_list = []
         sp_loss_list = []
-        pair_num = 0
-        pair_dict = {}
+
         beam_ls_list = []
         dims = ["locs", "pairs"]
         # each sequence will have it's own spatial setup.
@@ -185,7 +184,9 @@ class RadarDataCreate(object):
         if "freqs" in coords_dict.keys():
             del coords_dict["freqs"]
         coords_dict["pairs"] = np.arange(spatial_code)
-        attrs = {"pairs": sp_setup}
+        pair_dict = {f"pair_{ip:06d}":plist for ip,plist in enumerate(sp_setup)}
+        attrs = pair_dict
+        #{"pairs": sp_setup}
         sp_all = np.column_stack(sp_loss_list)
         beam_all = np.column_stack(beam_ls_list)
         bis_rng_alls = np.column_stack(bi_rng_list)
@@ -240,8 +241,10 @@ class RadarDataCreate(object):
         tvec_norm = time_ds - st_dt
         # This is an overly clever way of finding things that are inbetween different data points.
         tall_q = np.digitize(tall, tvec_norm.astype(tall.dtype)) - 1
+        ptemp = phys_ds.attrs
+        pair_dict = {ipl:int(ik.split("_")[-1]) for ik, ipl in ptemp.items()}
+        #pair_dict = {ip: inum for inum, ip in enumerate(phys_ds.attrs["pairs"])}
 
-        pair_dict = {ip: inum for inum, ip in enumerate(phys_ds.attrs["pairs"])}
         spec_attrs = spec_ds.attrs
         # sample rate that the data will be created at.
         sr_create = Fraction(spec_attrs["sr_num"], spec_attrs["sr_den"])

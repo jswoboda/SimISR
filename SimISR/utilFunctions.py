@@ -97,16 +97,23 @@ def setuplog(logfile=None,datafolder=""):
     return logger
 
 def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'):
-    """Make the ambiguity function dictionary that holds the lag ambiguity and range ambiguity. Uses a sinc function weighted by a blackman window. Currently only set up for an uncoded pulse.
+    """Make the ambiguity function dictionary that holds the lag ambiguity and range ambiguity. Uses a sinc function weighted by a blackman window. Requires an increase in sampling frequency of approximately 20x the final sampling frequency of the data. Currently only set up for an uncoded pulse.
 
     Parameters
     ----------
     Fsorg : float
-        A scalar, the original sampling frequency in Hertz.
+        Start frequency that the ambiguity function will be created over.
     ds_list : list
         The list of upsamping steps between the original sampling rate and the rate of the ambiguity function.
-    nlags : int
-        The number of lags used.
+    pulse : ndarray
+        A numpy array of npulse x nsamp where npulse is the number of pulses in teh sequence and nsamp is the number of samples for the upsampled pulse.
+    spec : int
+        The number of samples used for the spectra/ACF that will have the ambiguity function applied to in the fit function. This should also be multiplied by the upsampling factor.
+    sweepid : list
+        A list of ints of the sweep id's of the sequence.
+    winname : str
+        The name of the window used when creating the ambiguity function.
+
 
     Returns
     -------
@@ -117,8 +124,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
 
     # come up with frequency response of filter from signal.decimate.
     # For default case use chebychev 1 order 8 and take the power of the
-    # original frequency response of each decmination filter because it is run as
-    # a zero phase filter using filtfilt.
+    # original frequency response of each decmination filter because it is run as a zero phase filter using filtfilt.
     # curds = 1
     m_up = np.prod(ds_list)
 
@@ -191,7 +197,7 @@ def make_amb(Fsorg, ds_list, pulse, nspec=128, sweepid = [300], winname='boxcar'
         Wtt[ilag] = np.roll(curwt, ilag*m_up, axis=1)
 
 
-    # make matrix for application of
+    # make matrix for application of the ambiguity function.
     imat = np.eye(nspec)
     tau = np.arange(-np.floor(nspec/2.), np.ceil(nspec/2.))*d_t
     tauint = delay
@@ -327,7 +333,7 @@ def spect2acf(omeg, spec, n_s=None):
     Parameters
     ----------
     omeg : ndarray
-        The frequency sampling vector
+        The frequency sampling vector in Hz
     spec : ndarray
         The spectrum array.
     n : :obj:`int`, optional,

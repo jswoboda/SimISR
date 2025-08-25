@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """This module holds a number of functions to help with running SimISR."""
+from pathlib import Path
 from .radarobjs import read_config_yaml, Experiment
 from .createData import RadarDataCreate
+from gc import set_debug
 
 
 def experiment_setup(exp_file, test_dir, start_time=None, end_time=None):
@@ -60,6 +62,9 @@ def run_exp(exp_obj, spec_ds):
     rdr = RadarDataCreate(exp_obj)
     phys_ds = rdr.spatial_set_up(spec_ds.coords, spec_ds.attrs["originlla"])
 
+    savepath = Path(exp_obj.save_directory)
+
+    phys_ds.to_netcdf(str(savepath.joinpath("phys_setup.nc")))
     chan_names = list(exp_obj.iline_chans.keys())
 
     for ichan in chan_names:
