@@ -170,7 +170,7 @@ class RadarDataCreate(object):
                         )
                         ksys_list.append(ksys_all)
                         # All of the spatial losses.
-                        sp_los = rngloss / (1 + cosalph)
+                        sp_los = rngloss*2 / (1 + cosalph)
                         sp_loss_list.append(sp_los)
                         # Bistatic range
                         bis_rng = r_coords_t + r_coords_r
