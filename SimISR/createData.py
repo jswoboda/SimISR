@@ -7,31 +7,33 @@ This file holds the RadarData class that hold the radar data and processes it.
 @author: John Swoboda
 
 """
-import ipdb
-from pathlib import Path
+
 from fractions import Fraction
+from pathlib import Path
+
+import ipdb
 import numpy as np
-import scipy.signal as sig
-import scipy.constants as sc
 import pandas as pd
 import pytz
+import scipy.constants as sc
+import scipy.signal as sig
 
 elec_radius = sc.e**2.0 * sc.mu_0 / (4.0 * sc.pi * sc.m_e)
 # My modules
-from .utilFunctions import MakePulseDataRepLPC, update_progress
 import digital_rf as drf
 import xarray as xr
-from .CoordTransforms import cartisian2Sphereical, wgs2ecef, ecef2enul
-
 from mitarspysigproc import (
-    pfb_decompose,
-    pfb_reconstruct,
     kaiser_coeffs,
     kaiser_syn_coeffs,
     npr_analysis,
     npr_synthesis,
+    pfb_decompose,
+    pfb_reconstruct,
     rref_coef,
 )
+
+from .CoordTransforms import cartisian2Sphereical, ecef2enul, wgs2ecef
+from .utilFunctions import MakePulseDataRepLPC, update_progress
 
 
 class RadarDataCreate(object):
@@ -49,6 +51,7 @@ class RadarDataCreate(object):
         Is this the first write.
 
     """
+
     def __init__(self, experiment, save_directory=None):
         self.experiment = experiment
 
@@ -85,6 +88,9 @@ class RadarDataCreate(object):
         ksys_list = []
         bi_rng_list = []
         sp_loss_list = []
+        vx_list = []
+        vy_list = []
+        vz_list = []
 
         beam_ls_list = []
         dims = ["locs", "pairs"]
@@ -93,7 +99,6 @@ class RadarDataCreate(object):
         # Go through each sequence
         #
         for ixr, iseq in self.experiment.codes.items():
-
             # split up each radar
             rdr_list = iseq.radarnames
             txrx = iseq.txorrx
@@ -122,6 +127,9 @@ class RadarDataCreate(object):
                     tx_beam = tx_rdr["radar"].antenna_func.calc_pattern(
                         az_coords, el_coords, az_tx[0], el_tx[0]
                     )
+                    vx_tn = newx / r_coords_t
+                    vy_tn = newy / r_coords_t
+                    vz_tn = newz / r_coords_t
                     for irx_el in rx_int:
                         rxname = rdr_list[irx_el]
                         rx_rdr = rdr_objs[rxname]
@@ -148,6 +156,12 @@ class RadarDataCreate(object):
                             az_coords, el_coords, az_rx[0], el_rx[0]
                         )
 
+                        vx_rn = newx / r_coords_r
+                        vy_rn = newy / r_coords_r
+                        vz_rn = newz / r_coords_r
+                        vx = vx_tn + vx_rn
+                        vy = vy_tn + vy_rn
+                        vz = vz_tn + vz_rn
                         r_tr2 = np.sum((txecef - rxecef) ** 2)
                         cosalph = (r_coords_t**2 + r_coords_r**2 - r_tr2) / (
                             2 * r_coords_t * r_coords_r
@@ -170,7 +184,7 @@ class RadarDataCreate(object):
                         )
                         ksys_list.append(ksys_all)
                         # All of the spatial losses.
-                        sp_los = rngloss*2 / (1 + cosalph)
+                        sp_los = rngloss * 2 / (1 + cosalph)
                         sp_loss_list.append(sp_los)
                         # Bistatic range
                         bis_rng = r_coords_t + r_coords_r
@@ -178,22 +192,31 @@ class RadarDataCreate(object):
                         # Beam pattern loss
                         beam_loss = tx_beam * rx_beam
                         beam_ls_list.append(beam_loss)
+                        vx_list.append(vx)
+                        vy_list.append(vy)
+                        vz_list.append(vz)
 
         coords_dict = dict(coordinates.variables)
         del coords_dict["time"]
         if "freqs" in coords_dict.keys():
             del coords_dict["freqs"]
         coords_dict["pairs"] = np.arange(spatial_code)
-        pair_dict = {f"pair_{ip:06d}":plist for ip,plist in enumerate(sp_setup)}
+        pair_dict = {f"pair_{ip:06d}": plist for ip, plist in enumerate(sp_setup)}
         attrs = pair_dict
-        #{"pairs": sp_setup}
+        # {"pairs": sp_setup}
         sp_all = np.column_stack(sp_loss_list)
         beam_all = np.column_stack(beam_ls_list)
         bis_rng_alls = np.column_stack(bi_rng_list)
+        vx_all = np.column_stack(vx_list)
+        vy_all = np.column_stack(vy_list)
+        vz_all = np.column_stack(vz_list)
         idict = {
             "sploss": (dims, sp_all),
             "beam_loss": (dims, beam_all),
             "bi_rng": (dims, bis_rng_alls),
+            "vx_mult": (dims, vx_all),
+            "vy_mult": (dims, vy_all),
+            "vz_mult": (dims, vz_all),
             "ksys": (("pairs"), np.array(ksys_list)),
         }
         phys_xr = xr.Dataset(idict, coords=coords_dict, attrs=attrs)
@@ -236,14 +259,14 @@ class RadarDataCreate(object):
         end_dt = self.experiment.exp_end
 
         # HACK! We're making the assumption here everything is in UTC! This line makes it explicit if we don't do this it we cna't compare the differnet time stamps properly. If it's explicit in the xarray datasets this creates a bunch of problems with saving the data.
-        time_ds = pd.DatetimeIndex(coords['time'].data,tz=pytz.utc)
+        time_ds = pd.DatetimeIndex(coords["time"].data, tz=pytz.utc)
         # Normalize everything to the beginning of the experiment.
         tvec_norm = time_ds - st_dt
         # This is an overly clever way of finding things that are inbetween different data points.
         tall_q = np.digitize(tall, tvec_norm.astype(tall.dtype)) - 1
         ptemp = phys_ds.attrs
-        pair_dict = {ipl:int(ik.split("_")[-1]) for ik, ipl in ptemp.items()}
-        #pair_dict = {ip: inum for inum, ip in enumerate(phys_ds.attrs["pairs"])}
+        pair_dict = {ipl: int(ik.split("_")[-1]) for ik, ipl in ptemp.items()}
+        # pair_dict = {ip: inum for inum, ip in enumerate(phys_ds.attrs["pairs"])}
 
         spec_attrs = spec_ds.attrs
         # sample rate that the data will be created at.
@@ -252,13 +275,13 @@ class RadarDataCreate(object):
         # Sample rate data will be saved at.
         sr_save = chan_obj.sr
         ns2save = int(1e9 / sr_save)
-        ns2create = int(1e9/sr_create)
+        ns2create = int(1e9 / sr_create)
         ds_fac = int(sr_save / sr_create)
         nlevel = sc.k * float(sr_save) * rx_obj.tsys
         clevel = sc.k * float(sr_save) * rx_obj.cal_temp
 
-        t_pos = tall+st_dt.value
-        t_ind = t_pos//ns2save
+        t_pos = tall + st_dt.value
+        t_ind = t_pos // ns2save
         # HACK number of lpc points connected to ratio of sampling frequency and
         # notial ion-line spectra with a factor of 10.
         nlpc = int(10 * sr_create / 20e3) + 1
@@ -281,10 +304,10 @@ class RadarDataCreate(object):
             curcmball = cmball[ist:iend]
             cur_tq = tall_q[ist:iend]
             cur_t_ind = t_ind[ist:iend]
-            idnames = ['index','modeid', 'sweepid', 'sweepnum','beamcode']
+            idnames = ["index", "modeid", "sweepid", "sweepnum", "beamcode"]
             n_w = len(curcmball)
-            id_meta = {iname:np.zeros(n_w,dtype=np.int64) for iname in idnames}
-            self.experiment.logger.info(progstr1.format(iwrite,nwrite))
+            id_meta = {iname: np.zeros(n_w, dtype=np.int64) for iname in idnames}
+            self.experiment.logger.info(progstr1.format(iwrite, nwrite))
             for cur_comb in comboarr:
                 cur_pidx = np.where(curcmball == cur_comb)[0]
                 pl = len(cur_pidx)
@@ -294,7 +317,7 @@ class RadarDataCreate(object):
                 bco = seq_info["bco"]
                 pcodes = seq_info["pcode"]
                 seq_num = seq_info["seq"]
-                pnum = seq_info['pnum']
+                pnum = seq_info["pnum"]
 
                 seq_obj = self.experiment.codes[seq_num]
 
@@ -304,27 +327,25 @@ class RadarDataCreate(object):
 
                 rx_rdr = np.where(rx_log)[0][0]
 
-
-
                 cur_rx_pcode = pcodes[rx_rdr]
 
                 rx_pobj = seq_obj.pulseseq[cur_rx_pcode]
                 # fill in metadata
                 # for the id_meta need index,modeid(sequence code), sweepid(pulsecode), sweepnum (pulsenum)
-                id_meta['index'][cur_pidx] = cur_t_ind[cur_pidx]
-                id_meta['modeid'][cur_pidx] = seq_num
-                id_meta['sweepid'][cur_pidx] = cur_rx_pcode
-                id_meta['sweepnum'][cur_pidx] = pnum[rx_rdr]
+                id_meta["index"][cur_pidx] = cur_t_ind[cur_pidx]
+                id_meta["modeid"][cur_pidx] = seq_num
+                id_meta["sweepid"][cur_pidx] = cur_rx_pcode
+                id_meta["sweepnum"][cur_pidx] = pnum[rx_rdr]
                 id_meta["beamcode"][cur_pidx] = bco[rx_rdr]
 
                 # get the rx raster
                 rst = self.experiment.seq_info[cur_comb]["rasters"][rx_rdr]
                 # create the timing vectors for the pulse in ns and then down sample appropriately.
-                full_rast = [rst['clutter'][0],rst['signal'][1]]
+                full_rast = [rst["clutter"][0], rst["signal"][1]]
                 fasttime_sig = np.arange(*full_rast)[::ns2save]
                 nsamp = rst["full"][1] // ns2save
                 sig_pos = fasttime_sig // ns2save
-                full_sig = np.arange(*rst["full"])[::ns2save]  # pulse pulse
+                full_sig = np.arange(*rst["full"])[::ns2save]  # Full IPP
                 cal_sig = np.arange(*rst["calibration"])[::ns2save]  # cal time
                 cal_sam = cal_sig // (ns2save)
                 ncal = (rst["calibration"][1] - rst["calibration"][0]) // ns2save
@@ -360,7 +381,7 @@ class RadarDataCreate(object):
                         phys_ds_cur_pair = phys_ds.isel(pairs=curpair)
                         sysw = phys_ds_cur_pair.ksys.data * ft_res * txp
                         bi_rng_data = phys_ds_cur_pair.bi_rng.data
-
+                        # Find the range gates that will have valid physical data associated with them. This sub-set is what will be interated over and have data created.
                         rx_rng_log = np.logical_and(
                             rx_rng >= bi_rng_data.min(),
                             rx_rng + rng_res < bi_rng_data.max(),
@@ -381,7 +402,7 @@ class RadarDataCreate(object):
                             pds = phys_ds.isel(pairs=curpair, locs=rng_locs)
                             scene = pds.beam_loss * pds.sploss
                             sds = spec_ds.isel(locs=rng_locs, time=iut)
-
+                            # Weight the spectra based off of the
                             spec_scen = scene * sds.iline
                             cur_spec = spec_scen.mean(dim="locs").data
                             rcs = scene * sds.rcs
@@ -412,9 +433,9 @@ class RadarDataCreate(object):
                 # up sample the data
                 # This specific type of resampling keeps the power level the same without any sort of extra factors thrown in.
                 # HACK check the resampling makes sense
-                rawout = sig.resample(rawdata, ns_create*ds_fac, axis=1)
+                rawout = sig.resample(rawdata, ns_create * ds_fac, axis=1)
 
-                xout[:, sig_pos] += rawout[:,:len(sig_pos)]
+                xout[:, sig_pos] += rawout[:, : len(sig_pos)]
                 # Now scale everything to be approximately at the noise level.
                 xout = xout / np.sqrt(nlevel / 2)
                 xlist = [i for i in xout]
@@ -519,6 +540,7 @@ def create_pline(
     return full_data_pfb
 
 
+# This is old code
 class RadarDataFile(object):
     """
     This class will will take the ionosphere class and create radar data both
@@ -699,10 +721,8 @@ class RadarDataFile(object):
         pmmobj = drf.DigitalMetadataWriter(str(pmdir), 3600, 5, 1, 1, "power")
         # differentiate between phased arrays and dish antennas
         if self.sensdict["Name"].lower() in ["risr", "pfisr", "risr-n"]:
-
             beams = np.tile(np.arange(N_angles), Npall // N_angles)
         else:
-
             # for dish arrays
             brate = self.simparams["beamrate"]
             beams2 = np.repeat(np.arange(N_angles), brate)
@@ -725,7 +745,6 @@ class RadarDataFile(object):
         Nf = len(filetimes)
 
         for ifn, ifilet in enumerate(filetimes):
-
             outdict = {}
             ifile = ionodict[ifilet]
             curcontainer = IonoContainer.readh5(ifile)
@@ -929,7 +948,6 @@ class RadarDataFile(object):
                 # print('\t\t Making Beam {0:d} of {1:d}'.format(ibn, n_beams))
                 weight = weights[ibn]
                 for isamp in np.arange(n_samps):
-
                     range_g = range_gates[isamp * ds_fac]
 
                     range_m = range_g * 1e3
@@ -1468,7 +1486,6 @@ def makedrf(
     uuid,
     num_subchannels,
 ):
-
     dtype_strs = {
         "complexint": np.dtype([("r", "<i2"), ("i", "<i2")]),
         "complexlong": np.dtype([("r", "<i4"), ("i", "<i4")]),

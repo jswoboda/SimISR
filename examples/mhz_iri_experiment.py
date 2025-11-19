@@ -6,10 +6,8 @@ import pytz
 import numpy as np
 import xarray as xr
 import pandas as pd
-from SimISR import make_iline_specds
+from SimISR import make_iline_specds, experiment_setup, experiment_close, run_exp
 from SimISR.CoordTransforms import sphereical2Cartisian
-
-from SimISR import experiment_setup,experiment_close,run_exp
 
 
 

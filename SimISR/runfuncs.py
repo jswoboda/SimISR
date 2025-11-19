@@ -3,7 +3,6 @@
 from pathlib import Path
 from .radarobjs import read_config_yaml, Experiment
 from .createData import RadarDataCreate
-from gc import set_debug
 
 
 def experiment_setup(exp_file, test_dir, start_time=None, end_time=None):
